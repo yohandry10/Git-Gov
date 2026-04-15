@@ -34,10 +34,15 @@ function resolveInitialLocale(): Locale {
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-    const [locale, setLocaleState] = useState<Locale>(resolveInitialLocale);
+    const [locale, setLocaleState] = useState<Locale>('en');
 
     const setLocale = useCallback((newLocale: Locale) => {
         setLocaleState(newLocale);
+    }, []);
+
+    // Resolve the real locale after hydration to avoid SSR/client mismatch
+    useEffect(() => {
+        setLocaleState(resolveInitialLocale());
     }, []);
 
     useEffect(() => {
