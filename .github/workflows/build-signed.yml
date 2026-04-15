@@ -1,0 +1,271 @@
+name: Build Signed Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+  GITGOV_ENV: prod
+
+jobs:
+  build-windows:
+    name: Build & Sign Windows Installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: gitgov
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert explicit runtime env
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GITGOV_ENV)) {
+            throw "GITGOV_ENV must be set explicitly in CI/deploy."
+          }
+          $allowed = @('dev','development','local','test','testing','ci','staging','prod','production')
+          if (-not ($allowed -contains $env:GITGOV_ENV.ToLowerInvariant())) {
+            throw "Unsupported GITGOV_ENV '$($env:GITGOV_ENV)'. Allowed: $($allowed -join ', ')"
+          }
+          Write-Host "GITGOV_ENV='$($env:GITGOV_ENV)' validated for CI/deploy."
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gitgov/src-tauri
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gitgov/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Prepare Windows code signing certificate
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE)) {
+            throw "Missing WINDOWS_CERTIFICATE secret (base64-encoded PFX)."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
+            throw "Missing WINDOWS_CERTIFICATE_PASSWORD secret."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_THUMBPRINT)) {
+            throw "Missing WINDOWS_CERTIFICATE_THUMBPRINT secret."
+          }
+
+          $pfxPath = Join-Path $env:RUNNER_TEMP "gitgov-codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+
+          $securePassword = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $imported = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          if (-not $imported) {
+            throw "Failed to import Windows code-signing certificate into Cert:\\CurrentUser\\My."
+          }
+
+          $normalizedThumbprint = ($env:WINDOWS_CERTIFICATE_THUMBPRINT -replace '\s', '').ToUpper()
+          $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Thumbprint -eq $normalizedThumbprint } | Select-Object -First 1
+          if (-not $cert) {
+            throw "Certificate thumbprint '$normalizedThumbprint' was not found in Cert:\\CurrentUser\\My after import."
+          }
+
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content $configPath -Raw | ConvertFrom-Json -Depth 100
+          if (-not $config.bundle.windows) {
+            $config.bundle | Add-Member -NotePropertyName windows -NotePropertyValue (@{})
+          }
+          $config.bundle.windows.certificateThumbprint = $normalizedThumbprint
+          $config.bundle.windows.digestAlgorithm = "sha256"
+          if (-not $config.bundle.windows.timestampUrl) {
+            $config.bundle.windows.timestampUrl = "http://timestamp.digicert.com"
+          }
+          $config | ConvertTo-Json -Depth 100 | Set-Content $configPath -Encoding UTF8
+
+      - name: Build signed Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build
+
+      - name: Verify Authenticode signatures (required)
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Recurse -Filter "*.msi" src-tauri/target/release/bundle | Select-Object -First 1
+          $nsis = Get-ChildItem -Recurse -Filter "*-setup.exe" src-tauri/target/release/bundle | Select-Object -First 1
+          if (-not $msi) { throw "MSI installer not found after build." }
+          if (-not $nsis) { throw "NSIS installer not found after build." }
+
+          $targets = @($msi.FullName, $nsis.FullName)
+          foreach ($path in $targets) {
+            $sig = Get-AuthenticodeSignature $path
+            if ($sig.Status -ne 'Valid') {
+              throw "Authenticode signature is not valid for '$path'. Status: $($sig.Status)"
+            }
+          }
+
+      - name: Compute SHA256 hashes
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem -Recurse -Filter "*.msi" src-tauri/target/release/bundle | Select-Object -First 1
+          $nsis = Get-ChildItem -Recurse -Filter "*-setup.exe" src-tauri/target/release/bundle | Select-Object -First 1
+          if ($msi) { (Get-FileHash $msi.FullName -Algorithm SHA256).Hash | Out-File -FilePath "$($msi.FullName).sha256" }
+          if ($nsis) { (Get-FileHash $nsis.FullName -Algorithm SHA256).Hash | Out-File -FilePath "$($nsis.FullName).sha256" }
+
+      - name: Upload MSI installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitgov-windows-msi-${{ github.ref_name }}
+          path: |
+            gitgov/src-tauri/target/release/bundle/msi/*.msi
+            gitgov/src-tauri/target/release/bundle/msi/*.sha256
+          retention-days: 90
+
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitgov-windows-nsis-${{ github.ref_name }}
+          path: |
+            gitgov/src-tauri/target/release/bundle/nsis/*-setup.exe
+            gitgov/src-tauri/target/release/bundle/nsis/*.sha256
+          retention-days: 90
+
+  build-macos:
+    name: Build macOS DMG
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: gitgov
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gitgov/src-tauri
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gitgov/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (universal)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --target universal-apple-darwin
+
+      - name: Compute SHA256 hashes (DMG)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for dmg in src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg; do
+            shasum -a 256 "$dmg" | awk '{print $1}' > "$dmg.sha256"
+          done
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitgov-macos-dmg-${{ github.ref_name }}
+          path: |
+            gitgov/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            gitgov/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.sha256
+          retention-days: 90
+
+  build-linux:
+    name: Build Linux (AppImage + DEB)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gitgov
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gitgov/src-tauri
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gitgov/package-lock.json
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (Linux bundles)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --bundles appimage,deb
+
+      - name: Compute SHA256 hashes (Linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for appimage in src-tauri/target/release/bundle/appimage/*.AppImage; do
+            sha256sum "$appimage" | awk '{print $1}' > "$appimage.sha256"
+          done
+          for deb in src-tauri/target/release/bundle/deb/*.deb; do
+            sha256sum "$deb" | awk '{print $1}' > "$deb.sha256"
+          done
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitgov-linux-appimage-${{ github.ref_name }}
+          path: |
+            gitgov/src-tauri/target/release/bundle/appimage/*.AppImage
+            gitgov/src-tauri/target/release/bundle/appimage/*.sha256
+          retention-days: 90
+
+      - name: Upload Linux DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitgov-linux-deb-${{ github.ref_name }}
+          path: |
+            gitgov/src-tauri/target/release/bundle/deb/*.deb
+            gitgov/src-tauri/target/release/bundle/deb/*.sha256
+          retention-days: 90

@@ -1,0 +1,40 @@
+[package]
+name = "gitgov"
+version = "0.1.0"
+description = "GitGov - Controlled Git workflow with roles and audit"
+authors = ["GitGov Team"]
+edition = "2021"
+
+[lib]
+name = "gitgov_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+git2 = { version = "0.20.4", features = ["vendored-openssl"] }
+reqwest = { version = "0.12", features = ["json", "blocking", "stream"] }
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+keyring = "3"
+toml = "0.8"
+glob = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+octocrab = "0.44"
+dirs = "6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+tauri-plugin-updater = "2"
+tauri-plugin-notification = "2"
+image = { version = "0.25", default-features = false, features = ["png"] }
+portable-pty = "0.8"

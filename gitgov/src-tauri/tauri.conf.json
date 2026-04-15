@@ -1,0 +1,60 @@
+{
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "GitGov",
+    "version":  "0.1.0",
+    "identifier":  "com.empresa.gitgov",
+    "build":  {
+                  "beforeDevCommand":  "npm run dev",
+                  "devUrl":  "http://localhost:1420",
+                  "beforeBuildCommand":  "npm run build",
+                  "frontendDist":  "../dist"
+              },
+    "app":  {
+                "withGlobalTauri":  true,
+                "windows":  [
+                                {
+                                    "title":  "GitGov",
+                                    "width":  1200,
+                                    "height":  800,
+                                    "resizable":  true,
+                                    "fullscreen":  false,
+                                    "center":  true,
+                                    "minWidth":  800,
+                                    "minHeight":  600
+                                }
+                            ],
+                "security":  {
+                                 "csp":  "default-src 'self' tauri: https://ipc.localhost; script-src 'self' tauri: https://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' tauri: https://ipc.localhost http://127.0.0.1:* http://localhost:* https://*; worker-src 'self' blob:",
+                                 "capabilities":  [
+                                                      "default"
+                                                  ]
+                             }
+            },
+    "bundle":  {
+                   "active":  true,
+                   "targets":  "all",
+                   "icon":  [
+                                "icons/32x32.png",
+                                "icons/128x128.png",
+                                "icons/128x128@2x.png",
+                                "icons/icon.ico"
+                            ],
+                   "windows":  {
+                                   "certificateThumbprint":  null,
+                                   "digestAlgorithm":  "sha256",
+                                   "timestampUrl":  "http://timestamp.digicert.com"
+                               }
+               },
+    "plugins":  {
+                    "shell":  {
+                                  "open":  true
+                              },
+                    "updater":  {
+                                    "endpoints":  [
+                                                      "https://github.com/yohandry10/Git-Gov/releases/latest/download/latest.json"
+                                                  ],
+                                    "pubkey":  "ZFc1MGNuVnpkR1ZrSUdOdmJXMWxiblE2SUcxcGJtbHphV2R1SUhCMVlteHBZeUJyWlhrNklFTTNSamcyTmpFeU1rRkZSVFkxTjBRS1VsZFNPVnBsTkhGRmJXSTBlQzh6ZVVSNlMxZDNNVzVPUkdveFVYVkpUV3QwUkhVNGVrWmtlVkZuYVVwa1p6Wlhla3hIYzJKeGQxSUs="
+                                }
+                }
+}
+
