@@ -353,7 +353,7 @@ La Desktop App tiene dos contextos de ejecución con fuentes de configuración d
 
 | Capa | Variables | Qué lee | Para qué |
 |------|-----------|---------|----------|
-| Rust/Tauri (backend) | `GITGOV_SERVER_URL`, `GITGOV_API_KEY` | `gitgov/.env` (lado Rust) | Outbox, git commands, envío de eventos |
+| Rust/Tauri (backend) | `GITGOV_SERVER_URL`, `GITGOV_API_KEY`, `GITHUB_CLIENT_ID` | `gitgov/.env` (lado Rust) | Outbox, git commands, envío de eventos, Device Flow |
 | Vite/React (frontend) | `VITE_SERVER_URL`, `VITE_API_KEY` | `gitgov/.env` (lado Vite) | Dashboard UI, consultas desde el navegador |
 
 Si configuras solo `VITE_*`, el outbox (Rust) no sabe a dónde enviar. Si configuras solo `GITGOV_*`, el dashboard (React) no sabe a dónde consultar.
@@ -368,6 +368,7 @@ VITE_API_KEY=tu-api-key-aqui
 # Para el backend Rust (outbox, git commands)
 GITGOV_SERVER_URL=http://127.0.0.1:3000
 GITGOV_API_KEY=tu-api-key-aqui
+GITHUB_CLIENT_ID=tu-github-oauth-client-id
 ```
 
 **Diagnóstico rápido:**

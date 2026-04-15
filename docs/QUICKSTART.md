@@ -48,6 +48,7 @@ Crear `.env`:
 ```env
 VITE_SERVER_URL=http://127.0.0.1:3000
 VITE_API_KEY=tu-api-key-aqui
+GITHUB_CLIENT_ID=tu-github-oauth-client-id
 ```
 
 ### 2. Configurar Control Plane Server
@@ -325,6 +326,7 @@ admins = ["admin-user"]
 | `VITE_API_KEY` | API key visible en UI | Para el panel de Control Plane |
 | `GITGOV_SERVER_URL` | URL del servidor (para Rust backend) | Leída por `src-tauri/src/lib.rs` |
 | `GITGOV_API_KEY` | API key del servidor (para Rust backend) | Leída por `src-tauri/src/lib.rs` |
+| `GITHUB_CLIENT_ID` | Client ID del GitHub OAuth App | Requerido para Device Flow en Desktop |
 
 > **Importante:** La Desktop App tiene DOS capas de configuración: Vite (frontend) usa `VITE_*`, y el backend Rust de Tauri usa `GITGOV_*`. Son independientes.
 

@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-const GITHUB_CLIENT_ID: &str = "Ov23livabbc30nXBY0KF";
+const GITHUB_CLIENT_ID_ENV: &str = "GITHUB_CLIENT_ID";
 const TOKEN_EXPIRATION_SECONDS: i64 = 28 * 24 * 60 * 60; // 28 days (GitHub default)
 const GITHUB_DEVICE_FLOW_SCOPE: &str = "repo user workflow";
 const LEGACY_TOKEN_FILE_COMPAT_ENV: &str = "GITGOV_ALLOW_LEGACY_TOKEN_FILE";
@@ -29,6 +29,8 @@ pub enum AuthError {
     SlowDown,
     #[error("Token not found")]
     TokenNotFound,
+    #[error("Missing configuration: {0}")]
+    MissingConfiguration(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -353,15 +355,25 @@ fn build_http_client() -> Result<Client, AuthError> {
         .map_err(|e| AuthError::NetworkError(e.to_string()))
 }
 
+fn github_client_id() -> Result<String, AuthError> {
+    std::env::var(GITHUB_CLIENT_ID_ENV).map_err(|_| {
+        AuthError::MissingConfiguration(format!(
+            "{} is required for GitHub Device Flow",
+            GITHUB_CLIENT_ID_ENV
+        ))
+    })
+}
+
 pub fn start_device_flow() -> Result<DeviceFlowResponse, AuthError> {
     let client = build_http_client()?;
+    let client_id = github_client_id()?;
 
     let response = client
         .post("https://github.com/login/device/code")
         .header("Accept", "application/json")
         .header("User-Agent", "GitGov/1.0")
         .form(&[
-            ("client_id", GITHUB_CLIENT_ID),
+            ("client_id", client_id.as_str()),
             ("scope", GITHUB_DEVICE_FLOW_SCOPE),
         ])
         .send()
@@ -378,13 +390,14 @@ pub fn poll_for_token(device_code: &str, interval: u64) -> Result<String, AuthEr
     std::thread::sleep(std::time::Duration::from_secs(interval));
 
     let client = build_http_client()?;
+    let client_id = github_client_id()?;
 
     let response = client
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
         .header("User-Agent", "GitGov/1.0")
         .form(&[
-            ("client_id", GITHUB_CLIENT_ID),
+            ("client_id", client_id.as_str()),
             ("device_code", device_code),
             ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
         ])
@@ -416,13 +429,14 @@ pub fn poll_and_save_token(
     std::thread::sleep(std::time::Duration::from_secs(interval));
 
     let client = build_http_client()?;
+    let client_id = github_client_id()?;
 
     let response = client
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
         .header("User-Agent", "GitGov/1.0")
         .form(&[
-            ("client_id", GITHUB_CLIENT_ID),
+            ("client_id", client_id.as_str()),
             ("device_code", device_code),
             ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
         ])
