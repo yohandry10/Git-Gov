@@ -517,6 +517,8 @@ pub struct EnforcementConfig {
     pub branches: EnforcementLevel,
     #[serde(default)]
     pub traceability: EnforcementLevel,
+    #[serde(default)]
+    pub quality_gates: EnforcementLevel,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

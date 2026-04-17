@@ -1896,6 +1896,62 @@ impl Database {
         })
     }
 
+    pub async fn get_latest_sonar_run_for_commit(
+        &self,
+        repo_full_name: &str,
+        commit_sha: &str,
+    ) -> Result<Option<CommitPipelineRun>, DbError> {
+        let repo_full_name = repo_full_name.trim();
+        let commit_sha = commit_sha.trim();
+        if repo_full_name.is_empty() || commit_sha.is_empty() {
+            return Ok(None);
+        }
+
+        let row = sqlx::query(
+            r#"
+            SELECT
+                pe.id::text AS pipeline_event_id,
+                pe.pipeline_id,
+                pe.job_name,
+                pe.status AS pipeline_status,
+                pe.duration_ms,
+                pe.triggered_by,
+                pe.ingested_at
+            FROM pipeline_events pe
+            WHERE pe.repo_full_name = $1
+              AND pe.commit_sha IS NOT NULL
+              AND (
+                pe.commit_sha = $2
+                OR pe.commit_sha LIKE $2 || '%'
+                OR $2 LIKE pe.commit_sha || '%'
+              )
+              AND lower(pe.job_name) LIKE '%sonar%'
+            ORDER BY pe.ingested_at DESC, pe.id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(repo_full_name)
+        .bind(commit_sha)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let ingested_at = row
+                .get::<chrono::DateTime<chrono::Utc>, _>("ingested_at")
+                .timestamp_millis();
+            CommitPipelineRun {
+                pipeline_event_id: row.get("pipeline_event_id"),
+                pipeline_id: row.get("pipeline_id"),
+                job_name: row.get("job_name"),
+                status: row.get("pipeline_status"),
+                duration_ms: row.get("duration_ms"),
+                triggered_by: row.get("triggered_by"),
+                ingested_at,
+            }
+        }))
+    }
+
     pub async fn upsert_project_ticket(&self, ticket: &ProjectTicket) -> Result<(), DbError> {
         let ingested_at =
             chrono::DateTime::from_timestamp_millis(ticket.ingested_at).ok_or_else(|| {

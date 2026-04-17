@@ -1492,6 +1492,11 @@ pub async fn policy_check(
 
     let repo_name = repo_name_from_policy_check_input(&payload.repo);
     let branch = payload.branch.trim();
+    let commit_sha = payload
+        .commit
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let mut response = PolicyCheckResponse {
         advisory: true,
         allowed: true,
@@ -1543,6 +1548,7 @@ pub async fn policy_check(
         &enforcement.commits,
         &enforcement.branches,
         &enforcement.traceability,
+        &enforcement.quality_gates,
     ]
     .iter()
     .any(|e| **e == EnforcementLevel::Block);
@@ -1551,6 +1557,7 @@ pub async fn policy_check(
         &enforcement.commits,
         &enforcement.branches,
         &enforcement.traceability,
+        &enforcement.quality_gates,
     ]
     .iter()
     .any(|e| **e == EnforcementLevel::Warn);
@@ -1638,7 +1645,57 @@ pub async fn policy_check(
             .push("require_linked_ticket".to_string());
     }
 
-    if payload.commit.as_deref().unwrap_or_default().is_empty() {
+    // --- Quality gate rules (Sonar) ---
+    if enforcement.quality_gates != EnforcementLevel::Off {
+        response.evaluated_rules.push("quality_gate_green".to_string());
+
+        if let Some(commit_sha) = commit_sha {
+            match state
+                .db
+                .get_latest_sonar_run_for_commit(&repo_name, commit_sha)
+                .await
+            {
+                Ok(Some(run)) => {
+                    let pipeline_status = run.status.trim().to_ascii_lowercase();
+                    if pipeline_status != "success" {
+                        let message = format!(
+                            "Sonar quality gate not green for commit {} (job '{}', status '{}')",
+                            commit_sha,
+                            run.job_name,
+                            run.status
+                        );
+                        let v = RuleViolation {
+                            rule: "quality_gate_green".to_string(),
+                            category: "quality_gates".to_string(),
+                            enforcement: format!("{:?}", enforcement.quality_gates).to_lowercase(),
+                            message: message.clone(),
+                        };
+                        if enforcement.quality_gates == EnforcementLevel::Block {
+                            response.allowed = false;
+                            response.reasons.push(message);
+                        } else {
+                            response.warnings.push(message);
+                        }
+                        response.violations.push(v);
+                    }
+                }
+                Ok(None) => {
+                    response.warnings.push(format!(
+                        "No Sonar quality gate evidence found for commit {}; quality check skipped",
+                        commit_sha
+                    ));
+                }
+                Err(_) => {
+                    response.warnings.push(
+                        "Could not load Sonar quality gate evidence; quality check skipped"
+                            .to_string(),
+                    );
+                }
+            }
+        }
+    }
+
+    if commit_sha.is_none() {
         response
             .warnings
             .push("Commit SHA not provided; commit-specific checks skipped".to_string());
