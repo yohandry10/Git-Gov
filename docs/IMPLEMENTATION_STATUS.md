@@ -50,7 +50,7 @@ Updated: 2026-04-17
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
 2. Validate Sonar pipeline events end-to-end in Control Plane logs/correlations.
-3. Validate `quality_gates=warn` and `quality_gates=block` behavior in Jenkins/GitHub CI flows with real commits.
+3. Validate `quality_gates=warn` and `quality_gates=block` behavior in Jenkins/GitHub CI flows with real commits (runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 
 ## Required GitHub Configuration (for Sonar workflow)
