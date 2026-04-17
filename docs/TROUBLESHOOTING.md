@@ -658,7 +658,7 @@ Cuando algo no funciona, verifica en orden:
 10. [ ] El auto-refresh (30s) no está bloqueado por CORS o red
 
 **Base de datos:**
-11. [ ] Se ejecutaron todos los schemas v1 a v6 en orden
+11. [ ] Se aplicó `supabase_schema.sql` + todas las migraciones `supabase_schema_v*.sql` en orden (actualmente hasta v20)
 12. [ ] No hay panics con "invalid type: null" → revisar COALESCE en queries
 13. [ ] Las estructuras `ServerStats` / `CombinedEvent` coinciden frontend ↔ backend
 

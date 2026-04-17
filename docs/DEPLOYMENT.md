@@ -98,15 +98,17 @@ curl -H "Authorization: Bearer <YOUR_API_KEY>" http://127.0.0.1:3001/stats
 ### Migraciones adicionales recomendadas (governance/drift v2)
 
 El bootstrap Docker ejecuta automáticamente `supabase_schema.sql` + `v4..v6`.
-Para usar toda la superficie reciente (drift audit + policy requests + timeline compliance), aplicar también `v7..v19` una vez:
+Para usar toda la superficie reciente (drift audit + policy requests + timeline compliance), aplicar también migraciones adicionales disponibles en repo:
 
 ```bash
 # Desde la raíz del repo
-for v in 7 8 9 10 11 12 13 14 15 16 17 18 19; do
+for v in 7 8 9 10 11 12 13 18 19 20; do
   cat "gitgov/gitgov-server/supabase/supabase_schema_v${v}.sql" \
     | docker exec -i gitgov-db psql -U gitgov -d gitgov
 done
 ```
+
+> Nota: `v14..v17` no existen en el árbol actual del repo; no deben incluirse en el loop.
 
 ---
 
@@ -271,6 +273,7 @@ Archivo: `/opt/gitgov/config/gitgov-server.env`
 
 - `DATABASE_URL` — PostgreSQL (local `127.0.0.1` o remoto con SSL según topología)
 - `GITGOV_JWT_SECRET`
+- `GITGOV_ALLOW_INSECURE_JWT_FALLBACK=false` (recomendado; solo usar `true` en dev/test local)
 - `GITGOV_API_KEY`
 - `GITGOV_SERVER_ADDR=0.0.0.0:3000`
 - `RUST_LOG=info`
@@ -726,7 +729,7 @@ Block `downloads.gitgov.com` at the firewall. The app continues functioning; onl
 ## Support
 
 - Documentation: `docs/` directory
-- Issues: https://github.com/yohandry10/Git-Gov/issues
+- Issues: https://github.com/<owner>/<repo>/issues
 - Health check: `GET http://<server>:3000/health`
 
 ---

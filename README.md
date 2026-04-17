@@ -46,6 +46,17 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 - ✅ Outbox offline con reintentos
 - ✅ Auditoría centralizada
 - ✅ Sitio público (marketing/docs/download) en Next.js 15.5
+- ✅ Chat de gobernanza en dashboard desktop (`/chat/ask`) para consultas tipo:
+  - quién hizo commits/pushes
+  - rangos de fechas
+  - pushes bloqueados / sin ticket
+- ✅ Editor de políticas en dashboard desktop para definir ramas y reglas (guardado en Control Plane)
+
+### Alcance del Dashboard Desktop
+
+- El botón de chat en el dashboard sí está implementado y conectado al backend (`/chat/ask`).
+- El flujo de reglas es **manual/asistido** desde `Policy Editor` (UI + API de políticas).
+- No existe, hoy, un conversor automático de "diagrama de arquitectura/repos/ramas" a ramas/reglas Git.
 
 ## Documentación
 
@@ -54,6 +65,7 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 | [QUICKSTART.md](./docs/QUICKSTART.md) | Guía de inicio (5 min) |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Arquitectura del sistema |
 | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Solución de problemas |
+| [PUBLICATION_POLICY.md](./docs/PUBLICATION_POLICY.md) | Qué documentación puede publicarse (y cuál no) |
 
 ## Scripts de Prueba
 

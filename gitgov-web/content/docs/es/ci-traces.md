@@ -117,7 +117,7 @@ stage('Policy Check') {
                 script: """curl -s -X POST \${GITGOV_URL}/policy/check \\
                   -H "Authorization: Bearer \${GITGOV_KEY}" \\
                   -H "Content-Type: application/json" \\
-                  -d '{"repo_name": "TuOrg/TuRepo", "commit_sha": "\${env.GIT_COMMIT}", "branch": "\${env.GIT_BRANCH}", "user_login": "\${env.GIT_AUTHOR_NAME}"}'""",
+                  -d '{"repo": "TuOrg/TuRepo", "commit": "\${env.GIT_COMMIT}", "branch": "\${env.GIT_BRANCH}"}'""",
                 returnStdout: true
             ).trim()
             echo "GitGov policy check: ${response}"

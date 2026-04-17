@@ -88,6 +88,22 @@ Usuario hace click → React UI → Comando Tauri → Lógica Rust → Operació
                                         Enviar al servidor (cuando haya conexión)
 ```
 
+### Dashboard Desktop: Chat y Políticas
+
+Dentro del dashboard desktop existen dos capacidades distintas:
+
+- **Chat de gobernanza (sí existe):**
+  - UI: `gitgov/src/components/control_plane/ConversationalChatPanel.tsx`
+  - Cliente desktop → server: `gitgov/src-tauri/src/control_plane/server.rs` (`/chat/ask`)
+  - Backend de consultas: `gitgov/gitgov-server/src/handlers/conversational/query.rs`
+  - Soporta consultas de commits/pushes por usuario, bloqueos y ventanas de fechas.
+- **Editor de políticas (sí existe):**
+  - UI: `gitgov/src/components/control_plane/PolicyEditorPanel.tsx`
+  - Permite editar ramas protegidas, patrones de ramas y reglas de enforcement.
+- **Conversión automática desde diagrama (no implementada actualmente):**
+  - No hay, al día de hoy, un motor que convierta diagramas de arquitectura/repos/ramas en reglas Git automáticamente.
+  - El flujo vigente es configuración manual/asistida desde Policy Editor + APIs de políticas.
+
 ### 2. Control Plane Server (Servidor Central)
 
 **Qué hace:** Es el cerebro del sistema. Recibe eventos de todas las desktop apps, los almacena, y proporciona dashboards para ver qué está pasando en la organización.
@@ -130,13 +146,15 @@ Usuario hace click → React UI → Comando Tauri → Lógica Rust → Operació
 | `/dashboard` | Bearer (admin) | Datos agregados |
 | `/jobs/metrics` | Bearer (admin) | Estado del job queue |
 | `/jobs/dead` | Bearer (admin) | Jobs muertos |
-| `/jobs/retry/{id}` | Bearer (admin) | Reintentar job muerto |
-| `/governance-events` | Bearer (admin) | Cambios de políticas GitHub |
+| `/jobs/{job_id}/retry` | Bearer (admin) | Reintentar job muerto |
+| `/governance-events` | Bearer (scoped) | Cambios de políticas GitHub |
 | `/signals` | Bearer (admin) | Señales de no-cumplimiento |
-| `/violations` | Bearer (admin) | Violaciones detectadas |
+| `/violations/{violation_id}/decisions` | Bearer (admin) | Historial de decisiones por violación |
 | `/policy/check` | Bearer | Advisory de política (no bloqueante) |
-| `/compliance` | Bearer (admin) | Estado de compliance |
+| `/compliance/{org_name}` | Bearer (admin) | Estado de compliance |
+| `/policy/{repo_name}/requests` | Bearer | Crear/listar requests de cambio de política |
 | `/export` | Bearer (admin) | Export de audit data |
+| `/exports` | Bearer (admin) | Historial de exports generados |
 | `/api-keys` | Bearer (admin) | Gestión de API keys |
 | `/integrations/jenkins` | Bearer | Ingesta de pipeline events |
 | `/integrations/jenkins/status` | Bearer (admin) | Health check Jenkins |
@@ -151,8 +169,8 @@ Usuario hace click → React UI → Comando Tauri → Lógica Rust → Operació
 - Jenkins: `x-gitgov-jenkins-secret` (si `JENKINS_WEBHOOK_SECRET` configurado)
 - Jira: `x-gitgov-jira-secret` (si `JIRA_WEBHOOK_SECRET` configurado)
 
-**Schema versionado:** La DB se inicializa con 6 archivos SQL incrementales:
-`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` (Jenkins) → `v6` (Jira)
+**Schema versionado:** La DB se inicializa con schema base y migraciones incrementales activas:
+`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20`
 
 ### 3. GitHub Integration
 
@@ -513,6 +531,16 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v4.sql` | Append-only triggers y compliance signals |
 | `supabase_schema_v5.sql` | Jenkins: `pipeline_events` + índices de correlación |
 | `supabase_schema_v6.sql` | Jira: `project_tickets` + `commit_ticket_correlations` |
+| `supabase_schema_v7.sql` | PR merges + admin audit log |
+| `supabase_schema_v8.sql` | GDPR / sesiones cliente / identity aliases |
+| `supabase_schema_v9.sql` | Roles de organización (admin/architect/pm/developer) |
+| `supabase_schema_v10.sql` | Invitaciones de organización |
+| `supabase_schema_v11.sql` | Feature requests del bot |
+| `supabase_schema_v12.sql` | Hardening: API keys globales + índices por actor/fecha |
+| `supabase_schema_v13.sql` | CLI command audit trail |
+| `supabase_schema_v18.sql` | Baseline de governance/compliance para rollout v2 |
+| `supabase_schema_v19.sql` | Strict append-only de violations + policy drift runtime |
+| `supabase_schema_v20.sql` | Policy change requests + decisions (persistencia versionada) |
 
 ### Relaciones entre Entidades
 

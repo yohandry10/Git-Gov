@@ -794,8 +794,15 @@ async fn main() {
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let allow_insecure_jwt_fallback =
-        parse_bool_env("GITGOV_ALLOW_INSECURE_JWT_FALLBACK", is_dev_env);
+    let insecure_jwt_fallback_requested =
+        parse_bool_env("GITGOV_ALLOW_INSECURE_JWT_FALLBACK", false);
+    let allow_insecure_jwt_fallback = insecure_jwt_fallback_requested && is_dev_env;
+    if insecure_jwt_fallback_requested && !is_dev_env {
+        tracing::warn!(
+            runtime_env = %runtime_env,
+            "Ignoring GITGOV_ALLOW_INSECURE_JWT_FALLBACK outside dev/test environments"
+        );
+    }
     let _jwt_secret = match std::env::var("GITGOV_JWT_SECRET") {
         Ok(secret) if !secret.trim().is_empty() => secret,
         _ if allow_insecure_jwt_fallback => {

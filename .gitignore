@@ -15,11 +15,17 @@ Thumbs.db
 
 # Env files
 .env
-.env.example
 .env.local
 .env.*.local
+!.env.example
+!**/.env.example
 .mcp.json
 secrets/
+
+# Internal forensic / strategy docs (must not be published)
+docs/ENTERPRISE_READINESS_DECISION.md
+docs/AUDIT_*.md
+docs/INTEGRATIONS_AUDIT_*.md
 
 # Logs
 *.log
@@ -39,3 +45,7 @@ exports/
 # Test artifacts
 coverage/
 .nyc_output/
+
+# Local ops artifacts
+backups/
+.tmp/

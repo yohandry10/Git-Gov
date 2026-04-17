@@ -9,6 +9,8 @@ pipeline {
     GITGOV_API_KEY = credentials('gitgov-api-key')
     // Opcional si activaste JENKINS_WEBHOOK_SECRET en el server
     GITGOV_JENKINS_SECRET = credentials('gitgov-jenkins-secret')
+    // true => falla el build si GitGov responde >=400 o si curl falla
+    GITGOV_STRICT = 'false'
   }
 
   options {
@@ -29,16 +31,26 @@ pipeline {
           def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown'
           def commitSha = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 
-          sh """
-            curl -sS -X POST ${GITGOV_URL}/policy/check \
-              -H "Authorization: Bearer ${GITGOV_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "repo":"${repoName}",
-                "branch":"${branchName}",
-                "commit":"${commitSha}"
-              }' || true
-          """
+          def policyStatus = sh(
+            script: """
+              curl --fail-with-body -sS -X POST ${GITGOV_URL}/policy/check \
+                -H "Authorization: Bearer ${GITGOV_API_KEY}" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "repo":"${repoName}",
+                  "branch":"${branchName}",
+                  "commit":"${commitSha}"
+                }'
+            """,
+            returnStatus: true
+          )
+          if (policyStatus != 0) {
+            def msg = "GitGov policy/check failed (exit=${policyStatus})"
+            if (gitgovStrictModeEnabled()) {
+              error("${msg}; aborting because GITGOV_STRICT=true")
+            }
+            echo "${msg}; continuing because GITGOV_STRICT=false"
+          }
         }
       }
     }
@@ -98,12 +110,26 @@ def notifyGitGov(String status) {
   def includeSecret = env.GITGOV_JENKINS_SECRET?.trim() && env.GITGOV_JENKINS_SECRET.trim() != 'unused'
   def secretHeader = includeSecret ? "-H \"x-gitgov-jenkins-secret: ${env.GITGOV_JENKINS_SECRET}\"" : ""
 
-  // Telemetry should not fail the CI build.
-  sh """
-    curl -sS -X POST ${env.GITGOV_URL}/integrations/jenkins \
-      -H "Authorization: Bearer ${env.GITGOV_API_KEY}" \
-      -H "Content-Type: application/json" \
-      ${secretHeader} \
-      --data @gitgov-pipeline-event.json || true
-  """
+  def publishStatus = sh(
+    script: """
+      curl --fail-with-body -sS -X POST ${env.GITGOV_URL}/integrations/jenkins \
+        -H "Authorization: Bearer ${env.GITGOV_API_KEY}" \
+        -H "Content-Type: application/json" \
+        ${secretHeader} \
+        --data @gitgov-pipeline-event.json
+    """,
+    returnStatus: true
+  )
+  if (publishStatus != 0) {
+    def msg = "GitGov telemetry publish failed (exit=${publishStatus})"
+    if (gitgovStrictModeEnabled()) {
+      error("${msg}; aborting because GITGOV_STRICT=true")
+    }
+    echo "${msg}; continuing because GITGOV_STRICT=false"
+  }
+}
+
+def gitgovStrictModeEnabled() {
+  def raw = (env.GITGOV_STRICT ?: 'false').trim().toLowerCase()
+  return ['1', 'true', 'yes', 'on'].contains(raw)
 }

@@ -2,7 +2,7 @@
 
 ## Requisitos Previos
 
-- Node.js 18+ (Desktop App y Web App)
+- Node.js 20+ (Desktop App y Web App, alineado con CI)
 - pnpm (Web App: `npm install -g pnpm`)
 - Rust 1.70+
 - PostgreSQL (o cuenta Supabase)
@@ -87,9 +87,12 @@ En Supabase SQL Editor, ejecutar los archivos **en orden**:
 
 -- 5. V1.3 — append-only estricto + policy drift audit table
 -- Ejecutar: supabase_schema_v19.sql
+
+-- 6. V1.3.1 — policy change requests versionados
+-- Ejecutar: supabase_schema_v20.sql
 ```
 
-Para una instalación limpia nueva: ejecutar todos los archivos del v1 al v19 en ese orden.
+Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico.
 
 ### 4. Ejecutar
 
@@ -352,7 +355,7 @@ admins = ["admin-user"]
 | Outbox no envía | Verificar `GITGOV_SERVER_URL` y `GITGOV_API_KEY` en `gitgov/.env` |
 | Dashboard vacío pero outbox OK | Verificar `VITE_SERVER_URL` y `VITE_API_KEY` en `gitgov/.env` |
 | DB error | Ejecutar supabase_schema.sql (base) + v2 a v6 en orden |
-| App no abre | `npm install` y verificar Node.js 18+ |
+| App no abre | `npm install` y verificar Node.js 20+ |
 | 429 Too Many Requests | Rate limit alcanzado — ajustar `GITGOV_RATE_LIMIT_*_PER_MIN` en .env del servidor |
 | localhost vs 127.0.0.1 | Usar siempre `127.0.0.1:3000` como URL canónica en local |
 | API key no imprime en Docker | Agregar `--print-bootstrap-key` al comando del servidor |
