@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurperClassic
 
 pipeline {
   agent any
@@ -30,26 +31,66 @@ pipeline {
           def repoName = env.GIT_URL ? env.GIT_URL.replaceFirst('^.*github\\.com[/:]', '').replaceFirst('\\.git$', '') : ''
           def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown'
           def commitSha = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+          def payload = JsonOutput.toJson([
+            repo      : repoName,
+            branch    : branchName,
+            commit    : commitSha,
+            user_login: (env.BUILD_USER_ID ?: env.BUILD_USER ?: 'jenkins'),
+          ])
+          writeFile file: 'gitgov-policy-check.json', text: payload
 
-          def policyStatus = sh(
+          def policyHttpCode = sh(
             script: """
-              curl --fail-with-body -sS -X POST ${GITGOV_URL}/policy/check \
+              curl -sS \
+                -o gitgov-policy-check-response.json \
+                -w "%{http_code}" \
+                -X POST ${GITGOV_URL}/policy/check \
                 -H "Authorization: Bearer ${GITGOV_API_KEY}" \
                 -H "Content-Type: application/json" \
-                -d '{
-                  "repo":"${repoName}",
-                  "branch":"${branchName}",
-                  "commit":"${commitSha}"
-                }'
+                --data @gitgov-policy-check.json
             """,
-            returnStatus: true
-          )
-          if (policyStatus != 0) {
-            def msg = "GitGov policy/check failed (exit=${policyStatus})"
+            returnStdout: true
+          ).trim()
+
+          def responseRaw = fileExists('gitgov-policy-check-response.json')
+            ? readFile('gitgov-policy-check-response.json').trim()
+            : ''
+
+          def response = [:]
+          if (responseRaw) {
+            try {
+              response = new JsonSlurperClassic().parseText(responseRaw) as Map
+            } catch (ignored) {
+              response = [raw: responseRaw]
+            }
+          }
+
+          if (!(policyHttpCode in ['200', '409'])) {
+            def msg = "GitGov policy/check transport failed (http=${policyHttpCode})"
             if (gitgovStrictModeEnabled()) {
               error("${msg}; aborting because GITGOV_STRICT=true")
             }
             echo "${msg}; continuing because GITGOV_STRICT=false"
+            return
+          }
+
+          def reasons = (response.reasons instanceof List) ? response.reasons.join('; ') : ''
+          def warnings = (response.warnings instanceof List) ? response.warnings.join('; ') : ''
+          def allowed = response.allowed == true
+          def advisory = response.advisory != false
+          def enforcementApplied = response.enforcement_applied ?: 'unknown'
+
+          if (warnings) {
+            echo "GitGov policy warnings: ${warnings}"
+          }
+
+          if (!allowed) {
+            def msg = "GitGov policy denied change (enforcement=${enforcementApplied}, advisory=${advisory}, reasons=${reasons})"
+            if (advisory && !gitgovStrictModeEnabled()) {
+              echo "${msg}; continuing because advisory and GITGOV_STRICT=false"
+            } else {
+              error(msg)
+            }
           }
         }
       }

@@ -33,6 +33,9 @@ Updated: 2026-04-17
   - `/policy/check` now includes `quality_gates` in enforcement level resolution.
   - Evaluates latest Sonar-correlated pipeline run by commit SHA.
   - Applies warn/block outcomes when quality gate status is not green.
+- Jenkins policy-check stage hardened:
+  - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).
+  - Fails the build on non-advisory denies, or advisory denies when `GITGOV_STRICT=true`.
 - Release readiness scoring (phase 1) added in dashboard:
   - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
   - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
