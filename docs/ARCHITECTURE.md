@@ -170,7 +170,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 - Jira: `x-gitgov-jira-secret` (si `JIRA_WEBHOOK_SECRET` configurado)
 
 **Schema versionado:** La DB se inicializa con schema base y migraciones incrementales activas:
-`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20`
+`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21`
 
 ### 3. GitHub Integration
 
@@ -541,6 +541,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v18.sql` | Baseline de governance/compliance para rollout v2 |
 | `supabase_schema_v19.sql` | Strict append-only de violations + policy drift runtime |
 | `supabase_schema_v20.sql` | Policy change requests + decisions (persistencia versionada) |
+| `supabase_schema_v21.sql` | Trazabilidad auditable del bot (chat_query_events + tool_calls) |
 
 ### Relaciones entre Entidades
 

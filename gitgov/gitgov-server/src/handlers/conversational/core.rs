@@ -49,7 +49,13 @@ Tu respuesta DEBE ser JSON válido con este esquema exacto (sin texto fuera del 
 {\"status\":\"ok\"|\"insufficient_data\"|\"feature_not_available\"|\"error\",\
 \"answer\":\"<respuesta en lenguaje natural, markdown permitido>\",\
 \"missing_capability\":\"<string descriptivo o null>\",\
-\"can_report_feature\":true|false,\"data_refs\":[\"<strings con refs opcionales>\"]}\n\
+\"can_report_feature\":true|false,\
+\"data_refs\":[\"<strings con refs opcionales>\"],\
+\"sources\":[\"<fuentes opcionales>\"],\
+\"entities_detected\":[\"<entidades opcionales>\"],\
+\"time_range_used\":\"<ventana opcional o null>\",\
+\"actions_recommended\":[\"<acciones opcionales>\"],\
+\"confidence\":0.0-1.0|null}\n\
 \n\
 Reglas por status:\n\
 - ok: answer tiene la respuesta completa, can_report_feature=false, missing_capability=null.\n\

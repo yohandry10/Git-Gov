@@ -1831,6 +1831,18 @@ pub struct ChatAskResponse {
     pub can_report_feature: bool,
     #[serde(default)]
     pub data_refs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entities_detected: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_range_used: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions_recommended: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<f32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2380,4 +2392,3 @@ pub struct PolicyDriftEventRecord {
     pub metadata: serde_json::Value,
     pub created_at: i64,
 }
-

@@ -285,6 +285,12 @@ export interface ChatAskResponse {
   missing_capability?: string | null
   can_report_feature: boolean
   data_refs: string[]
+  sources?: string[]
+  entities_detected?: string[]
+  time_range_used?: string | null
+  actions_recommended?: string[]
+  confidence?: number | null
+  trace_id?: string | null
 }
 
 export interface ChatMessage {

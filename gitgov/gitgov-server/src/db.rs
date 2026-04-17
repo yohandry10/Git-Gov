@@ -1406,8 +1406,7 @@ impl Database {
 
         // Fast path: skip the expensive UNION ALL with github_events when
         // the caller does not explicitly request source='github'.
-        let use_client_only_fast_path =
-            filter.source.as_deref() != Some("github");
+        let use_client_only_fast_path = filter.source.as_deref() != Some("github");
 
         let result = if use_client_only_fast_path {
             sqlx::query(
@@ -7568,6 +7567,98 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.get("id"))
+    }
+
+    pub async fn insert_chat_query_event(
+        &self,
+        trace_id: &str,
+        conversation_key: &str,
+        client_id: &str,
+        org_scope: Option<&str>,
+        question: &str,
+        intent: &str,
+        response_status: &str,
+        confidence: Option<f32>,
+        language: &str,
+        entities_detected: &[String],
+        time_range_used: Option<&str>,
+        sources: &[String],
+        actions_recommended: &[String],
+        answer_preview: &str,
+    ) -> Result<(), DbError> {
+        let entities_detected = serde_json::to_value(entities_detected)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let sources = serde_json::to_value(sources)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let actions_recommended = serde_json::to_value(actions_recommended)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO chat_query_events (
+                trace_id, conversation_key, client_id, org_scope,
+                question, intent, response_status, confidence, language,
+                entities_detected, time_range_used, sources, actions_recommended, answer_preview
+            )
+            VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                $10::jsonb, $11, $12::jsonb, $13::jsonb, $14
+            )
+            "#,
+        )
+        .bind(trace_id)
+        .bind(conversation_key)
+        .bind(client_id)
+        .bind(org_scope)
+        .bind(question)
+        .bind(intent)
+        .bind(response_status)
+        .bind(confidence)
+        .bind(language)
+        .bind(&entities_detected)
+        .bind(time_range_used)
+        .bind(&sources)
+        .bind(&actions_recommended)
+        .bind(answer_preview)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn insert_chat_query_tool_call(
+        &self,
+        trace_id: &str,
+        tool_name: &str,
+        tool_status: &str,
+        duration_ms: Option<i32>,
+        input_payload: &serde_json::Value,
+        output_payload: &serde_json::Value,
+        error: Option<&str>,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            INSERT INTO chat_query_tool_calls (
+                trace_id, tool_name, tool_status, duration_ms, input_payload, output_payload, error
+            )
+            VALUES (
+                $1, $2, $3, $4, $5::jsonb, $6::jsonb, $7
+            )
+            "#,
+        )
+        .bind(trace_id)
+        .bind(tool_name)
+        .bind(tool_status)
+        .bind(duration_ms)
+        .bind(input_payload)
+        .bind(output_payload)
+        .bind(error)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(())
     }
 
     // ========================================================================

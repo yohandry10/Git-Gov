@@ -168,6 +168,11 @@ fn normalize_llm_response(
         response.missing_capability = None;
         response.can_report_feature = false;
         response.data_refs = vec!["security_policy".to_string()];
+        response.sources = vec!["security_policy".to_string()];
+        response.entities_detected = vec!["security_request".to_string()];
+        response.time_range_used = None;
+        response.actions_recommended = vec![];
+        response.confidence = Some(1.0);
         return response;
     }
 
@@ -223,6 +228,46 @@ fn normalize_llm_response(
     response.data_refs.sort();
     response.data_refs.dedup();
 
+    response.sources = response
+        .sources
+        .into_iter()
+        .map(|r| r.trim().to_string())
+        .filter(|r| !r.is_empty() && r.len() <= 120)
+        .take(20)
+        .collect();
+    response.sources.sort();
+    response.sources.dedup();
+
+    response.entities_detected = response
+        .entities_detected
+        .into_iter()
+        .map(|r| r.trim().to_string())
+        .filter(|r| !r.is_empty() && r.len() <= 160)
+        .take(24)
+        .collect();
+    response.entities_detected.sort();
+    response.entities_detected.dedup();
+
+    response.actions_recommended = response
+        .actions_recommended
+        .into_iter()
+        .map(|r| r.trim().to_string())
+        .filter(|r| !r.is_empty() && r.len() <= 240)
+        .take(12)
+        .collect();
+    response.actions_recommended.sort();
+    response.actions_recommended.dedup();
+
+    response.time_range_used = response
+        .time_range_used
+        .as_ref()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s.len() <= 120);
+
+    response.confidence = response
+        .confidence
+        .filter(|v| v.is_finite() && *v >= 0.0 && *v <= 1.0);
+
     response
 }
 
@@ -270,6 +315,12 @@ pub async fn chat_ask(
                 missing_capability: None,
                 can_report_feature: false,
                 data_refs: vec![],
+                sources: vec![],
+                entities_detected: vec![],
+                time_range_used: None,
+                actions_recommended: vec![],
+                confidence: None,
+                trace_id: None,
             }),
         );
     }
@@ -284,6 +335,12 @@ pub async fn chat_ask(
                 missing_capability: None,
                 can_report_feature: false,
                 data_refs: vec![],
+                sources: vec![],
+                entities_detected: vec![],
+                time_range_used: None,
+                actions_recommended: vec![],
+                confidence: None,
+                trace_id: None,
             }),
         );
     }
@@ -313,6 +370,12 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec![],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 }),
             );
         }
@@ -354,7 +417,14 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string(), "todo_runtime".to_string()],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         NlpIntent::TodoList => {
@@ -367,7 +437,14 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string(), "todo_runtime".to_string()],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         NlpIntent::TodoComplete => {
@@ -379,6 +456,12 @@ pub async fn chat_ask(
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["assistant_runtime".to_string(), "todo_runtime".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     }
                 } else {
                     ChatAskResponse {
@@ -390,6 +473,12 @@ pub async fn chat_ask(
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["todo_runtime".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     }
                 }
             } else {
@@ -399,6 +488,12 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["todo_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 }
             };
             return finalize_chat_response(&state, &conversation_key, &mut session, &nlp,StatusCode::OK, response);
@@ -410,12 +505,18 @@ pub async fn chat_ask(
                     status: "ok".to_string(),
                     answer: if nlp.entities.language == "en" {
                         "Great. I will keep this response style for the next interactions.".to_string()
-                    } else {
+} else {
                         "Perfecto. Mantendré este estilo de respuesta en las próximas interacciones.".to_string()
                     },
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -426,12 +527,18 @@ pub async fn chat_ask(
                     status: "ok".to_string(),
                     answer: if nlp.entities.language == "en" {
                         "Understood. I will answer with more precision and concrete steps from now on.".to_string()
-                    } else {
+} else {
                         "Entendido. Voy a responder con más precisión y pasos concretos desde ahora.".to_string()
                     },
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -444,6 +551,12 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -463,6 +576,12 @@ pub async fn chat_ask(
                 missing_capability: None,
                 can_report_feature: false,
                 data_refs: vec!["security_policy".to_string()],
+                sources: vec![],
+                entities_detected: vec![],
+                time_range_used: None,
+                actions_recommended: vec![],
+                confidence: None,
+                trace_id: None,
             },
         );
     }
@@ -547,12 +666,18 @@ pub async fn chat_ask(
                         status: "insufficient_data".to_string(),
                         answer: if nlp.entities.language == "en" {
                             "This query needs an organization scope. Select or provide `org_name` first to avoid cross-org ambiguity.".to_string()
-                        } else {
+} else {
                             "Esta consulta requiere un scope de organización. Selecciona o envía `org_name` primero para evitar ambigüedad entre organizaciones.".to_string()
                         },
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["org_scope".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -578,7 +703,14 @@ pub async fn chat_ask(
                         "project_docs_kb".to_string(),
                         "todo_runtime".to_string(),
                     ],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         Some(ChatQuery::DateMismatchClarification) => {
@@ -603,7 +735,14 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string(), "client_events".to_string()],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         Some(ChatQuery::CurrentDateTime) => {
@@ -625,6 +764,12 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -647,6 +792,12 @@ pub async fn chat_ask(
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: refs,
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -667,6 +818,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -693,6 +850,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -717,6 +880,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -741,6 +910,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -765,6 +940,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -789,6 +970,12 @@ pub async fn chat_ask(
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -854,7 +1041,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         "commit_ticket_correlations".to_string(),
                         "assistant_runtime".to_string(),
                     ],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         Some(ChatQuery::OnlineDevelopersNow { minutes }) => {
@@ -879,6 +1073,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_sessions".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -896,6 +1096,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -926,6 +1132,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 "client_events".to_string(),
                                 "commit_ticket_correlations".to_string(),
                             ],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -943,6 +1155,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -957,6 +1175,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -978,7 +1202,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         "web_docs_faq".to_string(),
                         "todo_runtime".to_string(),
                     ],
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             );
         }
         Some(ChatQuery::PushesNoTicket) => match state.db.chat_query_pushes_no_ticket(scoped_org_id.as_deref()).await {
@@ -999,7 +1230,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             "github_events".to_string(),
                             "commit_ticket_correlations".to_string(),
                         ],
-                    },
+
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
+},
                 );
             }
             Err(e) => {
@@ -1012,6 +1250,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec![],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -1027,6 +1271,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["client_events".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -1040,6 +1290,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec![],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -1110,6 +1366,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1127,6 +1389,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1151,6 +1419,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 missing_capability: None,
                                 can_report_feature: false,
                                 data_refs: vec![],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: None,
+                                actions_recommended: vec![],
+                                confidence: None,
+                                trace_id: None,
                             },
                         );
                     }
@@ -1187,6 +1461,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["org_users".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -1216,6 +1496,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1246,6 +1532,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1279,6 +1571,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["client_events".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -1335,7 +1633,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 "github_events".to_string(),
                                 "commit_ticket_correlations".to_string(),
                             ],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
                 Err(e) => {
@@ -1352,6 +1657,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1401,6 +1712,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1418,6 +1735,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1466,7 +1789,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["org_users".to_string(), "api_keys".to_string()],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
                 Ok(None) => {
@@ -1485,6 +1815,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["org_users".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1502,6 +1838,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1523,6 +1865,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs: vec!["assistant_runtime".to_string()],
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -1564,7 +1912,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 missing_capability: None,
                                 can_report_feature: false,
                                 data_refs: vec!["client_events".to_string(), "assistant_runtime".to_string()],
-                            },
+
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: None,
+                                actions_recommended: vec![],
+                                confidence: None,
+                                trace_id: None,
+},
                         );
                     }
                     Err(e) => {
@@ -1581,6 +1936,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 missing_capability: None,
                                 can_report_feature: false,
                                 data_refs: vec![],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: None,
+                                actions_recommended: vec![],
+                                confidence: None,
+                                trace_id: None,
                             },
                         );
                     }
@@ -1612,7 +1973,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string(), "assistant_runtime".to_string()],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
                 Err(e) => {
@@ -1629,6 +1997,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1656,6 +2030,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1673,6 +2053,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1733,6 +2119,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1746,6 +2138,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1844,7 +2242,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string(), "assistant_runtime".to_string()],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
                 Ok(None) => {
@@ -1884,7 +2289,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string(), "org_users".to_string()],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
                 Err(e) => {
@@ -1901,6 +2313,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1946,6 +2364,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec!["client_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -1959,6 +2383,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
                         },
                     );
                 }
@@ -2000,7 +2430,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                                 "logs_endpoint".to_string(),
                                 "deterministic_sql_results".to_string(),
                             ],
-                        },
+
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+},
                     );
                 }
 
@@ -2020,7 +2457,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             "logs_endpoint".to_string(),
                             "deterministic_sql_results".to_string(),
                         ],
-                    },
+
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
+},
                 );
             }
             Err(e) => {
@@ -2037,6 +2481,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                         missing_capability: None,
                         can_report_feature: false,
                         data_refs: vec!["logs_endpoint".to_string()],
+                        sources: vec![],
+                        entities_detected: vec![],
+                        time_range_used: None,
+                        actions_recommended: vec![],
+                        confidence: None,
+                        trace_id: None,
                     },
                 );
             }
@@ -2056,7 +2506,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                 missing_capability: None,
                 can_report_feature: false,
                 data_refs: vec!["project_docs_kb".to_string(), "web_docs_faq".to_string()],
-            },
+
+                sources: vec![],
+                entities_detected: vec![],
+                time_range_used: None,
+                actions_recommended: vec![],
+                confidence: None,
+                trace_id: None,
+},
         );
     }
 
@@ -2070,6 +2527,12 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                 missing_capability: Some("llm_integration".to_string()),
                 can_report_feature: true,
                 data_refs: vec![],
+                sources: vec![],
+                entities_detected: vec![],
+                time_range_used: None,
+                actions_recommended: vec![],
+                confidence: None,
+                trace_id: None,
             },
         );
     };
@@ -2103,12 +2566,18 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     status: "error".to_string(),
                     answer: if nlp.entities.language == "en" {
                         "Chat is temporarily unavailable due to internal capacity controls. Try again in a few seconds.".to_string()
-                    } else {
+} else {
                         "El chat está temporalmente no disponible por control interno de capacidad. Intenta de nuevo en unos segundos.".to_string()
                     },
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs,
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -2127,12 +2596,18 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     status: "error".to_string(),
                     answer: if nlp.entities.language == "en" {
                         "Chat is busy right now. Try again in a few seconds.".to_string()
-                    } else {
+} else {
                         "El chat está ocupado en este momento. Intenta de nuevo en unos segundos.".to_string()
                     },
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs,
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
                 },
             );
         }
@@ -2178,7 +2653,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs,
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             )
         }
         Err(_) => {
@@ -2199,7 +2681,14 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     missing_capability: None,
                     can_report_feature: false,
                     data_refs,
-                },
+
+                    sources: vec![],
+                    entities_detected: vec![],
+                    time_range_used: None,
+                    actions_recommended: vec![],
+                    confidence: None,
+                    trace_id: None,
+},
             )
         }
     }

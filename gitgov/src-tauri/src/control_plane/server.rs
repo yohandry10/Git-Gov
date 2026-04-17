@@ -655,6 +655,18 @@ pub struct ChatAskResponse {
     pub can_report_feature: bool,
     #[serde(default)]
     pub data_refs: Vec<String>,
+    #[serde(default)]
+    pub sources: Vec<String>,
+    #[serde(default)]
+    pub entities_detected: Vec<String>,
+    #[serde(default)]
+    pub time_range_used: Option<String>,
+    #[serde(default)]
+    pub actions_recommended: Vec<String>,
+    #[serde(default)]
+    pub confidence: Option<f32>,
+    #[serde(default)]
+    pub trace_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

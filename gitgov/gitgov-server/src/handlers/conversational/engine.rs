@@ -264,6 +264,79 @@ fn farewell_answer(language: &str) -> String {
     }
 }
 
+fn parse_conversation_scope(conversation_key: &str) -> (String, Option<String>) {
+    let mut parts = conversation_key.splitn(2, "::");
+    let client_id = parts.next().unwrap_or("unknown").to_string();
+    let org_scope = parts.next().and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("global") {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+    (client_id, org_scope)
+}
+
+fn truncate_preview(text: &str, max_chars: usize) -> String {
+    text.chars().take(max_chars).collect()
+}
+
+fn derive_entities_detected(nlp: &NlpAnalysis) -> Vec<String> {
+    let mut entities: Vec<String> = Vec::new();
+    entities.push(format!("intent:{}", nlp.intent.as_str()));
+    if let Some(value) = &nlp.entities.user_login {
+        entities.push(format!("user_login:{}", value));
+    }
+    if let Some(value) = &nlp.entities.repo {
+        entities.push(format!("repo:{}", value));
+    }
+    if let Some(value) = &nlp.entities.branch {
+        entities.push(format!("branch:{}", value));
+    }
+    if let Some(value) = &nlp.entities.org_name {
+        entities.push(format!("org_name:{}", value));
+    }
+    if let Some(value) = &nlp.entities.time_window {
+        entities.push(format!("time_window:{}", value));
+    }
+    if let Some(value) = &nlp.entities.todo_text {
+        entities.push(format!("todo_text:{}", truncate_preview(value, 80)));
+    }
+    if let Some(value) = nlp.entities.todo_id {
+        entities.push(format!("todo_id:{}", value));
+    }
+    entities.sort();
+    entities.dedup();
+    entities
+}
+
+fn derive_action_recommendations(answer: &str) -> Vec<String> {
+    let mut actions: Vec<String> = answer
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .filter(|line| {
+            line.starts_with("1.")
+                || line.starts_with("2.")
+                || line.starts_with("3.")
+                || line.starts_with("4.")
+                || line.starts_with("5.")
+                || line.starts_with("- ")
+        })
+        .map(|line| {
+            line.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == '-' || c == ' ')
+                .trim()
+                .to_string()
+        })
+        .filter(|line| !line.is_empty())
+        .take(8)
+        .collect();
+    actions.sort();
+    actions.dedup();
+    actions
+}
+
 fn finalize_chat_response(
     state: &Arc<AppState>,
     conversation_key: &str,
@@ -298,9 +371,135 @@ fn finalize_chat_response(
     }
 
     response.answer = sanitize_chat_answer_text(&response.answer);
+    let trace_id = response
+        .trace_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+    let mut sources = response
+        .sources
+        .iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect::<Vec<String>>();
+    sources.extend(response.data_refs.iter().cloned());
+    sources.sort();
+    sources.dedup();
+
+    let mut entities_detected = response
+        .entities_detected
+        .iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect::<Vec<String>>();
+    entities_detected.extend(derive_entities_detected(nlp));
+    entities_detected.sort();
+    entities_detected.dedup();
+
+    let mut actions_recommended = response
+        .actions_recommended
+        .iter()
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect::<Vec<String>>();
+    actions_recommended.extend(derive_action_recommendations(&response.answer));
+    actions_recommended.sort();
+    actions_recommended.dedup();
+
+    let confidence = response
+        .confidence
+        .or(Some(nlp.confidence.clamp(0.0, 1.0)));
+    let time_range_used = response
+        .time_range_used
+        .clone()
+        .or_else(|| nlp.entities.time_window.clone());
+    let question = session
+        .turns
+        .iter()
+        .rev()
+        .find(|turn| turn.role == "user")
+        .map(|turn| truncate_preview(&turn.text, 2000))
+        .unwrap_or_default();
+    let answer_preview = truncate_preview(&response.answer, 2000);
+    let (client_id, org_scope) = parse_conversation_scope(conversation_key);
+
+    response.sources = sources.clone();
+    response.entities_detected = entities_detected.clone();
+    response.actions_recommended = actions_recommended.clone();
+    response.confidence = confidence;
+    response.time_range_used = time_range_used.clone();
+    response.trace_id = Some(trace_id.clone());
+
     update_learning(session, nlp.intent, &response.status);
     push_turn(session, "assistant", &response.answer, nlp.intent.as_str());
     save_conversation_state(state, conversation_key, session.clone());
+
+    let db = state.db.clone();
+    let conversation_key = conversation_key.to_string();
+    let response_status = response.status.clone();
+    let intent = nlp.intent.as_str().to_string();
+    let language = nlp.entities.language.clone();
+    let status_code_u16 = status_code.as_u16();
+    tokio::spawn(async move {
+        if let Err(err) = db
+            .insert_chat_query_event(
+                &trace_id,
+                &conversation_key,
+                &client_id,
+                org_scope.as_deref(),
+                &question,
+                &intent,
+                &response_status,
+                confidence,
+                &language,
+                &entities_detected,
+                time_range_used.as_deref(),
+                &sources,
+                &actions_recommended,
+                &answer_preview,
+            )
+            .await
+        {
+            tracing::warn!(
+                "chat trace insert failed trace_id={} error={}",
+                trace_id,
+                err
+            );
+            return;
+        }
+
+        let input_payload = json!({
+            "conversation_key": conversation_key,
+            "intent": intent,
+            "language": language
+        });
+        let output_payload = json!({
+            "status": response_status,
+            "status_code": status_code_u16,
+            "confidence": confidence,
+            "sources": sources,
+            "entities_detected": entities_detected
+        });
+
+        if let Err(err) = db
+            .insert_chat_query_tool_call(
+                &trace_id,
+                "chat_response_pipeline",
+                "ok",
+                None,
+                &input_payload,
+                &output_payload,
+                None,
+            )
+            .await
+        {
+            tracing::warn!(
+                "chat tool trace insert failed trace_id={} error={}",
+                trace_id,
+                err
+            );
+        }
+    });
+
     (status_code, Json(response))
 }
 

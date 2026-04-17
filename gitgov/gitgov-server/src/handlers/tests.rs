@@ -483,6 +483,12 @@ mod tests {
             missing_capability: None,
             can_report_feature: false,
             data_refs: vec![],
+            sources: vec![],
+            entities_detected: vec![],
+            time_range_used: None,
+            actions_recommended: vec![],
+            confidence: None,
+            trace_id: None,
         };
         assert!(should_override_llm_answer_with_kb(
             &resp,

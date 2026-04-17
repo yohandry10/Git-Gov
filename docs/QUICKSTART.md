@@ -90,6 +90,9 @@ En Supabase SQL Editor, ejecutar los archivos **en orden**:
 
 -- 6. V1.3.1 — policy change requests versionados
 -- Ejecutar: supabase_schema_v20.sql
+
+-- 7. V1.3.2 — chat trace audit (eventos + tool calls)
+-- Ejecutar: supabase_schema_v21.sql
 ```
 
 Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico.
