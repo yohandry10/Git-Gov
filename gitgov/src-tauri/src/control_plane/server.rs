@@ -1250,12 +1250,13 @@ impl ControlPlaneClient {
         repo: &str,
         branch: &str,
         user_login: Option<&str>,
+        commit: Option<&str>,
     ) -> Result<PolicyCheckResponse, ServerError> {
         let url = self.endpoint_url(&["policy", "check"])?;
 
         let payload = PolicyCheckRequest {
             repo: repo.to_string(),
-            commit: None,
+            commit: commit.map(|s| s.to_string()),
             branch: branch.to_string(),
             user_login: user_login.map(|s| s.to_string()),
         };

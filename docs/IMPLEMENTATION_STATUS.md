@@ -33,6 +33,7 @@ Updated: 2026-04-17
   - `/policy/check` now includes `quality_gates` in enforcement level resolution.
   - Evaluates latest Sonar-correlated pipeline run by commit SHA.
   - Applies warn/block outcomes when quality gate status is not green.
+- Desktop policy-check payload now includes `commit` (HEAD SHA) for richer server-side evaluation.
 - Jenkins policy-check stage hardened:
   - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).
   - Fails the build on non-advisory denies, or advisory denies when `GITGOV_STRICT=true`.

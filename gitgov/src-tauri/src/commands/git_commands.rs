@@ -497,6 +497,9 @@ pub fn cmd_push(
 
     let repo_context = open_repository(&repo_path).ok();
     let repo_full_name = repo_context.as_ref().and_then(infer_repo_full_name);
+    let head_commit_sha = repo_context
+        .as_ref()
+        .and_then(|repo| crate::git::get_head_commit_hash(repo).ok());
     let org_name = repo_full_name
         .as_deref()
         .and_then(infer_org_name_from_full_name);
@@ -583,7 +586,12 @@ pub fn cmd_push(
                             api_key,
                         },
                     );
-                    match client.policy_check(full_name, &branch, Some(&developer_login)) {
+                    match client.policy_check(
+                        full_name,
+                        &branch,
+                        Some(&developer_login),
+                        head_commit_sha.as_deref(),
+                    ) {
                         Ok(check) => {
                             if !check.allowed {
                                 let reasons_text = check.reasons.join("; ");

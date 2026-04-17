@@ -945,7 +945,7 @@ pub async fn cmd_server_policy_check(
             api_key: config.api_key,
         });
         client
-            .policy_check(&repo, &branch, user_login.as_deref())
+            .policy_check(&repo, &branch, user_login.as_deref(), None)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
