@@ -200,6 +200,7 @@ export interface EnforcementConfig {
   commits: EnforcementLevel
   branches: EnforcementLevel
   traceability: EnforcementLevel
+  quality_gates: EnforcementLevel
 }
 
 export type GovernancePreset = 'startup' | 'enterprise' | 'regulated' | 'custom'

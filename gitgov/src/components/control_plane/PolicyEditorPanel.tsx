@@ -39,6 +39,7 @@ const EMPTY_CONFIG: GitGovConfig = {
     commits: 'off',
     branches: 'off',
     traceability: 'off',
+    quality_gates: 'off',
   },
 }
 
@@ -459,6 +460,11 @@ export function PolicyEditorPanel() {
               label="Trazabilidad"
               value={config.enforcement.traceability}
               onChange={(v) => updateConfig((c) => ({ ...c, enforcement: { ...c.enforcement, traceability: v } }))}
+            />
+            <EnforcementSelect
+              label="Quality Gates (Sonar)"
+              value={config.enforcement.quality_gates}
+              onChange={(v) => updateConfig((c) => ({ ...c, enforcement: { ...c.enforcement, quality_gates: v } }))}
             />
           </CollapsibleSection>
 

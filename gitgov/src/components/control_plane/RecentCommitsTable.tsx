@@ -21,6 +21,10 @@ interface CommitPipelineRun {
   ingested_at: number
 }
 
+function isSonarPipeline(run: CommitPipelineRun | null): run is CommitPipelineRun {
+  return !!run && run.job_name.toLowerCase().includes('sonar')
+}
+
 const SHORT_SHA_MIN_LEN = 7
 const SHORT_SHA_MAX_LEN = 12
 
@@ -193,6 +197,7 @@ export function RecentCommitsTable() {
               const canExpandFiles = isCommit && attachedFiles.length > 0
               const isExpanded = !!expandedCommitRows[log.id]
               const pipelineRun = isCommit ? findPipelineForLog(log) : null
+              const sonarRun = isSonarPipeline(pipelineRun) ? pipelineRun : null
               const prEvidence = isCommit ? findPrEvidenceForLog(log) : null
               const ticketIds = isCommit ? extractTicketIdsFromCommitLog(log) : []
               const isSynthetic = isLikelySyntheticEvent(log)
@@ -209,7 +214,32 @@ export function RecentCommitsTable() {
                           <Badge variant="neutral">{log.event_type}</Badge>
                           {isSynthetic && <Badge variant="neutral">aparente test</Badge>}
                           {isCommit && shortCommitSha && <code className="text-[11px] text-surface-300 mono-data">{shortCommitSha}</code>}
-                          {pipelineRun && <Badge variant={pipelineRun.status === 'success' ? 'success' : pipelineRun.status === 'failure' ? 'danger' : 'warning'}>ci:{pipelineRun.status}</Badge>}
+                          {pipelineRun && (
+                            <Badge
+                              variant={
+                                pipelineRun.status === 'success'
+                                  ? 'success'
+                                  : pipelineRun.status === 'failure'
+                                    ? 'danger'
+                                    : 'warning'
+                              }
+                            >
+                              ci:{pipelineRun.status}
+                            </Badge>
+                          )}
+                          {sonarRun && (
+                            <Badge
+                              variant={
+                                sonarRun.status === 'success'
+                                  ? 'success'
+                                  : sonarRun.status === 'failure'
+                                    ? 'danger'
+                                    : 'warning'
+                              }
+                            >
+                              sonar:{sonarRun.status}
+                            </Badge>
+                          )}
                           {prEvidence && <Badge variant={prEvidence.approvals_count >= 2 ? 'success' : 'danger'}>PR #{prEvidence.pr_number}</Badge>}
                           {ticketIds.slice(0, 2).map((ticketId) => (
                             <button key={`${log.id}-${ticketId}`} type="button" onClick={() => selectTicket(selectedTicketId === ticketId ? null : ticketId)} className="inline-flex" title={`Ticket ${ticketId}`}>

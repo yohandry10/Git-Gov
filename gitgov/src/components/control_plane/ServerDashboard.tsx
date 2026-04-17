@@ -22,6 +22,7 @@ export function ServerDashboard() {
   const serverStats = useControlPlaneStore((s) => s.serverStats)
   const dailyActivity = useControlPlaneStore((s) => s.dailyActivity)
   const ticketCoverage = useControlPlaneStore((s) => s.ticketCoverage)
+  const jenkinsCorrelations = useControlPlaneStore((s) => s.jenkinsCorrelations)
   const userRole = useControlPlaneStore((s) => s.userRole)
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const connectionStatus = useControlPlaneStore((s) => s.connectionStatus)
@@ -130,6 +131,36 @@ export function ServerDashboard() {
   const pipeline = serverStats?.pipeline
   const pipelineTotal = pipeline?.total_7d ?? 0
   const pipelineSuccessRate = pipelineTotal > 0 ? (((pipeline?.success_7d ?? 0) / pipelineTotal) * 100).toFixed(1) : '0.0'
+  const pipelineSuccessRateValue = Number.parseFloat(pipelineSuccessRate)
+  const sonarPipelines = jenkinsCorrelations.filter(
+    (entry) => entry.pipeline && entry.pipeline.job_name.toLowerCase().includes('sonar'),
+  )
+  const sonarTotal = sonarPipelines.length
+  const sonarPassed = sonarPipelines.filter((entry) => entry.pipeline?.status === 'success').length
+  const sonarFailed = sonarPipelines.filter((entry) => entry.pipeline?.status === 'failure').length
+  const sonarUnstable = sonarPipelines.filter(
+    (entry) =>
+      entry.pipeline?.status !== 'success' && entry.pipeline?.status !== 'failure',
+  ).length
+  const sonarPassRate = sonarTotal > 0 ? ((sonarPassed / sonarTotal) * 100).toFixed(1) : '0.0'
+  const sonarPassRateValue = Number.parseFloat(sonarPassRate)
+  const ticketCoveragePercent = ticketCoverage?.coverage_percentage ?? 0
+  const readinessSignals = [
+    { value: pipelineSuccessRateValue, weight: 0.45, available: pipelineTotal > 0 },
+    { value: ticketCoveragePercent, weight: 0.25, available: (ticketCoverage?.total_commits ?? 0) > 0 },
+    { value: sonarPassRateValue, weight: 0.30, available: sonarTotal > 0 },
+  ]
+  const readinessWeight = readinessSignals.reduce((acc, signal) => (
+    signal.available ? acc + signal.weight : acc
+  ), 0)
+  const releaseReadinessScore = readinessWeight > 0
+    ? Math.round(
+      readinessSignals.reduce((acc, signal) => (
+        signal.available ? acc + (signal.value * signal.weight) : acc
+      ), 0) / readinessWeight,
+    )
+    : 0
+  const releaseReadinessSignals = readinessSignals.filter((signal) => signal.available).length
   const commitsWithoutTicket = (ticketCoverage?.commits_without_ticket ?? []).slice(0, 5)
   const likelyTestActiveDevs = activeDevs7d.filter((d) => d.suspicious_test_data).length
   const activeDevCoverage = serverStats ? `${activeDevs7d.length}/${serverStats.active_devs_week}` : `${activeDevs7d.length}/-`
@@ -174,6 +205,13 @@ export function ServerDashboard() {
               avgDurationMs={pipeline?.avg_duration_ms_7d ?? 0}
               reposWithFailures={pipeline?.repos_with_failures_7d ?? 0}
               successRate={pipelineSuccessRate}
+              sonarTotal={sonarTotal}
+              sonarPassed={sonarPassed}
+              sonarFailed={sonarFailed}
+              sonarUnstable={sonarUnstable}
+              sonarPassRate={sonarPassRate}
+              releaseReadinessScore={releaseReadinessScore}
+              releaseReadinessSignals={releaseReadinessSignals}
             />
             <DailyActivityWidget points={dailyActivity} />
             <TicketCoverageWidget />

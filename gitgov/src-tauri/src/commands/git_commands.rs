@@ -569,7 +569,8 @@ pub fn cmd_push(
         let has_enforcement = enforcement.pull_requests != EnforcementLevel::Off
             || enforcement.commits != EnforcementLevel::Off
             || enforcement.branches != EnforcementLevel::Off
-            || enforcement.traceability != EnforcementLevel::Off;
+            || enforcement.traceability != EnforcementLevel::Off
+            || enforcement.quality_gates != EnforcementLevel::Off;
 
         if has_enforcement {
             if let Some(ref full_name) = repo_full_name {

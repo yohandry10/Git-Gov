@@ -41,21 +41,21 @@ const PRESET_CONFIGS: Record<Exclude<GovernancePreset, 'custom'>, {
     label: 'Startup',
     icon: Zap,
     description: 'Sin fricción — todo apagado',
-    enforcement: { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off' },
+    enforcement: { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off' },
     rules: {},
   },
   enterprise: {
     label: 'Enterprise',
     icon: Building2,
     description: 'PRs obligatorios, branches protegidos',
-    enforcement: { pull_requests: 'warn', commits: 'warn', branches: 'warn', traceability: 'off' },
+    enforcement: { pull_requests: 'warn', commits: 'warn', branches: 'warn', traceability: 'off', quality_gates: 'warn' },
     rules: { require_pull_request: true, min_approvals: 1, require_conventional_commits: true },
   },
   regulated: {
     label: 'Regulado',
     icon: Lock,
     description: 'Todo bloqueante — compliance total',
-    enforcement: { pull_requests: 'block', commits: 'block', branches: 'block', traceability: 'block' },
+    enforcement: { pull_requests: 'block', commits: 'block', branches: 'block', traceability: 'block', quality_gates: 'block' },
     rules: {
       require_pull_request: true,
       min_approvals: 2,
@@ -298,7 +298,7 @@ function defaultRules(): RulesConfig {
 }
 
 function defaultEnforcement(): EnforcementConfig {
-  return { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off' }
+  return { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off' }
 }
 
 // ---------------------------------------------------------------------------
@@ -355,7 +355,8 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
         enforcement.pull_requests === e.pull_requests &&
         enforcement.commits === e.commits &&
         enforcement.branches === e.branches &&
-        enforcement.traceability === e.traceability
+        enforcement.traceability === e.traceability &&
+        enforcement.quality_gates === e.quality_gates
       ) {
         return key as GovernancePreset
       }
@@ -598,6 +599,25 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
               onChange={(v) => setRules((r) => ({ ...r, require_linked_ticket: v }))}
               disabled={enforcement.traceability === 'off'}
             />
+          </div>
+        </CategorySection>
+
+        {/* Quality Gates */}
+        <CategorySection
+          icon={Shield}
+          title="Quality Gates (Sonar)"
+          enforcement={enforcement.quality_gates}
+          onEnforcementChange={(v) => setEnforcement((e) => ({ ...e, quality_gates: v }))}
+          defaultOpen={false}
+        >
+          <div className="rounded-lg border border-white/6 bg-surface-900/40 px-3 py-2">
+            <p className="text-[11px] text-surface-300">
+              Evalua resultados de Sonar correlacionados en CI para activar advertencias o bloqueos de gobernanza.
+            </p>
+            <p className="mt-1 text-[10px] text-surface-500">
+              Recomendado: iniciar en <span className="text-warning-300">Warn</span> y mover a
+              <span className="text-danger-300"> Block</span> solo despues de validar estabilidad.
+            </p>
           </div>
         </CategorySection>
       </div>

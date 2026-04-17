@@ -8,9 +8,37 @@ interface PipelineHealthWidgetProps {
   avgDurationMs: number
   reposWithFailures: number
   successRate: string
+  sonarTotal: number
+  sonarPassed: number
+  sonarFailed: number
+  sonarUnstable: number
+  sonarPassRate: string
+  releaseReadinessScore: number
+  releaseReadinessSignals: number
 }
 
-export function PipelineHealthWidget({ total, failure, avgDurationMs, reposWithFailures, successRate }: PipelineHealthWidgetProps) {
+export function PipelineHealthWidget({
+  total,
+  failure,
+  avgDurationMs,
+  reposWithFailures,
+  successRate,
+  sonarTotal,
+  sonarPassed,
+  sonarFailed,
+  sonarUnstable,
+  sonarPassRate,
+  releaseReadinessScore,
+  releaseReadinessSignals,
+}: PipelineHealthWidgetProps) {
+  const readinessClass = releaseReadinessSignals === 0
+    ? 'text-surface-500'
+    : releaseReadinessScore >= 85
+      ? 'text-emerald-300'
+      : releaseReadinessScore >= 70
+        ? 'text-amber-300'
+        : 'text-danger-300'
+
   return (
     <div className="glass-panel p-5">
       <div className="card-header mb-4">
@@ -30,6 +58,13 @@ export function PipelineHealthWidget({ total, failure, avgDurationMs, reposWithF
               ['Failures', failure, 'text-danger-400'],
               ['Avg duration', formatDurationMs(avgDurationMs), ''],
               ['Repos w/ failures', reposWithFailures, ''],
+              ['Release readiness', `${releaseReadinessScore}/100`, readinessClass],
+              ['Readiness signals', `${releaseReadinessSignals}/3`, releaseReadinessSignals < 3 ? 'text-amber-300' : 'text-emerald-300'],
+              ['Sonar scans (sample)', sonarTotal, ''],
+              ['Sonar pass rate', `${sonarPassRate}%`, sonarTotal > 0 ? 'text-emerald-300' : ''],
+              ['Sonar failed', sonarFailed, sonarFailed > 0 ? 'text-danger-400' : ''],
+              ['Sonar unstable', sonarUnstable, sonarUnstable > 0 ? 'text-amber-300' : ''],
+              ['Sonar passed', sonarPassed, sonarPassed > 0 ? 'text-emerald-300' : ''],
             ] as const).map(([label, val, cls]) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <span className="text-surface-400">{label}</span>

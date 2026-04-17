@@ -386,7 +386,7 @@ curl -H "Authorization: Bearer <ADMIN_API_KEY>" http://127.0.0.1:3000/stats
 curl -X POST "http://127.0.0.1:3000/policy/<owner>/<repo>/requests" \
   -H "Authorization: Bearer <DEV_OR_ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"config":{"branches":{"protected":["main"],"patterns":["feat/*"]},"rules":{"require_pull_request":true},"enforcement":{"pull_requests":"warn","commits":"off","branches":"warn","traceability":"off"}},"reason":"post-deploy check"}'
+  -d '{"config":{"branches":{"protected":["main"],"patterns":["feat/*"]},"rules":{"require_pull_request":true},"enforcement":{"pull_requests":"warn","commits":"off","branches":"warn","traceability":"off","quality_gates":"warn"}},"reason":"post-deploy check"}'
 
 # 3) Aprobar/rechazar request (admin)
 curl -X POST "http://127.0.0.1:3000/policy/requests/<REQUEST_ID>/approve" \

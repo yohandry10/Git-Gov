@@ -22,19 +22,29 @@ Updated: 2026-04-17
 - Non-blocking Sonar workflow added:
   - `.github/workflows/sonar-governance.yml`
   - Optional telemetry publish to `/integrations/jenkins`.
+- Dashboard Sonar visibility (SQ-03) added:
+  - Sonar status badge per commit in recent commits table.
+  - Sonar scan/pass/fail/unstable sample metrics in pipeline health widget.
+- Quality gate enforcement surface (SQ-04 phase 1) added:
+  - `quality_gates` enforcement level in policy contract (Desktop + Tauri model).
+  - Policy editor and governance presets now expose `Off/Warn/Block` for Sonar quality gates.
+  - Push governance pre-check now triggers when `quality_gates` is enabled.
+- Release readiness scoring (phase 1) added in dashboard:
+  - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
+  - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
 
 ## In Progress
 
 - Sonar CI rollout in real environments (requires repository variables/secrets).
 - Consolidating governance telemetry in dashboards and executive reporting.
+- Server-side policy evaluator alignment for `quality_gates` (final block/warn decision path).
 
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
 2. Validate Sonar pipeline events end-to-end in Control Plane logs/correlations.
-3. Add quality-gate visibility in dashboard widgets and commit-level views.
-4. Add optional policy rule for quality gate enforcement (`warning` mode first).
-5. Extend release readiness scoring using Jira + Jenkins + quality gate signals.
+3. Finalize server-side policy evaluation for `quality_gates` and keep rollout in `warning` mode first.
+4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 
 ## Required GitHub Configuration (for Sonar workflow)
 
