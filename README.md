@@ -64,6 +64,7 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 |-----------|-----------|
 | [QUICKSTART.md](./docs/QUICKSTART.md) | Guía de inicio (5 min) |
 | [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Arquitectura del sistema |
+| [IMPLEMENTATION_STATUS.md](./docs/IMPLEMENTATION_STATUS.md) | Estado técnico actual y próximos pasos |
 | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Solución de problemas |
 | [PUBLICATION_POLICY.md](./docs/PUBLICATION_POLICY.md) | Qué documentación puede publicarse (y cuál no) |
 
