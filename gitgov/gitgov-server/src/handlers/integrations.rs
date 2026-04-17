@@ -160,6 +160,22 @@ fn jira_issue_timestamp_ms(value: Option<&serde_json::Value>) -> Option<i64> {
         .map(|dt| dt.timestamp_millis())
 }
 
+fn jira_org_name_hint(payload: &JiraWebhookEvent) -> Option<String> {
+    let candidates = [
+        payload.extra.get("org_name"),
+        payload.extra.get("organization"),
+        payload.extra.get("org"),
+        payload.extra.get("tenant"),
+    ];
+    candidates
+        .into_iter()
+        .flatten()
+        .find_map(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+}
+
 fn build_project_ticket_from_jira_payload(
     org_id: Option<String>,
     payload: &JiraWebhookEvent,
@@ -261,7 +277,35 @@ pub async fn ingest_jira_webhook(
         }
     }
 
-    let org_id = None;
+    let requested_org_name = jira_org_name_hint(&payload);
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        requested_org_name.as_deref(),
+        false,
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(err) => {
+            let error = match err {
+                OrgScopeError::BadRequest => "Invalid org scope for Jira payload",
+                OrgScopeError::NotFound => "Organization not found for Jira org hint",
+                OrgScopeError::Forbidden => "Requested org is outside API key scope",
+                OrgScopeError::Internal => "Internal database error while resolving org scope",
+            };
+            return (
+                org_scope_status(err),
+                Json(JiraWebhookIngestResponse {
+                    accepted: false,
+                    duplicate: false,
+                    ticket_id: None,
+                    error: Some(error.to_string()),
+                }),
+            );
+        }
+    };
+
     let ticket = match build_project_ticket_from_jira_payload(org_id, &payload) {
         Ok(ticket) => ticket,
         Err(error) => {
@@ -455,6 +499,36 @@ mod jira_pr_correlation_tests {
         );
 
         assert_eq!(matched, vec!["ABC-1".to_string(), "ABC-2".to_string()]);
+    }
+
+    #[test]
+    fn jira_org_name_hint_prefers_explicit_org_name() {
+        let payload = JiraWebhookEvent {
+            webhook_event: Some("jira:issue_updated".to_string()),
+            timestamp: Some(1_700_000_000_000),
+            issue: None,
+            user: None,
+            extra: HashMap::from([
+                ("organization".to_string(), serde_json::json!("legacy-org")),
+                ("org_name".to_string(), serde_json::json!("gitgov-team")),
+            ]),
+        };
+
+        let hint = jira_org_name_hint(&payload);
+        assert_eq!(hint.as_deref(), Some("gitgov-team"));
+    }
+
+    #[test]
+    fn jira_org_name_hint_returns_none_when_missing() {
+        let payload = JiraWebhookEvent {
+            webhook_event: Some("jira:issue_created".to_string()),
+            timestamp: Some(1_700_000_000_000),
+            issue: None,
+            user: None,
+            extra: HashMap::new(),
+        };
+
+        assert_eq!(jira_org_name_hint(&payload), None);
     }
 }
 

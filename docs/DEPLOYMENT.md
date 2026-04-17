@@ -1,7 +1,7 @@
 # GitGov — Deployment Guide
 
 > Guía unificada: Docker local, AWS EC2, Enterprise (instaladores/GPO) y Desktop Updates.
-> Última actualización: 2026-03-14
+> Última actualización: 2026-04-17
 
 ---
 
@@ -558,6 +558,31 @@ Get-AuthenticodeSignature .\GitGov_x.x.x_x64-setup.exe | Select-Object -Property
 - Windows: NSIS + MSI + `.sha256`
 - macOS: DMG + `.sha256`
 - Linux: AppImage + DEB + `.sha256`
+
+### Sonar Governance (opcional, no bloqueante)
+
+Workflow agregado:
+- `.github/workflows/sonar-governance.yml`
+
+Comportamiento:
+- Ejecuta scan Sonar + quality gate en `push/main`, `pull_request/main` y `workflow_dispatch`.
+- Es **no bloqueante** (`continue-on-error: true`): no corta el flujo principal de CI.
+- Si hay `GITGOV_URL` + `GITGOV_API_KEY`, publica resultado de quality gate como evento en `/integrations/jenkins`.
+
+Configurar en GitHub (repo settings):
+
+| Tipo | Nombre | Uso |
+|------|--------|-----|
+| Secret | `SONAR_TOKEN` | Token de SonarQube/SonarCloud |
+| Secret | `GITGOV_API_KEY` | API key admin para publicar telemetría a GitGov |
+| Secret (opcional) | `GITGOV_JENKINS_SECRET` | Header `x-gitgov-jenkins-secret` si está habilitado |
+| Variable | `SONAR_PROJECT_KEY` | Project key en Sonar |
+| Variable (opcional) | `SONAR_HOST_URL` | Host Sonar (default `https://sonarcloud.io`) |
+| Variable (opcional) | `GITGOV_URL` | URL base del Control Plane (`https://...`) |
+
+Notas:
+- Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
+- Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
 
 **Local signed build:**
 ```powershell

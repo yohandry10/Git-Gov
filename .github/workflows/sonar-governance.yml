@@ -1,0 +1,123 @@
+name: Sonar Governance (Non-Blocking)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  GITGOV_ENV: ci
+
+jobs:
+  sonar:
+    name: Sonar Scan + Quality Gate
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: ${{ secrets.SONAR_TOKEN != '' && vars.SONAR_PROJECT_KEY != '' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Sonar scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=GitGov
+            -Dsonar.sources=gitgov/gitgov-server/src,gitgov/src,gitgov/src-tauri/src,gitgov-web/src
+            -Dsonar.exclusions=**/node_modules/**,**/target/**,**/dist/**,**/.next/**,**/coverage/**,**/public/**,**/*.min.js
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.scm.provider=git
+
+      - name: Quality gate status
+        id: quality-gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+
+      - name: Publish Sonar telemetry to GitGov
+        if: always()
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          GITGOV_JENKINS_SECRET: ${{ secrets.GITGOV_JENKINS_SECRET }}
+          SONAR_GATE: ${{ steps.quality-gate.outputs.quality-gate-status }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GITGOV_URL:-}" ] || [ -z "${GITGOV_API_KEY:-}" ]; then
+            echo "Skipping GitGov telemetry publish (missing GITGOV_URL or GITGOV_API_KEY)."
+            exit 0
+          fi
+
+          gate="${SONAR_GATE:-UNKNOWN}"
+          case "$gate" in
+            PASSED|OK) pipeline_status="success" ;;
+            FAILED|ERROR) pipeline_status="failure" ;;
+            *) pipeline_status="unstable" ;;
+          esac
+
+          branch="${GITHUB_REF_NAME:-main}"
+          repo_full="${GITHUB_REPOSITORY:-unknown/unknown}"
+          sonar_url="${SONAR_HOST_URL%/}/dashboard?id=${SONAR_PROJECT_KEY}"
+
+          cat > /tmp/gitgov-sonar-pipeline.json <<JSON
+          {
+            "pipeline_id": "github-actions-sonar-${GITHUB_RUN_ID}",
+            "job_name": "sonar-governance",
+            "status": "${pipeline_status}",
+            "commit_sha": "${GITHUB_SHA}",
+            "branch": "${branch}",
+            "repo_full_name": "${repo_full}",
+            "triggered_by": "${GITHUB_ACTOR}",
+            "stages": [
+              {
+                "name": "quality_gate",
+                "status": "${gate}",
+                "duration_ms": null
+              }
+            ],
+            "artifacts": [
+              {
+                "name": "sonar_dashboard",
+                "type": "url",
+                "url": "${sonar_url}"
+              }
+            ]
+          }
+          JSON
+
+          args=(
+            -sS
+            -X POST
+            "${GITGOV_URL%/}/integrations/jenkins"
+            -H "Authorization: Bearer ${GITGOV_API_KEY}"
+            -H "Content-Type: application/json"
+            --data-binary "@/tmp/gitgov-sonar-pipeline.json"
+          )
+          if [ -n "${GITGOV_JENKINS_SECRET:-}" ]; then
+            args+=( -H "x-gitgov-jenkins-secret: ${GITGOV_JENKINS_SECRET}" )
+          fi
+
+          curl "${args[@]}"
+          echo "Sonar telemetry publish attempted (non-blocking workflow)."
