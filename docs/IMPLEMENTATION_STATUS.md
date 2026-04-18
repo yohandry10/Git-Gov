@@ -37,6 +37,7 @@ Updated: 2026-04-18
   - `/policy/check` now persists a `noncompliance_signal` (`policy_violation`) when `quality_gate_green` fails.
   - Signal evidence includes repo, commit, job, status, enforcement, and is deduplicated (24h window).
   - Alert webhook now emits a dedicated `Quality Gate no verde` message when configured.
+  - Validation runbook updated with signal/alert verification (`docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 - Desktop policy-check payload now includes `commit` (HEAD SHA) for richer server-side evaluation.
 - Jenkins policy-check stage hardened:
   - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).

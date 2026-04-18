@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-17
+Updated: 2026-04-18
 
 ## Objective
 
@@ -8,6 +8,7 @@ Validate end-to-end behavior of `enforcement.quality_gates` in `/policy/check`:
 
 - `warn`: pipeline continues, warnings are returned.
 - `block`: policy denies when Sonar gate is not green.
+- failed quality gate emits governance evidence (signal) and optional alert webhook.
 
 This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 
@@ -21,6 +22,7 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
 3. Jenkins uses the current `Jenkinsfile` (policy stage parses JSON response).
 4. You have an admin API key for policy override/check.
+5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.
 
 ## 1) Set `quality_gates=warn`
 
@@ -115,9 +117,32 @@ Expected:
 - First build continues (unless strict mode true).
 - Second build fails in policy stage.
 
+## 6) Signal and alert verification (SQ-06 phase 1)
+
+After running `/policy/check` against a failing quality gate commit:
+
+Expected:
+
+- A `noncompliance_signal` is created with:
+  - `signal_type = "policy_violation"`
+  - `evidence.rule = "quality_gate_green"`
+  - `evidence` includes repo, commit, job, gate status, enforcement.
+- Duplicate spam is avoided for same commit/repo (dedup window 24h).
+
+Admin query example:
+
+```bash
+curl -sS "http://127.0.0.1:3000/signals?signal_type=policy_violation&limit=20" \
+  -H "Authorization: Bearer <ADMIN_API_KEY>"
+```
+
+If `GITGOV_ALERT_WEBHOOK_URL` is configured:
+
+- Expect one alert payload with message `Quality Gate no verde` including actor/repo/branch/commit/job/status/enforcement.
+
 ## Troubleshooting
 
 - If response says quality check skipped: ensure `commit` is present and that Sonar telemetry was ingested for that SHA.
 - If no Sonar rows are visible in dashboard: verify workflow variables/secrets and `/integrations/jenkins` auth.
 - If Jenkins fails on transport: verify `GITGOV_URL`, API key, and network access from Jenkins node.
-
+- If signal is missing: verify policy check hit a non-green gate and inspect server logs for `Failed to persist quality gate policy signal`.
