@@ -40,16 +40,32 @@ Updated: 2026-04-18
 - Release readiness scoring (phase 1) added in dashboard:
   - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
   - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
+- Export surface (`UX-01`) enabled in Control Plane dashboard:
+  - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
+- Role UX/API alignment improvement:
+  - `/chat/ask` now allows `Admin`, `Architect`, and `PM` roles (previously admin-only).
+  - Dashboard renders `ConversationalChatPanel` for `Architect` and `PM` in non-admin view.
 - Documentation/API contract drift (P0 docs pass) reduced:
   - `/policy/check` examples aligned to real payload keys (`repo`, `commit`) in EN/ES governance docs.
   - `docs/ARCHITECTURE.md` auth semantics aligned for `/signals`, `/violations/{id}/decisions`, and `/policy/check`.
   - `gitgov-server/README.md` export formats aligned to real support (`JSON/CSV`) and compliance path normalized.
   - `CONTRIBUTING.md` clone command generalized to `<owner>/<repo>`.
+- Publication hardening guardrails added:
+  - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
+  - `.gitignore` now excludes `.claude/`, `CLAUDE.md`, `.kiro/`, `.trae/`, `.windsurf/`.
+- Secret scanning widened and mandatory on CI surface:
+  - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
+  - Security permissions for findings publication are declared in workflow.
+- Jenkins SCM migration runbook documented:
+  - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
+- Legacy migration hardening added:
+  - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 
 ## In Progress
 
 - Sonar CI rollout in real environments (requires repository variables/secrets).
 - Consolidating governance telemetry in dashboards and executive reporting.
+- Enforcing required status checks in branch protection (`ci`, `Security Guard`).
 
 ## Next Technical Steps
 
@@ -57,6 +73,7 @@ Updated: 2026-04-18
 2. Validate Sonar pipeline events end-to-end in Control Plane logs/correlations.
 3. Validate `quality_gates=warn` and `quality_gates=block` behavior in Jenkins/GitHub CI flows with real commits (runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
+5. Mark `Security Guard` as a required check on `main`.
 
 ## Required GitHub Configuration (for Sonar workflow)
 

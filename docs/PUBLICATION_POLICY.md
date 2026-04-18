@@ -48,9 +48,14 @@ Never publish to public repo:
 3. No hardcoded secrets, tokens, or private URLs.
 4. Public docs are explanatory only, not forensic.
 
+## Automated Guardrails
+
+- CI workflow: `.github/workflows/secret-scan.yml` (job `Security Guard`)
+- The guard enforces restricted-doc exclusions and blocks legacy repository markers.
+- `gitleaks` runs in the same workflow for secret detection on PR/push.
+
 ## Ownership
 
 - Engineering owner: validates technical accuracy.
 - Security owner: validates publication safety.
 - Final approver: repository admin.
-

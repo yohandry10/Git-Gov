@@ -12,6 +12,7 @@ import { RecentCommitsTable } from './RecentCommitsTable'
 import { DeveloperAccessPanel } from './DeveloperAccessPanel'
 import { ConversationalChatPanel } from './ConversationalChatPanel'
 import { PolicyEditorPanel } from './PolicyEditorPanel'
+import { ExportPanel } from './ExportPanel'
 import { MaintenanceOverlay } from './MaintenanceOverlay'
 import { Modal } from '@/components/shared/Modal'
 import { Badge } from '@/components/shared/Badge'
@@ -40,6 +41,8 @@ export function ServerDashboard() {
   const disconnectSse = useControlPlaneStore((s) => s.disconnectSse)
 
   const isAdmin = userRole === 'Admin'
+  const canUseGovernanceChat =
+    userRole === 'Admin' || userRole === 'Architect' || userRole === 'PM'
 
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [showActiveDevsModal, setShowActiveDevsModal] = useState(false)
@@ -230,6 +233,8 @@ export function ServerDashboard() {
 
           <PolicyEditorPanel />
 
+          <ExportPanel />
+
           <ConversationalChatPanel />
 
           <Modal
@@ -302,6 +307,7 @@ export function ServerDashboard() {
         <>
           <DeveloperAccessPanel />
           <RecentCommitsTable />
+          {canUseGovernanceChat && <ConversationalChatPanel />}
         </>
       )}
     </div>

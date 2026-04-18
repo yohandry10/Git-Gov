@@ -306,12 +306,16 @@ pub async fn chat_ask(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ChatAskRequest>,
 ) -> impl IntoResponse {
-    if require_admin(&auth_user).is_err() {
+    let chat_allowed = matches!(
+        auth_user.role,
+        UserRole::Admin | UserRole::Architect | UserRole::PM
+    );
+    if !chat_allowed {
         return (
             StatusCode::FORBIDDEN,
             Json(ChatAskResponse {
                 status: "error".to_string(),
-                answer: "Admin access required".to_string(),
+                answer: "Admin, Architect, or PM access required".to_string(),
                 missing_capability: None,
                 can_report_feature: false,
                 data_refs: vec![],

@@ -45,6 +45,22 @@ docker compose logs -f jenkins
 docker exec -it gitgov-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
+#### Migración SCM de job Jenkins (repo nuevo)
+
+Si el job sigue mostrando en consola un remoto anterior u otro repositorio legado, corrige el SCM manualmente:
+
+1. Jenkins -> abrir job -> **Configurar**.
+2. En **Pipeline > Definition: Pipeline script from SCM**:
+   - **SCM**: `Git`
+   - **Repository URL**: `https://github.com/yohandry10/Git-Gov.git`
+   - **Credentials**: seleccionar token/credencial GitHub (si aplica).
+   - **Branches to build**: `*/main`
+3. Guardar.
+4. Ejecutar **Build Now**.
+5. Verificar en consola:
+   - `Fetching upstream changes from https://github.com/yohandry10/Git-Gov`
+   - que no aparezca referencia a repo legacy.
+
 ### Jira (opcional)
 
 ```bash

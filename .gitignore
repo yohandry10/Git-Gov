@@ -49,3 +49,14 @@ coverage/
 # Local ops artifacts
 backups/
 .tmp/
+
+# Local AI / assistant artifacts (must never be published)
+.claude/
+CLAUDE.md
+.kiro/
+.trae/
+.windsurf/
+.agents/
+skills/
+skills-lock.json
+gitgov-video/
