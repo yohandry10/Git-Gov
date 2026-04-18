@@ -8,6 +8,7 @@ import { PipelineHealthWidget } from './PipelineHealthWidget'
 import { DailyActivityWidget } from './DailyActivityWidget'
 import { TicketCoverageWidget } from './TicketCoverageWidget'
 import { EventBreakdownGrid } from './EventBreakdownGrid'
+import { RiskOutcomesWidget } from './RiskOutcomesWidget'
 import { RecentCommitsTable } from './RecentCommitsTable'
 import { DeveloperAccessPanel } from './DeveloperAccessPanel'
 import { ConversationalChatPanel } from './ConversationalChatPanel'
@@ -167,6 +168,9 @@ export function ServerDashboard() {
   const commitsWithoutTicket = (ticketCoverage?.commits_without_ticket ?? []).slice(0, 5)
   const likelyTestActiveDevs = activeDevs7d.filter((d) => d.suspicious_test_data).length
   const activeDevCoverage = serverStats ? `${activeDevs7d.length}/${serverStats.active_devs_week}` : `${activeDevs7d.length}/-`
+  const violationsTotal = serverStats?.violations.total ?? 0
+  const unresolvedViolations = serverStats?.violations.unresolved ?? 0
+  const criticalViolations = serverStats?.violations.critical ?? 0
 
   return (
     <div className="space-y-3 animate-fade-in">
@@ -219,6 +223,20 @@ export function ServerDashboard() {
             <DailyActivityWidget points={dailyActivity} />
             <TicketCoverageWidget />
           </div>
+
+          <RiskOutcomesWidget
+            trackedPushesToday={totalTrackedPushesToday}
+            blockedPushesToday={serverStats.client_events.blocked_today}
+            ticketCoveragePercent={ticketCoveragePercent}
+            pipelineTotal7d={pipelineTotal}
+            pipelineFailure7d={pipeline?.failure_7d ?? 0}
+            sonarTotal={sonarTotal}
+            sonarFailed={sonarFailed}
+            unresolvedViolations={unresolvedViolations}
+            totalViolations={violationsTotal}
+            criticalViolations={criticalViolations}
+            releaseReadinessScore={releaseReadinessScore}
+          />
 
           <EventBreakdownGrid
             githubByType={serverStats.github_events.by_type}

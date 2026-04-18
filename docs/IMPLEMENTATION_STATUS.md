@@ -40,6 +40,15 @@ Updated: 2026-04-18
 - Release readiness scoring (phase 1) added in dashboard:
   - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
   - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
+- Executive risk outcomes telemetry (phase 1) added in dashboard:
+  - `Risk Outcomes (operativo)` widget now exposes derived KPIs from existing signals:
+    - trusted-path rate
+    - blocked-push rate
+    - traceability gap
+    - pipeline failure rate (7d)
+    - sonar failure rate (sample)
+    - unresolved violations rate + critical count
+  - Includes composite risk score (`0-100`) with explicit signal coverage (`n/5`).
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:

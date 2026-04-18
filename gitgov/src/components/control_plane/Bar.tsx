@@ -1,10 +1,16 @@
 interface BarProps {
   value: number
-  color?: 'brand' | 'success'
+  color?: 'brand' | 'success' | 'warning' | 'danger'
 }
 
 export function Bar({ value, color = 'brand' }: BarProps) {
-  const bg = color === 'success' ? 'bg-success-500/70' : 'bg-brand-500/70'
+  const bg = color === 'success'
+    ? 'bg-success-500/70'
+    : color === 'warning'
+      ? 'bg-warning-500/70'
+      : color === 'danger'
+        ? 'bg-danger-500/70'
+        : 'bg-brand-500/70'
   return (
     <div className="h-1 bg-white/4 rounded-full overflow-hidden">
       <div className={`h-full ${bg} rounded-full transition-all duration-700`} style={{ width: `${Math.min(100, value)}%` }} />
