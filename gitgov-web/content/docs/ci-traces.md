@@ -157,5 +157,6 @@ By using CI Traceability, you can generate automated reports for compliance audi
 
 ## End of Core Documentation
 
+- [**Risk Outcomes**](/docs/risk-outcomes) — Monitor delivery risk using governance KPI trends.
 - [**Return to Home**](/)
 - [**Contact Sales for Enterprise Support**](/contact)

@@ -55,6 +55,7 @@ Updated: 2026-04-18
     - sonar failure rate (sample)
     - unresolved violations rate + critical count
   - Includes composite risk score (`0-100`) with explicit signal coverage (`n/5`).
+  - Public docs surface added in website (`/docs/risk-outcomes`, EN/ES) with KPI formulas and operating bands.
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:
@@ -75,6 +76,8 @@ Updated: 2026-04-18
 - CI coverage expanded for documentation website:
   - `.github/workflows/ci.yml` now includes `Website Lint + Typecheck + Build` for `gitgov-web`.
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
+  - Job order hardened for clean runners (`build` before standalone `typecheck`) to ensure `.next/types` is present.
+  - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
 - Branch protection automation prepared:

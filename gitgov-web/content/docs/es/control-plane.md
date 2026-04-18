@@ -93,3 +93,4 @@ GitGov solo sincroniza metadatos: tipo de evento, commit SHA, nombre de rama, lo
 ## Siguiente Fase
 
 - [**Configurar Políticas de Gobernanza**](/docs/governance) — Define las reglas del camino.
+- [**Resultados de Riesgo**](/docs/risk-outcomes) — Convierte telemetría de gobernanza en KPIs de riesgo medibles.

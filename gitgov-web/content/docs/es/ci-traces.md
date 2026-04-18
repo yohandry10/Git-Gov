@@ -157,5 +157,6 @@ Al usar la Trazabilidad CI, puedes generar informes automatizados para auditorí
 
 ## Fin de la Documentación Principal
 
+- [**Resultados de Riesgo**](/docs/risk-outcomes) — Monitorea riesgo de entrega con tendencias KPI de gobernanza.
 - [**Volver al Inicio**](/)
 - [**Contactar con Ventas para Soporte Enterprise**](/contact)

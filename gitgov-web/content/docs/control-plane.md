@@ -93,3 +93,4 @@ GitGov only syncs metadata: event type, commit SHA, branch name, author login, t
 ## Next Phase
 
 - [**Configure Governance Policies**](/docs/governance) — Learn how to set the rules of the road.
+- [**Risk Outcomes**](/docs/risk-outcomes) — Translate governance telemetry into measurable risk KPIs.
