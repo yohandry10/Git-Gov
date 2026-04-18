@@ -91,6 +91,16 @@ Validación rápida:
    - `Require status checks to pass before merging` activo con los checks listados.
    - `Do not allow bypassing the above settings` para admins (enforce admins).
 
+Validación automática (API):
+
+```powershell
+$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>"
+powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.ps1 `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main"
+```
+
 ### Jira (opcional)
 
 ```bash

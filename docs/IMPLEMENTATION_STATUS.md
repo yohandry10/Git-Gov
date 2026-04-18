@@ -79,7 +79,8 @@ Updated: 2026-04-18
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
-  - `docs/DEPLOYMENT.md` now includes the execution command and verification checklist.
+  - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
+  - `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
 - Sonar CI rollout preflight automation prepared:
   - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
   - `docs/DEPLOYMENT.md` now includes command + PASS/FAIL expectations for repo CI config.
