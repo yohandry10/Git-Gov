@@ -72,8 +72,8 @@ curl -s -X POST https://tu-control-plane/policy/check \
   -H "Authorization: Bearer $GITGOV_ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "repo_name": "TuOrg/TuRepo",
-    "commit_sha": "a3f8c2e",
+    "repo": "TuOrg/TuRepo",
+    "commit": "a3f8c2e",
     "branch": "main",
     "user_login": "alice"
   }'

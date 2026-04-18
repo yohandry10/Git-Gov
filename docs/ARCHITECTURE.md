@@ -148,9 +148,9 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/jobs/dead` | Bearer (admin) | Jobs muertos |
 | `/jobs/{job_id}/retry` | Bearer (admin) | Reintentar job muerto |
 | `/governance-events` | Bearer (scoped) | Cambios de políticas GitHub |
-| `/signals` | Bearer (admin) | Señales de no-cumplimiento |
-| `/violations/{violation_id}/decisions` | Bearer (admin) | Historial de decisiones por violación |
-| `/policy/check` | Bearer | Advisory de política (no bloqueante) |
+| `/signals` | Bearer (scoped) | Señales de no-cumplimiento (admin ve todo; no-admin limitado por scope) |
+| `/violations/{violation_id}/decisions` | Bearer (scoped read / admin write) | Historial y decisiones por violación |
+| `/policy/check` | Bearer | Evaluación de política (advisory + bloqueo opcional por scope) |
 | `/compliance/{org_name}` | Bearer (admin) | Estado de compliance |
 | `/policy/{repo_name}/requests` | Bearer | Crear/listar requests de cambio de política |
 | `/export` | Bearer (admin) | Export de audit data |

@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-17
+Updated: 2026-04-18
 
 ## Completed
 
@@ -40,6 +40,11 @@ Updated: 2026-04-17
 - Release readiness scoring (phase 1) added in dashboard:
   - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
   - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
+- Documentation/API contract drift (P0 docs pass) reduced:
+  - `/policy/check` examples aligned to real payload keys (`repo`, `commit`) in EN/ES governance docs.
+  - `docs/ARCHITECTURE.md` auth semantics aligned for `/signals`, `/violations/{id}/decisions`, and `/policy/check`.
+  - `gitgov-server/README.md` export formats aligned to real support (`JSON/CSV`) and compliance path normalized.
+  - `CONTRIBUTING.md` clone command generalized to `<owner>/<repo>`.
 
 ## In Progress
 

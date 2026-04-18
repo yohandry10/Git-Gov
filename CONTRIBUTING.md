@@ -37,7 +37,7 @@ GitGov/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yohandry10/Git-Gov.git
+   git clone https://github.com/<owner>/<repo>.git
    cd GitGov
    ```
 

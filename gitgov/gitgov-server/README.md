@@ -16,7 +16,7 @@ Centralized audit and policy server for GitGov desktop clients. Uses Supabase (P
 - **Confidence Scoring**: NOT binary - uses `high`, `medium`, `low` confidence levels
 - **Noncompliance Signals**: Evidence-based signals, not accusations
 - **Policy Versioning**: Automatic history of all policy changes
-- **Export with Hash**: PDF/Excel/JSON exports with SHA256 content hash
+- **Export with Hash**: JSON/CSV exports with SHA256 content hash
 
 ## Quick Start
 
@@ -317,7 +317,7 @@ The `jobs` table allows state transitions but restricts which columns can be upd
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/compliance/:org` | Compliance dashboard (signals, correlation rate) |
+| GET | `/compliance/{org_name}` | Compliance dashboard (signals, correlation rate) |
 | GET | `/signals` | List noncompliance signals with filters |
 | POST | `/signals/:id` | Update signal status (investigate/dismiss) |
 | POST | `/signals/detect/:org` | Trigger bypass detection |
@@ -334,7 +334,7 @@ The `jobs` table allows state transitions but restricts which columns can be upd
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/export` | Export events (JSON/PDF/Excel) with SHA256 hash |
+| POST | `/export` | Export events (JSON/CSV) with SHA256 hash |
 
 ### Admin
 
