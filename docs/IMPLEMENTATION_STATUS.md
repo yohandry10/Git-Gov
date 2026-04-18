@@ -56,6 +56,7 @@ Updated: 2026-04-18
 - Secret scanning widened and mandatory on CI surface:
   - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
   - Security permissions for findings publication are declared in workflow.
+  - `Security Guard` now also blocks tracked `.env` files (except `.env.example`) and assistant-local artifacts (`.agents/`, `skills/`, `gitgov-video/`).
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
 - Legacy migration hardening added:
