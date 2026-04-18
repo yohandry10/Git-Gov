@@ -61,6 +61,17 @@ Si el job sigue mostrando en consola un remoto anterior u otro repositorio legad
    - `Fetching upstream changes from https://github.com/yohandry10/Git-Gov`
    - que no aparezca referencia a repo legacy.
 
+Verificación automática (Jenkins API):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/check_job_repo.ps1 `
+  -JenkinsUrl "http://127.0.0.1:8096" `
+  -JobName "gitgov-demo-pipeline" `
+  -ExpectedRepoUrl "https://github.com/yohandry10/Git-Gov.git" `
+  -Username "<JENKINS_USER>" `
+  -ApiTokenOrPassword "<JENKINS_API_TOKEN_OR_PASSWORD>"
+```
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.

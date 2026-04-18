@@ -81,6 +81,7 @@ Updated: 2026-04-18
   - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
+  - `scripts/jenkins/check_job_repo.ps1` validates Jenkins job SCM URL via `config.xml` and fails on legacy repo markers.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
