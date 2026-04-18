@@ -61,6 +61,36 @@ Si el job sigue mostrando en consola un remoto anterior u otro repositorio legad
    - `Fetching upstream changes from https://github.com/yohandry10/Git-Gov`
    - que no aparezca referencia a repo legacy.
 
+#### Branch protection (checks requeridos en GitHub)
+
+Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.
+
+Checks mínimos recomendados:
+
+- `server-lint`
+- `desktop-lint`
+- `frontend-lint`
+- `website-lint`
+- `Security Guard`
+
+Script automático (usa API de GitHub):
+
+```powershell
+$env:GITHUB_TOKEN="<TOKEN_CON_ADMIN_ON_REPO>"
+powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main"
+```
+
+Validación rápida:
+
+1. GitHub -> `Settings` -> `Branches` -> regla de `main`.
+2. Confirmar:
+   - `Require a pull request before merging` activo.
+   - `Require status checks to pass before merging` activo con los checks listados.
+   - `Do not allow bypassing the above settings` para admins (enforce admins).
+
 ### Jira (opcional)
 
 ```bash

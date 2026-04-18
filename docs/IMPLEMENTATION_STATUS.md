@@ -71,6 +71,9 @@ Updated: 2026-04-18
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
+- Branch protection automation prepared:
+  - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
+  - `docs/DEPLOYMENT.md` now includes the execution command and verification checklist.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 
