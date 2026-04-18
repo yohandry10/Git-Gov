@@ -79,3 +79,60 @@ pub fn format_quality_gate_policy_alert(
         enforcement = enforcement
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        format_blocked_push_alert, format_critical_policy_drift_alert,
+        format_quality_gate_policy_alert, format_signal_confirmed_alert,
+    };
+
+    #[test]
+    fn blocked_push_alert_contains_actor_repo_branch() {
+        let text = format_blocked_push_alert("alice", "org/repo", "main");
+        assert!(text.contains("alice"));
+        assert!(text.contains("org/repo"));
+        assert!(text.contains("main"));
+    }
+
+    #[test]
+    fn signal_confirmed_alert_includes_optional_repo() {
+        let with_repo = format_signal_confirmed_alert("policy_violation", "alice", Some("org/repo"));
+        assert!(with_repo.contains("policy_violation"));
+        assert!(with_repo.contains("alice"));
+        assert!(with_repo.contains("org/repo"));
+
+        let without_repo = format_signal_confirmed_alert("policy_violation", "alice", None);
+        assert!(without_repo.contains("policy_violation"));
+        assert!(without_repo.contains("alice"));
+    }
+
+    #[test]
+    fn critical_policy_drift_alert_contains_counts() {
+        let text = format_critical_policy_drift_alert("alice", "org/repo", 5, 2);
+        assert!(text.contains("alice"));
+        assert!(text.contains("org/repo"));
+        assert!(text.contains("5"));
+        assert!(text.contains("2"));
+    }
+
+    #[test]
+    fn quality_gate_alert_contains_all_key_fields() {
+        let text = format_quality_gate_policy_alert(
+            "jenkins",
+            "org/repo",
+            "main",
+            "abc1234",
+            "sonar-governance",
+            "failure",
+            "block",
+        );
+        assert!(text.contains("jenkins"));
+        assert!(text.contains("org/repo"));
+        assert!(text.contains("main"));
+        assert!(text.contains("abc1234"));
+        assert!(text.contains("sonar-governance"));
+        assert!(text.contains("failure"));
+        assert!(text.contains("block"));
+    }
+}

@@ -38,6 +38,7 @@ Updated: 2026-04-18
   - Signal evidence includes repo, commit, job, status, enforcement, and is deduplicated (24h window).
   - Alert webhook now emits a dedicated `Quality Gate no verde` message when configured.
   - Validation runbook updated with signal/alert verification (`docs/QUALITY_GATE_POLICY_VALIDATION.md`).
+  - Notification formatters now include unit tests (`notifications::tests`).
 - Desktop policy-check payload now includes `commit` (HEAD SHA) for richer server-side evaluation.
 - Jenkins policy-check stage hardened:
   - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).
