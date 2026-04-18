@@ -66,6 +66,7 @@ Updated: 2026-04-18
   - `docs/ARCHITECTURE.md` auth semantics aligned for `/signals`, `/violations/{id}/decisions`, and `/policy/check`.
   - `gitgov-server/README.md` export formats aligned to real support (`JSON/CSV`) and compliance path normalized.
   - `CONTRIBUTING.md` clone command generalized to `<owner>/<repo>`.
+  - `gitgov-web` Control Plane docs (EN/ES) role table now reflects current access for `Architect` and `PM`.
 - Publication hardening guardrails added:
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
   - `.gitignore` now excludes `.claude/`, `CLAUDE.md`, `.kiro/`, `.trae/`, `.windsurf/`.

@@ -70,8 +70,8 @@ The Control Plane enforces role-based access on all authenticated endpoints:
 |------|--------|
 | **Admin** | Full access — stats, dashboard, integrations, policy management, all events |
 | **Developer** | Scoped access — only sees their own events on `/logs` |
-| **Architect** | Reserved for future role restrictions |
-| **PM** | Reserved for future role restrictions |
+| **Architect** | Governance read access + conversational governance chat in Control Plane |
+| **PM** | Governance read access + conversational governance chat in Control Plane |
 
 API keys carry a role assignment. Ensure your developers are issued keys with the `Developer` role, and your DevOps/security team with the `Admin` role.
 

@@ -70,8 +70,8 @@ El Control Plane aplica control de acceso basado en roles en todos los endpoints
 |-----|--------|
 | **Admin** | Acceso completo — estadísticas, dashboard, integraciones, gestión de políticas, todos los eventos |
 | **Developer** | Acceso limitado — solo ve sus propios eventos en `/logs` |
-| **Architect** | Reservado para futuras restricciones de rol |
-| **PM** | Reservado para futuras restricciones de rol |
+| **Architect** | Acceso de lectura de gobernanza + chat conversacional de gobernanza en Control Plane |
+| **PM** | Acceso de lectura de gobernanza + chat conversacional de gobernanza en Control Plane |
 
 Las API keys llevan asignado un rol. Asegúrate de que los desarrolladores tengan keys con rol `Developer` y que el equipo de DevOps/seguridad tenga rol `Admin`.
 
