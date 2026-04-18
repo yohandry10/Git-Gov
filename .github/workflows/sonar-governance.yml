@@ -16,22 +16,39 @@ jobs:
     name: Sonar Scan + Quality Gate
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: ${{ secrets.SONAR_TOKEN != '' && vars.SONAR_PROJECT_KEY != '' }}
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
 
+      - name: Sonar precheck (secrets + vars)
+        id: sonar-precheck
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SONAR_TOKEN:-}" ] || [ -z "${SONAR_PROJECT_KEY:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_sonar_token_or_project_key" >> "$GITHUB_OUTPUT"
+            echo "Skipping Sonar scan: missing SONAR_TOKEN or SONAR_PROJECT_KEY."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
 
       - name: Setup Java
+        if: ${{ steps.sonar-precheck.outputs.enabled == 'true' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Sonar scan
+        if: ${{ steps.sonar-precheck.outputs.enabled == 'true' }}
         uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -47,6 +64,7 @@ jobs:
 
       - name: Quality gate status
         id: quality-gate
+        if: ${{ steps.sonar-precheck.outputs.enabled == 'true' }}
         uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
         continue-on-error: true
         timeout-minutes: 10
@@ -54,8 +72,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
 
+      - name: Sonar skip notice
+        if: ${{ steps.sonar-precheck.outputs.enabled != 'true' }}
+        run: echo "Sonar governance skipped (reason=${{ steps.sonar-precheck.outputs.reason }})."
+
       - name: Publish Sonar telemetry to GitGov
-        if: always()
+        if: ${{ always() && steps.sonar-precheck.outputs.enabled == 'true' }}
         env:
           GITGOV_URL: ${{ vars.GITGOV_URL }}
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
