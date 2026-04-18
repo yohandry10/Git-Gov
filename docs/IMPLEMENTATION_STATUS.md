@@ -66,6 +66,9 @@ Updated: 2026-04-18
   - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
   - Security permissions for findings publication are declared in workflow.
   - `Security Guard` now also blocks tracked `.env` files (except `.env.example`) and assistant-local artifacts (`.agents/`, `skills/`, `gitgov-video/`).
+- CI coverage expanded for documentation website:
+  - `.github/workflows/ci.yml` now includes `Website Lint + Typecheck + Build` for `gitgov-web`.
+  - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
 - Legacy migration hardening added:
