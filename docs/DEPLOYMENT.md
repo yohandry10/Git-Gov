@@ -101,6 +101,17 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.
   -Branch "main"
 ```
 
+Orquestador único (setup + validación):
+
+```powershell
+$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN>"
+powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main" `
+  -ApplyBranchProtection
+```
+
 ### Jira (opcional)
 
 ```bash
