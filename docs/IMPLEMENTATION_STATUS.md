@@ -80,6 +80,9 @@ Updated: 2026-04-18
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `docs/DEPLOYMENT.md` now includes the execution command and verification checklist.
+- Sonar CI rollout preflight automation prepared:
+  - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
+  - `docs/DEPLOYMENT.md` now includes command + PASS/FAIL expectations for repo CI config.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 

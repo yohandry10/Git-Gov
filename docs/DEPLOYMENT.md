@@ -630,6 +630,19 @@ Notas:
 - Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
 - Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
 
+Preflight de configuración CI del repo (GitHub Actions):
+
+```powershell
+$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>"
+powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov"
+```
+
+Resultado esperado:
+- `PASS` si secrets/variables requeridos están presentes.
+- `FAIL` con lista concreta de faltantes si aún falta configuración.
+
 **Local signed build:**
 ```powershell
 .\scripts\build_signed_windows.ps1 -RepoRoot . -PfxPath "C:\secrets\gitgov-codesign.pfx" -PfxPassword "<password>"
