@@ -1541,6 +1541,7 @@ pub async fn policy_check(
     };
     let config = &policy.config;
     let enforcement = &config.enforcement;
+    let mut quality_gate_violation_context: Option<(String, String, String)> = None;
 
     // Determine highest enforcement level applied
     let has_block = [
@@ -1658,6 +1659,11 @@ pub async fn policy_check(
                 Ok(Some(run)) => {
                     let pipeline_status = run.status.trim().to_ascii_lowercase();
                     if pipeline_status != "success" {
+                        quality_gate_violation_context = Some((
+                            commit_sha.to_string(),
+                            run.job_name.clone(),
+                            run.status.clone(),
+                        ));
                         let message = format!(
                             "Sonar quality gate not green for commit {} (job '{}', status '{}')",
                             commit_sha,
@@ -1699,6 +1705,64 @@ pub async fn policy_check(
         response
             .warnings
             .push("Commit SHA not provided; commit-specific checks skipped".to_string());
+    }
+
+    if let Some((failed_commit_sha, job_name, gate_status)) = quality_gate_violation_context {
+        let actor = payload
+            .user_login
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(auth_user.client_id.as_str())
+            .to_string();
+        let enforcement_level = format!("{:?}", enforcement.quality_gates).to_lowercase();
+
+        match state
+            .db
+            .insert_quality_gate_policy_violation_signal(
+                repo.org_id.as_deref(),
+                Some(repo.id.as_str()),
+                &actor,
+                Some(branch),
+                &failed_commit_sha,
+                &repo_name,
+                &job_name,
+                &gate_status,
+                &enforcement_level,
+            )
+            .await
+        {
+            Ok(inserted) => {
+                metrics::counter!("gitgov_quality_gate_policy_failures_total").increment(1);
+                if inserted {
+                    metrics::counter!("gitgov_quality_gate_signals_created_total").increment(1);
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    repo = %repo_name,
+                    commit = %failed_commit_sha,
+                    "Failed to persist quality gate policy signal"
+                );
+            }
+        }
+
+        if let Some(webhook_url) = state.alert_webhook_url.clone() {
+            let text = notifications::format_quality_gate_policy_alert(
+                &actor,
+                &repo_name,
+                branch,
+                &failed_commit_sha,
+                &job_name,
+                &gate_status,
+                &enforcement_level,
+            );
+            let client = state.http_client.clone();
+            tokio::spawn(async move {
+                notifications::send_alert(&client, &webhook_url, text).await;
+            });
+        }
     }
 
     let status = policy_check_response_status(state.as_ref(), &repo_name, branch, &response);

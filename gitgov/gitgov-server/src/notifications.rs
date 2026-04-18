@@ -57,3 +57,25 @@ pub fn format_critical_policy_drift_alert(
         critical_count = critical_count
     )
 }
+
+pub fn format_quality_gate_policy_alert(
+    actor: &str,
+    repo: &str,
+    branch: &str,
+    commit_sha: &str,
+    job_name: &str,
+    gate_status: &str,
+    enforcement: &str,
+) -> String {
+    format!(
+        ":triangular_flag_on_post: *Quality Gate no verde* — Actor `{actor}` en `{repo}` (`{branch}`) \
+         commit `{commit}` | job `{job}` | status `{status}` | enforcement `{enforcement}`.",
+        actor = actor,
+        repo = repo,
+        branch = branch,
+        commit = commit_sha,
+        job = job_name,
+        status = gate_status,
+        enforcement = enforcement
+    )
+}

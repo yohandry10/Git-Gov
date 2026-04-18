@@ -3709,6 +3709,78 @@ impl Database {
         Ok((signals, total))
     }
 
+    pub async fn insert_quality_gate_policy_violation_signal(
+        &self,
+        org_id: Option<&str>,
+        repo_id: Option<&str>,
+        actor_login: &str,
+        branch: Option<&str>,
+        commit_sha: &str,
+        repo_full_name: &str,
+        job_name: &str,
+        gate_status: &str,
+        enforcement: &str,
+    ) -> Result<bool, DbError> {
+        let result = sqlx::query(
+            r#"
+            INSERT INTO noncompliance_signals (
+                org_id,
+                repo_id,
+                signal_type,
+                confidence,
+                actor_login,
+                branch,
+                commit_sha,
+                evidence,
+                context
+            )
+            SELECT
+                $1::uuid,
+                $2::uuid,
+                'policy_violation',
+                'high',
+                $3,
+                $4,
+                $5,
+                jsonb_build_object(
+                    'rule', 'quality_gate_green',
+                    'repo_name', $6,
+                    'job_name', $7,
+                    'gate_status', $8,
+                    'enforcement', $9
+                ),
+                jsonb_build_object(
+                    'source', 'policy_check',
+                    'category', 'quality_gates'
+                )
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM noncompliance_signals ns
+                WHERE (ns.org_id IS NOT DISTINCT FROM $1::uuid)
+                  AND (ns.repo_id IS NOT DISTINCT FROM $2::uuid)
+                  AND ns.signal_type = 'policy_violation'
+                  AND ns.commit_sha = $5
+                  AND COALESCE(ns.evidence->>'rule', '') = 'quality_gate_green'
+                  AND ns.created_at >= NOW() - INTERVAL '24 hours'
+            )
+            "#,
+        )
+        .bind(org_id)
+        .bind(repo_id)
+        .bind(actor_login)
+        .bind(branch)
+        .bind(commit_sha)
+        .bind(repo_full_name)
+        .bind(job_name)
+        .bind(gate_status)
+        .bind(enforcement)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
     pub async fn update_signal_status(
         &self,
         signal_id: &str,

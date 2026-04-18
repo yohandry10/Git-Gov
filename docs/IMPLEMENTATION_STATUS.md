@@ -33,6 +33,10 @@ Updated: 2026-04-18
   - `/policy/check` now includes `quality_gates` in enforcement level resolution.
   - Evaluates latest Sonar-correlated pipeline run by commit SHA.
   - Applies warn/block outcomes when quality gate status is not green.
+- Quality gate signal/alert integration (SQ-06 phase 1) added:
+  - `/policy/check` now persists a `noncompliance_signal` (`policy_violation`) when `quality_gate_green` fails.
+  - Signal evidence includes repo, commit, job, status, enforcement, and is deduplicated (24h window).
+  - Alert webhook now emits a dedicated `Quality Gate no verde` message when configured.
 - Desktop policy-check payload now includes `commit` (HEAD SHA) for richer server-side evaluation.
 - Jenkins policy-check stage hardened:
   - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).
