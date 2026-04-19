@@ -122,6 +122,7 @@ Updated: 2026-04-19
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
   - `scripts/github/harden_repo_governance.ps1` orchestrates CI config check + branch protection apply/verify in one execution.
   - Scripts now accept `-GitHubToken` plus env fallbacks (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`) for non-interactive runs.
+  - If env token is not set, scripts auto-resolve `GITHUB_PERSONAL_ACCESS_TOKEN` from `gitgov/gitgov-server/.env`.
   - API failures now surface `accepted_permissions` hints from GitHub headers (faster token permission diagnosis).
   - `harden_repo_governance.ps1` now runs token-permission preflight (`check_token_permissions.ps1`) before CI/protection steps.
 - Live execution completed: branch protection applied and verified on `main` with required checks (`Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Security Guard`), strict checks enabled, admins enforced.

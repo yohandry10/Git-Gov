@@ -19,13 +19,13 @@ $checkTokenPermissionsScript = Join-Path $scriptRoot "check_token_permissions.ps
 $checkCiScript = Join-Path $scriptRoot "check_ci_repo_config.ps1"
 $setChecksScript = Join-Path $scriptRoot "set_required_checks.ps1"
 $checkProtectionScript = Join-Path $scriptRoot "check_branch_protection.ps1"
+. (Join-Path $scriptRoot "_token_helpers.ps1")
 
-$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT, $env:GITHUB_PERSONAL_ACCESS_TOKEN) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-if ($tokenCandidates.Count -eq 0) {
-  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN before running governance hardening."
+$token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
+if ([string]::IsNullOrWhiteSpace($token)) {
+  Write-Error "Missing GitHub token. Provide -GitHubToken, set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN, or define GITHUB_PERSONAL_ACCESS_TOKEN in gitgov/gitgov-server/.env before running governance hardening."
   exit 1
 }
-$token = $tokenCandidates[0]
 
 if ($RequiredApprovals -lt 0) {
   Write-Error "RequiredApprovals must be >= 0."

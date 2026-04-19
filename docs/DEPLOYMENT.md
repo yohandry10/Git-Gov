@@ -792,6 +792,7 @@ Resultado esperado:
 - `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
 - `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
 - Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`).
+- Si no hay token en entorno, intentan resolverlo desde `gitgov/gitgov-server/.env` (`GITHUB_PERSONAL_ACCESS_TOKEN`).
 - Para token fine-grained, habilitar permisos mínimos:
   - `Repository permissions > Secrets`: `Read` (o `Read and write`)
   - `Repository permissions > Actions variables`: `Read` (o `Read and write`)
