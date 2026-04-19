@@ -534,6 +534,9 @@ mod tests {
                 Some(ChatQuery::BlockedPushesMonth) => "blocked_month",
                 Some(ChatQuery::ControlPlaneExecutiveSummary) => "executive_summary",
                 Some(ChatQuery::QualityGateTopFailingRepos { .. }) => "quality_gate_top_repos",
+                Some(ChatQuery::QualityGateTopFailingBranches { .. }) => {
+                    "quality_gate_top_branches"
+                }
                 Some(ChatQuery::TicketsWithNonGreenQualityGate { .. }) => "ticket_quality_gate_top",
                 Some(ChatQuery::TicketsReleasedWithNonGreenQualityGate { .. }) => "ticket_prod_quality_gate_top",
                 Some(ChatQuery::DevelopersWithNonGreenQualityGate { .. }) => "developer_quality_gate_top",
@@ -596,6 +599,7 @@ mod tests {
             ("cuantos commits sin ticket hubo esta semana", "commits_no_ticket"),
             ("todo lo que hay en control plane resumen ejecutivo", "executive_summary"),
             ("top 5 repos con quality gate en rojo", "quality_gate_top_repos"),
+            ("top 4 ramas con quality gate en rojo", "quality_gate_top_branches"),
             ("top 10 tickets con quality gate en rojo", "ticket_quality_gate_top"),
             ("top 5 tickets en prod con quality gate en rojo", "ticket_prod_quality_gate_top"),
             ("top 5 developers con quality gate en rojo", "developer_quality_gate_top"),
