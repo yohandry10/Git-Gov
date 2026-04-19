@@ -4,7 +4,9 @@ param(
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   [switch]$ApplyBranchProtection,
-  [switch]$SkipCiConfigCheck
+  [switch]$SkipCiConfigCheck,
+  [switch]$AllowMissingSonar,
+  [switch]$RequireGitGovTelemetry
 )
 
 Set-StrictMode -Version Latest
@@ -28,7 +30,7 @@ Write-Host ""
 
 if (-not $SkipCiConfigCheck) {
   Write-Host "[1/3] Checking CI repository config (secrets/variables)..."
-  & $checkCiScript -Owner $Owner -Repo $Repo -GitHubToken $token
+  & $checkCiScript -Owner $Owner -Repo $Repo -GitHubToken $token -AllowMissingSonar:$AllowMissingSonar -RequireGitGovTelemetry:$RequireGitGovTelemetry
   Write-Host ""
 } else {
   Write-Host "[1/3] Skipped CI repository config check."

@@ -732,7 +732,10 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
 ```
 
 Resultado esperado:
-- `PASS` si secrets/variables requeridos están presentes.
+- `PASS` si secrets/variables requeridos para el modo elegido están presentes.
+- Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
+- `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
+- `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
 - Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`).
 
 Bootstrap de variables CI (sin tocar secrets):

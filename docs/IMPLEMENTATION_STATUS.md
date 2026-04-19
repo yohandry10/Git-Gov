@@ -126,23 +126,27 @@ Updated: 2026-04-19
 
 ## Next Technical Steps
 
-1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
+1. Configure repository-level CI secrets/variables per rollout mode (Sonar scan vs telemetry publish).
    - Current live status: `SONAR_PROJECT_KEY` and `SONAR_HOST_URL` configured.
-   - Pending required secrets: `SONAR_TOKEN`, `GITGOV_API_KEY`.
+   - Pending for Sonar scan mode: `SONAR_TOKEN`.
+   - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
 2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 
 ## Required GitHub Configuration (for Sonar workflow)
 
-Secrets:
+Base Sonar scan mode:
 
-- `SONAR_TOKEN`
-- `GITGOV_API_KEY`
-- `GITGOV_JENKINS_SECRET` (optional)
+- Secret: `SONAR_TOKEN`
+- Variable: `SONAR_PROJECT_KEY`
 
-Variables:
+Telemetry publish mode (`-RequireGitGovTelemetry`):
 
-- `SONAR_PROJECT_KEY`
-- `SONAR_HOST_URL` (optional, default `https://sonarcloud.io`)
-- `GITGOV_URL` (optional if only scan is needed)
+- Secret: `GITGOV_API_KEY`
+- Variable: `GITGOV_URL`
+- Secret opcional: `GITGOV_JENKINS_SECRET`
+
+Always optional:
+
+- Variable: `SONAR_HOST_URL` (default `https://sonarcloud.io`)

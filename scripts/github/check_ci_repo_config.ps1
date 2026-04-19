@@ -1,7 +1,11 @@
 param(
   [string]$Owner = "yohandry10",
   [string]$Repo = "Git-Gov",
-  [string]$GitHubToken = ""
+  [string]$GitHubToken = "",
+  # When set, SONAR_TOKEN and SONAR_PROJECT_KEY become optional.
+  [switch]$AllowMissingSonar,
+  # When set, require telemetry publish config for GitGov ingest.
+  [switch]$RequireGitGovTelemetry
 )
 
 Set-StrictMode -Version Latest
@@ -21,10 +25,26 @@ $headers = @{
   "User-Agent" = "gitgov-ci-config-check"
 }
 
-$requiredSecrets = @("SONAR_TOKEN", "GITGOV_API_KEY")
+$requiredSecrets = @()
 $optionalSecrets = @("GITGOV_JENKINS_SECRET")
-$requiredVariables = @("SONAR_PROJECT_KEY")
-$optionalVariables = @("SONAR_HOST_URL", "GITGOV_URL")
+$requiredVariables = @()
+$optionalVariables = @("SONAR_HOST_URL")
+
+if (-not $AllowMissingSonar) {
+  $requiredSecrets += "SONAR_TOKEN"
+  $requiredVariables += "SONAR_PROJECT_KEY"
+} else {
+  $optionalSecrets += "SONAR_TOKEN"
+  $optionalVariables += "SONAR_PROJECT_KEY"
+}
+
+if ($RequireGitGovTelemetry) {
+  $requiredSecrets += "GITGOV_API_KEY"
+  $requiredVariables += "GITGOV_URL"
+} else {
+  $optionalSecrets += "GITGOV_API_KEY"
+  $optionalVariables += "GITGOV_URL"
+}
 
 function Get-NameSet {
   param(
