@@ -128,7 +128,7 @@ Updated: 2026-04-19
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
-   - Current live status: `SONAR_PROJECT_KEY` configured.
+   - Current live status: `SONAR_PROJECT_KEY` and `SONAR_HOST_URL` configured.
    - Pending required secrets: `SONAR_TOKEN`, `GITGOV_API_KEY`.
 2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
