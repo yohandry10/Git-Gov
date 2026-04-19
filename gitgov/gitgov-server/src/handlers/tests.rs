@@ -8,6 +8,7 @@ mod tests {
         extract_ticket_ids, is_founder_scope_exception, is_logs_precision_query, extract_logs_limit,
         extract_logs_event_type_hint, is_relevant_audit_action, make_audit_delivery_id, render_todo_list,
         validate_github_signature, ChatQuery, ConversationState, GitHubPrReview, GitHubPrReviewUser,
+        apply_ingest_org_scope,
         NlpIntent, OrgScopeError, OutboxLeaseTelemetry, OutboxLeaseTelemetryMode,
         OutboxLeaseTelemetryRecord, detect_query, detect_language,
         logs_deprecations_for_request,
@@ -742,6 +743,31 @@ mod tests {
             check_org_scope_match(None, true, Some("uuid-rimac")),
             Ok(Some("uuid-rimac".to_string()))
         );
+    }
+
+    #[test]
+    fn ingest_scope_scoped_admin_enforces_key_org_when_repo_is_unresolved() {
+        assert_eq!(
+            apply_ingest_org_scope(Some("uuid-rimac"), None),
+            Ok(Some("uuid-rimac".to_string()))
+        );
+    }
+
+    #[test]
+    fn ingest_scope_scoped_admin_blocks_cross_org_derived_repo() {
+        assert_eq!(
+            apply_ingest_org_scope(Some("uuid-a"), Some("uuid-b")),
+            Err("Requested org is outside API key scope")
+        );
+    }
+
+    #[test]
+    fn ingest_scope_global_admin_keeps_derived_org_or_none() {
+        assert_eq!(
+            apply_ingest_org_scope(None, Some("uuid-rimac")),
+            Ok(Some("uuid-rimac".to_string()))
+        );
+        assert_eq!(apply_ingest_org_scope(None, None), Ok(None));
     }
 
     // ── Scope enforcement: erase_user ─────────────────────────────────────────
