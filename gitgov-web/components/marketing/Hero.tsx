@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
+import Link from 'next/link';
 import { Container } from '@/components/layout/Container';
 import { siteConfig } from '@/lib/config/site';
 import { HiOutlineArrowRight, HiOutlineShieldCheck, HiOutlineDatabase } from 'react-icons/hi';
@@ -121,8 +122,8 @@ export function Hero() {
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-700" />
                             </button>
                             
-                            <a 
-                                href="/docs" 
+                            <Link
+                                href="/docs/"
                                 className="relative group w-full sm:w-auto flex items-center justify-center px-8 py-4 font-bold tracking-tight rounded-lg overflow-hidden transition-all duration-300"
                             >
                                 {/* Static Border */}
@@ -140,7 +141,7 @@ export function Hero() {
                                 <span className="relative z-10 text-white/50 group-hover:text-white transition-colors duration-300">
                                     Leer Documentación
                                 </span>
-                            </a>
+                            </Link>
                         </motion.div>
 
                         <motion.div

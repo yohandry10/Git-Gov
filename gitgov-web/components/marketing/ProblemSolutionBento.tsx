@@ -49,10 +49,10 @@ export function ProblemSolutionBento() {
                                 <h3 className="text-xl font-bold tracking-tight text-white">Correlación E2E y Detección de Drift</h3>
                             </div>
                             <p className="text-white/50 text-sm leading-relaxed mb-4">
-                                La propuesta de GitGov no es "hacer Git bonito". El enforcement real (Branch Protection, Rulesets) vive en GitHub. Nosotros orquestamos esas reglas agregando evidencia inmutable: calculando el <strong className="text-white/80 font-medium">Confidence Scoring</strong> cruzando la intención local del desarrollador contra el webhook final recibido.
+                                La propuesta de GitGov no es &quot;hacer Git bonito&quot;. El enforcement real (Branch Protection, Rulesets) vive en GitHub. Nosotros orquestamos esas reglas agregando evidencia inmutable: calculando el <strong className="text-white/80 font-medium">Confidence Scoring</strong> cruzando la intención local del desarrollador contra el webhook final recibido.
                             </p>
                             <p className="text-white/40 text-[11px] leading-relaxed">
-                                Abandona el lenguaje binario de fraude. Evaluamos "rutas no autorizadas" y "telemetría faltante" con scores paramétricos (High/Medium/Low) para anular los falsos positivos reputacionales.
+                                Abandona el lenguaje binario de fraude. Evaluamos &quot;rutas no autorizadas&quot; y &quot;telemetría faltante&quot; con scores paramétricos (High/Medium/Low) para anular los falsos positivos reputacionales.
                             </p>
                             {/* Filler elements to pack the space */}
                             <div className="mt-6 space-y-2 font-mono text-[10px] text-white/50">
@@ -174,7 +174,7 @@ export function ProblemSolutionBento() {
                                 <span className="bg-brand-500/10 border border-brand-500/20 text-brand-400 px-1 py-0.5 rounded text-[8px] uppercase tracking-widest">limit: 500</span>
                             </div>
                             <div className="p-4 text-white/40 space-y-2 flex flex-col justify-center">
-                                <p>{"{"}"event": "stage_files", "count": 500{"}"}</p>
+                                <p>{'{"event": "stage_files", "count": 500}'}</p>
                                 <p className="text-brand-400/80 border-l border-brand-400/20 pl-2">Network Error. Queued.</p>
                                 <p className="text-white/80 pt-1 flex items-center gap-1.5"><HiOutlineRefresh className="text-brand-500" /> Retry policy (Exponential)</p>
                             </div>
