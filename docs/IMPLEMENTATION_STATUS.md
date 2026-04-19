@@ -19,6 +19,7 @@ Updated: 2026-04-19
 - Jira webhook ingestion now supports organization scoping:
   - Uses API key scope by default.
   - Accepts optional org hint in payload (`org_name`, `organization`, `org`, `tenant`).
+  - For global admin keys, `org_name` hint is now required (strict tenant scoping).
 - Non-blocking Sonar workflow added:
   - `.github/workflows/sonar-governance.yml`
   - Optional telemetry publish to `/integrations/jenkins`.
