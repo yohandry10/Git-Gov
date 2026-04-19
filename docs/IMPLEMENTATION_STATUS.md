@@ -104,6 +104,7 @@ Updated: 2026-04-19
   - `detect_query` now also classifies repo-ranking questions (`top repos con quality gate no verde`).
   - `/chat/ask` now returns scoped summaries for:
     - quality gate outcomes (`green/non-green`, affected repos/commits, policy-violation signals)
+    - ranked Jira tickets linked to commits with non-green quality gates.
     - release-readiness gate outcomes (`pass/warn/fail/other`, affected repos/commits)
     - ranked repositories with highest non-green quality-gate volume in a selected window.
     - ranked repositories with highest release-readiness `FAIL` volume in a selected window.

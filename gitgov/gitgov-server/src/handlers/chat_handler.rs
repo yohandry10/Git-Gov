@@ -3,6 +3,7 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
         query,
         ChatQuery::ControlPlaneExecutiveSummary
             | ChatQuery::QualityGateTopFailingRepos { .. }
+            | ChatQuery::TicketsWithNonGreenQualityGate { .. }
             | ChatQuery::QualityGateHealthWindow { .. }
             | ChatQuery::ReleaseReadinessTopFailingRepos { .. }
             | ChatQuery::ReleaseReadinessHealthWindow { .. }
@@ -1058,6 +1059,134 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     trace_id: None,
 },
             );
+        }
+        Some(ChatQuery::TicketsWithNonGreenQualityGate { hours, limit }) => {
+            match state
+                .db
+                .chat_query_tickets_with_non_green_quality_gate(
+                    scoped_org_id.as_deref(),
+                    hours,
+                    limit,
+                )
+                .await
+            {
+                Ok(rows) => {
+                    if rows.is_empty() {
+                        return finalize_chat_response(
+                            &state,
+                            &conversation_key,
+                            &mut session,
+                            &nlp,
+                            StatusCode::OK,
+                            ChatAskResponse {
+                                status: "ok".to_string(),
+                                answer: format!(
+                                    "No se detectaron tickets asociados a quality gate no verde en las últimas {}h.",
+                                    hours
+                                ),
+                                missing_capability: None,
+                                can_report_feature: false,
+                                data_refs: vec![
+                                    "pipeline_events".to_string(),
+                                    "commit_ticket_correlations".to_string(),
+                                ],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: Some(format!("last_{}h", hours)),
+                                actions_recommended: vec![],
+                                confidence: Some(0.8),
+                                trace_id: None,
+                            },
+                        );
+                    }
+
+                    let mut lines = Vec::with_capacity(rows.len());
+                    for (idx, item) in rows.iter().enumerate() {
+                        let ticket_id = item
+                            .get("ticket_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let non_green_runs =
+                            item.get("non_green_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let repos_affected =
+                            item.get("repos_affected").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let commits_affected = item
+                            .get("commits_affected")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+                        lines.push(format!(
+                            "{}. {} -> non_green_runs: {}, repos: {}, commits: {}",
+                            idx + 1,
+                            ticket_id,
+                            non_green_runs,
+                            repos_affected,
+                            commits_affected
+                        ));
+                    }
+
+                    let answer = format!(
+                        "Top tickets con quality gate no verde (últimas {hours}h, top {limit}):\n{lines}",
+                        hours = hours,
+                        limit = limit,
+                        lines = lines.join("\n")
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![
+                                "pipeline_events".to_string(),
+                                "commit_ticket_correlations".to_string(),
+                            ],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: vec![
+                                "Priorizar tickets con mayor volumen de quality gate no verde".to_string(),
+                                "Validar excepciones activas antes de release/merge".to_string(),
+                            ],
+                            confidence: Some(0.9),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "chat_query_tickets_with_non_green_quality_gate error: {}",
+                        e
+                    );
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer:
+                                "Error consultando ranking de tickets con quality gate no verde"
+                                    .to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
         }
         Some(ChatQuery::QualityGateTopFailingRepos { hours, limit }) => {
             match state
