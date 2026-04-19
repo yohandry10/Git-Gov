@@ -441,22 +441,22 @@ fn finalize_chat_response(
     let status_code_u16 = status_code.as_u16();
     tokio::spawn(async move {
         if let Err(err) = db
-            .insert_chat_query_event(
-                &trace_id,
-                &conversation_key,
-                &client_id,
-                org_scope.as_deref(),
-                &question,
-                &intent,
-                &response_status,
+            .insert_chat_query_event(&crate::db::ChatQueryEventInsertInput {
+                trace_id: &trace_id,
+                conversation_key: &conversation_key,
+                client_id: &client_id,
+                org_scope: org_scope.as_deref(),
+                question: &question,
+                intent: &intent,
+                response_status: &response_status,
                 confidence,
-                &language,
-                &entities_detected,
-                time_range_used.as_deref(),
-                &sources,
-                &actions_recommended,
-                &answer_preview,
-            )
+                language: &language,
+                entities_detected: &entities_detected,
+                time_range_used: time_range_used.as_deref(),
+                sources: &sources,
+                actions_recommended: &actions_recommended,
+                answer_preview: &answer_preview,
+            })
             .await
         {
             tracing::warn!(
@@ -481,15 +481,15 @@ fn finalize_chat_response(
         });
 
         if let Err(err) = db
-            .insert_chat_query_tool_call(
-                &trace_id,
-                "chat_response_pipeline",
-                "ok",
-                None,
-                &input_payload,
-                &output_payload,
-                None,
-            )
+            .insert_chat_query_tool_call(&crate::db::ChatQueryToolCallInsertInput {
+                trace_id: &trace_id,
+                tool_name: "chat_response_pipeline",
+                tool_status: "ok",
+                duration_ms: None,
+                input_payload: &input_payload,
+                output_payload: &output_payload,
+                error: None,
+            })
             .await
         {
             tracing::warn!(

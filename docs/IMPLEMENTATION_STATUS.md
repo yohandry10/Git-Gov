@@ -90,44 +90,72 @@ Updated: 2026-04-19
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
   - Job order hardened for clean runners (`build` before standalone `typecheck`) to ensure `.next/types` is present.
   - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.
+  - Added explicit `pnpm/action-setup@v4` bootstrap before `actions/setup-node@v4` cache resolution (prevents `pnpm` missing executable failures on hosted runners).
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
   - `scripts/jenkins/check_job_repo.ps1` validates Jenkins job SCM URL via `config.xml` and fails on legacy repo markers.
+- Quality gate policy validation completed end-to-end (local stack):
+  - Verified `quality_gates=warn` keeps advisory flow (`allowed=true`) on non-green Sonar.
+  - Verified `quality_gates=block` denies (`allowed=false`) on non-green Sonar.
+  - Verified `policy_violation` signal persistence for `quality_gate_green`.
+  - Runbook aligned to real API contract (`PUT /policy/{repo_name}/override`, URL-encoded repo path, `offset` on `/signals`).
+- Jenkins commit/pipeline correlation validated end-to-end (local stack):
+  - Ingested client commit event with contract-correct fields (`repo_full_name`, `commit_sha`).
+  - Verified `/integrations/jenkins/correlations` resolves pipeline metadata for matching commit SHA.
+- Correlation smoke automation added:
+  - New script `scripts/jenkins/validate_commit_pipeline_correlation.ps1`.
+  - Validates `/events` ingest + `/integrations/jenkins/correlations` match for a commit SHA (optional pipeline injection for test bootstrap).
+  - Supports optional `JENKINS_WEBHOOK_SECRET` via `-JenkinsSecret` when backend enforcement is enabled.
+  - Wired into GitHub Actions via `.github/workflows/governance-correlation-smoke.yml` (push/main + manual dispatch, non-blocking, auto-skip when config is missing).
+  - Deployment guide includes execution commands.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
   - `scripts/github/harden_repo_governance.ps1` orchestrates CI config check + branch protection apply/verify in one execution.
-  - `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
+  - Scripts now accept `-GitHubToken` plus env fallbacks (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`) for non-interactive runs.
+  - Live execution completed: branch protection applied and verified on `main` with required checks (`server-lint`, `desktop-lint`, `frontend-lint`, `website-lint`, `Security Guard`), strict checks enabled, admins enforced.
+- `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
 - Sonar CI rollout preflight automation prepared:
   - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
+  - `scripts/github/bootstrap_ci_variables.ps1` bootstraps CI variables (`SONAR_PROJECT_KEY` required, optional `SONAR_HOST_URL` / `GITGOV_URL`).
   - `docs/DEPLOYMENT.md` now includes command + PASS/FAIL expectations for repo CI config.
+  - Preflight mode control added:
+    - `-AllowMissingSonar` (Sonar config optional for personal-account rollout).
+    - `-RequireGitGovTelemetry` (enforces `GITGOV_API_KEY` + `GITGOV_URL`).
+  - `scripts/github/harden_repo_governance.ps1` forwards both flags for end-to-end governance runs.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
+- CI lint stability hardening:
+  - Refactored `gitgov-server` DB insert APIs to typed input structs to satisfy `clippy -D warnings` (removed `too_many_arguments` failures).
+  - Local validation completed: `cargo clippy -- -D warnings` and `cargo test` (150 passed).
 
 ## In Progress
 
 - SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
-- Enforcing required status checks in branch protection (`ci`, `Security Guard`).
 
 ## Next Technical Steps
 
-1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
-2. Validate Sonar pipeline events end-to-end in Control Plane logs/correlations.
-3. Validate `quality_gates=warn` and `quality_gates=block` behavior in Jenkins/GitHub CI flows with real commits (runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
-4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
-5. Mark `Security Guard` as a required check on `main`.
+1. Configure repository-level CI secrets/variables per rollout mode (Sonar scan vs telemetry publish).
+   - Current live status: `SONAR_PROJECT_KEY` and `SONAR_HOST_URL` configured.
+   - Pending for Sonar scan mode: `SONAR_TOKEN`.
+   - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
+2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
+3. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 
 ## Required GitHub Configuration (for Sonar workflow)
 
-Secrets:
+Base Sonar scan mode:
 
-- `SONAR_TOKEN`
-- `GITGOV_API_KEY`
-- `GITGOV_JENKINS_SECRET` (optional)
+- Secret: `SONAR_TOKEN`
+- Variable: `SONAR_PROJECT_KEY`
 
-Variables:
+Telemetry publish mode (`-RequireGitGovTelemetry`):
 
-- `SONAR_PROJECT_KEY`
-- `SONAR_HOST_URL` (optional, default `https://sonarcloud.io`)
-- `GITGOV_URL` (optional if only scan is needed)
+- Secret: `GITGOV_API_KEY`
+- Variable: `GITGOV_URL`
+- Secret opcional: `GITGOV_JENKINS_SECRET`
+
+Always optional:
+
+- Variable: `SONAR_HOST_URL` (default `https://sonarcloud.io`)

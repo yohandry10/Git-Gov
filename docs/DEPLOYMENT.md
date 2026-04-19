@@ -94,6 +94,34 @@ powershell -ExecutionPolicy Bypass -File scripts/jenkins/check_job_repo.ps1 `
   -ApiTokenOrPassword "<JENKINS_API_TOKEN_OR_PASSWORD>"
 ```
 
+Smoke check de correlación commit -> pipeline (Control Plane):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -CommitSha "<COMMIT_SHA_EXISTENTE_EN_PIPELINE>"
+```
+
+Si todavía no existe un pipeline para ese SHA, se puede forzar un evento de pipeline de prueba:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -CommitSha "<COMMIT_SHA>" `
+  -InjectPipelineIfMissing
+```
+
+Automatización en GitHub Actions (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/governance-correlation-smoke.yml`
+- Trigger: `push` a `main` + `workflow_dispatch`
+- Si faltan `GITGOV_URL` o `GITGOV_API_KEY`, el workflow se salta en `PASS` (skip explícito).
+- Si `JENKINS_WEBHOOK_SECRET` está activo en backend, configurar `GITGOV_JENKINS_SECRET` (secret opcional) para que el smoke pueda publicar en `/integrations/jenkins`.
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.
@@ -109,8 +137,8 @@ Checks mínimos recomendados:
 Script automático (usa API de GitHub):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_ADMIN_ON_REPO>"
 powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
+  -GitHubToken "<TOKEN_CON_ADMIN_ON_REPO>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main"
@@ -127,8 +155,8 @@ Validación rápida:
 Validación automática (API):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>"
 powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main"
@@ -137,8 +165,8 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.
 Orquestador único (setup + validación):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN>"
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main" `
@@ -172,6 +200,11 @@ Si ya existe el volumen, los scripts **no** se vuelven a ejecutar.
 | PostgreSQL host | `localhost:5433` |
 | PostgreSQL db/user | `gitgov` / `gitgov` |
 | PostgreSQL password | `gitgov_dev_password` |
+
+Nota de runtime local:
+
+- En `docker-compose.yml`, `gitgov-server` debe correr con `GITGOV_ENV=dev`.
+- El binario release por defecto asume hardening no-dev; sin ese ajuste exige secretos de producción (por ejemplo `GITHUB_WEBHOOK_SECRET`) y reinicia el contenedor.
 
 ### Integrar con Desktop App
 
@@ -483,7 +516,8 @@ curl http://127.0.0.1:3000/health
 curl -H "Authorization: Bearer <ADMIN_API_KEY>" http://127.0.0.1:3000/stats
 
 # 2) Crear policy change request (developer o admin)
-curl -X POST "http://127.0.0.1:3000/policy/<owner>/<repo>/requests" \
+# repo path debe ir URL-encoded (ej: yohandry10%2FGit-Gov)
+curl -X POST "http://127.0.0.1:3000/policy/<repo_full_name_urlencoded>/requests" \
   -H "Authorization: Bearer <DEV_OR_ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"config":{"branches":{"protected":["main"],"patterns":["feat/*"]},"rules":{"require_pull_request":true},"enforcement":{"pull_requests":"warn","commits":"off","branches":"warn","traceability":"off","quality_gates":"warn"}},"reason":"post-deploy check"}'
@@ -683,6 +717,11 @@ Configurar en GitHub (repo settings):
 Notas:
 - Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
 - Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
+- Si SonarCloud no permite onboarding de organización (caso común en cuentas GitHub personales), usar SonarQube local:
+  - levantar `docker compose --profile sonar up -d sonarqube-db sonarqube`
+  - generar token local en SonarQube (`My Account > Security`)
+  - setear `SONAR_HOST_URL` al host local alcanzable desde runner (`http://host.docker.internal:9000` en Jenkins Docker local)
+  - mantener workflow no bloqueante hasta completar onboarding SonarCloud enterprise.
 
 Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 - stage `Sonar Scan (Optional)` bootstrappea `sonar-scanner` si no existe en el agente.
@@ -693,14 +732,32 @@ Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 Preflight de configuración CI del repo (GitHub Actions):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>"
 powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov"
 ```
 
 Resultado esperado:
-- `PASS` si secrets/variables requeridos están presentes.
+- `PASS` si secrets/variables requeridos para el modo elegido están presentes.
+- Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
+- `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
+- `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
+- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`).
+
+Bootstrap de variables CI (sin tocar secrets):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/bootstrap_ci_variables.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ACTIONS_WRITE>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -SonarProjectKey "yohandry10_git-gov"
+```
+
+Opcional:
+- `-SonarHostUrl "https://sonarcloud.io"`
+- `-GitGovUrl "https://<tu-control-plane>"`
 - `FAIL` con lista concreta de faltantes si aún falta configuración.
 
 **Local signed build:**
