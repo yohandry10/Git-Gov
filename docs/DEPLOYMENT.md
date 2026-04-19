@@ -59,6 +59,14 @@ Para usar SonarQube local con Jenkins en Docker:
 - generar token en `My Account > Security` y cargarlo en Jenkins como `SONAR_TOKEN`
 - definir `SONAR_PROJECT_KEY` por repo (ej. `yohandry10_git-gov`)
 
+Compatibilidad actual del `Jenkinsfile`:
+- si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `sonar-token` (Secret Text).
+- si `SONAR_PROJECT_KEY` no existe, lo infiere desde el repo (`owner/repo` -> `owner_repo`).
+- la telemetría Sonar se publica en el payload Jenkins con:
+  - `stages[].name = quality_gate`
+  - `stages[].status = OK|WARN|ERROR|SCAN_FAILED|...`
+  - `artifacts[]` con URL de dashboard Sonar cuando está disponible.
+
 #### Migración SCM de job Jenkins (repo nuevo)
 
 Si el job sigue mostrando en consola un remoto anterior u otro repositorio legado, corrige el SCM manualmente:

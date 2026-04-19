@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-18
+Updated: 2026-04-19
 
 ## Completed
 
@@ -29,6 +29,10 @@ Updated: 2026-04-18
   - `Jenkinsfile` now includes stage `Sonar Scan (Optional)`.
   - Stage bootstraps `sonar-scanner` if missing, polls CE task and quality gate via Sonar API.
   - Telemetry publish now includes `quality_gate` stage and optional `sonar_dashboard` artifact.
+  - Fallback credential supported: `sonar-token` (Jenkins Secret Text) when `SONAR_TOKEN` env is not present.
+  - `SONAR_PROJECT_KEY` is auto-inferred from repo name when missing (example: `yohandry10_git-gov`).
+  - Jenkins shell scripts hardened for `/bin/sh` compatibility and secret-safe execution (no token echo in logs).
+  - Event payload contract aligned with backend (`artifacts` as string array).
 - Dashboard Sonar visibility (SQ-03) added:
   - Sonar status badge per commit in recent commits table.
   - Sonar scan/pass/fail/unstable sample metrics in pipeline health widget.
@@ -102,7 +106,7 @@ Updated: 2026-04-18
 
 ## In Progress
 
-- Sonar CI rollout in real environments (GitHub/Jenkins secrets + variables per environment).
+- SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
 - Enforcing required status checks in branch protection (`ci`, `Security Guard`).
 
