@@ -194,7 +194,7 @@ Updated: 2026-04-19
     - `-AllowMissingSonar` (Sonar config optional for personal-account rollout).
     - `-RequireGitGovTelemetry` (enforces `GITGOV_API_KEY` + `GITGOV_URL`).
     - `-NoFailOnForbidden` (best-effort mode when fine-grained token cannot read Actions secrets/variables; reports `UNKNOWN` instead of failing).
-  - `scripts/github/harden_repo_governance.ps1` forwards both flags for end-to-end governance runs.
+  - `scripts/github/harden_repo_governance.ps1` forwards CI preflight flags for end-to-end governance runs (`AllowMissingSonar`, `RequireGitGovTelemetry`, and best-effort `NoFailOnForbidden`).
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 - CI lint stability hardening:

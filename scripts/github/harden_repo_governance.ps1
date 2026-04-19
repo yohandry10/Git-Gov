@@ -88,7 +88,7 @@ if ($SkipCiConfigCheck) {
 } else {
   Write-Host "[2/4] Checking CI repository config (secrets/variables)..."
   try {
-    & $checkCiScript -Owner $Owner -Repo $Repo -GitHubToken $token -AllowMissingSonar:$AllowMissingSonar -RequireGitGovTelemetry:$RequireGitGovTelemetry
+    & $checkCiScript -Owner $Owner -Repo $Repo -GitHubToken $token -AllowMissingSonar:$AllowMissingSonar -RequireGitGovTelemetry:$RequireGitGovTelemetry -NoFailOnForbidden:$BestEffort
   } catch {
     if ($BestEffort) {
       $message = "CI repository config check failed: $($_.Exception.Message)"
