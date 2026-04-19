@@ -194,6 +194,17 @@ powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.p
   -ApplyBranchProtection
 ```
 
+Helper para PR (crea PR por API o imprime URL de compare si el token no tiene permiso `pull_requests`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/create_or_print_pr.ps1 `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Base "main" `
+  -Head "codex/tier-risk-sla-tuning" `
+  -Title "feat: governance hardening bundle"
+```
+
 El orquestador corre preflight de permisos del token al inicio (`check_token_permissions.ps1`).
 Si necesitas omitirlo explícitamente: `-SkipTokenPermissionsCheck`.
 
