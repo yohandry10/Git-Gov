@@ -102,6 +102,9 @@ Updated: 2026-04-19
 - Authorization semantics normalized for admin gates:
   - `require_admin` now returns explicit `403 FORBIDDEN` (instead of `401`) when API key is valid but role is insufficient.
   - Added auth regression test to lock expected forbidden behavior.
+- Public endpoint rate-limiting hardening applied:
+  - Added explicit limiter for `POST /webhooks/github` (`GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN`, default `240`).
+  - Added explicit limiter for invitation public endpoints (`GET /org-invitations/preview/{token}`, `POST /org-invitations/accept`) via `GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN` (default `90`).
 - Conversational bot quality/risk deterministic queries added:
   - `detect_query` now classifies quality gate health questions and release-readiness gate health questions.
   - `detect_query` now also classifies repo-ranking questions (`top repos con quality gate no verde`).
