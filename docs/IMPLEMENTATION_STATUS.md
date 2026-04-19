@@ -70,6 +70,10 @@ Updated: 2026-04-19
   - Supports strict signal coverage mode (`-FailOnMissingSignals`) and custom thresholds (`-MinReadiness`).
   - GitHub Actions workflow `.github/workflows/release-readiness-gate.yml` added (push `main` + manual dispatch), with explicit skip when `GITGOV_URL`/`GITGOV_API_KEY` are missing.
   - Produces JSON artifact with score, signal coverage, and fail reasons per run.
+  - Jenkins pipeline integration added in `Jenkinsfile` as `Release Readiness Gate (Optional)`:
+    - Controlled by env flags (`GITGOV_RELEASE_GATE_*`).
+    - Emits `release_readiness` stage telemetry with score/target/coverage/reasons.
+    - Honors `GITGOV_STRICT` for block vs warn behavior.
 - Executive risk outcomes telemetry (phase 1) added in dashboard:
   - `Risk Outcomes (operativo)` widget now exposes derived KPIs from existing signals:
     - trusted-path rate

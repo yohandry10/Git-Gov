@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurperClassic
 
 pipeline {
   agent any
@@ -16,6 +17,14 @@ pipeline {
     GITGOV_SONAR_PROJECT_KEY = ''
     GITGOV_SONAR_DASHBOARD_URL = ''
     GITGOV_SONAR_HOST_URL = ''
+    // Release readiness gate (optional)
+    GITGOV_RELEASE_GATE_ENABLED = 'false'
+    GITGOV_RELEASE_GATE_TIER = 'standard' // critical|standard|internal
+    GITGOV_RELEASE_GATE_MIN = '0' // 0 => use tier default SLA target
+    GITGOV_RELEASE_GATE_FAIL_MISSING = 'false' // fail when one of the 3 signals is missing
+    GITGOV_RELEASE_GATE_HOURS = '168'
+    GITGOV_RELEASE_GATE_CORRELATION_LIMIT = '500'
+    GITGOV_RELEASE_GATE_ORG_NAME = '' // optional org_name filter for Jira coverage
   }
 
   options {
@@ -290,6 +299,198 @@ dashboard_url=${dashboardValue}
       }
     }
 
+    stage('Release Readiness Gate (Optional)') {
+      steps {
+        script {
+          def persistReleaseMeta = { Map meta ->
+            def statusValue = ((meta.status ?: 'SKIPPED') as String).replace('\n', ' ').replace('\r', ' ')
+            def scoreValue = ((meta.score ?: '0') as String).replace('\n', ' ').replace('\r', ' ')
+            def targetValue = ((meta.target ?: '0') as String).replace('\n', ' ').replace('\r', ' ')
+            def coverageValue = ((meta.coverage ?: '0/3') as String).replace('\n', ' ').replace('\r', ' ')
+            def tierValue = ((meta.tier ?: 'standard') as String).replace('\n', ' ').replace('\r', ' ')
+            def reasonsValue = ((meta.reasons ?: '') as String).replace('\n', ' ').replace('\r', ' ')
+            def warningsValue = ((meta.warnings ?: '') as String).replace('\n', ' ').replace('\r', ' ')
+            writeFile file: 'gitgov-release-readiness.properties', text: """status=${statusValue}
+score=${scoreValue}
+target=${targetValue}
+signal_coverage=${coverageValue}
+tier=${tierValue}
+reasons=${reasonsValue}
+warnings=${warningsValue}
+"""
+          }
+
+          if (!isEnabledFlag(env.GITGOV_RELEASE_GATE_ENABLED)) {
+            echo 'Skipping Release Readiness Gate (GITGOV_RELEASE_GATE_ENABLED=false).'
+            persistReleaseMeta([status: 'SKIPPED'])
+            return
+          }
+
+          def repoName = env.GIT_URL ? env.GIT_URL.replaceFirst('^.*github\\.com[/:]', '').replaceFirst('\\.git$', '') : ''
+          def branchName = (env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown').replaceFirst('^origin/', '')
+          def tier = (env.GITGOV_RELEASE_GATE_TIER ?: 'standard').trim().toLowerCase()
+          def tierProfiles = [
+            critical: [pipeline: 0.5d, traceability: 0.2d, sonar: 0.3d, target: 85],
+            standard: [pipeline: 0.45d, traceability: 0.25d, sonar: 0.3d, target: 75],
+            internal: [pipeline: 0.4d, traceability: 0.2d, sonar: 0.4d, target: 65],
+          ]
+          def profile = tierProfiles.containsKey(tier) ? tierProfiles[tier] : tierProfiles.standard
+          tier = tierProfiles.containsKey(tier) ? tier : 'standard'
+
+          def toIntSafe = { String raw, int fallback ->
+            try {
+              return (raw ?: '').trim() ? Integer.parseInt((raw ?: '').trim()) : fallback
+            } catch (ignored) {
+              return fallback
+            }
+          }
+          def toDoubleSafe = { Object raw, double fallback ->
+            try {
+              return raw == null ? fallback : Double.parseDouble(raw.toString())
+            } catch (ignored) {
+              return fallback
+            }
+          }
+          def clampPercent = { double value ->
+            if (Double.isNaN(value) || Double.isInfinite(value)) {
+              return 0d
+            }
+            return Math.max(0d, Math.min(100d, value))
+          }
+          def parseJsonSafe = { String raw ->
+            if (!raw?.trim()) {
+              return [:]
+            }
+            try {
+              return new JsonSlurperClassic().parseText(raw)
+            } catch (ignored) {
+              return [:]
+            }
+          }
+          def fetchJson = { String path, String outputFile ->
+            def code = sh(
+              script: """
+                set +x
+                curl -sS \
+                  -o ${outputFile} \
+                  -w "%{http_code}" \
+                  -X GET "\${GITGOV_URL%/}${path}" \
+                  -H "Authorization: Bearer \${GITGOV_API_KEY}" \
+                  -H "Content-Type: application/json"
+              """,
+              returnStdout: true
+            ).trim()
+            def raw = fileExists(outputFile) ? readFile(outputFile).trim() : ''
+            return [code: code, raw: raw]
+          }
+
+          def gateHours = Math.max(1, toIntSafe(env.GITGOV_RELEASE_GATE_HOURS, 168))
+          def correlationLimit = Math.max(1, toIntSafe(env.GITGOV_RELEASE_GATE_CORRELATION_LIMIT, 500))
+          def minReadiness = Math.max(0, Math.min(100, toIntSafe(env.GITGOV_RELEASE_GATE_MIN, 0)))
+          def targetReadiness = minReadiness > 0 ? minReadiness : (profile.target as int)
+          def failOnMissingSignals = isEnabledFlag(env.GITGOV_RELEASE_GATE_FAIL_MISSING)
+
+          def warnings = []
+          def failReasons = []
+
+          double ticketCoveragePercent = 0d
+          int ticketTotalCommits = 0
+          double pipelineSuccessRate = 0d
+          int pipelineTotal = 0
+          double sonarPassRate = 0d
+          int sonarTotal = 0
+
+          def ticketCoveragePath = "/integrations/jira/ticket-coverage?repo_full_name=${repoName}&branch=${branchName}&hours=${gateHours}"
+          if ((env.GITGOV_RELEASE_GATE_ORG_NAME ?: '').trim()) {
+            ticketCoveragePath += "&org_name=${env.GITGOV_RELEASE_GATE_ORG_NAME.trim()}"
+          }
+          def ticketResponse = fetchJson(ticketCoveragePath, 'gitgov-release-ticket-coverage.json')
+          if (ticketResponse.code == '200') {
+            def payload = parseJsonSafe(ticketResponse.raw)
+            ticketCoveragePercent = clampPercent(toDoubleSafe(payload.coverage_percentage, 0d))
+            ticketTotalCommits = Math.max(0, (int) toDoubleSafe(payload.total_commits, 0d))
+          } else {
+            warnings << "ticket_coverage_http_${ticketResponse.code}"
+          }
+
+          def correlationsPath = "/integrations/jenkins/correlations?repo_full_name=${repoName}&branch=${branchName}&limit=${correlationLimit}&offset=0"
+          def corrResponse = fetchJson(correlationsPath, 'gitgov-release-correlations.json')
+          if (corrResponse.code == '200') {
+            def payload = parseJsonSafe(corrResponse.raw)
+            def correlations = (payload.correlations instanceof List) ? payload.correlations : []
+            def pipelines = correlations.collect { it?.pipeline }.findAll { it instanceof Map }
+            pipelineTotal = pipelines.size()
+            if (pipelineTotal > 0) {
+              int pipelineSuccess = pipelines.count { ((it.status ?: '').toString().trim().toLowerCase()) == 'success' }
+              pipelineSuccessRate = clampPercent((100d * pipelineSuccess) / pipelineTotal)
+            } else {
+              warnings << 'pipeline_data_empty'
+            }
+
+            def sonarRuns = pipelines.findAll { ((it.job_name ?: '').toString().toLowerCase()).contains('sonar') }
+            sonarTotal = sonarRuns.size()
+            if (sonarTotal > 0) {
+              int sonarSuccess = sonarRuns.count { ((it.status ?: '').toString().trim().toLowerCase()) == 'success' }
+              sonarPassRate = clampPercent((100d * sonarSuccess) / sonarTotal)
+            } else {
+              warnings << 'sonar_data_empty'
+            }
+          } else {
+            warnings << "jenkins_correlations_http_${corrResponse.code}"
+          }
+
+          def signals = [
+            [name: 'pipeline', available: (pipelineTotal > 0), value: pipelineSuccessRate, weight: profile.pipeline],
+            [name: 'traceability', available: (ticketTotalCommits > 0), value: ticketCoveragePercent, weight: profile.traceability],
+            [name: 'sonar', available: (sonarTotal > 0), value: sonarPassRate, weight: profile.sonar],
+          ]
+          def activeSignals = signals.findAll { it.available }
+          int readinessScore = 0
+          if (!activeSignals.isEmpty()) {
+            double totalWeight = activeSignals.collect { (it.weight as double) }.sum() as double
+            if (totalWeight > 0d) {
+              double weighted = activeSignals.collect { (it.value as double) * (it.weight as double) }.sum() as double
+              readinessScore = Math.round(weighted / totalWeight) as int
+            }
+          }
+
+          if (activeSignals.isEmpty()) {
+            failReasons << 'no_release_readiness_signals'
+          }
+          if (failOnMissingSignals && activeSignals.size() < signals.size()) {
+            failReasons << 'missing_signals_strict_mode'
+          }
+          if (!activeSignals.isEmpty() && readinessScore < targetReadiness) {
+            failReasons << 'readiness_below_target'
+          }
+
+          def coverage = "${activeSignals.size()}/${signals.size()}"
+          def outcome = failReasons.isEmpty() ? 'PASS' : (gitgovStrictModeEnabled() ? 'FAIL' : 'WARN')
+
+          persistReleaseMeta([
+            status: outcome,
+            score: readinessScore.toString(),
+            target: targetReadiness.toString(),
+            coverage: coverage,
+            tier: tier,
+            reasons: failReasons.join(';'),
+            warnings: warnings.join(';'),
+          ])
+
+          echo "Release readiness gate => status=${outcome}, score=${readinessScore}, target=${targetReadiness}, coverage=${coverage}, tier=${tier}"
+          if (!warnings.isEmpty()) {
+            echo "Release readiness warnings: ${warnings.join('; ')}"
+          }
+
+          if (outcome == 'FAIL') {
+            error("Release readiness gate failed: ${failReasons.join('; ')}")
+          } else if (outcome == 'WARN') {
+            echo "Release readiness gate warning (non-strict): ${failReasons.join('; ')}"
+          }
+        }
+      }
+    }
+
     stage('Build') {
       steps {
         echo 'Reemplaza este stage con tu build real'
@@ -331,6 +532,14 @@ def notifyGitGov(String status) {
   def sonarProjectKey = (sonarMeta.project_key ?: env.GITGOV_SONAR_PROJECT_KEY ?: '').trim()
   def sonarHostUrl = (sonarMeta.host_url ?: env.GITGOV_SONAR_HOST_URL ?: '').trim()
   def sonarDashboardUrl = (sonarMeta.dashboard_url ?: env.GITGOV_SONAR_DASHBOARD_URL ?: '').trim()
+  def readinessMeta = loadSimplePropertiesFile('gitgov-release-readiness.properties')
+  def readinessStatus = (readinessMeta.status ?: '').trim().toUpperCase()
+  def readinessScore = (readinessMeta.score ?: '').trim()
+  def readinessTarget = (readinessMeta.target ?: '').trim()
+  def readinessCoverage = (readinessMeta.signal_coverage ?: '').trim()
+  def readinessTier = (readinessMeta.tier ?: '').trim()
+  def readinessReasons = (readinessMeta.reasons ?: '').trim()
+  def readinessWarnings = (readinessMeta.warnings ?: '').trim()
 
   def stagesPayload = []
   if (sonarStatus && sonarStatus != 'NOT_RUN') {
@@ -342,6 +551,22 @@ def notifyGitGov(String status) {
         provider   : 'sonarqube',
         project_key: sonarProjectKey,
         host_url   : sonarHostUrl,
+      ],
+    ]
+  }
+
+  if (readinessStatus && !['NOT_RUN', 'SKIPPED'].contains(readinessStatus)) {
+    stagesPayload << [
+      name       : 'release_readiness',
+      status     : readinessStatus,
+      duration_ms: null,
+      metadata   : [
+        score          : readinessScore,
+        target         : readinessTarget,
+        signal_coverage: readinessCoverage,
+        tier           : readinessTier,
+        reasons        : readinessReasons,
+        warnings       : readinessWarnings,
       ],
     ]
   }
@@ -394,9 +619,13 @@ def notifyGitGov(String status) {
   }
 }
 
+def isEnabledFlag(String raw) {
+  def value = (raw ?: '').trim().toLowerCase()
+  return ['1', 'true', 'yes', 'on'].contains(value)
+}
+
 def gitgovStrictModeEnabled() {
-  def raw = (env.GITGOV_STRICT ?: 'false').trim().toLowerCase()
-  return ['1', 'true', 'yes', 'on'].contains(raw)
+  return isEnabledFlag(env.GITGOV_STRICT ?: 'false')
 }
 
 def ensureSonarScannerBinary() {

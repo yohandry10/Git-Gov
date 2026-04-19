@@ -66,6 +66,14 @@ Compatibilidad actual del `Jenkinsfile`:
   - `stages[].name = quality_gate`
   - `stages[].status = OK|WARN|ERROR|SCAN_FAILED|...`
   - `artifacts[]` con URL de dashboard Sonar cuando está disponible.
+- release readiness gate opcional integrado:
+  - stage `Release Readiness Gate (Optional)` en `Jenkinsfile`.
+  - habilitar con `GITGOV_RELEASE_GATE_ENABLED=true`.
+  - perfil por tier: `GITGOV_RELEASE_GATE_TIER=critical|standard|internal`.
+  - umbral opcional: `GITGOV_RELEASE_GATE_MIN` (`0` usa target del tier).
+  - modo estricto de señales: `GITGOV_RELEASE_GATE_FAIL_MISSING=true`.
+  - ventana/volumen: `GITGOV_RELEASE_GATE_HOURS`, `GITGOV_RELEASE_GATE_CORRELATION_LIMIT`.
+  - resultado se publica como stage `release_readiness` en telemetría Jenkins (`/integrations/jenkins`).
 
 #### Migración SCM de job Jenkins (repo nuevo)
 
@@ -826,6 +834,9 @@ Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 - consulta CE task + `quality gate` vía API Sonar y guarda estado en telemetría.
 - publica stage `quality_gate` en `/integrations/jenkins` junto con artifact `sonar_dashboard` cuando aplica.
 - si `GITGOV_STRICT=true`, errores de Sonar/telemetría escalan a fallo de build.
+- stage `Release Readiness Gate (Optional)` calcula score por `repo+branch+tier` con datos de Jira/Jenkins/Sonar en Control Plane.
+- en `GITGOV_STRICT=true`, un gate fallido (`readiness_below_target`, sin señales, etc.) falla el build.
+- en modo no estricto, el gate registra `WARN` y continúa (telemetría conserva `reasons/warnings`).
 
 Preflight de configuración CI del repo (GitHub Actions):
 
