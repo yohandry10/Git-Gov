@@ -771,6 +771,18 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
   -Repo "Git-Gov"
 ```
 
+Diagnóstico rápido de permisos del token:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main"
+```
+
+Si devuelve `403`, revisa la columna `Accepted permissions hint` para habilitar exactamente ese permiso en el token.
+
 Resultado esperado:
 - `PASS` si secrets/variables requeridos para el modo elegido están presentes.
 - Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
