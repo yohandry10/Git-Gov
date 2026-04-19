@@ -65,6 +65,11 @@ Updated: 2026-04-19
 - Release readiness scoring (phase 1) added in dashboard:
   - Composite `0-100` score from Jenkins success rate + Jira coverage + Sonar pass rate.
   - Displays signal coverage (`n/3`) to indicate confidence when one source is missing.
+- Release readiness gate (SQ-10 phase 2) added for CI/ops:
+  - New script `scripts/jenkins/validate_release_readiness_gate.ps1` evaluates readiness by `repo+branch+tier` and exits non-zero when below target.
+  - Supports strict signal coverage mode (`-FailOnMissingSignals`) and custom thresholds (`-MinReadiness`).
+  - GitHub Actions workflow `.github/workflows/release-readiness-gate.yml` added (push `main` + manual dispatch), with explicit skip when `GITGOV_URL`/`GITGOV_API_KEY` are missing.
+  - Produces JSON artifact with score, signal coverage, and fail reasons per run.
 - Executive risk outcomes telemetry (phase 1) added in dashboard:
   - `Risk Outcomes (operativo)` widget now exposes derived KPIs from existing signals:
     - trusted-path rate

@@ -153,7 +153,46 @@ Automatización en GitHub Actions:
   - Variable: `GITGOV_URL`
   - Secret: `GITGOV_API_KEY`
 - Comportamiento sin configuración:
-  - El job hace `skip` explícito (no rompe CI) cuando faltan `GITGOV_URL`/`GITGOV_API_KEY`.
+- El job hace `skip` explícito (no rompe CI) cuando faltan `GITGOV_URL`/`GITGOV_API_KEY`.
+
+#### Gate de release readiness por rama (SQ-10 fase 2)
+
+Validación ejecutable para bloquear/promover release por score de readiness en una rama específica.
+
+Ejecución local:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -Branch "main" `
+  -Tier "standard"
+```
+
+Modo estricto (falla si falta cualquier señal):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -Branch "main" `
+  -Tier "critical" `
+  -FailOnMissingSignals
+```
+
+Automatización GitHub Actions:
+
+- Workflow: `.github/workflows/release-readiness-gate.yml`
+- Trigger:
+  - `push` a `main`
+  - `workflow_dispatch` manual (tier/branch/repo/target/strict)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Salida:
+  - Artifact JSON `release-readiness-gate-<run_id>.json` con score, cobertura de señales, métricas y razones de fallo.
 
 #### Branch protection (checks requeridos en GitHub)
 
