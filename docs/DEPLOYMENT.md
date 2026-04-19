@@ -74,13 +74,13 @@ Si el job sigue mostrando en consola un remoto anterior u otro repositorio legad
 1. Jenkins -> abrir job -> **Configurar**.
 2. En **Pipeline > Definition: Pipeline script from SCM**:
    - **SCM**: `Git`
-   - **Repository URL**: `https://github.com/yohandry10/Git-Gov.git`
+   - **Repository URL**: `https://github.com/<owner>/<repo>.git`
    - **Credentials**: seleccionar token/credencial GitHub (si aplica).
    - **Branches to build**: `*/main`
 3. Guardar.
 4. Ejecutar **Build Now**.
 5. Verificar en consola:
-   - `Fetching upstream changes from https://github.com/yohandry10/Git-Gov`
+   - `Fetching upstream changes from https://github.com/<owner>/<repo>`
    - que no aparezca referencia a repo legacy.
 
 Verificación automática (Jenkins API):
@@ -89,7 +89,7 @@ Verificación automática (Jenkins API):
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/check_job_repo.ps1 `
   -JenkinsUrl "http://127.0.0.1:8096" `
   -JobName "gitgov-demo-pipeline" `
-  -ExpectedRepoUrl "https://github.com/yohandry10/Git-Gov.git" `
+  -ExpectedRepoUrl "https://github.com/<owner>/<repo>.git" `
   -Username "<JENKINS_USER>" `
   -ApiTokenOrPassword "<JENKINS_API_TOKEN_OR_PASSWORD>"
 ```
