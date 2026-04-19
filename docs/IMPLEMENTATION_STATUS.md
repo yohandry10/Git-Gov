@@ -104,6 +104,8 @@ Updated: 2026-04-19
 - Correlation smoke automation added:
   - New script `scripts/jenkins/validate_commit_pipeline_correlation.ps1`.
   - Validates `/events` ingest + `/integrations/jenkins/correlations` match for a commit SHA (optional pipeline injection for test bootstrap).
+  - Supports optional `JENKINS_WEBHOOK_SECRET` via `-JenkinsSecret` when backend enforcement is enabled.
+  - Wired into GitHub Actions via `.github/workflows/governance-correlation-smoke.yml` (push/main + manual dispatch, non-blocking, auto-skip when config is missing).
   - Deployment guide includes execution commands.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
@@ -137,9 +139,8 @@ Updated: 2026-04-19
    - Current live status: `SONAR_PROJECT_KEY` and `SONAR_HOST_URL` configured.
    - Pending for Sonar scan mode: `SONAR_TOKEN`.
    - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
-2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
-3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
-4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
+2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
+3. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 
 ## Required GitHub Configuration (for Sonar workflow)
 

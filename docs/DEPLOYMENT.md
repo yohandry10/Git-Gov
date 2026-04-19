@@ -115,6 +115,13 @@ powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipelin
   -InjectPipelineIfMissing
 ```
 
+Automatización en GitHub Actions (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/governance-correlation-smoke.yml`
+- Trigger: `push` a `main` + `workflow_dispatch`
+- Si faltan `GITGOV_URL` o `GITGOV_API_KEY`, el workflow se salta en `PASS` (skip explícito).
+- Si `JENKINS_WEBHOOK_SECRET` está activo en backend, configurar `GITGOV_JENKINS_SECRET` (secret opcional) para que el smoke pueda publicar en `/integrations/jenkins`.
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.

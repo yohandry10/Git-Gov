@@ -1,6 +1,7 @@
 param(
   [string]$GitGovUrl = "http://127.0.0.1:3001",
   [string]$ApiKey,
+  [string]$JenkinsSecret = "",
   [string]$RepoFullName = "yohandry10/Git-Gov",
   [string]$CommitSha = "",
   [string]$Branch = "main",
@@ -28,6 +29,12 @@ function Invoke-GitGovJson {
   $headers = @{
     Authorization = "Bearer $ApiKey"
     "Content-Type" = "application/json"
+  }
+  if (
+    -not [string]::IsNullOrWhiteSpace($JenkinsSecret) `
+    -and $Path.StartsWith("/integrations/jenkins", [System.StringComparison]::OrdinalIgnoreCase)
+  ) {
+    $headers["x-gitgov-jenkins-secret"] = $JenkinsSecret
   }
 
   try {
