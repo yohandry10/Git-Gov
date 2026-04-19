@@ -194,6 +194,9 @@ powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.p
   -ApplyBranchProtection
 ```
 
+El orquestador corre preflight de permisos del token al inicio (`check_token_permissions.ps1`).
+Si necesitas omitirlo explícitamente: `-SkipTokenPermissionsCheck`.
+
 Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto-aprobación):
 
 ```powershell
