@@ -125,10 +125,20 @@ dashboard_url=${dashboardValue}
             ).trim()
 
             if (dashboardUrl) {
-              sonarDashboardUrl = dashboardUrl
+              if (sonarProjectKey && (dashboardUrl.endsWith('id') || dashboardUrl.endsWith('id='))) {
+                sonarDashboardUrl = "${dashboardUrl}${sonarProjectKey}"
+              } else {
+                sonarDashboardUrl = dashboardUrl
+              }
             }
             if (serverUrl) {
               sonarHostUrl = serverUrl
+            }
+            if (!sonarDashboardUrl && sonarProjectKey) {
+              def normalizedHost = sonarHostUrl?.endsWith('/') ? sonarHostUrl[0..-2] : sonarHostUrl
+              if (normalizedHost) {
+                sonarDashboardUrl = "${normalizedHost}/dashboard?id=${sonarProjectKey}"
+              }
             }
 
             if (!ceTaskId) {
