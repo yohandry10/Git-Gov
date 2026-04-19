@@ -1,0 +1,111 @@
+name: Risk Tier Baseline Calibration
+
+on:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Tier profile used for scoring"
+        required: false
+        default: "standard"
+        type: choice
+        options:
+          - critical
+          - standard
+          - internal
+      org_name:
+        description: "Optional org_name filter for Jira coverage"
+        required: false
+        default: ""
+        type: string
+      hours:
+        description: "Lookback window in hours"
+        required: false
+        default: "168"
+        type: string
+      correlation_limit:
+        description: "Max Jenkins correlations to analyze"
+        required: false
+        default: "500"
+        type: string
+  schedule:
+    - cron: "0 12 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  calibrate:
+    name: Calibrate Risk/Readiness Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Precheck required configuration
+        id: precheck
+        shell: bash
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GITGOV_URL:-}" || -z "${GITGOV_API_KEY:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_gitgov_url_or_api_key" >> "$GITHUB_OUTPUT"
+            echo "Skipping calibration: missing GITGOV_URL or GITGOV_API_KEY."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run calibration report
+        id: calibration
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        shell: pwsh
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+        run: |
+          $tier = "${{ github.event.inputs.tier }}"
+          if ([string]::IsNullOrWhiteSpace($tier)) { $tier = "standard" }
+
+          $orgName = "${{ github.event.inputs.org_name }}"
+
+          $hours = "${{ github.event.inputs.hours }}"
+          if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
+
+          $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
+          if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
+
+          $outputPath = "docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md"
+
+          $args = @(
+            "-GitGovUrl", $env:GITGOV_URL,
+            "-ApiKey", $env:GITGOV_API_KEY,
+            "-Tier", $tier,
+            "-Hours", $hours,
+            "-CorrelationLimit", $correlationLimit,
+            "-OutputPath", $outputPath
+          )
+
+          if (-not [string]::IsNullOrWhiteSpace($orgName)) {
+            $args += @("-OrgName", $orgName)
+          }
+
+          & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 @args
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "report_path=$outputPath"
+
+      - name: Upload calibration artifact
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: risk-tier-baseline-${{ github.run_id }}
+          path: ${{ steps.calibration.outputs.report_path }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Skip notice
+        if: ${{ steps.precheck.outputs.enabled != 'true' }}
+        run: echo "Risk-tier calibration skipped (reason=${{ steps.precheck.outputs.reason }})."

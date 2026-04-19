@@ -143,6 +143,18 @@ El script calcula:
 Salida:
 - Reporte markdown en `docs/reports/risk-tier-baseline-<timestamp>.md`.
 
+Automatización en GitHub Actions:
+
+- Workflow: `.github/workflows/risk-tier-baseline-calibration.yml`
+- Trigger:
+  - `schedule` semanal: lunes 12:00 UTC
+  - `workflow_dispatch` manual (inputs: `tier`, `org_name`, `hours`, `correlation_limit`)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Comportamiento sin configuración:
+  - El job hace `skip` explícito (no rompe CI) cuando faltan `GITGOV_URL`/`GITGOV_API_KEY`.
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.

@@ -76,6 +76,7 @@ Updated: 2026-04-19
   - `scripts/control-plane/calibrate_risk_tier_baseline.ps1` computes release readiness + composite risk + KPI snapshot by tier from live Control Plane APIs.
   - Exports markdown evidence to `docs/reports/risk-tier-baseline-<timestamp>.md`.
   - Deployment runbook updated with execution command and expected output.
+  - GitHub Actions scheduler/manual trigger added: `.github/workflows/risk-tier-baseline-calibration.yml` (weekly Monday 12:00 UTC, skips cleanly when `GITGOV_URL`/`GITGOV_API_KEY` are missing).
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:
