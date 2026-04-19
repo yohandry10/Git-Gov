@@ -91,13 +91,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
           cache-dependency-path: gitgov-web/pnpm-lock.yaml
-      - name: Enable Corepack
-        run: corepack enable
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Clean Next build cache

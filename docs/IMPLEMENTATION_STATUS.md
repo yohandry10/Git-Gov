@@ -90,6 +90,7 @@ Updated: 2026-04-19
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
   - Job order hardened for clean runners (`build` before standalone `typecheck`) to ensure `.next/types` is present.
   - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.
+  - Added explicit `pnpm/action-setup@v4` bootstrap before `actions/setup-node@v4` cache resolution (prevents `pnpm` missing executable failures on hosted runners).
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
   - `scripts/jenkins/check_job_repo.ps1` validates Jenkins job SCM URL via `config.xml` and fails on legacy repo markers.
