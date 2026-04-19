@@ -488,7 +488,8 @@ curl http://127.0.0.1:3000/health
 curl -H "Authorization: Bearer <ADMIN_API_KEY>" http://127.0.0.1:3000/stats
 
 # 2) Crear policy change request (developer o admin)
-curl -X POST "http://127.0.0.1:3000/policy/<owner>/<repo>/requests" \
+# repo path debe ir URL-encoded (ej: yohandry10%2FGit-Gov)
+curl -X POST "http://127.0.0.1:3000/policy/<repo_full_name_urlencoded>/requests" \
   -H "Authorization: Bearer <DEV_OR_ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"config":{"branches":{"protected":["main"],"patterns":["feat/*"]},"rules":{"require_pull_request":true},"enforcement":{"pull_requests":"warn","commits":"off","branches":"warn","traceability":"off","quality_gates":"warn"}},"reason":"post-deploy check"}'
