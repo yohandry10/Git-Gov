@@ -282,14 +282,14 @@ pub async fn ingest_jira_webhook(
         &state,
         auth_user.org_id.as_deref(),
         requested_org_name.as_deref(),
-        false,
+        true,
     )
     .await
     {
         Ok(org_id) => org_id,
         Err(err) => {
             let error = match err {
-                OrgScopeError::BadRequest => "Invalid org scope for Jira payload",
+                OrgScopeError::BadRequest => "org_name is required for global admin keys",
                 OrgScopeError::NotFound => "Organization not found for Jira org hint",
                 OrgScopeError::Forbidden => "Requested org is outside API key scope",
                 OrgScopeError::Internal => "Internal database error while resolving org scope",

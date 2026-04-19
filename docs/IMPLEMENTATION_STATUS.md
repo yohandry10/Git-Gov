@@ -105,6 +105,9 @@ Updated: 2026-04-19
 - Public endpoint rate-limiting hardening applied:
   - Added explicit limiter for `POST /webhooks/github` (`GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN`, default `240`).
   - Added explicit limiter for invitation public endpoints (`GET /org-invitations/preview/{token}`, `POST /org-invitations/accept`) via `GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN` (default `90`).
+- Jira ingest org scoping hardened:
+  - `POST /integrations/jira` now enforces strict org scope resolution for global admin keys (requires `org_name` hint), preventing `project_tickets.org_id = NULL` ingestion paths.
+  - Error contract for this path is now explicit: `org_name is required for global admin keys`.
 - OpenAPI/Swagger claim adjusted to reflect real scope:
   - `/api-docs` is now described as a schema explorer (partial), preventing mismatch with full operational route coverage.
   - OpenAPI info description now points to `docs/ARCHITECTURE.md` + `main.rs` route table as source of truth until full path annotation rollout.
