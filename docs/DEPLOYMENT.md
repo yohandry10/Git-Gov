@@ -733,7 +733,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
 
 Resultado esperado:
 - `PASS` si secrets/variables requeridos están presentes.
-- Los scripts también aceptan token por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`) si no se pasa `-GitHubToken`.
+- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`).
 
 Bootstrap de variables CI (sin tocar secrets):
 
