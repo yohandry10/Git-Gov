@@ -123,7 +123,6 @@ Updated: 2026-04-19
 
 - SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
-- Enforcing required status checks in branch protection (`ci`, `Security Guard`).
 
 ## Next Technical Steps
 
@@ -133,7 +132,6 @@ Updated: 2026-04-19
 2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
-5. Mark `Security Guard` as a required check on `main`.
 
 ## Required GitHub Configuration (for Sonar workflow)
 
