@@ -120,11 +120,7 @@ jobs:
               }
             ],
             "artifacts": [
-              {
-                "name": "sonar_dashboard",
-                "type": "url",
-                "url": "${sonar_url}"
-              }
+              "${sonar_url}"
             ]
           }
           JSON

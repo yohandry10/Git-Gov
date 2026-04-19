@@ -147,7 +147,14 @@ dashboard_url=${dashboardValue}
                 def ceTaskRaw = sh(
                   script: '''
                     set +x
-                    curl -fsS -u "${SONAR_TOKEN}:" "${SQ_HOST_URL%/}/api/ce/task?id=${SQ_CE_TASK_ID}"
+                    set -e
+                    url="${SQ_HOST_URL%/}/api/ce/task?id=${SQ_CE_TASK_ID}"
+                    if body="$(curl -fsS -u "${SONAR_TOKEN}:" "$url")"; then
+                      :
+                    else
+                      body="$(curl -fsS "$url")"
+                    fi
+                    printf '%s' "$body"
                   ''',
                   returnStdout: true
                 ).trim()
@@ -176,7 +183,14 @@ dashboard_url=${dashboardValue}
               def gateRaw = sh(
                 script: '''
                   set +x
-                  curl -fsS -u "${SONAR_TOKEN}:" "${SQ_HOST_URL%/}/api/qualitygates/project_status?analysisId=${SQ_ANALYSIS_ID}"
+                  set -e
+                  url="${SQ_HOST_URL%/}/api/qualitygates/project_status?analysisId=${SQ_ANALYSIS_ID}"
+                  if body="$(curl -fsS -u "${SONAR_TOKEN}:" "$url")"; then
+                    :
+                  else
+                    body="$(curl -fsS "$url")"
+                  fi
+                  printf '%s' "$body"
                 ''',
                   returnStdout: true
                 ).trim()
@@ -320,11 +334,7 @@ def notifyGitGov(String status) {
 
   def artifactsPayload = []
   if (sonarDashboardUrl) {
-    artifactsPayload << [
-      name: 'sonar_dashboard',
-      type: 'url',
-      url : sonarDashboardUrl,
-    ]
+    artifactsPayload << sonarDashboardUrl
   }
 
   def payload = JsonOutput.toJson([
