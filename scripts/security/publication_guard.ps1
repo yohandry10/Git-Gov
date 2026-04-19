@@ -38,7 +38,12 @@ if ($trackedEnv.Count -gt 0) {
 if (-not $SkipLegacyScan) {
   Write-Host ""
   Write-Host "[3/3] Checking legacy repository markers..."
-  $legacyResult = git grep -n -i -E "m'apfrepe|m'apfre" -- . 2>$null
+  # Build the regex dynamically to avoid self-matching the literal marker text in this file.
+  $legacyRegex = @(
+    ("ma" + "pfrepe"),
+    ("ma" + "pfre")
+  ) -join "|"
+  $legacyResult = git grep -n -i -E "$legacyRegex" -- . ':!scripts/security/publication_guard.ps1' 2>$null
   if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($legacyResult)) {
     Write-Host "[FAIL] Legacy repository markers detected:"
     $legacyResult -split "`n" | ForEach-Object {
