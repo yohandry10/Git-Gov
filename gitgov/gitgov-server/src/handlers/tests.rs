@@ -539,6 +539,7 @@ mod tests {
                 Some(ChatQuery::DevelopersWithNonGreenQualityGate { .. }) => "developer_quality_gate_top",
                 Some(ChatQuery::QualityGateHealthWindow { .. }) => "quality_gate_health",
                 Some(ChatQuery::ReleaseReadinessTopFailingRepos { .. }) => "readiness_top_repos",
+                Some(ChatQuery::ReleaseReadinessTopFailingBranches { .. }) => "readiness_top_branches",
                 Some(ChatQuery::ReleaseReadinessHealthWindow { .. }) => "release_readiness_health",
                 Some(ChatQuery::OnlineDevelopersNow { .. }) => "online_devs",
                 Some(ChatQuery::CommitsWithoutTicketWindow { .. }) => "commits_no_ticket",
@@ -599,6 +600,7 @@ mod tests {
             ("top 5 tickets en prod con quality gate en rojo", "ticket_prod_quality_gate_top"),
             ("top 5 developers con quality gate en rojo", "developer_quality_gate_top"),
             ("top 3 repos con release readiness fail", "readiness_top_repos"),
+            ("top 3 ramas con release readiness fail", "readiness_top_branches"),
             ("resumen de quality gate en esta semana", "quality_gate_health"),
             ("estado release readiness gate este mes", "release_readiness_health"),
         ];

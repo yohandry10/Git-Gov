@@ -110,6 +110,7 @@ Updated: 2026-04-19
     - release-readiness gate outcomes (`pass/warn/fail/other`, affected repos/commits)
     - ranked repositories with highest non-green quality-gate volume in a selected window.
     - ranked repositories with highest release-readiness `FAIL` volume in a selected window.
+    - ranked branches with highest release-readiness `FAIL` volume in a selected window.
   - Backed by new DB aggregations over `pipeline_events` + `noncompliance_signals` with window support (`24h/7d/30d` via query intent).
   - Classification regression tests updated and passing.
 - Documentation/API contract drift (P0 docs pass) reduced:

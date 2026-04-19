@@ -8,6 +8,7 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
             | ChatQuery::DevelopersWithNonGreenQualityGate { .. }
             | ChatQuery::QualityGateHealthWindow { .. }
             | ChatQuery::ReleaseReadinessTopFailingRepos { .. }
+            | ChatQuery::ReleaseReadinessTopFailingBranches { .. }
             | ChatQuery::ReleaseReadinessHealthWindow { .. }
             | ChatQuery::OnlineDevelopersNow { .. }
             | ChatQuery::CommitsWithoutTicketWindow { .. }
@@ -1773,6 +1774,123 @@ Signals policy_violation (quality_gate_green, no resueltas): {policy_violation_s
                         ChatAskResponse {
                             status: "error".to_string(),
                             answer: "Error consultando ranking de repos con release readiness FAIL".to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
+        }
+        Some(ChatQuery::ReleaseReadinessTopFailingBranches { hours, limit }) => {
+            match state
+                .db
+                .chat_query_release_readiness_top_failing_branches(
+                    scoped_org_id.as_deref(),
+                    hours,
+                    limit,
+                )
+                .await
+            {
+                Ok(rows) => {
+                    if rows.is_empty() {
+                        return finalize_chat_response(
+                            &state,
+                            &conversation_key,
+                            &mut session,
+                            &nlp,
+                            StatusCode::OK,
+                            ChatAskResponse {
+                                status: "ok".to_string(),
+                                answer: format!(
+                                    "No se detectaron ramas con release readiness FAIL en las últimas {}h.",
+                                    hours
+                                ),
+                                missing_capability: None,
+                                can_report_feature: false,
+                                data_refs: vec!["pipeline_events".to_string()],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: Some(format!("last_{}h", hours)),
+                                actions_recommended: vec![],
+                                confidence: Some(0.8),
+                                trace_id: None,
+                            },
+                        );
+                    }
+
+                    let mut lines = Vec::with_capacity(rows.len());
+                    for (idx, item) in rows.iter().enumerate() {
+                        let branch_name = item
+                            .get("branch_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let fail_runs = item.get("fail_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let total_runs = item.get("total_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let fail_pct = item.get("fail_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        lines.push(format!(
+                            "{}. {} -> fail: {}/{} ({:.1}%)",
+                            idx + 1,
+                            branch_name,
+                            fail_runs,
+                            total_runs,
+                            fail_pct
+                        ));
+                    }
+
+                    let answer = format!(
+                        "Top ramas con release readiness FAIL (últimas {hours}h, top {limit}):\n{lines}",
+                        hours = hours,
+                        limit = limit,
+                        lines = lines.join("\n")
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec!["pipeline_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: vec![
+                                "Priorizar estabilización en ramas con mayor ratio de FAIL".to_string(),
+                                "Revisar reglas por tier antes de promover merges desde esas ramas".to_string(),
+                            ],
+                            confidence: Some(0.88),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "chat_query_release_readiness_top_failing_branches error: {}",
+                        e
+                    );
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer:
+                                "Error consultando ranking de ramas con release readiness FAIL"
+                                    .to_string(),
                             missing_capability: None,
                             can_report_feature: false,
                             data_refs: vec![],

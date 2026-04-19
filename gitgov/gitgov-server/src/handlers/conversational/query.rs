@@ -380,6 +380,24 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             || q.contains("falla")
             || q.contains("fallan")
             || q.contains("fallando"));
+    let asks_release_readiness_branch_ranking = (q.contains("release readiness")
+        || q.contains("readiness gate")
+        || q.contains("gate de release")
+        || q.contains("gate de despliegue"))
+        && (q.contains("rama")
+            || q.contains("ramas")
+            || q.contains("branch")
+            || q.contains("branches"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fail")
+            || q.contains("falla")
+            || q.contains("fallan")
+            || q.contains("fallando"));
 
     let parse_date = |s: &str| -> Option<i64> {
         chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
@@ -522,6 +540,22 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             .map(|v| v.clamp(1, 20))
             .unwrap_or(5);
         return Some(ChatQuery::ReleaseReadinessTopFailingRepos { hours, limit });
+    }
+
+    if asks_release_readiness_branch_ranking {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::ReleaseReadinessTopFailingBranches { hours, limit });
     }
 
     if asks_release_readiness_health {

@@ -794,6 +794,10 @@ enum ChatQuery {
         hours: i64,
         limit: i64,
     },
+    ReleaseReadinessTopFailingBranches {
+        hours: i64,
+        limit: i64,
+    },
     ReleaseReadinessHealthWindow {
         hours: i64,
     },
