@@ -778,6 +778,10 @@ enum ChatQuery {
     QualityGateHealthWindow {
         hours: i64,
     },
+    ReleaseReadinessTopFailingRepos {
+        hours: i64,
+        limit: i64,
+    },
     ReleaseReadinessHealthWindow {
         hours: i64,
     },
