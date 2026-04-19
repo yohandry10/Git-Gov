@@ -6,7 +6,8 @@ param(
   [switch]$ApplyBranchProtection,
   [switch]$SkipCiConfigCheck,
   [switch]$AllowMissingSonar,
-  [switch]$RequireGitGovTelemetry
+  [switch]$RequireGitGovTelemetry,
+  [int]$RequiredApprovals = 1
 )
 
 Set-StrictMode -Version Latest
@@ -24,6 +25,11 @@ if ($tokenCandidates.Count -eq 0) {
 }
 $token = $tokenCandidates[0]
 
+if ($RequiredApprovals -lt 0) {
+  Write-Error "RequiredApprovals must be >= 0."
+  exit 1
+}
+
 Write-Host "GitGov governance hardening"
 Write-Host ("Target repo: {0}/{1} (branch: {2})" -f $Owner, $Repo, $Branch)
 Write-Host ""
@@ -39,7 +45,7 @@ if (-not $SkipCiConfigCheck) {
 
 if ($ApplyBranchProtection) {
   Write-Host "[2/3] Applying branch protection required checks..."
-  & $setChecksScript -Owner $Owner -Repo $Repo -Branch $Branch -GitHubToken $token
+  & $setChecksScript -Owner $Owner -Repo $Repo -Branch $Branch -GitHubToken $token -RequiredApprovals $RequiredApprovals
   Write-Host ""
 } else {
   Write-Host "[2/3] Dry run mode (branch protection not applied)."
