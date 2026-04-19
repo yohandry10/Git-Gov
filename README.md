@@ -47,10 +47,14 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 - ✅ Auditoría centralizada
 - ✅ Sitio público (marketing/docs/download) en Next.js 15.5
 - ✅ Chat de gobernanza en dashboard desktop (`/chat/ask`) para consultas tipo:
-  - quién hizo commits/pushes
-  - rangos de fechas
-  - pushes bloqueados / sin ticket
+  - Operacionales: quién hizo commits/pushes, rangos de fechas, actividad por usuario
+  - Riesgo/calidad: pushes bloqueados/sin ticket, quality gates no verdes, tickets en riesgo
+  - Readiness: resumen de release-readiness y ranking de repos/ramas con fallos
+  - Acceso: perfil de usuario y estado de clave (sin exponer secretos)
+  - Roles permitidos: `Admin`, `Architect`, `PM`
 - ✅ Editor de políticas en dashboard desktop para definir ramas y reglas (guardado en Control Plane)
+
+> Nota: métricas de quality gate/readiness dependen de tener telemetría Jenkins/Jira/Sonar configurada.
 
 ### Alcance del Dashboard Desktop
 

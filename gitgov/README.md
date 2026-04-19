@@ -170,7 +170,7 @@ curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:3000/stats
 | **Correlación** | client_event ↔ github_event por commit_sha | ✅ |
 | **Bypass Detection** | Señales de noncompliance con confidence scoring | ✅ |
 | **Policy Versioning** | Historial automático de cambios de gitgov.toml | ✅ |
-| **Export** | PDF/Excel/JSON con hash SHA256 | ✅ |
+| **Export** | JSON/CSV con hash SHA256 | ✅ |
 | **Offline Queue** | Outbox JSONL + backoff exponencial | ✅ |
 | **Control Plane Dashboard** | Estadísticas y eventos en tiempo real | ✅ |
 | **Event Pipeline E2E** | Desktop → Server → Dashboard | ✅ |
@@ -391,7 +391,7 @@ admins = ["admin-user"]
 
 ## Roadmap Comercial
 
-Ver [GITGOV_ROADMAP_COMERCIAL_v2.md](./GITGOV_ROADMAP_COMERCIAL_v2.md) para detalles.
+Roadmap comercial gestionado como artefacto interno de producto.
 
 ### V1.0 ✅
 - ✅ Correlation engine
@@ -401,9 +401,9 @@ Ver [GITGOV_ROADMAP_COMERCIAL_v2.md](./GITGOV_ROADMAP_COMERCIAL_v2.md) para deta
 - ✅ Noncompliance signals
 
 ### V1.1
-- [ ] Drift detection
-- [ ] Checklist antes del push
-- [ ] Integración Jira
+- [x] Drift detection
+- [x] Checklist antes del push
+- [x] Integración Jira
 
 ### V2.0
 - [ ] Multi-provider (GitLab, Bitbucket)
@@ -421,11 +421,9 @@ Ver [GITGOV_ROADMAP_COMERCIAL_v2.md](./GITGOV_ROADMAP_COMERCIAL_v2.md) para deta
 
 | Documento | Descripción |
 |-----------|-------------|
-| [QUICKSTART.md](./docs/QUICKSTART.md) | Guía de inicio rápido (5 min) |
-| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Arquitectura detallada del sistema |
-| [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Solución de problemas comunes |
-| [Plan Maestro](./docs/GITGOV_PLAN_CLAUDE_CODE.md) | Plan original del proyecto |
-| [Roadmap Comercial](./docs/GITGOV_ROADMAP_COMERCIAL_v2.md) | Roadmap de negocio |
+| [QUICKSTART.md](../docs/QUICKSTART.md) | Guía de inicio rápido (5 min) |
+| [ARCHITECTURE.md](../docs/ARCHITECTURE.md) | Arquitectura detallada del sistema |
+| [TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md) | Solución de problemas comunes |
 | [Server README](./gitgov-server/README.md) | Documentación del servidor |
 
 ## Licencia

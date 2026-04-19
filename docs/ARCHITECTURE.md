@@ -96,7 +96,10 @@ Dentro del dashboard desktop existen dos capacidades distintas:
   - UI: `gitgov/src/components/control_plane/ConversationalChatPanel.tsx`
   - Cliente desktop → server: `gitgov/src-tauri/src/control_plane/server.rs` (`/chat/ask`)
   - Backend de consultas: `gitgov/gitgov-server/src/handlers/conversational/query.rs`
-  - Soporta consultas de commits/pushes por usuario, bloqueos y ventanas de fechas.
+  - Soporta consultas operativas, riesgo/calidad y readiness (ej: commits/pushes, quality gates no verdes, tickets en riesgo, repos/ramas con fallos de release-readiness).
+  - Acceso por rol: `Admin`, `Architect`, `PM`.
+  - Para claves globales, las consultas determinísticas requieren `org_name` explícito para evitar ambigüedad cross-org.
+  - Las consultas de quality gate/readiness requieren telemetría activa de Jenkins/Jira/Sonar en Control Plane.
 - **Editor de políticas (sí existe):**
   - UI: `gitgov/src/components/control_plane/PolicyEditorPanel.tsx`
   - Permite editar ramas protegidas, patrones de ramas y reglas de enforcement.
@@ -150,20 +153,28 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/governance-events` | Bearer (scoped) | Cambios de políticas GitHub |
 | `/signals` | Bearer (scoped) | Señales de no-cumplimiento (admin ve todo; no-admin limitado por scope) |
 | `/violations/{violation_id}/decisions` | Bearer (scoped read / admin write) | Historial y decisiones por violación |
-| `/policy/check` | Bearer | Evaluación de política (advisory + bloqueo opcional por scope) |
+| `/policy/check` | Bearer (admin) | Evaluación de política (advisory + bloqueo opcional por scope) |
 | `/compliance/{org_name}` | Bearer (admin) | Estado de compliance |
 | `/policy/{repo_name}/requests` | Bearer | Crear/listar requests de cambio de política |
+| `/policy/requests/{request_id}/approve` | Bearer (admin) | Aprobar request de cambio de política |
+| `/policy/requests/{request_id}/reject` | Bearer (admin) | Rechazar request de cambio de política |
 | `/export` | Bearer (admin) | Export de audit data |
 | `/exports` | Bearer (admin) | Historial de exports generados |
 | `/api-keys` | Bearer (admin) | Gestión de API keys |
-| `/integrations/jenkins` | Bearer | Ingesta de pipeline events |
+| `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
 | `/integrations/jenkins/status` | Bearer (admin) | Health check Jenkins |
 | `/integrations/jenkins/correlations` | Bearer (admin) | Correlaciones commit↔pipeline |
-| `/integrations/jira` | Bearer | Ingesta de issues Jira |
+| `/integrations/correlations/v2` | Bearer (admin) | Vista integrada ticket↔commit↔pipeline |
+| `/integrations/jira` | Bearer (admin) | Ingesta de issues Jira |
 | `/integrations/jira/status` | Bearer (admin) | Health check Jira |
 | `/integrations/jira/correlate` | Bearer (admin) | Correlación batch commit↔ticket |
 | `/integrations/jira/ticket-coverage` | Bearer (admin) | Cobertura de tickets |
 | `/integrations/jira/tickets/{id}` | Bearer (admin) | Detalle de ticket |
+| `/org-invitations` | Bearer (admin) | Crear/listar invitaciones de organización |
+| `/org-invitations/{id}/resend` | Bearer (admin) | Regenerar token de invitación |
+| `/org-invitations/{id}/revoke` | Bearer (admin) | Revocar invitación |
+| `/org-invitations/preview/{token}` | Público | Previsualizar invitación |
+| `/org-invitations/accept` | Público | Aceptar invitación y emitir API key |
 
 **Headers de integración:**
 - Jenkins: `x-gitgov-jenkins-secret` (si `JENKINS_WEBHOOK_SECRET` configurado)
@@ -193,7 +204,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 
 **Directorio:** `gitgov-web/`
 
-**URL:** `https://git-gov.vercel.app`
+**URL:** `https://<your-domain>`
 
 **Tecnologías:**
 - Framework: Next.js 15.5.10 (App Router)
@@ -336,7 +347,7 @@ Cuando la desktop app quiere enviar eventos al servidor:
 | Admin | Acceso total — stats, dashboard, integrations, signals, violations, export, api-keys |
 | Architect | Acceso a governance y compliance |
 | Developer | Solo sus propios eventos (`/logs` filtrado por user_login) |
-| PM | Acceso a vistas de tickets y cobertura |
+| PM | Acceso al chat de gobernanza y vistas funcionales dentro de su scope (sin endpoints admin) |
 
 **Bootstrap de API key en el servidor:**
 - Si `GITGOV_API_KEY` está en el entorno → inserta en DB si no existe (sin imprimir en logs)
@@ -527,8 +538,8 @@ El sistema trabaja con estas entidades principales:
 |---------|-----------|
 | `supabase_schema.sql` | Schema base: orgs, repos, events, violations, jobs, api_keys |
 | `supabase_schema_v2.sql` | Mejoras de índices y funciones |
-| `supabase_schema_v3.sql` | Governance events, signals, decisions |
-| `supabase_schema_v4.sql` | Append-only triggers y compliance signals |
+| `supabase_schema_v3.sql` | `violation_decisions` + transición de `violations` a append-only estricto |
+| `supabase_schema_v4.sql` | Hotfix de append-only para decisiones de violaciones (`add_violation_decision`) |
 | `supabase_schema_v5.sql` | Jenkins: `pipeline_events` + índices de correlación |
 | `supabase_schema_v6.sql` | Jira: `project_tickets` + `commit_ticket_correlations` |
 | `supabase_schema_v7.sql` | PR merges + admin audit log |
@@ -536,9 +547,9 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v9.sql` | Roles de organización (admin/architect/pm/developer) |
 | `supabase_schema_v10.sql` | Invitaciones de organización |
 | `supabase_schema_v11.sql` | Feature requests del bot |
-| `supabase_schema_v12.sql` | Hardening: API keys globales + índices por actor/fecha |
+| `supabase_schema_v12.sql` | Ajuste de `get_audit_stats`: exclusión de logins sintéticos en `active_devs_week` |
 | `supabase_schema_v13.sql` | CLI command audit trail |
-| `supabase_schema_v18.sql` | Baseline de governance/compliance para rollout v2 |
+| `supabase_schema_v18.sql` | Optimización runtime: índices compuestos para `/logs` + `get_audit_stats` optimizado |
 | `supabase_schema_v19.sql` | Strict append-only de violations + policy drift runtime |
 | `supabase_schema_v20.sql` | Policy change requests + decisions (persistencia versionada) |
 | `supabase_schema_v21.sql` | Trazabilidad auditable del bot (chat_query_events + tool_calls) |
@@ -591,7 +602,11 @@ Esto previene que alguien envíe webhooks falsos.
 
 ### Rate Limiting
 
-El servidor implementa rate limiting por `{IP}:{SHA256(auth_header)[0:12]}` en modo in-memory o distribuido (DB), según configuración.
+El servidor aplica rate limiting en modo in-memory o distribuido (DB), según configuración.
+La clave se calcula en este orden:
+
+- Rutas autenticadas: `org:{org_id}:user:{client_id}` (si hay org scope) o `user:{client_id}`.
+- Rutas públicas/no-auth: fallback `{IP}:{SHA256(auth_header)[0:12]}`.
 
 | Variable de entorno | Default | Descripción |
 |---------------------|---------|-------------|
@@ -601,12 +616,15 @@ El servidor implementa rate limiting por `{IP}:{SHA256(auth_header)[0:12]}` en m
 | `GITGOV_RATE_LIMIT_JIRA_PER_MIN` | 120 | req/min para `/integrations/jira` |
 | `GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN` | 240 | req/min para `POST /webhooks/github` (ruta pública) |
 | `GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN` | 90 | req/min para `GET /org-invitations/preview/{token}` y `POST /org-invitations/accept` (rutas públicas) |
-| `GITGOV_RATE_LIMIT_ADMIN_PER_MIN` | 60 | req/min para endpoints admin (logs, stats, dashboard) |
+| `GITGOV_RATE_LIMIT_ADMIN_PER_MIN` | 60 | req/min para endpoints admin generales |
+| `GITGOV_RATE_LIMIT_LOGS_PER_MIN` | 60 | req/min para `/logs` |
+| `GITGOV_RATE_LIMIT_STATS_PER_MIN` | 60 | req/min para `/stats` y `/dashboard` |
+| `GITGOV_RATE_LIMIT_CHAT_PER_MIN` | 40 | req/min para `/chat/ask` |
 | `GITGOV_JENKINS_MAX_BODY_BYTES` | 262144 | Límite de body para Jenkins (256 KB) |
 | `GITGOV_JIRA_MAX_BODY_BYTES` | 524288 | Límite de body para Jira (512 KB) |
 
 Respuesta cuando se supera el límite: HTTP `429 Too Many Requests`.
-La clave de rate limiting es `{IP}:{SHA256(auth_header)[0:12]}` — cada API key distinta tiene su propio bucket por IP.
+En rutas autenticadas la cuota queda aislada por identidad (`org/user` o `user`) y no depende del IP.
 
 ---
 

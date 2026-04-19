@@ -32,6 +32,7 @@ Never publish to public repo:
 - Credentials, tokens, keys, webhook secrets
 - Database dumps, Jenkins backups, local backup artifacts
 - Internal hostnames, private URLs, account IDs, or PII
+- Referencias a tooling interno/asistentes locales, prompts operativos o artefactos de automatización no orientados a producto
 
 ## Mandatory Rules
 
@@ -40,6 +41,7 @@ Never publish to public repo:
 3. Use placeholders for repo/org/domain examples (`<owner>/<repo>`, `<your-domain>`).
 4. Any doc that includes real incidents, forensic findings, or strategy goes to internal storage.
 5. Before publishing, run secret scan and review diff for sensitive context.
+6. Public docs must describe product behavior and operator workflows, not internal assistant/tooling traces.
 
 ## Pre-Publish Checklist
 

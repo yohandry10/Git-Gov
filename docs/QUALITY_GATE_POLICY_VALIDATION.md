@@ -100,7 +100,7 @@ Expected:
 When you need a temporary downgrade (`block -> warn` or `warn -> off`), use governed payload:
 
 ```bash
-curl -sS -X PUT "http://127.0.0.1:3001/policy/<repo_full_name>/override" \
+curl -sS -X PUT "http://127.0.0.1:3001/policy/<repo_full_name_urlencoded>/override" \
   -H "Authorization: Bearer <ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{

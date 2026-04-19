@@ -139,12 +139,12 @@ Updated: 2026-04-19
   - `gitgov-web` Control Plane docs (EN/ES) role table now reflects current access for `Architect` and `PM`.
 - Publication hardening guardrails added:
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
-  - `.gitignore` now excludes `.claude/`, `CLAUDE.md`, `.kiro/`, `.trae/`, `.windsurf/`.
+  - `.gitignore` now excludes local assistant/editor scratch artifacts to avoid accidental publication.
   - Local equivalent guard added: `scripts/security/publication_guard.ps1` for pre-push validation (`restricted/env/legacy` checks).
 - Secret scanning widened and mandatory on CI surface:
   - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
   - Security permissions for findings publication are declared in workflow.
-  - `Security Guard` now also blocks tracked `.env` files (except `.env.example`) and assistant-local artifacts (`.agents/`, `skills/`, `gitgov-video/`).
+  - `Security Guard` now also blocks tracked `.env` files (except `.env.example`) and local automation/work artifacts (`.agents/`, `skills/`, generated media folders).
 - CI coverage expanded for documentation website:
   - `.github/workflows/ci.yml` now includes `Website Lint + Typecheck + Build` for `gitgov-web`.
   - `.github/workflows/ci.yml` now includes `Workflow Lint` (`rhysd/actionlint`) to catch invalid GitHub Actions syntax before merge.
