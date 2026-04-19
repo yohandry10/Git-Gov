@@ -266,6 +266,16 @@ powershell -ExecutionPolicy Bypass -File scripts/github/create_or_print_pr.ps1 `
 
 El orquestador corre preflight de permisos del token al inicio (`check_token_permissions.ps1`).
 Si necesitas omitirlo explícitamente: `-SkipTokenPermissionsCheck`.
+Si trabajas con un token limitado (sin `Administration` o sin lectura de `Actions secrets/variables`), usa `-BestEffort` para continuar en modo diagnóstico y que el flujo no se detenga.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED_LIMITADO>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main" `
+  -BestEffort
+```
 
 Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto-aprobación):
 
@@ -858,6 +868,19 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.
 ```
 
 Si devuelve `403`, revisa la columna `Accepted permissions hint` para habilitar exactamente ese permiso en el token.
+
+Modo máquina (JSON + no fallo en permisos parciales):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main" `
+  -EmitJson `
+  -NoFailOnForbidden `
+  -Quiet
+```
 
 Resultado esperado:
 - `PASS` si secrets/variables requeridos para el modo elegido están presentes.

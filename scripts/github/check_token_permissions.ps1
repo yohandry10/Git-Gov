@@ -2,7 +2,10 @@ param(
   [string]$Owner = "yohandry10",
   [string]$Repo = "Git-Gov",
   [string]$Branch = "main",
-  [string]$GitHubToken = ""
+  [string]$GitHubToken = "",
+  [switch]$NoFailOnForbidden,
+  [switch]$EmitJson,
+  [switch]$Quiet
 )
 
 Set-StrictMode -Version Latest
@@ -69,20 +72,45 @@ $results = foreach ($check in $checks) {
   Invoke-EndpointCheck -Label $check.label -Uri $check.uri
 }
 
-Write-Host ("Token permission check for {0}/{1}" -f $Owner, $Repo)
-Write-Host ""
-Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f "Endpoint", "Status", "Result", "Accepted permissions hint")
-Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f "--------", "------", "------", "-------------------------")
-foreach ($row in $results) {
-  Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f $row.Label, $row.Status, $row.Result, $row.AcceptedPermissions)
+if (-not $Quiet) {
+  Write-Host ("Token permission check for {0}/{1}" -f $Owner, $Repo)
+  Write-Host ""
+  Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f "Endpoint", "Status", "Result", "Accepted permissions hint")
+  Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f "--------", "------", "------", "-------------------------")
+  foreach ($row in $results) {
+    Write-Host ("{0,-20} {1,-8} {2,-10} {3}" -f $row.Label, $row.Status, $row.Result, $row.AcceptedPermissions)
+  }
 }
 
 $forbidden = @($results | Where-Object { $_.Status -eq 403 })
+$summary = [pscustomobject]@{
+  owner = $Owner
+  repo = $Repo
+  branch = $Branch
+  forbidden_count = $forbidden.Count
+  forbidden_endpoints = @($forbidden | ForEach-Object { $_.Label })
+  results = $results
+}
+
+if ($EmitJson) {
+  $summary | ConvertTo-Json -Depth 6
+}
+
 if ($forbidden.Count -gt 0) {
-  Write-Host ""
+  if (-not $Quiet) {
+    Write-Host ""
+  }
+  if ($NoFailOnForbidden) {
+    if (-not $Quiet) {
+      Write-Warning ("Token lacks some permissions: {0}" -f (($forbidden | ForEach-Object { $_.Label }) -join ", "))
+    }
+    exit 0
+  }
   Write-Error ("FAIL: token does not have required permissions for: {0}" -f (($forbidden | ForEach-Object { $_.Label }) -join ", "))
   exit 1
 }
 
-Write-Host ""
-Write-Host "PASS: token can access required GitHub endpoints."
+if (-not $Quiet) {
+  Write-Host ""
+  Write-Host "PASS: token can access required GitHub endpoints."
+}

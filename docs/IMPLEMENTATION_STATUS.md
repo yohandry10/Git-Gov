@@ -140,9 +140,11 @@ Updated: 2026-04-19
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
   - `scripts/github/harden_repo_governance.ps1` orchestrates CI config check + branch protection apply/verify in one execution.
+  - `scripts/github/harden_repo_governance.ps1` now supports `-BestEffort` to continue diagnostics when a fine-grained token lacks admin/actions-read permissions.
   - Scripts now accept `-GitHubToken` plus env fallbacks (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`) for non-interactive runs.
   - If env token is not set, scripts auto-resolve `GITHUB_PERSONAL_ACCESS_TOKEN` from `gitgov/gitgov-server/.env`.
   - API failures now surface `accepted_permissions` hints from GitHub headers (faster token permission diagnosis).
+  - `scripts/github/check_token_permissions.ps1` now supports machine-readable mode (`-EmitJson`) and optional non-failing diagnostics (`-NoFailOnForbidden`, `-Quiet`) for automation pipelines.
   - `harden_repo_governance.ps1` now runs token-permission preflight (`check_token_permissions.ps1`) before CI/protection steps.
   - `scripts/github/create_or_print_pr.ps1` added to automate PR creation and fallback to compare URL when token lacks `pull_requests` permissions.
 - Live execution completed: branch protection applied and verified on `main` with required checks (`Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Security Guard`), strict checks enabled, admins enforced.
