@@ -20,7 +20,9 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
    - `GITGOV_URL`
    - `GITGOV_API_KEY`
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
-3. Jenkins uses the current `Jenkinsfile` (policy stage parses JSON response).
+3. Jenkins uses the current `Jenkinsfile`:
+   - `Sonar Scan (Optional)` enabled when `SONAR_TOKEN` + `SONAR_PROJECT_KEY` exist.
+   - `Policy Check (Advisory)` parses JSON response from `/policy/check`.
 4. You have an admin API key for policy override/check.
 5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.
 
@@ -103,6 +105,7 @@ Expected:
 
 In current `Jenkinsfile`:
 
+- Sonar stage captures quality gate status (`OK/WARN/ERROR`) per commit when configured.
 - warnings are logged,
 - advisory deny continues only when `GITGOV_STRICT=false`,
 - non-advisory deny fails the build.

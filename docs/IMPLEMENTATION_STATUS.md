@@ -22,6 +22,13 @@ Updated: 2026-04-18
 - Non-blocking Sonar workflow added:
   - `.github/workflows/sonar-governance.yml`
   - Optional telemetry publish to `/integrations/jenkins`.
+- Local SonarQube stack added to Docker Compose:
+  - profile `sonar` with `sonarqube` + `sonarqube-db`
+  - local endpoint `http://127.0.0.1:9000`
+- Jenkins Sonar integration added (optional, non-blocking):
+  - `Jenkinsfile` now includes stage `Sonar Scan (Optional)`.
+  - Stage bootstraps `sonar-scanner` if missing, polls CE task and quality gate via Sonar API.
+  - Telemetry publish now includes `quality_gate` stage and optional `sonar_dashboard` artifact.
 - Dashboard Sonar visibility (SQ-03) added:
   - Sonar status badge per commit in recent commits table.
   - Sonar scan/pass/fail/unstable sample metrics in pipeline health widget.
@@ -95,7 +102,7 @@ Updated: 2026-04-18
 
 ## In Progress
 
-- Sonar CI rollout in real environments (requires repository variables/secrets).
+- Sonar CI rollout in real environments (GitHub/Jenkins secrets + variables per environment).
 - Consolidating governance telemetry in dashboards and executive reporting.
 - Enforcing required status checks in branch protection (`ci`, `Security Guard`).
 

@@ -45,6 +45,20 @@ docker compose logs -f jenkins
 docker exec -it gitgov-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
+### SonarQube local (opcional)
+
+```bash
+docker compose --profile sonar up -d sonarqube-db sonarqube
+docker compose logs -f sonarqube
+# URL: http://localhost:9000
+# Login inicial: admin / admin (cambiar password en primer ingreso)
+```
+
+Para usar SonarQube local con Jenkins en Docker:
+- `SONAR_HOST_URL=http://host.docker.internal:9000` (o `http://sonarqube:9000` si comparte red compose)
+- generar token en `My Account > Security` y cargarlo en Jenkins como `SONAR_TOKEN`
+- definir `SONAR_PROJECT_KEY` por repo (ej. `yohandry10_git-gov`)
+
 #### Migración SCM de job Jenkins (repo nuevo)
 
 Si el job sigue mostrando en consola un remoto anterior u otro repositorio legado, corrige el SCM manualmente:
@@ -661,6 +675,12 @@ Configurar en GitHub (repo settings):
 Notas:
 - Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
 - Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
+
+Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
+- stage `Sonar Scan (Optional)` bootstrappea `sonar-scanner` si no existe en el agente.
+- consulta CE task + `quality gate` vía API Sonar y guarda estado en telemetría.
+- publica stage `quality_gate` en `/integrations/jenkins` junto con artifact `sonar_dashboard` cuando aplica.
+- si `GITGOV_STRICT=true`, errores de Sonar/telemetría escalan a fallo de build.
 
 Preflight de configuración CI del repo (GitHub Actions):
 
