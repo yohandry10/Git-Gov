@@ -74,13 +74,15 @@ dashboard_url=${dashboardValue}
               "SONAR_PROJECT_KEY=${sonarProjectKey}",
               "SONAR_TOKEN=${sonarToken}"
             ]) {
+              def scanFailed = false
               def scanStatus = sh(
                 script: '''
+                  set +x
                   set -euo pipefail
                   "${SONAR_SCANNER_BIN}" \
                     -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
                     -Dsonar.projectName="GitGov" \
-                    -Dsonar.sources=gitgov/gitgov-server/src,gitgov/src,gitgov/src-tauri/src,gitgov-web/src \
+                    -Dsonar.sources=gitgov/gitgov-server/src,gitgov/src,gitgov/src-tauri/src,gitgov-web \
                     -Dsonar.exclusions=**/node_modules/**,**/target/**,**/dist/**,**/.next/**,**/coverage/**,**/public/**,**/*.min.js \
                     -Dsonar.sourceEncoding=UTF-8 \
                     -Dsonar.scm.provider=git \
@@ -90,12 +92,15 @@ dashboard_url=${dashboardValue}
                 returnStatus: true
               )
               if (scanStatus != 0) {
+                scanFailed = true
                 sonarStatus = 'SCAN_FAILED'
                 def msg = "Sonar scanner returned non-zero exit (${scanStatus})"
                 if (gitgovStrictModeEnabled()) {
                   error("${msg}; aborting because GITGOV_STRICT=true")
                 }
                 echo "${msg}; continuing because GITGOV_STRICT=false"
+              }
+              if (scanFailed) {
                 return
               }
             }
@@ -341,19 +346,18 @@ def notifyGitGov(String status) {
   def publishStatus = sh(
     script: '''
       set +x
-      args=(
-        --fail-with-body
-        -sS
-        -X POST
-        "${GITGOV_URL%/}/integrations/jenkins"
-        -H "Authorization: Bearer ${GITGOV_API_KEY}"
-        -H "Content-Type: application/json"
-        --data @gitgov-pipeline-event.json
-      )
       if [ -n "${GITGOV_JENKINS_SECRET:-}" ] && [ "${GITGOV_JENKINS_SECRET}" != "unused" ]; then
-        args+=( -H "x-gitgov-jenkins-secret: ${GITGOV_JENKINS_SECRET}" )
+        curl --fail-with-body -sS -X POST "${GITGOV_URL%/}/integrations/jenkins" \
+          -H "Authorization: Bearer ${GITGOV_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -H "x-gitgov-jenkins-secret: ${GITGOV_JENKINS_SECRET}" \
+          --data @gitgov-pipeline-event.json
+      else
+        curl --fail-with-body -sS -X POST "${GITGOV_URL%/}/integrations/jenkins" \
+          -H "Authorization: Bearer ${GITGOV_API_KEY}" \
+          -H "Content-Type: application/json" \
+          --data @gitgov-pipeline-event.json
       fi
-      curl "${args[@]}"
     ''',
     returnStatus: true
   )
