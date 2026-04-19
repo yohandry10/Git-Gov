@@ -18,9 +18,9 @@ $checkCiScript = Join-Path $scriptRoot "check_ci_repo_config.ps1"
 $setChecksScript = Join-Path $scriptRoot "set_required_checks.ps1"
 $checkProtectionScript = Join-Path $scriptRoot "check_branch_protection.ps1"
 
-$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT, $env:GITHUB_PERSONAL_ACCESS_TOKEN) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 if ($tokenCandidates.Count -eq 0) {
-  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT before running governance hardening."
+  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN before running governance hardening."
   exit 1
 }
 $token = $tokenCandidates[0]
