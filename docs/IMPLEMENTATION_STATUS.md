@@ -99,6 +99,9 @@ Updated: 2026-04-19
 - Role UX/API alignment improvement:
   - `/chat/ask` now allows `Admin`, `Architect`, and `PM` roles (previously admin-only).
   - Dashboard renders `ConversationalChatPanel` for `Architect` and `PM` in non-admin view.
+- Authorization semantics normalized for admin gates:
+  - `require_admin` now returns explicit `403 FORBIDDEN` (instead of `401`) when API key is valid but role is insufficient.
+  - Added auth regression test to lock expected forbidden behavior.
 - Conversational bot quality/risk deterministic queries added:
   - `detect_query` now classifies quality gate health questions and release-readiness gate health questions.
   - `detect_query` now also classifies repo-ranking questions (`top repos con quality gate no verde`).
