@@ -868,6 +868,17 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
   -Repo "<repo>"
 ```
 
+Modo best-effort cuando el token es limitado (no bloquea por `403` en secrets/variables):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED_LIMITADO>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -AllowMissingSonar `
+  -NoFailOnForbidden
+```
+
 Diagnóstico rápido de permisos del token:
 
 ```powershell
@@ -895,6 +906,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.
 
 Resultado esperado:
 - `PASS` si secrets/variables requeridos para el modo elegido están presentes.
+- `PASS (best-effort)` si usas `-NoFailOnForbidden` y el token no puede leer secrets/variables (se muestra `UNKNOWN` en lugar de cortar flujo).
 - Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
 - `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
 - `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.

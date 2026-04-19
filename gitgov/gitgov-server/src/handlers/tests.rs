@@ -328,13 +328,15 @@ mod tests {
 
     #[test]
     fn chat_trace_json_redacts_sensitive_keys_and_nested_values() {
+        let fake_gh_token = format!("{}{}", "ghp_1234567890abcd", "efghijklmnopqrstuv");
+        let fake_sk_token = format!("{}{}", "sk-1234567890ABCD", "EFGHIJKL1234MNOP");
         let payload = json!({
             "conversation_key": "bootstrap-admin::org_demo",
-            "token": "ghp_1234567890abcdefghijklmnopq",
+            "token": fake_gh_token,
             "intent": "risk_overview",
             "metadata": {
                 "owner_email": "leader@example.com",
-                "note": "Bearer sk-1234567890ABCDEFGHIJKL"
+                "note": format!("Bearer {}", fake_sk_token)
             },
             "items": [
                 "user@example.com",

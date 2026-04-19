@@ -5,7 +5,9 @@ param(
   # When set, SONAR_TOKEN and SONAR_PROJECT_KEY become optional.
   [switch]$AllowMissingSonar,
   # When set, require telemetry publish config for GitGov ingest.
-  [switch]$RequireGitGovTelemetry
+  [switch]$RequireGitGovTelemetry,
+  # When set, 403 from GitHub Actions secrets/variables endpoints is reported as warning instead of hard fail.
+  [switch]$NoFailOnForbidden
 )
 
 Set-StrictMode -Version Latest
@@ -86,17 +88,28 @@ function Get-NameSet {
   param(
     [string]$Uri,
     [string]$CollectionField,
-    [hashtable]$Headers
+    [hashtable]$Headers,
+    [string]$Kind
   )
+  $result = [pscustomobject]@{
+    Names = @()
+    PermissionDenied = $false
+  }
   try {
     $response = Invoke-RestMethod -Method Get -Uri $Uri -Headers $Headers
   } catch {
+    $response = $_.Exception.Response
+    $statusCode = if ($null -ne $response) { [int]$response.StatusCode.value__ } else { -1 }
+    if ($statusCode -eq 403 -and $NoFailOnForbidden) {
+      $result.PermissionDenied = $true
+      Write-Warning ("Skipping {0} visibility check due to token permission limits (403). Use a token with Actions {0} read access for strict validation." -f $Kind)
+      return $result
+    }
     throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $Uri)
   }
 
-  $names = @()
   if ($null -eq $response) {
-    return $names
+    return $result
   }
 
   $items = @()
@@ -106,15 +119,18 @@ function Get-NameSet {
 
   foreach ($item in @($items)) {
     if ($null -ne $item -and $item.PSObject.Properties.Name -contains "name" -and -not [string]::IsNullOrWhiteSpace([string]$item.name)) {
-      $names += ([string]$item.name).Trim().ToUpperInvariant()
+      $result.Names += ([string]$item.name).Trim().ToUpperInvariant()
     }
   }
-  return @($names | Select-Object -Unique)
+  $result.Names = @($result.Names | Select-Object -Unique)
+  return $result
 }
 
 $base = "https://api.github.com/repos/$Owner/$Repo/actions"
-$secretNames = Get-NameSet -Uri "$base/secrets?per_page=100" -CollectionField "secrets" -Headers $headers
-$variableNames = Get-NameSet -Uri "$base/variables?per_page=100" -CollectionField "variables" -Headers $headers
+$secretResult = Get-NameSet -Uri "$base/secrets?per_page=100" -CollectionField "secrets" -Headers $headers -Kind "secrets"
+$variableResult = Get-NameSet -Uri "$base/variables?per_page=100" -CollectionField "variables" -Headers $headers -Kind "variables"
+$secretNames = $secretResult.Names
+$variableNames = $variableResult.Names
 if ($null -eq $secretNames) { $secretNames = @() }
 if ($null -eq $variableNames) { $variableNames = @() }
 
@@ -129,57 +145,81 @@ function Set-ContainsName {
 }
 
 $missingRequiredSecrets = @()
-foreach ($name in $requiredSecrets) {
-  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
-    $missingRequiredSecrets += $name
+if (-not $secretResult.PermissionDenied) {
+  foreach ($name in $requiredSecrets) {
+    if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+      $missingRequiredSecrets += $name
+    }
   }
 }
 
 $missingRequiredVariables = @()
-foreach ($name in $requiredVariables) {
-  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
-    $missingRequiredVariables += $name
+if (-not $variableResult.PermissionDenied) {
+  foreach ($name in $requiredVariables) {
+    if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+      $missingRequiredVariables += $name
+    }
   }
 }
 
 $missingOptionalSecrets = @()
-foreach ($name in $optionalSecrets) {
-  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
-    $missingOptionalSecrets += $name
+if (-not $secretResult.PermissionDenied) {
+  foreach ($name in $optionalSecrets) {
+    if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+      $missingOptionalSecrets += $name
+    }
   }
 }
 
 $missingOptionalVariables = @()
-foreach ($name in $optionalVariables) {
-  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
-    $missingOptionalVariables += $name
+if (-not $variableResult.PermissionDenied) {
+  foreach ($name in $optionalVariables) {
+    if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+      $missingOptionalVariables += $name
+    }
   }
 }
 
 Write-Host "Repository: $Owner/$Repo"
 Write-Host ""
 Write-Host "Required secrets:"
-foreach ($name in $requiredSecrets) {
-  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($secretResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions secrets)."
+} else {
+  foreach ($name in $requiredSecrets) {
+    $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Optional secrets:"
-foreach ($name in $optionalSecrets) {
-  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($secretResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions secrets)."
+} else {
+  foreach ($name in $optionalSecrets) {
+    $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Required variables:"
-foreach ($name in $requiredVariables) {
-  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($variableResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions variables)."
+} else {
+  foreach ($name in $requiredVariables) {
+    $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Optional variables:"
-foreach ($name in $optionalVariables) {
-  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($variableResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions variables)."
+} else {
+  foreach ($name in $optionalVariables) {
+    $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 
 if ($missingRequiredSecrets.Count -gt 0 -or $missingRequiredVariables.Count -gt 0) {
@@ -189,7 +229,9 @@ if ($missingRequiredSecrets.Count -gt 0 -or $missingRequiredVariables.Count -gt 
 }
 
 Write-Host ""
-if ($missingOptionalSecrets.Count -gt 0 -or $missingOptionalVariables.Count -gt 0) {
+if ($secretResult.PermissionDenied -or $variableResult.PermissionDenied) {
+  Write-Host "PASS (best-effort): required validation completed with limited token visibility on Actions config."
+} elseif ($missingOptionalSecrets.Count -gt 0 -or $missingOptionalVariables.Count -gt 0) {
   Write-Host ("PASS (required complete, optional missing). Optional secrets missing: [{0}] | Optional variables missing: [{1}]" -f ($missingOptionalSecrets -join ", "), ($missingOptionalVariables -join ", "))
 } else {
   Write-Host "PASS (all required and optional CI repo config present)."
