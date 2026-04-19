@@ -33,7 +33,8 @@ pipeline {
       steps {
         script {
           def sonarStatus = 'SKIPPED'
-          def sonarProjectKey = (env.SONAR_PROJECT_KEY ?: '').trim()
+          def inferredProjectKey = inferSonarProjectKey()
+          def sonarProjectKey = (env.SONAR_PROJECT_KEY ?: inferredProjectKey).trim()
           def sonarHostUrl = (env.SONAR_HOST_URL ?: 'http://host.docker.internal:9000').trim()
           def sonarDashboardUrl = ''
 
@@ -50,6 +51,15 @@ dashboard_url=${dashboardValue}
           }
 
           def sonarToken = (env.SONAR_TOKEN ?: '').trim()
+          if (!sonarToken) {
+            try {
+              withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN_FROM_CREDENTIAL')]) {
+                sonarToken = (env.SONAR_TOKEN_FROM_CREDENTIAL ?: '').trim()
+              }
+            } catch (ignored) {
+              sonarToken = ''
+            }
+          }
           if (!sonarToken || !sonarProjectKey) {
             echo 'Skipping Sonar scan (missing SONAR_TOKEN or SONAR_PROJECT_KEY).'
             persistSonarMeta()
@@ -60,7 +70,9 @@ dashboard_url=${dashboardValue}
             def scannerBin = ensureSonarScannerBinary()
             withEnv([
               "SONAR_SCANNER_BIN=${scannerBin}",
-              "SONAR_HOST_URL=${sonarHostUrl}"
+              "SONAR_HOST_URL=${sonarHostUrl}",
+              "SONAR_PROJECT_KEY=${sonarProjectKey}",
+              "SONAR_TOKEN=${sonarToken}"
             ]) {
               def scanStatus = sh(
                 script: '''
@@ -401,6 +413,15 @@ PY
     ''',
     returnStdout: true
   ).trim()
+}
+
+def inferSonarProjectKey() {
+  def repoName = env.GIT_URL
+    ? env.GIT_URL.replaceFirst('^.*github\\.com[/:]', '').replaceFirst('\\.git$', '')
+    : (env.JOB_NAME ?: 'gitgov')
+  return repoName
+    .toLowerCase()
+    .replaceAll('[^a-z0-9._-]+', '_')
 }
 
 def extractJsonString(String raw, String key) {
