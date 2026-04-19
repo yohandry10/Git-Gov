@@ -305,6 +305,27 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             || q.contains("fallan")
             || q.contains("failing")
             || asks_count);
+    let asks_developers_non_green_quality_gate = (q.contains("dev")
+        || q.contains("developer")
+        || q.contains("desarrollador")
+        || q.contains("desarrolladores")
+        || q.contains("equipo")
+        || q.contains("equipos"))
+        && (q.contains("quality gate")
+            || q.contains("quality_gates")
+            || q.contains("sonar")
+            || q.contains("gate de calidad")
+            || q.contains("rojo")
+            || q.contains("red"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fallan")
+            || q.contains("failing")
+            || asks_count);
     let asks_release_readiness_health = (q.contains("release readiness")
         || q.contains("readiness gate")
         || q.contains("readiness")
@@ -408,6 +429,22 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             .map(|v| v.clamp(1, 20))
             .unwrap_or(10);
         return Some(ChatQuery::TicketsWithNonGreenQualityGate { hours, limit });
+    }
+
+    if asks_developers_non_green_quality_gate {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::DevelopersWithNonGreenQualityGate { hours, limit });
     }
 
     if asks_quality_gate_repo_ranking {

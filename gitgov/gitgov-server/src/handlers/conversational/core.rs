@@ -779,6 +779,10 @@ enum ChatQuery {
         hours: i64,
         limit: i64,
     },
+    DevelopersWithNonGreenQualityGate {
+        hours: i64,
+        limit: i64,
+    },
     QualityGateHealthWindow {
         hours: i64,
     },

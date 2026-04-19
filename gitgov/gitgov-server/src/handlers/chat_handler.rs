@@ -4,6 +4,7 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
         ChatQuery::ControlPlaneExecutiveSummary
             | ChatQuery::QualityGateTopFailingRepos { .. }
             | ChatQuery::TicketsWithNonGreenQualityGate { .. }
+            | ChatQuery::DevelopersWithNonGreenQualityGate { .. }
             | ChatQuery::QualityGateHealthWindow { .. }
             | ChatQuery::ReleaseReadinessTopFailingRepos { .. }
             | ChatQuery::ReleaseReadinessHealthWindow { .. }
@@ -1173,6 +1174,128 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                             status: "error".to_string(),
                             answer:
                                 "Error consultando ranking de tickets con quality gate no verde"
+                                    .to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
+        }
+        Some(ChatQuery::DevelopersWithNonGreenQualityGate { hours, limit }) => {
+            match state
+                .db
+                .chat_query_developers_with_non_green_quality_gate(
+                    scoped_org_id.as_deref(),
+                    hours,
+                    limit,
+                )
+                .await
+            {
+                Ok(rows) => {
+                    if rows.is_empty() {
+                        return finalize_chat_response(
+                            &state,
+                            &conversation_key,
+                            &mut session,
+                            &nlp,
+                            StatusCode::OK,
+                            ChatAskResponse {
+                                status: "ok".to_string(),
+                                answer: format!(
+                                    "No se detectaron developers/equipos con quality gate no verde en las últimas {}h.",
+                                    hours
+                                ),
+                                missing_capability: None,
+                                can_report_feature: false,
+                                data_refs: vec!["pipeline_events".to_string()],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: Some(format!("last_{}h", hours)),
+                                actions_recommended: vec![],
+                                confidence: Some(0.8),
+                                trace_id: None,
+                            },
+                        );
+                    }
+
+                    let mut lines = Vec::with_capacity(rows.len());
+                    for (idx, item) in rows.iter().enumerate() {
+                        let actor_login = item
+                            .get("actor_login")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let non_green_runs =
+                            item.get("non_green_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let repos_affected =
+                            item.get("repos_affected").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let commits_affected = item
+                            .get("commits_affected")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+                        lines.push(format!(
+                            "{}. {} -> non_green_runs: {}, repos: {}, commits: {}",
+                            idx + 1,
+                            actor_login,
+                            non_green_runs,
+                            repos_affected,
+                            commits_affected
+                        ));
+                    }
+
+                    let answer = format!(
+                        "Top developers/equipos con quality gate no verde (últimas {hours}h, top {limit}):\n{lines}",
+                        hours = hours,
+                        limit = limit,
+                        lines = lines.join("\n")
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec!["pipeline_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: vec![
+                                "Revisar coaching técnico en los equipos con mayor non_green".to_string(),
+                                "Endurecer quality gate en repos críticos con alta recurrencia".to_string(),
+                            ],
+                            confidence: Some(0.88),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "chat_query_developers_with_non_green_quality_gate error: {}",
+                        e
+                    );
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer:
+                                "Error consultando ranking de developers con quality gate no verde"
                                     .to_string(),
                             missing_capability: None,
                             can_report_feature: false,
