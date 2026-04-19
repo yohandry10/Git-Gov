@@ -1,13 +1,27 @@
 param(
   [string]$JenkinsUrl = "http://127.0.0.1:8096",
   [string]$JobName = "gitgov-demo-pipeline",
-  [string]$ExpectedRepoUrl = "https://github.com/yohandry10/Git-Gov.git",
+  [string]$ExpectedRepoUrl = "",
   [string]$Username = "",
   [string]$ApiTokenOrPassword = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "..\github\_token_helpers.ps1")
+
+if ([string]::IsNullOrWhiteSpace($ExpectedRepoUrl)) {
+  $repoInfo = Resolve-GitHubRepoCoordinates -ScriptRoot $scriptRoot
+  if (-not [string]::IsNullOrWhiteSpace($repoInfo.Owner) -and -not [string]::IsNullOrWhiteSpace($repoInfo.Repo)) {
+    $ExpectedRepoUrl = "https://github.com/$($repoInfo.Owner)/$($repoInfo.Repo).git"
+  }
+}
+if ([string]::IsNullOrWhiteSpace($ExpectedRepoUrl)) {
+  Write-Error "Missing -ExpectedRepoUrl and repository coordinates could not be auto-resolved."
+  exit 1
+}
 
 if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($ApiTokenOrPassword)) {
   Write-Error "Missing credentials. Provide -Username and -ApiTokenOrPassword."

@@ -1,6 +1,6 @@
 param(
-  [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov",
+  [string]$Owner = "",
+  [string]$Repo = "",
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   # Continue with best-effort checks when token lacks admin permissions.
@@ -22,6 +22,14 @@ $checkCiScript = Join-Path $scriptRoot "check_ci_repo_config.ps1"
 $setChecksScript = Join-Path $scriptRoot "set_required_checks.ps1"
 $checkProtectionScript = Join-Path $scriptRoot "check_branch_protection.ps1"
 . (Join-Path $scriptRoot "_token_helpers.ps1")
+
+$repoInfo = Resolve-GitHubRepoCoordinates -Owner $Owner -Repo $Repo -ScriptRoot $scriptRoot
+$Owner = $repoInfo.Owner
+$Repo = $repoInfo.Repo
+if ([string]::IsNullOrWhiteSpace($Owner) -or [string]::IsNullOrWhiteSpace($Repo)) {
+  Write-Error "Could not resolve GitHub repository coordinates. Provide -Owner and -Repo, set GITHUB_REPOSITORY, or configure git remote origin to github.com/<owner>/<repo>."
+  exit 1
+}
 
 $token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
 if ([string]::IsNullOrWhiteSpace($token)) {

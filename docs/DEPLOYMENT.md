@@ -868,6 +868,9 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
   -Repo "<repo>"
 ```
 
+Nota:
+- `-Owner` y `-Repo` ahora son opcionales en scripts de `scripts/github/*`; si no se pasan, se auto-resuelven desde `GITHUB_REPOSITORY` o `git remote origin`.
+
 Modo best-effort cuando el token es limitado (no bloquea por `403` en secrets/variables):
 
 ```powershell

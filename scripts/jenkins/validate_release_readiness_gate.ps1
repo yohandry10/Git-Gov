@@ -1,7 +1,7 @@
 param(
   [string]$GitGovUrl = "http://127.0.0.1:3001",
   [string]$ApiKey,
-  [string]$RepoFullName = "yohandry10/Git-Gov",
+  [string]$RepoFullName = "",
   [string]$Branch = "main",
   [ValidateSet("critical", "standard", "internal")][string]$Tier = "standard",
   [string]$OrgName = "",
@@ -14,6 +14,20 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "..\github\_token_helpers.ps1")
+
+if ([string]::IsNullOrWhiteSpace($RepoFullName)) {
+  $repoInfo = Resolve-GitHubRepoCoordinates -ScriptRoot $scriptRoot
+  if (-not [string]::IsNullOrWhiteSpace($repoInfo.Owner) -and -not [string]::IsNullOrWhiteSpace($repoInfo.Repo)) {
+    $RepoFullName = "$($repoInfo.Owner)/$($repoInfo.Repo)"
+  }
+}
+if ([string]::IsNullOrWhiteSpace($RepoFullName)) {
+  Write-Error "Missing -RepoFullName and repository coordinates could not be auto-resolved."
+  exit 1
+}
 
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
   Write-Error "Missing -ApiKey."

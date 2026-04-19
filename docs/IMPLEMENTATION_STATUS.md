@@ -184,6 +184,7 @@ Updated: 2026-04-19
   - `scripts/github/check_token_permissions.ps1` now supports machine-readable mode (`-EmitJson`) and optional non-failing diagnostics (`-NoFailOnForbidden`, `-Quiet`) for automation pipelines.
   - `harden_repo_governance.ps1` now runs token-permission preflight (`check_token_permissions.ps1`) before CI/protection steps.
   - `scripts/github/create_or_print_pr.ps1` added to automate PR creation and fallback to compare URL when token lacks `pull_requests` permissions.
+  - GitHub/Jenkins helper scripts now avoid hardcoded personal repo defaults; `owner/repo` are auto-resolved from `GITHUB_REPOSITORY` or `git remote origin` when omitted.
 - Live execution completed: branch protection applied and verified on `main` with required checks (`Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Security Guard`), strict checks enabled, admins enforced.
 - `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
 - Sonar CI rollout preflight automation prepared:

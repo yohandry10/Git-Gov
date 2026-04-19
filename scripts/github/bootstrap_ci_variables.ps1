@@ -1,8 +1,8 @@
 param(
-  [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov",
+  [string]$Owner = "",
+  [string]$Repo = "",
   [string]$GitHubToken = "",
-  [string]$SonarProjectKey = "yohandry10_git-gov",
+  [string]$SonarProjectKey = "",
   [string]$SonarHostUrl = "",
   [string]$GitGovUrl = ""
 )
@@ -13,6 +13,14 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptRoot "_token_helpers.ps1")
 
+$repoInfo = Resolve-GitHubRepoCoordinates -Owner $Owner -Repo $Repo -ScriptRoot $scriptRoot
+$Owner = $repoInfo.Owner
+$Repo = $repoInfo.Repo
+if ([string]::IsNullOrWhiteSpace($Owner) -or [string]::IsNullOrWhiteSpace($Repo)) {
+  Write-Error "Could not resolve GitHub repository coordinates. Provide -Owner and -Repo, set GITHUB_REPOSITORY, or configure git remote origin to github.com/<owner>/<repo>."
+  exit 1
+}
+
 $token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
 if ([string]::IsNullOrWhiteSpace($token)) {
   Write-Error "Missing GitHub token. Provide -GitHubToken, set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN, or define GITHUB_PERSONAL_ACCESS_TOKEN in gitgov/gitgov-server/.env."
@@ -20,8 +28,7 @@ if ([string]::IsNullOrWhiteSpace($token)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($SonarProjectKey)) {
-  Write-Error "SonarProjectKey is required."
-  exit 1
+  $SonarProjectKey = ("{0}_{1}" -f $Owner, $Repo).ToLowerInvariant().Replace("-", "_")
 }
 
 $headers = @{

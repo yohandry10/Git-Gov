@@ -1,6 +1,6 @@
 param(
-  [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov",
+  [string]$Owner = "",
+  [string]$Repo = "",
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   [string[]]$RequiredChecks = @(
@@ -19,6 +19,14 @@ $ErrorActionPreference = "Stop"
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $scriptRoot "_token_helpers.ps1")
+
+$repoInfo = Resolve-GitHubRepoCoordinates -Owner $Owner -Repo $Repo -ScriptRoot $scriptRoot
+$Owner = $repoInfo.Owner
+$Repo = $repoInfo.Repo
+if ([string]::IsNullOrWhiteSpace($Owner) -or [string]::IsNullOrWhiteSpace($Repo)) {
+  Write-Error "Could not resolve GitHub repository coordinates. Provide -Owner and -Repo, set GITHUB_REPOSITORY, or configure git remote origin to github.com/<owner>/<repo>."
+  exit 1
+}
 
 $token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
 if ([string]::IsNullOrWhiteSpace($token)) {
