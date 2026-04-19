@@ -1774,7 +1774,7 @@ async fn main() {
     tracing::info!("  GET  /health/detailed           - Detailed health (public)");
     tracing::info!("  POST /webhooks/github           - GitHub webhook (HMAC auth)");
     tracing::info!("  GET  /metrics                   - Prometheus metrics (public)");
-    tracing::info!("  GET  /api-docs                  - Swagger UI (public)");
+    tracing::info!("  GET  /api-docs                  - Swagger UI (schema explorer, partial)");
     tracing::info!("  --- Authenticated endpoints ---");
     tracing::info!("  POST /events                    - Client events (auth)");
     tracing::info!("  POST /outbox/lease              - Outbox coordination lease (auth, opt-in)");

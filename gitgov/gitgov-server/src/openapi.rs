@@ -11,7 +11,7 @@ use utoipa::OpenApi;
     info(
         title = "GitGov Control Plane API",
         version = "1.0.0",
-        description = "Centralized audit, governance, and policy server for Git repositories.\n\nAuthentication: most endpoints require `Authorization: Bearer {api_key}`.",
+        description = "Centralized audit, governance, and policy server for Git repositories.\n\nAuthentication: most endpoints require `Authorization: Bearer {api_key}`.\n\nNote: this OpenAPI surface is schema-first and intentionally partial for now; use `docs/ARCHITECTURE.md` + route table in `main.rs` as the operational source of truth.",
         license(name = "Proprietary")
     ),
     components(schemas(
