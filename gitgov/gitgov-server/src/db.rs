@@ -7761,6 +7761,80 @@ impl Database {
         }))
     }
 
+    /// Q6b: Rank repositories with the highest non-green quality gate volume.
+    pub async fn chat_query_quality_gate_top_failing_repos(
+        &self,
+        org_id: Option<&str>,
+        hours: i64,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, DbError> {
+        let safe_hours = hours.clamp(1, 24 * 30) as i32;
+        let safe_limit = limit.clamp(1, 20) as i32;
+
+        let rows = sqlx::query(
+            r#"
+            WITH quality_gate_events AS (
+              SELECT
+                COALESCE(pe.repo_full_name, 'unknown') AS repo_full_name,
+                lower(COALESCE(stage->>'status', 'unknown')) AS gate_status,
+                pe.ingested_at
+              FROM pipeline_events pe
+              CROSS JOIN LATERAL jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(pe.stages) = 'array' THEN pe.stages
+                  ELSE '[]'::jsonb
+                END
+              ) AS stage
+              WHERE pe.ingested_at >= NOW() - make_interval(hours => $1::int)
+                AND ($2::uuid IS NULL OR pe.org_id = $2::uuid)
+                AND lower(COALESCE(stage->>'name', '')) = 'quality_gate'
+            )
+            SELECT
+              repo_full_name,
+              COUNT(*)::bigint AS total_runs,
+              COUNT(*) FILTER (
+                WHERE gate_status NOT IN ('passed', 'ok', 'green', 'success')
+              )::bigint AS non_green_runs,
+              ROUND(
+                (
+                  COUNT(*) FILTER (
+                    WHERE gate_status NOT IN ('passed', 'ok', 'green', 'success')
+                  )::numeric * 100.0
+                ) / NULLIF(COUNT(*)::numeric, 0),
+                1
+              )::double precision AS non_green_pct,
+              (EXTRACT(EPOCH FROM MAX(ingested_at)) * 1000)::bigint AS last_seen_ms
+            FROM quality_gate_events
+            GROUP BY repo_full_name
+            HAVING COUNT(*) FILTER (
+              WHERE gate_status NOT IN ('passed', 'ok', 'green', 'success')
+            ) > 0
+            ORDER BY non_green_runs DESC, non_green_pct DESC, MAX(ingested_at) DESC
+            LIMIT $3::int
+            "#,
+        )
+        .bind(safe_hours)
+        .bind(org_id)
+        .bind(safe_limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "repo_full_name": r.get::<String, _>("repo_full_name"),
+                    "total_runs": r.get::<i64, _>("total_runs"),
+                    "non_green_runs": r.get::<i64, _>("non_green_runs"),
+                    "non_green_pct": r.get::<f64, _>("non_green_pct"),
+                    "last_seen_ms": r.get::<i64, _>("last_seen_ms"),
+                    "window_hours": safe_hours,
+                })
+            })
+            .collect())
+    }
+
     /// Q7: Aggregate release readiness gate outcomes over a recent time window.
     pub async fn chat_query_release_readiness_window_summary(
         &self,

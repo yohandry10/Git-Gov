@@ -771,6 +771,10 @@ impl Default for NlpAnalysis {
 #[derive(Debug, Clone)]
 enum ChatQuery {
     ControlPlaneExecutiveSummary,
+    QualityGateTopFailingRepos {
+        hours: i64,
+        limit: i64,
+    },
     QualityGateHealthWindow {
         hours: i64,
     },

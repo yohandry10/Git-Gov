@@ -2,6 +2,7 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
     matches!(
         query,
         ChatQuery::ControlPlaneExecutiveSummary
+            | ChatQuery::QualityGateTopFailingRepos { .. }
             | ChatQuery::QualityGateHealthWindow { .. }
             | ChatQuery::ReleaseReadinessHealthWindow { .. }
             | ChatQuery::OnlineDevelopersNow { .. }
@@ -1056,6 +1057,123 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     trace_id: None,
 },
             );
+        }
+        Some(ChatQuery::QualityGateTopFailingRepos { hours, limit }) => {
+            match state
+                .db
+                .chat_query_quality_gate_top_failing_repos(
+                    scoped_org_id.as_deref(),
+                    hours,
+                    limit,
+                )
+                .await
+            {
+                Ok(rows) => {
+                    if rows.is_empty() {
+                        return finalize_chat_response(
+                            &state,
+                            &conversation_key,
+                            &mut session,
+                            &nlp,
+                            StatusCode::OK,
+                            ChatAskResponse {
+                                status: "ok".to_string(),
+                                answer: format!(
+                                    "No se detectaron repos con quality gate no verde en las últimas {}h.",
+                                    hours
+                                ),
+                                missing_capability: None,
+                                can_report_feature: false,
+                                data_refs: vec!["pipeline_events".to_string()],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: Some(format!("last_{}h", hours)),
+                                actions_recommended: vec![],
+                                confidence: Some(0.8),
+                                trace_id: None,
+                            },
+                        );
+                    }
+
+                    let mut lines = Vec::with_capacity(rows.len());
+                    for (idx, item) in rows.iter().enumerate() {
+                        let repo = item
+                            .get("repo_full_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let non_green_runs =
+                            item.get("non_green_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let total_runs =
+                            item.get("total_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let non_green_pct = item
+                            .get("non_green_pct")
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or(0.0);
+                        lines.push(format!(
+                            "{}. {} -> non_green: {}/{} ({:.1}%)",
+                            idx + 1,
+                            repo,
+                            non_green_runs,
+                            total_runs,
+                            non_green_pct
+                        ));
+                    }
+
+                    let answer = format!(
+                        "Top repos con quality gate no verde (últimas {hours}h, top {limit}):\n{lines}",
+                        hours = hours,
+                        limit = limit,
+                        lines = lines.join("\n")
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec!["pipeline_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: vec![
+                                "Priorizar remediación en los repos con mayor volumen non_green".to_string(),
+                                "Revisar causas raíz en quality gate (coverage, bugs, vulnerabilidades)".to_string(),
+                            ],
+                            confidence: Some(0.9),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("chat_query_quality_gate_top_failing_repos error: {}", e);
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer: "Error consultando ranking de repos con quality gate no verde".to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
         }
         Some(ChatQuery::QualityGateHealthWindow { hours }) => {
             match state

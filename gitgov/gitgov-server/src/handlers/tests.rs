@@ -533,6 +533,7 @@ mod tests {
                 Some(ChatQuery::PushesNoTicket) => "pushes_no_ticket",
                 Some(ChatQuery::BlockedPushesMonth) => "blocked_month",
                 Some(ChatQuery::ControlPlaneExecutiveSummary) => "executive_summary",
+                Some(ChatQuery::QualityGateTopFailingRepos { .. }) => "quality_gate_top_repos",
                 Some(ChatQuery::QualityGateHealthWindow { .. }) => "quality_gate_health",
                 Some(ChatQuery::ReleaseReadinessHealthWindow { .. }) => "release_readiness_health",
                 Some(ChatQuery::OnlineDevelopersNow { .. }) => "online_devs",
@@ -589,6 +590,7 @@ mod tests {
             ("cuantos devs hay on ahora en control plane", "online_devs"),
             ("cuantos commits sin ticket hubo esta semana", "commits_no_ticket"),
             ("todo lo que hay en control plane resumen ejecutivo", "executive_summary"),
+            ("top 5 repos con quality gate en rojo", "quality_gate_top_repos"),
             ("resumen de quality gate en esta semana", "quality_gate_health"),
             ("estado release readiness gate este mes", "release_readiness_health"),
         ];
