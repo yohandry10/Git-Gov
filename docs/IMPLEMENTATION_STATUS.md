@@ -116,6 +116,10 @@ Updated: 2026-04-19
   - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
   - `scripts/github/bootstrap_ci_variables.ps1` bootstraps CI variables (`SONAR_PROJECT_KEY` required, optional `SONAR_HOST_URL` / `GITGOV_URL`).
   - `docs/DEPLOYMENT.md` now includes command + PASS/FAIL expectations for repo CI config.
+  - Preflight mode control added:
+    - `-AllowMissingSonar` (Sonar config optional for personal-account rollout).
+    - `-RequireGitGovTelemetry` (enforces `GITGOV_API_KEY` + `GITGOV_URL`).
+  - `scripts/github/harden_repo_governance.ps1` forwards both flags for end-to-end governance runs.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 
