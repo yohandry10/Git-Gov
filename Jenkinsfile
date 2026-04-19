@@ -1,5 +1,4 @@
 import groovy.json.JsonOutput
-import groovy.json.JsonSlurperClassic
 
 pipeline {
   agent any
@@ -120,10 +119,9 @@ pipeline {
                   ''',
                   returnStdout: true
                 ).trim()
-                def ceTask = new JsonSlurperClassic().parseText(ceTaskRaw) as Map
-                ceStatus = (ceTask.task?.status ?: 'UNKNOWN').toString().toUpperCase()
+                ceStatus = (extractJsonObjectField(ceTaskRaw, 'task', 'status') ?: 'UNKNOWN').toUpperCase()
                 if (ceStatus == 'SUCCESS') {
-                  analysisId = (ceTask.task?.analysisId ?: '').toString()
+                  analysisId = extractJsonObjectField(ceTaskRaw, 'task', 'analysisId') ?: ''
                   break
                 }
                 if (ceStatus in ['FAILED', 'CANCELED']) {
@@ -148,11 +146,10 @@ pipeline {
                   set +x
                   curl -fsS -u "${SONAR_TOKEN}:" "${SQ_HOST_URL%/}/api/qualitygates/project_status?analysisId=${SQ_ANALYSIS_ID}"
                 ''',
-                returnStdout: true
-              ).trim()
+                  returnStdout: true
+                ).trim()
               writeFile file: 'sonar-quality-gate.json', text: gateRaw
-              def gate = new JsonSlurperClassic().parseText(gateRaw) as Map
-              env.GITGOV_SONAR_STATUS = (gate.projectStatus?.status ?: 'UNKNOWN').toString().toUpperCase()
+              env.GITGOV_SONAR_STATUS = (extractJsonObjectField(gateRaw, 'projectStatus', 'status') ?: 'UNKNOWN').toUpperCase()
             }
 
             echo "Sonar quality gate status: ${env.GITGOV_SONAR_STATUS}"
@@ -183,30 +180,22 @@ pipeline {
           writeFile file: 'gitgov-policy-check.json', text: payload
 
           def policyHttpCode = sh(
-            script: """
+            script: '''
+              set +x
               curl -sS \
                 -o gitgov-policy-check-response.json \
                 -w "%{http_code}" \
-                -X POST ${GITGOV_URL}/policy/check \
+                -X POST "${GITGOV_URL%/}/policy/check" \
                 -H "Authorization: Bearer ${GITGOV_API_KEY}" \
                 -H "Content-Type: application/json" \
                 --data @gitgov-policy-check.json
-            """,
+            ''',
             returnStdout: true
           ).trim()
 
           def responseRaw = fileExists('gitgov-policy-check-response.json')
             ? readFile('gitgov-policy-check-response.json').trim()
             : ''
-
-          def response = [:]
-          if (responseRaw) {
-            try {
-              response = new JsonSlurperClassic().parseText(responseRaw) as Map
-            } catch (ignored) {
-              response = [raw: responseRaw]
-            }
-          }
 
           if (!(policyHttpCode in ['200', '409'])) {
             def msg = "GitGov policy/check transport failed (http=${policyHttpCode})"
@@ -217,11 +206,11 @@ pipeline {
             return
           }
 
-          def reasons = (response.reasons instanceof List) ? response.reasons.join('; ') : ''
-          def warnings = (response.warnings instanceof List) ? response.warnings.join('; ') : ''
-          def allowed = response.allowed == true
-          def advisory = response.advisory != false
-          def enforcementApplied = response.enforcement_applied ?: 'unknown'
+          def reasons = extractJsonStringArray(responseRaw, 'reasons').join('; ')
+          def warnings = extractJsonStringArray(responseRaw, 'warnings').join('; ')
+          def allowed = extractJsonBoolean(responseRaw, 'allowed', false)
+          def advisory = extractJsonBoolean(responseRaw, 'advisory', true)
+          def enforcementApplied = extractJsonString(responseRaw, 'enforcement_applied') ?: 'unknown'
 
           if (warnings) {
             echo "GitGov policy warnings: ${warnings}"
@@ -319,17 +308,23 @@ def notifyGitGov(String status) {
 
   writeFile file: 'gitgov-pipeline-event.json', text: payload
 
-  def includeSecret = env.GITGOV_JENKINS_SECRET?.trim() && env.GITGOV_JENKINS_SECRET.trim() != 'unused'
-  def secretHeader = includeSecret ? "-H \"x-gitgov-jenkins-secret: ${env.GITGOV_JENKINS_SECRET}\"" : ""
-
   def publishStatus = sh(
-    script: """
-      curl --fail-with-body -sS -X POST ${env.GITGOV_URL}/integrations/jenkins \
-        -H "Authorization: Bearer ${env.GITGOV_API_KEY}" \
-        -H "Content-Type: application/json" \
-        ${secretHeader} \
+    script: '''
+      set +x
+      args=(
+        --fail-with-body
+        -sS
+        -X POST
+        "${GITGOV_URL%/}/integrations/jenkins"
+        -H "Authorization: Bearer ${GITGOV_API_KEY}"
+        -H "Content-Type: application/json"
         --data @gitgov-pipeline-event.json
-    """,
+      )
+      if [ -n "${GITGOV_JENKINS_SECRET:-}" ] && [ "${GITGOV_JENKINS_SECRET}" != "unused" ]; then
+        args+=( -H "x-gitgov-jenkins-secret: ${GITGOV_JENKINS_SECRET}" )
+      fi
+      curl "${args[@]}"
+    ''',
     returnStatus: true
   )
   if (publishStatus != 0) {
@@ -388,4 +383,62 @@ PY
     ''',
     returnStdout: true
   ).trim()
+}
+
+def extractJsonString(String raw, String key) {
+  if (!raw) {
+    return null
+  }
+  def matcher = (raw =~ /"${key}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"/)
+  if (!matcher.find()) {
+    return null
+  }
+  return matcher.group(1).replace('\\"', '"').replace('\\\\', '\\')
+}
+
+def extractJsonBoolean(String raw, String key, boolean defaultValue) {
+  if (!raw) {
+    return defaultValue
+  }
+  def matcher = (raw =~ /"${key}"\\s*:\\s*(true|false)/)
+  if (!matcher.find()) {
+    return defaultValue
+  }
+  return matcher.group(1) == 'true'
+}
+
+def extractJsonStringArray(String raw, String key) {
+  if (!raw) {
+    return []
+  }
+  def arrayMatcher = (raw =~ /"${key}"\\s*:\\s*\\[(.*?)\\]/)
+  if (!arrayMatcher.find()) {
+    return []
+  }
+  def inner = arrayMatcher.group(1)
+  if (!inner?.trim()) {
+    return []
+  }
+  def out = []
+  def valueMatcher = (inner =~ /"((?:\\\\.|[^"\\\\])*)"/)
+  while (valueMatcher.find()) {
+    out << valueMatcher.group(1).replace('\\"', '"').replace('\\\\', '\\')
+  }
+  return out
+}
+
+def extractJsonObjectField(String raw, String objectName, String fieldName) {
+  if (!raw) {
+    return null
+  }
+  def objectMatcher = (raw =~ /"${objectName}"\\s*:\\s*\\{([\\s\\S]*?)\\}/)
+  if (!objectMatcher.find()) {
+    return null
+  }
+  def objectBody = objectMatcher.group(1)
+  def fieldMatcher = (objectBody =~ /"${fieldName}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"/)
+  if (!fieldMatcher.find()) {
+    return null
+  }
+  return fieldMatcher.group(1).replace('\\"', '"').replace('\\\\', '\\')
 }
