@@ -35,6 +35,40 @@ $headers = @{
   "User-Agent" = "gitgov-branch-protection-script"
 }
 
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
+}
+
 $contexts = @($RequiredChecks | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
 if ($contexts.Count -eq 0) {
   Write-Error "RequiredChecks cannot be empty."
@@ -68,7 +102,13 @@ $json = $payload | ConvertTo-Json -Depth 6
 Write-Host "Applying branch protection to ${Owner}/${Repo}:$Branch ..."
 Write-Host "Required checks: $($contexts -join ', ')"
 
-$response = Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -ContentType "application/json" -Body $json
+try {
+  $response = Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -ContentType "application/json" -Body $json
+} catch {
+  $detail = Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $uri
+  Write-Error ("Failed to apply branch protection. {0}" -f $detail)
+  exit 1
+}
 
 Write-Host "Done."
 Write-Host ("Enforce admins: {0}" -f $response.enforce_admins.enabled)

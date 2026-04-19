@@ -29,6 +29,40 @@ $headers = @{
   "User-Agent" = "gitgov-ci-variable-bootstrap"
 }
 
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
+}
+
 function Upsert-RepoVariable {
   param(
     [Parameter(Mandatory = $true)][string]$Owner,
@@ -44,15 +78,26 @@ function Upsert-RepoVariable {
     Invoke-RestMethod -Method Get -Uri "$base/$Name" -Headers $Headers | Out-Null
     $exists = $true
   } catch {
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -ne 404) {
+      throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri "$base/$Name")
+    }
     $exists = $false
   }
 
   $payload = @{ name = $Name; value = $Value } | ConvertTo-Json
   if ($exists) {
-    Invoke-RestMethod -Method Patch -Uri "$base/$Name" -Headers $Headers -ContentType "application/json" -Body $payload | Out-Null
+    try {
+      Invoke-RestMethod -Method Patch -Uri "$base/$Name" -Headers $Headers -ContentType "application/json" -Body $payload | Out-Null
+    } catch {
+      throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri "$base/$Name")
+    }
     Write-Host "UPDATED variable: $Name"
   } else {
-    Invoke-RestMethod -Method Post -Uri $base -Headers $Headers -ContentType "application/json" -Body $payload | Out-Null
+    try {
+      Invoke-RestMethod -Method Post -Uri $base -Headers $Headers -ContentType "application/json" -Body $payload | Out-Null
+    } catch {
+      throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $base)
+    }
     Write-Host "CREATED variable: $Name"
   }
 }

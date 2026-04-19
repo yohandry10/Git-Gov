@@ -25,6 +25,40 @@ $headers = @{
   "User-Agent" = "gitgov-ci-config-check"
 }
 
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
+}
+
 $requiredSecrets = @()
 $optionalSecrets = @("GITGOV_JENKINS_SECRET")
 $requiredVariables = @()
@@ -55,12 +89,7 @@ function Get-NameSet {
   try {
     $response = Invoke-RestMethod -Method Get -Uri $Uri -Headers $Headers
   } catch {
-    if ($_.Exception.Response) {
-      $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
-      $body = $reader.ReadToEnd()
-      throw "GitHub API request failed ($Uri): $body"
-    }
-    throw
+    throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $Uri)
   }
 
   $names = @()

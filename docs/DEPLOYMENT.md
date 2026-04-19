@@ -776,7 +776,11 @@ Resultado esperado:
 - Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
 - `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
 - `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
-- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`).
+- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`).
+- Para token fine-grained, habilitar permisos mínimos:
+  - `Repository permissions > Secrets`: `Read` (o `Read and write`)
+  - `Repository permissions > Actions variables`: `Read` (o `Read and write`)
+  - `Repository permissions > Administration`: `Read` (y `Read and write` si aplicarás branch protection)
 
 Bootstrap de variables CI (sin tocar secrets):
 

@@ -29,12 +29,47 @@ $headers = @{
   "User-Agent" = "gitgov-branch-protection-check"
 }
 
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
+}
+
 $uri = "https://api.github.com/repos/$Owner/$Repo/branches/$Branch/protection"
 
 try {
   $protection = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
 } catch {
-  Write-Error "Could not read branch protection for ${Owner}/${Repo}:$Branch. Ensure protection exists and token has access."
+  $detail = Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $uri
+  Write-Error ("Could not read branch protection for ${Owner}/${Repo}:$Branch. {0}" -f $detail)
   exit 1
 }
 
