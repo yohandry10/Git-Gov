@@ -16,6 +16,10 @@ Updated: 2026-04-19
   - `entities_detected`
   - `time_range_used`
   - `actions_recommended`
+- Bot trace redaction hardening (VS-13 phase 1):
+  - `question` / `answer_preview` and tool payload fields are sanitized before persistence.
+  - Trace payload sanitizer now redacts sensitive keys and nested token/email-like values.
+  - `conversation_key` is persisted as SHA-256 hash (`conv_sha256:*`) in trace evidence.
 - Jira webhook ingestion now supports organization scoping:
   - Uses API key scope by default.
   - Accepts optional org hint in payload (`org_name`, `organization`, `org`, `tenant`).

@@ -4,6 +4,7 @@ mod tests {
         analyze_nlp, apply_proactive_todos_from_snapshot, add_todo, complete_todo,
         build_grounded_knowledge_answer, build_knowledge_fallback_answer,
         should_override_llm_answer_with_kb, is_secret_exfiltration_request, sanitize_chat_answer_text,
+        sanitize_chat_trace_json,
         check_org_scope_match, erase_result_status, export_result_status, extract_final_approvers,
         extract_ticket_ids, is_founder_scope_exception, is_logs_precision_query, extract_logs_limit,
         extract_logs_event_type_hint, is_relevant_audit_action, make_audit_delivery_id, render_todo_list,
@@ -18,6 +19,7 @@ mod tests {
     use axum::http::StatusCode;
     use crate::models::{EventFilter, GitHubAuditLogEntry, UserRole};
     use hmac::Mac;
+    use serde_json::json;
     use sha2::Sha256;
 
     fn sign(secret: &str, body: &[u8]) -> String {
@@ -318,6 +320,60 @@ mod tests {
         let redacted_gh = sanitize_chat_answer_text(&gh_token);
         assert!(!redacted_gh.contains(&gh_token));
         assert!(redacted_gh.contains("[REDACTED_SECRET]"));
+
+        let redacted_email = sanitize_chat_answer_text("owner: yohandrychirinos1@gmail.com");
+        assert!(!redacted_email.contains("yohandrychirinos1@gmail.com"));
+        assert!(redacted_email.contains("[REDACTED_EMAIL]"));
+    }
+
+    #[test]
+    fn chat_trace_json_redacts_sensitive_keys_and_nested_values() {
+        let payload = json!({
+            "conversation_key": "bootstrap-admin::org_demo",
+            "token": "ghp_1234567890abcdefghijklmnopq",
+            "intent": "risk_overview",
+            "metadata": {
+                "owner_email": "leader@example.com",
+                "note": "Bearer sk-1234567890ABCDEFGHIJKL"
+            },
+            "items": [
+                "user@example.com",
+                "ok"
+            ]
+        });
+
+        let redacted = sanitize_chat_trace_json(&payload);
+
+        assert_eq!(
+            redacted.get("conversation_key").and_then(|v| v.as_str()),
+            Some("[REDACTED_SECRET]")
+        );
+        assert_eq!(
+            redacted.get("token").and_then(|v| v.as_str()),
+            Some("[REDACTED_SECRET]")
+        );
+        assert_eq!(
+            redacted
+                .get("metadata")
+                .and_then(|v| v.get("owner_email"))
+                .and_then(|v| v.as_str()),
+            Some("[REDACTED_EMAIL]")
+        );
+        assert_eq!(
+            redacted
+                .get("metadata")
+                .and_then(|v| v.get("note"))
+                .and_then(|v| v.as_str()),
+            Some("Bearer [REDACTED_SECRET]")
+        );
+        assert_eq!(
+            redacted
+                .get("items")
+                .and_then(|v| v.as_array())
+                .and_then(|v| v.first())
+                .and_then(|v| v.as_str()),
+            Some("[REDACTED_EMAIL]")
+        );
     }
 
     #[test]

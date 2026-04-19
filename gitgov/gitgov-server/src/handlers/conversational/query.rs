@@ -891,6 +891,7 @@ fn sanitize_chat_answer_text(input: &str) -> String {
     static GH_TOKEN_RE: OnceLock<Regex> = OnceLock::new();
     static SK_TOKEN_RE: OnceLock<Regex> = OnceLock::new();
     static KV_SECRET_RE: OnceLock<Regex> = OnceLock::new();
+    static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
 
     let uuid_re = UUID_RE.get_or_init(|| {
         Regex::new(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b")
@@ -915,15 +916,62 @@ fn sanitize_chat_answer_text(input: &str) -> String {
         )
         .expect("valid key-value secret regex")
     });
+    let email_re = EMAIL_RE.get_or_init(|| {
+        Regex::new(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+            .expect("valid email regex")
+    });
 
     let redacted_uuid = uuid_re.replace_all(input, "[REDACTED_SECRET]");
     let redacted_bearer = bearer_re.replace_all(redacted_uuid.as_ref(), "Bearer [REDACTED_SECRET]");
     let redacted_jwt = jwt_re.replace_all(redacted_bearer.as_ref(), "[REDACTED_SECRET]");
     let redacted_gh = gh_token_re.replace_all(redacted_jwt.as_ref(), "[REDACTED_SECRET]");
     let redacted_sk = sk_token_re.replace_all(redacted_gh.as_ref(), "[REDACTED_SECRET]");
-    kv_secret_re
+    let redacted_kv = kv_secret_re
         .replace_all(redacted_sk.as_ref(), "$1: [REDACTED_SECRET]")
+        .to_string();
+    email_re
+        .replace_all(&redacted_kv, "[REDACTED_EMAIL]")
         .to_string()
+}
+
+fn is_sensitive_trace_key(key: &str) -> bool {
+    let k = key.trim().to_ascii_lowercase().replace('-', "_");
+    matches!(
+        k.as_str(),
+        "authorization" | "cookie" | "set_cookie" | "x_api_key"
+    ) || k.contains("token")
+        || k.contains("secret")
+        || k.contains("password")
+        || k.contains("api_key")
+        || k.contains("apikey")
+        || k.contains("jwt")
+        || k.contains("bearer")
+        || k.contains("conversation_key")
+        || k.contains("client_id")
+}
+
+fn sanitize_chat_trace_json(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut sanitized = serde_json::Map::new();
+            for (key, item) in map {
+                if is_sensitive_trace_key(key) {
+                    sanitized.insert(
+                        key.clone(),
+                        serde_json::Value::String("[REDACTED_SECRET]".to_string()),
+                    );
+                } else {
+                    sanitized.insert(key.clone(), sanitize_chat_trace_json(item));
+                }
+            }
+            serde_json::Value::Object(sanitized)
+        }
+        serde_json::Value::Array(items) => {
+            serde_json::Value::Array(items.iter().map(sanitize_chat_trace_json).collect())
+        }
+        serde_json::Value::String(text) => serde_json::Value::String(sanitize_chat_answer_text(text)),
+        _ => value.clone(),
+    }
 }
 
 fn weekday_es(w: chrono::Weekday) -> &'static str {
