@@ -17,7 +17,7 @@ mod integration_tests {
         body::Body,
         http::{Request, StatusCode},
         middleware,
-        routing::{get, post},
+        routing::{get, post, put},
         Router,
     };
     use sha2::Digest;
@@ -604,6 +604,10 @@ mod integration_tests {
             .route("/orgs", post(handlers::create_org))
             .route("/export", post(handlers::export_events))
             .route("/policy/{repo_name}", get(handlers::get_policy))
+            .route(
+                "/policy/{repo_name}/override",
+                put(handlers::override_policy),
+            )
             .route("/policy/check", post(handlers::policy_check))
             .route(
                 "/policy/{repo_name}/requests",
@@ -1468,6 +1472,129 @@ mod integration_tests {
         let parsed: serde_json::Value =
             serde_json::from_str(&body).expect("parse policy check body");
         assert_eq!(parsed["allowed"], false);
+
+        teardown(&admin_pool, &schema).await;
+    }
+
+    #[tokio::test]
+    async fn policy_override_rejects_quality_gate_downgrade_without_exception() {
+        let (pool, schema, admin_pool) = setup_or_skip!();
+        let api_key = insert_test_api_key(&pool, "policy-admin", "Admin").await;
+        let db = Arc::new(Database::from_pool(pool.clone()));
+        let app = build_test_app(db);
+
+        let (_, repo_id) = insert_test_repo(&pool, "acme/repo").await;
+        let mut existing = crate::models::GitGovConfig::default();
+        existing.enforcement.quality_gates = crate::models::EnforcementLevel::Block;
+        insert_test_policy(
+            &pool,
+            &repo_id,
+            serde_json::to_value(existing).expect("serialize existing policy"),
+        )
+        .await;
+
+        let downgrade_payload = serde_json::json!({
+            "enforcement": {
+                "quality_gates": "off"
+            }
+        });
+        let (status, body) = json_request(
+            &app,
+            "PUT",
+            "/policy/acme/repo/override",
+            Some(&downgrade_payload.to_string()),
+            Some(&api_key),
+        )
+        .await;
+        assert_eq!(
+            status,
+            StatusCode::BAD_REQUEST,
+            "unexpected status: {}",
+            body
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert!(
+            parsed["error"].as_str().unwrap_or_default().contains(
+                "quality gate enforcement downgrade requires active quality_gate_exception"
+            ),
+            "expected governed override error, got {}",
+            body
+        );
+
+        teardown(&admin_pool, &schema).await;
+    }
+
+    #[tokio::test]
+    async fn policy_override_accepts_governed_exception_for_quality_gate_downgrade() {
+        let (pool, schema, admin_pool) = setup_or_skip!();
+        let api_key = insert_test_api_key(&pool, "policy-admin", "Admin").await;
+        let db = Arc::new(Database::from_pool(pool.clone()));
+        let app = build_test_app(db);
+
+        let (_, repo_id) = insert_test_repo(&pool, "acme/repo").await;
+        let mut existing = crate::models::GitGovConfig::default();
+        existing.enforcement.quality_gates = crate::models::EnforcementLevel::Block;
+        insert_test_policy(
+            &pool,
+            &repo_id,
+            serde_json::to_value(existing).expect("serialize existing policy"),
+        )
+        .await;
+
+        let expires_at = chrono::Utc::now().timestamp_millis() + 3_600_000;
+        let governed_payload = serde_json::json!({
+            "config": {
+                "enforcement": {
+                    "quality_gates": "warn"
+                }
+            },
+            "quality_gate_exception": {
+                "reason": "Hotfix release window",
+                "ticket_id": "OPS-777",
+                "approved_by": "security-admin",
+                "expires_at": expires_at
+            }
+        });
+        let (status, body) = json_request(
+            &app,
+            "PUT",
+            "/policy/acme/repo/override",
+            Some(&governed_payload.to_string()),
+            Some(&api_key),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "override failed: {}", body);
+
+        let (status, body) =
+            json_request(&app, "GET", "/policy/acme/repo", None, Some(&api_key)).await;
+        assert_eq!(status, StatusCode::OK, "get policy failed: {}", body);
+        let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(
+            parsed["config"]["enforcement"]["quality_gates"],
+            serde_json::Value::String("warn".to_string())
+        );
+        assert_eq!(
+            parsed["config"]["quality_gate_exception"]["reason"],
+            serde_json::Value::String("Hotfix release window".to_string())
+        );
+        assert_eq!(
+            parsed["config"]["quality_gate_exception"]["ticket_id"],
+            serde_json::Value::String("OPS-777".to_string())
+        );
+        assert_eq!(
+            parsed["config"]["quality_gate_exception"]["approved_by"],
+            serde_json::Value::String("security-admin".to_string())
+        );
+        assert_eq!(
+            parsed["config"]["quality_gate_exception"]["enabled"],
+            serde_json::Value::Bool(true)
+        );
+        assert!(
+            parsed["config"]["quality_gate_exception"]["expires_at"]
+                .as_i64()
+                .unwrap_or_default()
+                >= expires_at
+        );
 
         teardown(&admin_pool, &schema).await;
     }

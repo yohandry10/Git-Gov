@@ -16,6 +16,49 @@ pub struct PolicyApiResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PolicyOverridePayload {
+    LegacyConfig(GitGovConfig),
+    GovernedRequest(PolicyOverrideRequest),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PolicyOverrideRequest {
+    pub config: GitGovConfig,
+    #[serde(default)]
+    pub quality_gate_exception: Option<PolicyQualityGateExceptionRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyQualityGateExceptionRequest {
+    pub reason: String,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    #[serde(default)]
+    pub approved_by: Option<String>,
+    pub expires_at: i64,
+}
+
+fn enforcement_rank(level: &EnforcementLevel) -> u8 {
+    match level {
+        EnforcementLevel::Off => 0,
+        EnforcementLevel::Warn => 1,
+        EnforcementLevel::Block => 2,
+    }
+}
+
+fn normalize_optional_string(value: Option<String>) -> Option<String> {
+    value.and_then(|s| {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
 pub async fn get_policy(
     Extension(_auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -88,7 +131,7 @@ pub async fn override_policy(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
     Path(repo_name): Path<String>,
-    Json(config): Json<GitGovConfig>,
+    Json(payload): Json<PolicyOverridePayload>,
 ) -> impl IntoResponse {
     if require_admin(&auth_user).is_err() {
         return (
@@ -132,6 +175,130 @@ pub async fn override_policy(
         }
     };
 
+    let previous_policy = match state.db.get_policy(&repo.id).await {
+        Ok(policy) => policy,
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(PolicyApiResponse {
+                    version: None,
+                    checksum: None,
+                    config: None,
+                    updated_at: None,
+                    error: Some("Internal database error".to_string()),
+                }),
+            );
+        }
+    };
+
+    let (mut config, requested_exception, explicit_exception_control) = match payload {
+        PolicyOverridePayload::LegacyConfig(config) => (config, None, false),
+        PolicyOverridePayload::GovernedRequest(req) => {
+            (req.config, req.quality_gate_exception, true)
+        }
+    };
+
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let max_exception_window_ms: i64 = 30 * 24 * 60 * 60 * 1000;
+
+    if !explicit_exception_control {
+        if let Some(prev) = previous_policy.as_ref() {
+            config.quality_gate_exception = prev.config.quality_gate_exception.clone();
+        }
+    } else if let Some(req) = requested_exception {
+        let reason = req.reason.trim().to_string();
+        if reason.is_empty() {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(PolicyApiResponse {
+                    version: None,
+                    checksum: None,
+                    config: None,
+                    updated_at: None,
+                    error: Some(
+                        "quality_gate_exception.reason is required for governed overrides"
+                            .to_string(),
+                    ),
+                }),
+            );
+        }
+        if req.expires_at <= now_ms {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(PolicyApiResponse {
+                    version: None,
+                    checksum: None,
+                    config: None,
+                    updated_at: None,
+                    error: Some(
+                        "quality_gate_exception.expires_at must be in the future".to_string(),
+                    ),
+                }),
+            );
+        }
+        if req.expires_at > now_ms + max_exception_window_ms {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(PolicyApiResponse {
+                    version: None,
+                    checksum: None,
+                    config: None,
+                    updated_at: None,
+                    error: Some(
+                        "quality_gate_exception.expires_at exceeds max window (30 days)"
+                            .to_string(),
+                    ),
+                }),
+            );
+        }
+
+        config.quality_gate_exception = Some(QualityGateExceptionConfig {
+            enabled: true,
+            reason,
+            ticket_id: normalize_optional_string(req.ticket_id),
+            approved_by: Some(
+                normalize_optional_string(req.approved_by)
+                    .unwrap_or_else(|| auth_user.client_id.clone()),
+            ),
+            expires_at: req.expires_at,
+            created_at: Some(now_ms),
+        });
+    } else {
+        // Explicit governed request with null exception clears the active exception.
+        config.quality_gate_exception = None;
+    }
+
+    let previous_quality = previous_policy
+        .as_ref()
+        .map(|p| p.config.enforcement.quality_gates.clone())
+        .unwrap_or_default();
+    let new_quality = config.enforcement.quality_gates.clone();
+    let quality_gate_weakened =
+        enforcement_rank(&new_quality) < enforcement_rank(&previous_quality);
+
+    if quality_gate_weakened {
+        let has_active_exception = config
+            .quality_gate_exception
+            .as_ref()
+            .map(|e| e.enabled && e.expires_at > now_ms)
+            .unwrap_or(false);
+        if !has_active_exception {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(PolicyApiResponse {
+                    version: None,
+                    checksum: None,
+                    config: None,
+                    updated_at: None,
+                    error: Some(
+                        "quality gate enforcement downgrade requires active quality_gate_exception"
+                            .to_string(),
+                    ),
+                }),
+            );
+        }
+    }
+
     let config_json = match serde_json::to_string(&config) {
         Ok(json) => json,
         Err(_e) => {
@@ -157,7 +324,11 @@ pub async fn override_policy(
         auth_user.client_id
     );
 
-    match state.db.save_policy(&repo.id, &config, &checksum, &auth_user.client_id).await {
+    match state
+        .db
+        .save_policy(&repo.id, &config, &checksum, &auth_user.client_id)
+        .await
+    {
         Ok(()) => {
             // Admin audit log — append-only, non-fatal
             let audit_entry = AdminAuditLogEntry {
@@ -168,7 +339,11 @@ pub async fn override_policy(
                 target_id: Some(repo.id.clone()),
                 metadata: serde_json::json!({
                     "repo_name": repo_name,
-                    "checksum": checksum
+                    "checksum": checksum,
+                    "quality_gate_previous": format!("{:?}", previous_quality).to_lowercase(),
+                    "quality_gate_new": format!("{:?}", new_quality).to_lowercase(),
+                    "quality_gate_downgrade": quality_gate_weakened,
+                    "quality_gate_exception": config.quality_gate_exception
                 }),
                 created_at: chrono::Utc::now().timestamp_millis(),
             };
@@ -199,4 +374,3 @@ pub async fn override_policy(
         ),
     }
 }
-

@@ -95,6 +95,42 @@ Expected:
 - `"advisory": false` (if any enforcement level is `block`)
 - `reasons` includes quality gate message.
 
+## 3.1) Governed exception for temporary quality-gate downgrade
+
+When you need a temporary downgrade (`block -> warn` or `warn -> off`), use governed payload:
+
+```bash
+curl -sS -X PUT "http://127.0.0.1:3001/policy/<repo_full_name>/override" \
+  -H "Authorization: Bearer <ADMIN_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "enforcement": {
+        "quality_gates": "warn"
+      }
+    },
+    "quality_gate_exception": {
+      "reason": "Hotfix release window",
+      "ticket_id": "OPS-777",
+      "approved_by": "security-admin",
+      "expires_at": 1760000000000
+    }
+  }'
+```
+
+Rules:
+
+- Downgrade without active exception is rejected (`400`).
+- `quality_gate_exception.reason` is required.
+- `quality_gate_exception.expires_at` must be future and <= 30 days.
+- Exception metadata is persisted in policy + admin audit log (`policy_override` metadata).
+
+Behavior in `policy/check` while exception is active:
+
+- Non-green quality gate is marked as violation with `enforcement = "override"`.
+- Response stays allowed (`allowed=true`) and includes warning `allowed by active quality gate exception`.
+- Standard quality-gate failure signal/alert is not emitted for that overridden evaluation.
+
 ## 4) Validate green commit
 
 Run `/policy/check` with a commit that has Sonar `success`.

@@ -117,19 +117,16 @@ pub async fn ingest_client_events(
             auth_user.org_id.clone().or(requested_org_id)
         };
 
-        let inferred_repo_full_name = input
-            .repo_full_name
-            .clone()
-            .or_else(|| {
-                input
-                    .metadata
-                    .as_ref()
-                    .and_then(|m| m.get("repo_name"))
-                    .and_then(|v| v.as_str())
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(ToOwned::to_owned)
-            });
+        let inferred_repo_full_name = input.repo_full_name.clone().or_else(|| {
+            input
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("repo_name"))
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(ToOwned::to_owned)
+        });
 
         let repo = if let Some(ref repo_full_name) = inferred_repo_full_name {
             if let Some(cached) = repo_cache.get(repo_full_name) {
@@ -143,7 +140,8 @@ pub async fn ingest_client_events(
             None
         };
         if auth_user.role != UserRole::Admin {
-            if let (Some(scoped_org_id), Some(repo)) = (auth_user.org_id.as_deref(), repo.as_ref()) {
+            if let (Some(scoped_org_id), Some(repo)) = (auth_user.org_id.as_deref(), repo.as_ref())
+            {
                 if repo.org_id.as_deref() != Some(scoped_org_id) {
                     tracing::warn!(
                         auth_user = %auth_user.client_id,
@@ -199,7 +197,9 @@ pub async fn ingest_client_events(
             reason: input.reason,
             metadata: input.metadata.unwrap_or(serde_json::Value::Null),
             client_version: batch.client_version.clone(),
-            created_at: input.timestamp.unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            created_at: input
+                .timestamp
+                .unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
         };
 
         events.push(event);
@@ -237,16 +237,15 @@ pub async fn ingest_client_events(
             }
 
             // Fire-and-forget (debounced): update client_sessions last_seen + device metadata.
-            let should_touch_session = !response.accepted.is_empty() || !response.duplicates.is_empty();
+            let should_touch_session =
+                !response.accepted.is_empty() || !response.duplicates.is_empty();
             if should_touch_session {
                 let client_id = auth_user.client_id.clone();
                 let org_id = auth_user.org_id.clone();
                 // Extract device metadata from the first event that has it
                 let device_meta = events
                     .iter()
-                    .find_map(|e| {
-                        e.metadata.get("device").cloned()
-                    })
+                    .find_map(|e| e.metadata.get("device").cloned())
                     .unwrap_or(serde_json::json!({}));
                 if should_upsert_client_session(&state, &client_id) {
                     let db = Arc::clone(&state.db);
@@ -449,14 +448,14 @@ pub async fn acquire_outbox_flush_lease(
                 },
             );
             (
-            StatusCode::OK,
-            Json(OutboxLeaseResponse {
-                granted: decision.granted,
-                wait_ms: response_wait_ms,
-                lease_ttl_ms,
-                mode: "server_lease".to_string(),
-            }),
-        )
+                StatusCode::OK,
+                Json(OutboxLeaseResponse {
+                    granted: decision.granted,
+                    wait_ms: response_wait_ms,
+                    lease_ttl_ms,
+                    mode: "server_lease".to_string(),
+                }),
+            )
         }
         Err(e) => {
             tracing::warn!(
@@ -606,10 +605,7 @@ fn invalidate_stats_cache(state: &AppState) {
     } else {
         state.stats_cache_invalidation_min_interval
     };
-    if !should_invalidate_cache(
-        &state.stats_cache_last_invalidation_ms,
-        min_interval,
-    ) {
+    if !should_invalidate_cache(&state.stats_cache_last_invalidation_ms, min_interval) {
         return;
     }
 
@@ -724,10 +720,7 @@ fn invalidate_logs_cache(state: &AppState) {
     } else {
         state.logs_cache_invalidation_min_interval
     };
-    if !should_invalidate_cache(
-        &state.logs_cache_last_invalidation_ms,
-        min_interval,
-    ) {
+    if !should_invalidate_cache(&state.logs_cache_last_invalidation_ms, min_interval) {
         return;
     }
 
@@ -872,7 +865,11 @@ fn should_schedule_repo_upsert(state: &AppState, org_id: &str, repo_full_name: &
     if state.repo_upsert_min_interval.is_zero() {
         return true;
     }
-    let cache_key = format!("{}:{}", org_id.trim(), repo_full_name.trim().to_ascii_lowercase());
+    let cache_key = format!(
+        "{}:{}",
+        org_id.trim(),
+        repo_full_name.trim().to_ascii_lowercase()
+    );
     if cache_key.ends_with(':') {
         return false;
     }
@@ -937,10 +934,7 @@ fn schedule_repo_upsert(
     });
 }
 
-fn should_invalidate_cache(
-    last_invalidation_ms: &Arc<AtomicI64>,
-    min_interval: Duration,
-) -> bool {
+fn should_invalidate_cache(last_invalidation_ms: &Arc<AtomicI64>, min_interval: Duration) -> bool {
     if min_interval.is_zero() {
         return true;
     }
@@ -1030,7 +1024,11 @@ pub async fn get_logs(
     Query(filter): Query<EventFilter>,
 ) -> impl IntoResponse {
     // Non-admins can only see their own events
-    let clamped_limit = if filter.limit == 0 { 100 } else { filter.limit.min(500) };
+    let clamped_limit = if filter.limit == 0 {
+        100
+    } else {
+        filter.limit.min(500)
+    };
     let mut filter = if auth_user.role != UserRole::Admin {
         EventFilter {
             user_login: Some(auth_user.client_id.clone()),
@@ -1174,7 +1172,10 @@ pub async fn get_stats(
     let org_id = auth_user.org_id.as_deref();
     match load_audit_stats(&state, org_id).await {
         Ok(stats) => (StatusCode::OK, Json(stats)),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(AuditStats::default())),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(AuditStats::default()),
+        ),
     }
 }
 
@@ -1203,7 +1204,11 @@ pub async fn get_team_overview(
     };
 
     let days = query.days.unwrap_or(30).clamp(1, 180);
-    let limit = if query.limit == 0 { 50 } else { query.limit.min(500) } as i64;
+    let limit = if query.limit == 0 {
+        50
+    } else {
+        query.limit.min(500)
+    } as i64;
     let offset = query.offset as i64;
 
     let org_id = match resolve_and_check_org_scope(
@@ -1229,7 +1234,11 @@ pub async fn get_team_overview(
                 OrgScopeError::Forbidden => "Requested org is outside API key scope",
                 OrgScopeError::Internal => "Internal database error",
             };
-            return (org_scope_status(err), Json(serde_json::json!({ "error": error }))).into_response();
+            return (
+                org_scope_status(err),
+                Json(serde_json::json!({ "error": error })),
+            )
+                .into_response();
         }
     };
 
@@ -1238,7 +1247,11 @@ pub async fn get_team_overview(
         .get_team_overview(&org_id, status.as_deref(), days, limit, offset)
         .await
     {
-        Ok((entries, total)) => (StatusCode::OK, Json(TeamOverviewResponse { entries, total })).into_response(),
+        Ok((entries, total)) => (
+            StatusCode::OK,
+            Json(TeamOverviewResponse { entries, total }),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, "Failed to load team overview");
             (
@@ -1260,7 +1273,11 @@ pub async fn get_team_repos(
     }
 
     let days = query.days.unwrap_or(30).clamp(1, 180);
-    let limit = if query.limit == 0 { 50 } else { query.limit.min(500) } as i64;
+    let limit = if query.limit == 0 {
+        50
+    } else {
+        query.limit.min(500)
+    } as i64;
     let offset = query.offset as i64;
 
     let org_id = match resolve_and_check_org_scope(
@@ -1286,12 +1303,18 @@ pub async fn get_team_repos(
                 OrgScopeError::Forbidden => "Requested org is outside API key scope",
                 OrgScopeError::Internal => "Internal database error",
             };
-            return (org_scope_status(err), Json(serde_json::json!({ "error": error }))).into_response();
+            return (
+                org_scope_status(err),
+                Json(serde_json::json!({ "error": error })),
+            )
+                .into_response();
         }
     };
 
     match state.db.get_team_repos(&org_id, days, limit, offset).await {
-        Ok((entries, total)) => (StatusCode::OK, Json(TeamReposResponse { entries, total })).into_response(),
+        Ok((entries, total)) => {
+            (StatusCode::OK, Json(TeamReposResponse { entries, total })).into_response()
+        }
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, "Failed to load team repo overview");
             (
@@ -1309,7 +1332,10 @@ pub async fn get_daily_activity(
     Query(query): Query<DailyActivityQuery>,
 ) -> impl IntoResponse {
     if require_admin(&auth_user).is_err() {
-        return (StatusCode::FORBIDDEN, Json(Vec::<DailyActivityPoint>::new()));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(Vec::<DailyActivityPoint>::new()),
+        );
     }
 
     let days = query.days.unwrap_or(14).clamp(1, 90) as i64;
@@ -1335,10 +1361,13 @@ pub async fn get_dashboard(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     if require_admin(&auth_user).is_err() {
-        return (StatusCode::FORBIDDEN, Json(DashboardResponse {
-            stats: AuditStats::default(),
-            recent_events: vec![],
-        }));
+        return (
+            StatusCode::FORBIDDEN,
+            Json(DashboardResponse {
+                stats: AuditStats::default(),
+                recent_events: vec![],
+            }),
+        );
     }
 
     let org_id = auth_user.org_id.as_deref();
@@ -1349,28 +1378,47 @@ pub async fn get_dashboard(
         org_id: auth_user.org_id.clone(),
         ..Default::default()
     };
-    let recent = state.db.get_combined_events(&filter).await.unwrap_or_default();
+    let recent = state
+        .db
+        .get_combined_events(&filter)
+        .await
+        .unwrap_or_default();
 
-    (StatusCode::OK, Json(DashboardResponse {
-        stats,
-        recent_events: recent,
-    }))
+    (
+        StatusCode::OK,
+        Json(DashboardResponse {
+            stats,
+            recent_events: recent,
+        }),
+    )
 }
 
 fn repo_name_from_policy_check_input(input: &str) -> String {
     let trimmed = input.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") || trimmed.starts_with("git@") {
+    if trimmed.starts_with("http://")
+        || trimmed.starts_with("https://")
+        || trimmed.starts_with("git@")
+    {
         if let Some(idx) = trimmed.find(':') {
             // git@github.com:owner/repo.git
             let candidate = &trimmed[idx + 1..];
-            return candidate.trim_end_matches(".git").trim_matches('/').to_string();
+            return candidate
+                .trim_end_matches(".git")
+                .trim_matches('/')
+                .to_string();
         }
         if let Some(pos) = trimmed.find("github.com/") {
             let candidate = &trimmed[(pos + "github.com/".len())..];
-            return candidate.trim_end_matches(".git").trim_matches('/').to_string();
+            return candidate
+                .trim_end_matches(".git")
+                .trim_matches('/')
+                .to_string();
         }
     }
-    trimmed.trim_end_matches(".git").trim_matches('/').to_string()
+    trimmed
+        .trim_end_matches(".git")
+        .trim_matches('/')
+        .to_string()
 }
 
 fn branch_matches_policy(policy: &GitGovConfig, branch: &str) -> bool {
@@ -1436,8 +1484,7 @@ fn policy_check_response_status(
 fn ticket_id_regex() -> &'static Regex {
     static TICKET_ID_RE: OnceLock<Regex> = OnceLock::new();
     TICKET_ID_RE.get_or_init(|| {
-        Regex::new(r"\b([A-Z][A-Z0-9]{1,15}-[0-9]{1,9})\b")
-            .expect("valid ticket id regex")
+        Regex::new(r"\b([A-Z][A-Z0-9]{1,15}-[0-9]{1,9})\b").expect("valid ticket id regex")
     })
 }
 
@@ -1514,8 +1561,11 @@ pub async fn policy_check(
         Ok(Some(repo)) => repo,
         Ok(None) => {
             response.allowed = false;
-            response.reasons.push("Repository not found in GitGov".to_string());
-            let status = policy_check_response_status(state.as_ref(), &repo_name, branch, &response);
+            response
+                .reasons
+                .push("Repository not found in GitGov".to_string());
+            let status =
+                policy_check_response_status(state.as_ref(), &repo_name, branch, &response);
             return (status, Json(response));
         }
         Err(_) => {
@@ -1529,8 +1579,11 @@ pub async fn policy_check(
         Ok(Some(policy)) => policy,
         Ok(None) => {
             response.allowed = false;
-            response.reasons.push("No policy configured for repository".to_string());
-            let status = policy_check_response_status(state.as_ref(), &repo_name, branch, &response);
+            response
+                .reasons
+                .push("No policy configured for repository".to_string());
+            let status =
+                policy_check_response_status(state.as_ref(), &repo_name, branch, &response);
             return (status, Json(response));
         }
         Err(_) => {
@@ -1542,6 +1595,11 @@ pub async fn policy_check(
     let config = &policy.config;
     let enforcement = &config.enforcement;
     let mut quality_gate_violation_context: Option<(String, String, String)> = None;
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let active_quality_gate_exception = config
+        .quality_gate_exception
+        .as_ref()
+        .filter(|exception| exception.enabled && exception.expires_at > now_ms);
 
     // Determine highest enforcement level applied
     let has_block = [
@@ -1574,7 +1632,9 @@ pub async fn policy_check(
 
     // --- Branch rules ---
     if enforcement.branches != EnforcementLevel::Off {
-        response.evaluated_rules.push("branch_name_valid".to_string());
+        response
+            .evaluated_rules
+            .push("branch_name_valid".to_string());
         if !branch_matches_policy(config, branch) {
             let v = RuleViolation {
                 rule: "branch_name_valid".to_string(),
@@ -1591,7 +1651,9 @@ pub async fn policy_check(
             response.violations.push(v);
         }
 
-        response.evaluated_rules.push("not_protected_branch".to_string());
+        response
+            .evaluated_rules
+            .push("not_protected_branch".to_string());
         if config.branches.protected.iter().any(|p| p == branch) {
             let v = RuleViolation {
                 rule: "not_protected_branch".to_string(),
@@ -1616,26 +1678,36 @@ pub async fn policy_check(
     // --- Commit rules ---
     if enforcement.commits != EnforcementLevel::Off {
         if config.rules.require_conventional_commits {
-            response.evaluated_rules.push("conventional_commit".to_string());
+            response
+                .evaluated_rules
+                .push("conventional_commit".to_string());
         }
         if config.rules.require_signed_commits {
             response.evaluated_rules.push("signed_commit".to_string());
         }
         if let Some(max) = config.rules.max_files_per_commit {
-            response.evaluated_rules.push(format!("max_files_per_commit_{}", max));
+            response
+                .evaluated_rules
+                .push(format!("max_files_per_commit_{}", max));
         }
         if !config.rules.forbidden_patterns.is_empty() {
-            response.evaluated_rules.push("forbidden_patterns".to_string());
+            response
+                .evaluated_rules
+                .push("forbidden_patterns".to_string());
         }
     }
 
     // --- Pull request rules ---
     if enforcement.pull_requests != EnforcementLevel::Off {
         if config.rules.require_pull_request {
-            response.evaluated_rules.push("require_pull_request".to_string());
+            response
+                .evaluated_rules
+                .push("require_pull_request".to_string());
         }
         if config.rules.min_approvals > 0 {
-            response.evaluated_rules.push(format!("min_approvals_{}", config.rules.min_approvals));
+            response
+                .evaluated_rules
+                .push(format!("min_approvals_{}", config.rules.min_approvals));
         }
     }
 
@@ -1648,7 +1720,34 @@ pub async fn policy_check(
 
     // --- Quality gate rules (Sonar) ---
     if enforcement.quality_gates != EnforcementLevel::Off {
-        response.evaluated_rules.push("quality_gate_green".to_string());
+        response
+            .evaluated_rules
+            .push("quality_gate_green".to_string());
+        if let Some(exception) = active_quality_gate_exception {
+            response
+                .evaluated_rules
+                .push("quality_gate_exception_active".to_string());
+            response.warnings.push(format!(
+                "Quality gate exception active until {} (reason: {}; approved_by: {}).",
+                exception.expires_at,
+                exception.reason,
+                exception
+                    .approved_by
+                    .as_deref()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("unknown")
+            ));
+        } else if let Some(exception) = config.quality_gate_exception.as_ref() {
+            if exception.enabled && exception.expires_at <= now_ms {
+                response
+                    .evaluated_rules
+                    .push("quality_gate_exception_expired".to_string());
+                response.warnings.push(format!(
+                    "Quality gate exception expired at {}; strict policy applies.",
+                    exception.expires_at
+                ));
+            }
+        }
 
         if let Some(commit_sha) = commit_sha {
             match state
@@ -1659,27 +1758,39 @@ pub async fn policy_check(
                 Ok(Some(run)) => {
                     let pipeline_status = run.status.trim().to_ascii_lowercase();
                     if pipeline_status != "success" {
-                        quality_gate_violation_context = Some((
-                            commit_sha.to_string(),
-                            run.job_name.clone(),
-                            run.status.clone(),
-                        ));
                         let message = format!(
                             "Sonar quality gate not green for commit {} (job '{}', status '{}')",
-                            commit_sha,
-                            run.job_name,
-                            run.status
+                            commit_sha, run.job_name, run.status
                         );
                         let v = RuleViolation {
                             rule: "quality_gate_green".to_string(),
                             category: "quality_gates".to_string(),
-                            enforcement: format!("{:?}", enforcement.quality_gates).to_lowercase(),
+                            enforcement: if active_quality_gate_exception.is_some() {
+                                "override".to_string()
+                            } else {
+                                format!("{:?}", enforcement.quality_gates).to_lowercase()
+                            },
                             message: message.clone(),
                         };
-                        if enforcement.quality_gates == EnforcementLevel::Block {
+                        if active_quality_gate_exception.is_some() {
+                            response.warnings.push(format!(
+                                "{} (allowed by active quality gate exception)",
+                                message
+                            ));
+                        } else if enforcement.quality_gates == EnforcementLevel::Block {
+                            quality_gate_violation_context = Some((
+                                commit_sha.to_string(),
+                                run.job_name.clone(),
+                                run.status.clone(),
+                            ));
                             response.allowed = false;
                             response.reasons.push(message);
                         } else {
+                            quality_gate_violation_context = Some((
+                                commit_sha.to_string(),
+                                run.job_name.clone(),
+                                run.status.clone(),
+                            ));
                             response.warnings.push(message);
                         }
                         response.violations.push(v);
@@ -1719,17 +1830,19 @@ pub async fn policy_check(
 
         match state
             .db
-            .insert_quality_gate_policy_violation_signal(&crate::db::QualityGatePolicyViolationSignalInput {
-                org_id: repo.org_id.as_deref(),
-                repo_id: Some(repo.id.as_str()),
-                actor_login: &actor,
-                branch: Some(branch),
-                commit_sha: &failed_commit_sha,
-                repo_full_name: &repo_name,
-                job_name: &job_name,
-                gate_status: &gate_status,
-                enforcement: &enforcement_level,
-            })
+            .insert_quality_gate_policy_violation_signal(
+                &crate::db::QualityGatePolicyViolationSignalInput {
+                    org_id: repo.org_id.as_deref(),
+                    repo_id: Some(repo.id.as_str()),
+                    actor_login: &actor,
+                    branch: Some(branch),
+                    commit_sha: &failed_commit_sha,
+                    repo_full_name: &repo_name,
+                    job_name: &job_name,
+                    gate_status: &gate_status,
+                    enforcement: &enforcement_level,
+                },
+            )
             .await
         {
             Ok(inserted) => {

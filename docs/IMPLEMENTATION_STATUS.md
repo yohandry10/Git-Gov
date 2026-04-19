@@ -50,6 +50,14 @@ Updated: 2026-04-19
   - Alert webhook now emits a dedicated `Quality Gate no verde` message when configured.
   - Validation runbook updated with signal/alert verification (`docs/QUALITY_GATE_POLICY_VALIDATION.md`).
   - Notification formatters now include unit tests (`notifications::tests`).
+- Governed quality-gate exception flow (SQ-09 phase 1) added:
+  - `PUT /policy/{repo}/override` now supports governed payload with `quality_gate_exception` (`reason`, `ticket_id`, `approved_by`, `expires_at`).
+  - Quality gate enforcement downgrade (`block->warn/off`, `warn->off`) is rejected unless an active exception is provided.
+  - Legacy override payload compatibility preserved (existing exception retained when clients send plain `GitGovConfig`).
+  - `/policy/check` now recognizes active exception, marks violation as `enforcement=override`, and allows with warning while exception remains active.
+  - Integration tests added:
+    - `policy_override_rejects_quality_gate_downgrade_without_exception`
+    - `policy_override_accepts_governed_exception_for_quality_gate_downgrade`
 - Desktop policy-check payload now includes `commit` (HEAD SHA) for richer server-side evaluation.
 - Jenkins policy-check stage hardened:
   - Parses JSON response from `/policy/check` (`allowed`, `advisory`, `warnings`, `enforcement_applied`).
