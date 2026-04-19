@@ -1,18 +1,21 @@
 param(
   [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov"
+  [string]$Repo = "Git-Gov",
+  [string]$GitHubToken = ""
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not $env:GITHUB_TOKEN -or [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
-  Write-Error "Missing GITHUB_TOKEN. Export a token with repo/actions read access."
+$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($tokenCandidates.Count -eq 0) {
+  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT with repo/actions read access."
   exit 1
 }
+$token = $tokenCandidates[0]
 
 $headers = @{
-  Authorization = "Bearer $($env:GITHUB_TOKEN)"
+  Authorization = "Bearer $token"
   Accept = "application/vnd.github+json"
   "X-GitHub-Api-Version" = "2022-11-28"
   "User-Agent" = "gitgov-ci-config-check"

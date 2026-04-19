@@ -130,8 +130,8 @@ Checks mínimos recomendados:
 Script automático (usa API de GitHub):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_ADMIN_ON_REPO>"
 powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
+  -GitHubToken "<TOKEN_CON_ADMIN_ON_REPO>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main"
@@ -148,8 +148,8 @@ Validación rápida:
 Validación automática (API):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>"
 powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main"
@@ -158,8 +158,8 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.
 Orquestador único (setup + validación):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO_ADMIN>"
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov" `
   -Branch "main" `
@@ -725,14 +725,15 @@ Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 Preflight de configuración CI del repo (GitHub Actions):
 
 ```powershell
-$env:GITHUB_TOKEN="<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>"
 powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>" `
   -Owner "yohandry10" `
   -Repo "Git-Gov"
 ```
 
 Resultado esperado:
 - `PASS` si secrets/variables requeridos están presentes.
+- Los scripts también aceptan token por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`) si no se pasa `-GitHubToken`.
 - `FAIL` con lista concreta de faltantes si aún falta configuración.
 
 **Local signed build:**
