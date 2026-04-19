@@ -90,6 +90,7 @@ Updated: 2026-04-19
 - Publication hardening guardrails added:
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
   - `.gitignore` now excludes `.claude/`, `CLAUDE.md`, `.kiro/`, `.trae/`, `.windsurf/`.
+  - Local equivalent guard added: `scripts/security/publication_guard.ps1` for pre-push validation (`restricted/env/legacy` checks).
 - Secret scanning widened and mandatory on CI surface:
   - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
   - Security permissions for findings publication are declared in workflow.
