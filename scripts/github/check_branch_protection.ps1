@@ -4,10 +4,10 @@ param(
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   [string[]]$RequiredChecks = @(
-    "server-lint",
-    "desktop-lint",
-    "frontend-lint",
-    "website-lint",
+    "Server Clippy + Check",
+    "Desktop Rust Clippy",
+    "Frontend Lint + Typecheck",
+    "Website Lint + Typecheck + Build",
     "Security Guard"
   )
 )
