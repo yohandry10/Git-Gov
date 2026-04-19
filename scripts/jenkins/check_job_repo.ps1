@@ -24,24 +24,41 @@ $headers = @{
 }
 
 try {
-  $xmlRaw = Invoke-RestMethod -Uri $jobConfigUrl -Method Get -Headers $headers
+  $response = Invoke-WebRequest -Uri $jobConfigUrl -Method Get -Headers $headers -UseBasicParsing
+  $xmlRaw = [string]$response.Content
 } catch {
   Write-Error "Could not fetch Jenkins job config from $jobConfigUrl"
   exit 1
 }
 
-[xml]$xml = $xmlRaw
+$normalizedXml = [regex]::Replace(
+  $xmlRaw,
+  '<\?xml\s+version=(["''])1\.1\1',
+  '<?xml version="1.0"',
+  [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+
+try {
+[xml]$xml = $normalizedXml
+} catch {
+  Write-Error "Could not parse Jenkins job config XML for $jobConfigUrl"
+  exit 1
+}
 $remoteUrls = @()
 
-if ($xml.flowdefinition.definition -and $xml.flowdefinition.definition.scm -and $xml.flowdefinition.definition.scm.userRemoteConfigs) {
-  $nodes = $xml.flowdefinition.definition.scm.userRemoteConfigs.'hudson.plugins.git.UserRemoteConfig'
-  if ($nodes) {
-    foreach ($node in @($nodes)) {
-      if ($node.url) {
-        $remoteUrls += [string]$node.url
+try {
+  $urlNodes = $xml.SelectNodes("//*[local-name()='userRemoteConfigs']/*[local-name()='hudson.plugins.git.UserRemoteConfig']/*[local-name()='url']")
+  if ($urlNodes) {
+    foreach ($node in @($urlNodes)) {
+      $value = [string]$node.InnerText
+      if (-not [string]::IsNullOrWhiteSpace($value)) {
+        $remoteUrls += $value.Trim()
       }
     }
   }
+} catch {
+  Write-Error "Could not query SCM remote URLs from Jenkins job XML."
+  exit 1
 }
 
 if ($remoteUrls.Count -eq 0) {
