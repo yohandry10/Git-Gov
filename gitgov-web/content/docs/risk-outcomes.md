@@ -141,6 +141,27 @@ These bands are operational defaults. Tune thresholds per repository criticality
 
 ---
 
+## Tier Profiles (Now in Dashboard)
+
+The Control Plane now supports tier-aware scoring profiles in the admin dashboard selector (`Critical`, `Standard`, `Internal`).
+
+Each profile changes:
+- score weights (readiness and composite risk),
+- readiness color bands,
+- and KPI SLA targets used for visual alerts.
+
+### Default SLA targets by tier
+
+| Tier | Min readiness | Max blocked push | Max traceability gap | Max pipeline failures | Max sonar failures | Max unresolved violations |
+| --- | --- | --- | --- | --- | --- | --- |
+| Critical | `>= 85` | `<= 5%` | `<= 15%` | `<= 10%` | `<= 12%` | `<= 30%` |
+| Standard | `>= 75` | `<= 10%` | `<= 25%` | `<= 20%` | `<= 20%` | `<= 40%` |
+| Internal | `>= 65` | `<= 15%` | `<= 35%` | `<= 30%` | `<= 30%` | `<= 50%` |
+
+Use `Standard` as baseline, then move each repository to `Critical` or `Internal` once telemetry is stable for at least 2-4 weeks.
+
+---
+
 ## Practical Rollout Pattern
 
 1. Baseline each KPI per repo tier (critical backend, internal tooling, etc.).

@@ -17,8 +17,29 @@ import { ExportPanel } from './ExportPanel'
 import { MaintenanceOverlay } from './MaintenanceOverlay'
 import { Modal } from '@/components/shared/Modal'
 import { Badge } from '@/components/shared/Badge'
+import {
+  REPO_TIER_PROFILES,
+  computeReleaseReadiness,
+  getRepoTierProfile,
+  type RepoTier,
+} from './risk-scoring'
 
 const DASHBOARD_LOG_LIMIT = 500
+const REPO_TIER_STORAGE_KEY = 'gitgov.dashboard.repo_tier'
+
+function readStoredRepoTier(): RepoTier {
+  if (typeof window === 'undefined') return 'standard'
+  const stored = window.localStorage.getItem(REPO_TIER_STORAGE_KEY)
+  if (stored === 'critical' || stored === 'standard' || stored === 'internal') {
+    return stored
+  }
+  return 'standard'
+}
+
+function persistRepoTier(tier: RepoTier) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(REPO_TIER_STORAGE_KEY, tier)
+}
 
 export function ServerDashboard() {
   const serverStats = useControlPlaneStore((s) => s.serverStats)
@@ -47,9 +68,11 @@ export function ServerDashboard() {
 
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [showActiveDevsModal, setShowActiveDevsModal] = useState(false)
+  const [repoTier, setRepoTier] = useState<RepoTier>(() => readStoredRepoTier())
   const [isWindowVisible, setIsWindowVisible] = useState(
     typeof document === 'undefined' ? true : document.visibilityState === 'visible',
   )
+  const repoTierProfile = getRepoTierProfile(repoTier)
   const isChatLoadingRef = useRef(isChatLoading)
 
   useEffect(() => {
@@ -149,22 +172,17 @@ export function ServerDashboard() {
   const sonarPassRate = sonarTotal > 0 ? ((sonarPassed / sonarTotal) * 100).toFixed(1) : '0.0'
   const sonarPassRateValue = Number.parseFloat(sonarPassRate)
   const ticketCoveragePercent = ticketCoverage?.coverage_percentage ?? 0
-  const readinessSignals = [
-    { value: pipelineSuccessRateValue, weight: 0.45, available: pipelineTotal > 0 },
-    { value: ticketCoveragePercent, weight: 0.25, available: (ticketCoverage?.total_commits ?? 0) > 0 },
-    { value: sonarPassRateValue, weight: 0.30, available: sonarTotal > 0 },
-  ]
-  const readinessWeight = readinessSignals.reduce((acc, signal) => (
-    signal.available ? acc + signal.weight : acc
-  ), 0)
-  const releaseReadinessScore = readinessWeight > 0
-    ? Math.round(
-      readinessSignals.reduce((acc, signal) => (
-        signal.available ? acc + (signal.value * signal.weight) : acc
-      ), 0) / readinessWeight,
-    )
-    : 0
-  const releaseReadinessSignals = readinessSignals.filter((signal) => signal.available).length
+  const readiness = computeReleaseReadiness({
+    tier: repoTier,
+    pipelineSuccessRate: pipelineSuccessRateValue,
+    ticketCoveragePercent,
+    sonarPassRate: sonarPassRateValue,
+    pipelineAvailable: pipelineTotal > 0,
+    ticketCoverageAvailable: (ticketCoverage?.total_commits ?? 0) > 0,
+    sonarAvailable: sonarTotal > 0,
+  })
+  const releaseReadinessScore = readiness.score
+  const releaseReadinessSignals = readiness.available
   const commitsWithoutTicket = (ticketCoverage?.commits_without_ticket ?? []).slice(0, 5)
   const likelyTestActiveDevs = activeDevs7d.filter((d) => d.suspicious_test_data).length
   const activeDevCoverage = serverStats ? `${activeDevs7d.length}/${serverStats.active_devs_week}` : `${activeDevs7d.length}/-`
@@ -187,7 +205,25 @@ export function ServerDashboard() {
         }}
         isRefreshing={isRefreshingDashboard}
       />
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-2">
+        <label htmlFor="repo-tier-select" className="text-[9px] text-surface-500 uppercase tracking-widest">Tier</label>
+        <select
+          id="repo-tier-select"
+          value={repoTier}
+          onChange={(event) => {
+            const nextTier = event.target.value as RepoTier
+            setRepoTier(nextTier)
+            persistRepoTier(nextTier)
+          }}
+          className="text-[10px] bg-white/5 border border-white/10 rounded px-2 py-0.5 text-surface-200"
+          aria-label="Repository tier profile"
+        >
+          {Object.entries(REPO_TIER_PROFILES).map(([tierKey, profile]) => (
+            <option key={tierKey} value={tierKey}>
+              {profile.label}
+            </option>
+          ))}
+        </select>
         <span className="text-[9px] text-surface-500 uppercase tracking-widest bg-white/4 px-2 py-0.5 rounded font-medium">TZ: {displayTimezone}</span>
       </div>
 
@@ -219,6 +255,9 @@ export function ServerDashboard() {
               sonarPassRate={sonarPassRate}
               releaseReadinessScore={releaseReadinessScore}
               releaseReadinessSignals={releaseReadinessSignals}
+              releaseReadinessBand={readiness.band}
+              readinessTierLabel={repoTierProfile.label}
+              readinessTargetScore={repoTierProfile.risk.sla.minReadinessScore}
             />
             <DailyActivityWidget points={dailyActivity} />
             <TicketCoverageWidget />
@@ -236,6 +275,7 @@ export function ServerDashboard() {
             totalViolations={violationsTotal}
             criticalViolations={criticalViolations}
             releaseReadinessScore={releaseReadinessScore}
+            repoTier={repoTier}
           />
 
           <EventBreakdownGrid

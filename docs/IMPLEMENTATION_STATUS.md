@@ -67,6 +67,11 @@ Updated: 2026-04-19
     - unresolved violations rate + critical count
   - Includes composite risk score (`0-100`) with explicit signal coverage (`n/5`).
   - Public docs surface added in website (`/docs/risk-outcomes`, EN/ES) with KPI formulas and operating bands.
+- Tier-aware scoring + SLA profiles added in dashboard:
+  - New risk/readiness scoring model centralizes weights, bands, and thresholds by repo tier (`Critical`, `Standard`, `Internal`).
+  - Admin dashboard now includes tier selector with persisted profile.
+  - `Pipeline Health` and `Risk Outcomes` now apply tier-specific readiness/risk bands and SLA thresholds.
+  - Risk outcomes docs (EN/ES) now include baseline SLA targets by tier.
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:
@@ -141,7 +146,7 @@ Updated: 2026-04-19
    - Pending for Sonar scan mode: `SONAR_TOKEN`.
    - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
 2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
-3. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
+3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
 
 ## Required GitHub Configuration (for Sonar workflow)
 

@@ -1,5 +1,6 @@
 import { ShieldAlert } from 'lucide-react'
 import { Bar } from './Bar'
+import { clampPercent, computeCompositeRisk, getRepoTierProfile, type RepoTier } from './risk-scoring'
 
 interface RiskOutcomesWidgetProps {
   trackedPushesToday: number
@@ -13,36 +14,7 @@ interface RiskOutcomesWidgetProps {
   totalViolations: number
   criticalViolations: number
   releaseReadinessScore: number
-}
-
-interface WeightedSignal {
-  value: number
-  weight: number
-  available: boolean
-}
-
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) return 0
-  if (value < 0) return 0
-  if (value > 100) return 100
-  return value
-}
-
-function computeCompositeRisk(signals: WeightedSignal[]): { score: number; available: number; total: number } {
-  const activeSignals = signals.filter((signal) => signal.available)
-  if (activeSignals.length === 0) {
-    return { score: 0, available: 0, total: signals.length }
-  }
-  const totalWeight = activeSignals.reduce((acc, signal) => acc + signal.weight, 0)
-  if (totalWeight <= 0) {
-    return { score: 0, available: activeSignals.length, total: signals.length }
-  }
-  const weightedSum = activeSignals.reduce((acc, signal) => acc + (signal.value * signal.weight), 0)
-  return {
-    score: Math.round(weightedSum / totalWeight),
-    available: activeSignals.length,
-    total: signals.length,
-  }
+  repoTier: RepoTier
 }
 
 export function RiskOutcomesWidget({
@@ -57,7 +29,9 @@ export function RiskOutcomesWidget({
   totalViolations,
   criticalViolations,
   releaseReadinessScore,
+  repoTier,
 }: RiskOutcomesWidgetProps) {
+  const tierProfile = getRepoTierProfile(repoTier)
   const pushAttempts = trackedPushesToday + blockedPushesToday
   const trustedPathRate = pushAttempts > 0
     ? clampPercent((trackedPushesToday / pushAttempts) * 100)
@@ -77,30 +51,39 @@ export function RiskOutcomesWidget({
     ? clampPercent((unresolvedViolations / totalViolations) * 100)
     : 0
 
-  const riskSignals: WeightedSignal[] = [
-    { value: blockedPushRate, weight: 0.2, available: pushAttempts > 0 },
-    { value: ticketGapRate, weight: 0.2, available: true },
-    { value: pipelineFailureRate, weight: 0.2, available: pipelineTotal7d > 0 },
-    { value: sonarFailureRate, weight: 0.2, available: sonarTotal > 0 },
-    { value: unresolvedViolationRate, weight: 0.2, available: totalViolations > 0 },
-  ]
-  const composite = computeCompositeRisk(riskSignals)
+  const composite = computeCompositeRisk({
+    tier: repoTier,
+    blockedPushRate,
+    ticketGapRate,
+    pipelineFailureRate,
+    sonarFailureRate,
+    unresolvedViolationRate,
+    blockedPushAvailable: pushAttempts > 0,
+    ticketGapAvailable: true,
+    pipelineFailureAvailable: pipelineTotal7d > 0,
+    sonarFailureAvailable: sonarTotal > 0,
+    unresolvedViolationAvailable: totalViolations > 0,
+  })
   const compositeScore = composite.score
 
-  const riskBand = composite.available === 0
-    ? 'Insuficiente'
-    : compositeScore >= 60
-      ? 'Alto'
-      : compositeScore >= 35
-        ? 'Medio'
-        : 'Bajo'
-  const riskBandClass = composite.available === 0
+  const riskBand = composite.band
+  const riskBandClass = riskBand === 'Insuficiente'
     ? 'text-surface-500'
-    : compositeScore >= 60
+    : riskBand === 'Alto'
       ? 'text-danger-300'
-      : compositeScore >= 35
+      : riskBand === 'Medio'
         ? 'text-amber-300'
         : 'text-emerald-300'
+  const riskBarColor: 'danger' | 'warning' | 'success' = riskBand === 'Alto'
+    ? 'danger'
+    : riskBand === 'Medio'
+      ? 'warning'
+      : 'success'
+  const releaseReadinessClass = releaseReadinessScore >= tierProfile.risk.sla.minReadinessScore
+    ? 'text-emerald-300'
+    : releaseReadinessScore >= (tierProfile.risk.sla.minReadinessScore - 10)
+      ? 'text-amber-300'
+      : 'text-danger-300'
 
   return (
     <div className="glass-panel p-5">
@@ -119,7 +102,7 @@ export function RiskOutcomesWidget({
             {riskBand}
           </span>
         </div>
-        <Bar value={compositeScore} color={compositeScore >= 60 ? 'danger' : compositeScore >= 35 ? 'warning' : 'success'} />
+        <Bar value={compositeScore} color={riskBarColor} />
 
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 pt-2">
           <div className="flex items-center justify-between text-xs">
@@ -128,31 +111,31 @@ export function RiskOutcomesWidget({
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Pushes bloqueados</span>
-            <span className={`mono-data font-medium ${blockedPushRate > 10 ? 'text-danger-300' : 'text-surface-200'}`}>
+            <span className={`mono-data font-medium ${blockedPushRate > tierProfile.risk.sla.blockedPushRateMax ? 'text-danger-300' : 'text-surface-200'}`}>
               {blockedPushRate.toFixed(1)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Gap de trazabilidad</span>
-            <span className={`mono-data font-medium ${ticketGapRate > 30 ? 'text-amber-300' : 'text-surface-200'}`}>
+            <span className={`mono-data font-medium ${ticketGapRate > tierProfile.risk.sla.ticketGapRateMax ? 'text-amber-300' : 'text-surface-200'}`}>
               {ticketGapRate.toFixed(1)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Fallos pipeline (7d)</span>
-            <span className={`mono-data font-medium ${pipelineFailureRate > 20 ? 'text-danger-300' : 'text-surface-200'}`}>
+            <span className={`mono-data font-medium ${pipelineFailureRate > tierProfile.risk.sla.pipelineFailureRateMax ? 'text-danger-300' : 'text-surface-200'}`}>
               {pipelineFailureRate.toFixed(1)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Fallos Sonar (sample)</span>
-            <span className={`mono-data font-medium ${sonarTotal > 0 && sonarFailureRate > 20 ? 'text-danger-300' : 'text-surface-200'}`}>
+            <span className={`mono-data font-medium ${sonarTotal > 0 && sonarFailureRate > tierProfile.risk.sla.sonarFailureRateMax ? 'text-danger-300' : 'text-surface-200'}`}>
               {sonarTotal > 0 ? `${sonarFailureRate.toFixed(1)}%` : 'N/A'}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Violaciones abiertas</span>
-            <span className={`mono-data font-medium ${unresolvedViolationRate > 40 ? 'text-danger-300' : 'text-surface-200'}`}>
+            <span className={`mono-data font-medium ${unresolvedViolationRate > tierProfile.risk.sla.unresolvedViolationRateMax ? 'text-danger-300' : 'text-surface-200'}`}>
               {totalViolations > 0 ? `${unresolvedViolationRate.toFixed(1)}%` : 'N/A'}
             </span>
           </div>
@@ -164,14 +147,14 @@ export function RiskOutcomesWidget({
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-surface-400">Release readiness</span>
-            <span className={`mono-data font-medium ${releaseReadinessScore >= 80 ? 'text-emerald-300' : releaseReadinessScore >= 65 ? 'text-amber-300' : 'text-danger-300'}`}>
+            <span className={`mono-data font-medium ${releaseReadinessClass}`}>
               {releaseReadinessScore}/100
             </span>
           </div>
         </div>
 
         <div className="pt-1 text-[10px] text-surface-500">
-          Señales activas para score: {composite.available}/{composite.total}. MTTR y Time-to-Evidence quedan para fase siguiente.
+          Tier {tierProfile.label}. Señales activas para score: {composite.available}/{composite.total}. MTTR y Time-to-Evidence quedan para fase siguiente.
         </div>
       </div>
     </div>
