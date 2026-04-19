@@ -1719,17 +1719,17 @@ pub async fn policy_check(
 
         match state
             .db
-            .insert_quality_gate_policy_violation_signal(
-                repo.org_id.as_deref(),
-                Some(repo.id.as_str()),
-                &actor,
-                Some(branch),
-                &failed_commit_sha,
-                &repo_name,
-                &job_name,
-                &gate_status,
-                &enforcement_level,
-            )
+            .insert_quality_gate_policy_violation_signal(&crate::db::QualityGatePolicyViolationSignalInput {
+                org_id: repo.org_id.as_deref(),
+                repo_id: Some(repo.id.as_str()),
+                actor_login: &actor,
+                branch: Some(branch),
+                commit_sha: &failed_commit_sha,
+                repo_full_name: &repo_name,
+                job_name: &job_name,
+                gate_status: &gate_status,
+                enforcement: &enforcement_level,
+            })
             .await
         {
             Ok(inserted) => {

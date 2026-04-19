@@ -122,6 +122,9 @@ Updated: 2026-04-19
   - `scripts/github/harden_repo_governance.ps1` forwards both flags for end-to-end governance runs.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
+- CI lint stability hardening:
+  - Refactored `gitgov-server` DB insert APIs to typed input structs to satisfy `clippy -D warnings` (removed `too_many_arguments` failures).
+  - Local validation completed: `cargo clippy -- -D warnings` and `cargo test` (150 passed).
 
 ## In Progress
 

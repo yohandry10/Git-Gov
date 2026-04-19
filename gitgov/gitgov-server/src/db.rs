@@ -135,6 +135,45 @@ pub struct CreatePolicyChangeRequestInput<'a> {
     pub created_at: i64,
 }
 
+pub struct QualityGatePolicyViolationSignalInput<'a> {
+    pub org_id: Option<&'a str>,
+    pub repo_id: Option<&'a str>,
+    pub actor_login: &'a str,
+    pub branch: Option<&'a str>,
+    pub commit_sha: &'a str,
+    pub repo_full_name: &'a str,
+    pub job_name: &'a str,
+    pub gate_status: &'a str,
+    pub enforcement: &'a str,
+}
+
+pub struct ChatQueryEventInsertInput<'a> {
+    pub trace_id: &'a str,
+    pub conversation_key: &'a str,
+    pub client_id: &'a str,
+    pub org_scope: Option<&'a str>,
+    pub question: &'a str,
+    pub intent: &'a str,
+    pub response_status: &'a str,
+    pub confidence: Option<f32>,
+    pub language: &'a str,
+    pub entities_detected: &'a [String],
+    pub time_range_used: Option<&'a str>,
+    pub sources: &'a [String],
+    pub actions_recommended: &'a [String],
+    pub answer_preview: &'a str,
+}
+
+pub struct ChatQueryToolCallInsertInput<'a> {
+    pub trace_id: &'a str,
+    pub tool_name: &'a str,
+    pub tool_status: &'a str,
+    pub duration_ms: Option<i32>,
+    pub input_payload: &'a serde_json::Value,
+    pub output_payload: &'a serde_json::Value,
+    pub error: Option<&'a str>,
+}
+
 pub struct ListPolicyChangeRequestsInput<'a> {
     pub org_id: Option<&'a str>,
     pub repo_name: Option<&'a str>,
@@ -3711,15 +3750,7 @@ impl Database {
 
     pub async fn insert_quality_gate_policy_violation_signal(
         &self,
-        org_id: Option<&str>,
-        repo_id: Option<&str>,
-        actor_login: &str,
-        branch: Option<&str>,
-        commit_sha: &str,
-        repo_full_name: &str,
-        job_name: &str,
-        gate_status: &str,
-        enforcement: &str,
+        input: &QualityGatePolicyViolationSignalInput<'_>,
     ) -> Result<bool, DbError> {
         let result = sqlx::query(
             r#"
@@ -3765,15 +3796,15 @@ impl Database {
             )
             "#,
         )
-        .bind(org_id)
-        .bind(repo_id)
-        .bind(actor_login)
-        .bind(branch)
-        .bind(commit_sha)
-        .bind(repo_full_name)
-        .bind(job_name)
-        .bind(gate_status)
-        .bind(enforcement)
+        .bind(input.org_id)
+        .bind(input.repo_id)
+        .bind(input.actor_login)
+        .bind(input.branch)
+        .bind(input.commit_sha)
+        .bind(input.repo_full_name)
+        .bind(input.job_name)
+        .bind(input.gate_status)
+        .bind(input.enforcement)
         .execute(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -7699,26 +7730,13 @@ impl Database {
 
     pub async fn insert_chat_query_event(
         &self,
-        trace_id: &str,
-        conversation_key: &str,
-        client_id: &str,
-        org_scope: Option<&str>,
-        question: &str,
-        intent: &str,
-        response_status: &str,
-        confidence: Option<f32>,
-        language: &str,
-        entities_detected: &[String],
-        time_range_used: Option<&str>,
-        sources: &[String],
-        actions_recommended: &[String],
-        answer_preview: &str,
+        input: &ChatQueryEventInsertInput<'_>,
     ) -> Result<(), DbError> {
-        let entities_detected = serde_json::to_value(entities_detected)
+        let entities_detected = serde_json::to_value(input.entities_detected)
             .map_err(|e| DbError::SerializationError(e.to_string()))?;
-        let sources = serde_json::to_value(sources)
+        let sources = serde_json::to_value(input.sources)
             .map_err(|e| DbError::SerializationError(e.to_string()))?;
-        let actions_recommended = serde_json::to_value(actions_recommended)
+        let actions_recommended = serde_json::to_value(input.actions_recommended)
             .map_err(|e| DbError::SerializationError(e.to_string()))?;
 
         sqlx::query(
@@ -7734,20 +7752,20 @@ impl Database {
             )
             "#,
         )
-        .bind(trace_id)
-        .bind(conversation_key)
-        .bind(client_id)
-        .bind(org_scope)
-        .bind(question)
-        .bind(intent)
-        .bind(response_status)
-        .bind(confidence)
-        .bind(language)
+        .bind(input.trace_id)
+        .bind(input.conversation_key)
+        .bind(input.client_id)
+        .bind(input.org_scope)
+        .bind(input.question)
+        .bind(input.intent)
+        .bind(input.response_status)
+        .bind(input.confidence)
+        .bind(input.language)
         .bind(&entities_detected)
-        .bind(time_range_used)
+        .bind(input.time_range_used)
         .bind(&sources)
         .bind(&actions_recommended)
-        .bind(answer_preview)
+        .bind(input.answer_preview)
         .execute(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -7757,13 +7775,7 @@ impl Database {
 
     pub async fn insert_chat_query_tool_call(
         &self,
-        trace_id: &str,
-        tool_name: &str,
-        tool_status: &str,
-        duration_ms: Option<i32>,
-        input_payload: &serde_json::Value,
-        output_payload: &serde_json::Value,
-        error: Option<&str>,
+        input: &ChatQueryToolCallInsertInput<'_>,
     ) -> Result<(), DbError> {
         sqlx::query(
             r#"
@@ -7775,13 +7787,13 @@ impl Database {
             )
             "#,
         )
-        .bind(trace_id)
-        .bind(tool_name)
-        .bind(tool_status)
-        .bind(duration_ms)
-        .bind(input_payload)
-        .bind(output_payload)
-        .bind(error)
+        .bind(input.trace_id)
+        .bind(input.tool_name)
+        .bind(input.tool_status)
+        .bind(input.duration_ms)
+        .bind(input.input_payload)
+        .bind(input.output_payload)
+        .bind(input.error)
         .execute(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
