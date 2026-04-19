@@ -4,7 +4,7 @@ Updated: 2026-04-19
 
 ## Completed
 
-- Repository migration completed to `yohandry10/Git-Gov`.
+- Repository migration completed to `<owner>/<repo>`.
 - Hardcoded legacy references removed from CI/Jenkins paths.
 - Chat audit persistence implemented in database migration `v21`:
   - `chat_query_events`
@@ -30,7 +30,7 @@ Updated: 2026-04-19
   - Stage bootstraps `sonar-scanner` if missing, polls CE task and quality gate via Sonar API.
   - Telemetry publish now includes `quality_gate` stage and optional `sonar_dashboard` artifact.
   - Fallback credential supported: `sonar-token` (Jenkins Secret Text) when `SONAR_TOKEN` env is not present.
-  - `SONAR_PROJECT_KEY` is auto-inferred from repo name when missing (example: `yohandry10_git-gov`).
+  - `SONAR_PROJECT_KEY` is auto-inferred from repo name when missing (example: `<owner>_<repo>`).
   - Jenkins shell scripts hardened for `/bin/sh` compatibility and secret-safe execution (no token echo in logs).
   - Event payload contract aligned with backend (`artifacts` as string array).
 - Dashboard Sonar visibility (SQ-03) added:
@@ -131,6 +131,7 @@ Updated: 2026-04-19
   - `docs/ARCHITECTURE.md` auth semantics aligned for `/signals`, `/violations/{id}/decisions`, and `/policy/check`.
   - `gitgov-server/README.md` export formats aligned to real support (`JSON/CSV`) and compliance path normalized.
   - `CONTRIBUTING.md` clone command generalized to `<owner>/<repo>`.
+  - Deployment and validation runbooks now use neutral placeholders (`<owner>/<repo>`, `<owner>_<repo>`) instead of personal repository identifiers.
   - `gitgov-web` Control Plane docs (EN/ES) role table now reflects current access for `Architect` and `PM`.
 - Publication hardening guardrails added:
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.

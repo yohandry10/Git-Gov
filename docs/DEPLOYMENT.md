@@ -57,7 +57,7 @@ docker compose logs -f sonarqube
 Para usar SonarQube local con Jenkins en Docker:
 - `SONAR_HOST_URL=http://host.docker.internal:9000` (o `http://sonarqube:9000` si comparte red compose)
 - generar token en `My Account > Security` y cargarlo en Jenkins como `SONAR_TOKEN`
-- definir `SONAR_PROJECT_KEY` por repo (ej. `yohandry10_git-gov`)
+- definir `SONAR_PROJECT_KEY` por repo (ej. `<owner>_<repo>`)
 
 Compatibilidad actual del `Jenkinsfile`:
 - si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `sonar-token` (Secret Text).
@@ -108,7 +108,7 @@ Smoke check de correlación commit -> pipeline (Control Plane):
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -CommitSha "<COMMIT_SHA_EXISTENTE_EN_PIPELINE>"
 ```
 
@@ -118,7 +118,7 @@ Si todavía no existe un pipeline para ese SHA, se puede forzar un evento de pip
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -CommitSha "<COMMIT_SHA>" `
   -InjectPipelineIfMissing
 ```
@@ -173,7 +173,7 @@ Ejecución local:
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -Branch "main" `
   -Tier "standard"
 ```
@@ -184,7 +184,7 @@ Modo estricto (falla si falta cualquier señal):
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -Branch "main" `
   -Tier "critical" `
   -FailOnMissingSignals
@@ -220,8 +220,8 @@ Script automático (usa API de GitHub):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
   -GitHubToken "<TOKEN_CON_ADMIN_ON_REPO>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main"
 ```
 
@@ -238,8 +238,8 @@ Validación automática (API):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main"
 ```
 
@@ -248,8 +248,8 @@ Orquestador único (setup + validación):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -ApplyBranchProtection
 ```
@@ -258,8 +258,8 @@ Helper para PR (crea PR por API o imprime URL de compare si el token no tiene pe
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/create_or_print_pr.ps1 `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Base "main" `
   -Head "codex/tier-risk-sla-tuning" `
   -Title "feat: governance hardening bundle"
@@ -272,8 +272,8 @@ Si trabajas con un token limitado (sin `Administration` o sin lectura de `Action
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
   -GitHubToken "<TOKEN_FINE_GRAINED_LIMITADO>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -BestEffort
 ```
@@ -283,8 +283,8 @@ Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -ApplyBranchProtection `
   -RequiredApprovals 0
@@ -633,7 +633,7 @@ curl http://127.0.0.1:3000/health
 curl -H "Authorization: Bearer <ADMIN_API_KEY>" http://127.0.0.1:3000/stats
 
 # 2) Crear policy change request (developer o admin)
-# repo path debe ir URL-encoded (ej: yohandry10%2FGit-Gov)
+# repo path debe ir URL-encoded (ej: <owner>%2F<repo>)
 curl -X POST "http://127.0.0.1:3000/policy/<repo_full_name_urlencoded>/requests" \
   -H "Authorization: Bearer <DEV_OR_ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
@@ -854,8 +854,8 @@ Preflight de configuración CI del repo (GitHub Actions):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov"
+  -Owner "<owner>" `
+  -Repo "<repo>"
 ```
 
 Diagnóstico rápido de permisos del token:
@@ -863,8 +863,8 @@ Diagnóstico rápido de permisos del token:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
   -GitHubToken "<TOKEN_FINE_GRAINED>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main"
 ```
 
@@ -875,8 +875,8 @@ Modo máquina (JSON + no fallo en permisos parciales):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
   -GitHubToken "<TOKEN_FINE_GRAINED>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -EmitJson `
   -NoFailOnForbidden `
@@ -900,9 +900,9 @@ Bootstrap de variables CI (sin tocar secrets):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/bootstrap_ci_variables.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ACTIONS_WRITE>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
-  -SonarProjectKey "yohandry10_git-gov"
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -SonarProjectKey "<owner>_<repo>"
 ```
 
 Opcional:

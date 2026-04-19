@@ -26,8 +26,8 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 4. You have an admin API key for policy override/check.
 5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.
 6. Use URL-encoded repo path for policy endpoints:
-   - repo full name: `yohandry10/Git-Gov`
-   - encoded path segment: `yohandry10%2FGit-Gov`
+   - repo full name: `<owner>/<repo>`
+   - encoded path segment: `<owner>%2F<repo>`
 
 ## 1) Set `quality_gates=warn`
 
@@ -185,7 +185,7 @@ If `GITGOV_ALERT_WEBHOOK_URL` is configured:
 ## Validated Local Evidence (2026-04-19)
 
 Validated against local Docker stack (`gitgov-server` on `:3001`) with real commits from repo
-`yohandry10/Git-Gov`:
+`<owner>/<repo>`:
 
 - Failing Sonar commit: `fd3fb268dc4c34aad9f01aec5e8da3f69017be74`
 - Green Sonar evidence commit: `edca03409724c0c4ed1d49b59f1607c557ca1108` (manual Sonar Jenkins event ingested with `job_name` containing `sonar`)
