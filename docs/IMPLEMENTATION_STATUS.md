@@ -72,6 +72,10 @@ Updated: 2026-04-19
   - Admin dashboard now includes tier selector with persisted profile.
   - `Pipeline Health` and `Risk Outcomes` now apply tier-specific readiness/risk bands and SLA thresholds.
   - Risk outcomes docs (EN/ES) now include baseline SLA targets by tier.
+- Weekly calibration automation added for tier baselines:
+  - `scripts/control-plane/calibrate_risk_tier_baseline.ps1` computes release readiness + composite risk + KPI snapshot by tier from live Control Plane APIs.
+  - Exports markdown evidence to `docs/reports/risk-tier-baseline-<timestamp>.md`.
+  - Deployment runbook updated with execution command and expected output.
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:

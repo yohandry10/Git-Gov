@@ -122,6 +122,27 @@ Automatización en GitHub Actions (opcional, no bloqueante):
 - Si faltan `GITGOV_URL` o `GITGOV_API_KEY`, el workflow se salta en `PASS` (skip explícito).
 - Si `JENKINS_WEBHOOK_SECRET` está activo en backend, configurar `GITGOV_JENKINS_SECRET` (secret opcional) para que el smoke pueda publicar en `/integrations/jenkins`.
 
+#### Calibración semanal de riesgo/readiness por tier
+
+Para cerrar el tuning de score con evidencia operativa real, generar baseline semanal por tier:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/calibrate_risk_tier_baseline.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -Tier "standard" `
+  -Hours 168
+```
+
+El script calcula:
+- `release_readiness` (0-100),
+- `composite_risk` (0-100),
+- KPIs base (trusted path, blocked push, traceability gap, pipeline failures, sonar failures, unresolved violations),
+- brechas contra SLA del tier seleccionado.
+
+Salida:
+- Reporte markdown en `docs/reports/risk-tier-baseline-<timestamp>.md`.
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.
