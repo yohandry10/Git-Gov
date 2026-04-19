@@ -710,6 +710,11 @@ Configurar en GitHub (repo settings):
 Notas:
 - Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
 - Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
+- Si SonarCloud no permite onboarding de organización (caso común en cuentas GitHub personales), usar SonarQube local:
+  - levantar `docker compose --profile sonar up -d sonarqube-db sonarqube`
+  - generar token local en SonarQube (`My Account > Security`)
+  - setear `SONAR_HOST_URL` al host local alcanzable desde runner (`http://host.docker.internal:9000` en Jenkins Docker local)
+  - mantener workflow no bloqueante hasta completar onboarding SonarCloud enterprise.
 
 Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 - stage `Sonar Scan (Optional)` bootstrappea `sonar-scanner` si no existe en el agente.
