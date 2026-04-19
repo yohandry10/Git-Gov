@@ -94,6 +94,27 @@ powershell -ExecutionPolicy Bypass -File scripts/jenkins/check_job_repo.ps1 `
   -ApiTokenOrPassword "<JENKINS_API_TOKEN_OR_PASSWORD>"
 ```
 
+Smoke check de correlación commit -> pipeline (Control Plane):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -CommitSha "<COMMIT_SHA_EXISTENTE_EN_PIPELINE>"
+```
+
+Si todavía no existe un pipeline para ese SHA, se puede forzar un evento de pipeline de prueba:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "yohandry10/Git-Gov" `
+  -CommitSha "<COMMIT_SHA>" `
+  -InjectPipelineIfMissing
+```
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.

@@ -101,6 +101,10 @@ Updated: 2026-04-19
 - Jenkins commit/pipeline correlation validated end-to-end (local stack):
   - Ingested client commit event with contract-correct fields (`repo_full_name`, `commit_sha`).
   - Verified `/integrations/jenkins/correlations` resolves pipeline metadata for matching commit SHA.
+- Correlation smoke automation added:
+  - New script `scripts/jenkins/validate_commit_pipeline_correlation.ps1`.
+  - Validates `/events` ingest + `/integrations/jenkins/correlations` match for a commit SHA (optional pipeline injection for test bootstrap).
+  - Deployment guide includes execution commands.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
@@ -121,7 +125,7 @@ Updated: 2026-04-19
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
-2. Add an automated smoke script for commit/pipeline correlation (`/events` + `/integrations/jenkins/correlations`) to avoid contract regressions.
+2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 5. Mark `Security Guard` as a required check on `main`.
