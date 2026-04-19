@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-18
+Updated: 2026-04-19
 
 ## Objective
 
@@ -25,11 +25,14 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
    - `Policy Check (Advisory)` parses JSON response from `/policy/check`.
 4. You have an admin API key for policy override/check.
 5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.
+6. Use URL-encoded repo path for policy endpoints:
+   - repo full name: `yohandry10/Git-Gov`
+   - encoded path segment: `yohandry10%2FGit-Gov`
 
 ## 1) Set `quality_gates=warn`
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:3000/policy/<owner>/<repo>/override" \
+curl -sS -X PUT "http://127.0.0.1:3001/policy/<repo_full_name_urlencoded>/override" \
   -H "Authorization: Bearer <ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -60,7 +63,7 @@ curl -sS -X POST "http://127.0.0.1:3000/policy/<owner>/<repo>/override" \
 ## 2) Run policy check on commit with failed Sonar gate
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:3000/policy/check" \
+curl -sS -X POST "http://127.0.0.1:3001/policy/check" \
   -H "Authorization: Bearer <ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -135,7 +138,7 @@ Expected:
 Admin query example:
 
 ```bash
-curl -sS "http://127.0.0.1:3000/signals?signal_type=policy_violation&limit=20" \
+curl -sS "http://127.0.0.1:3001/signals?signal_type=policy_violation&limit=20&offset=0" \
   -H "Authorization: Bearer <ADMIN_API_KEY>"
 ```
 
@@ -143,9 +146,35 @@ If `GITGOV_ALERT_WEBHOOK_URL` is configured:
 
 - Expect one alert payload with message `Quality Gate no verde` including actor/repo/branch/commit/job/status/enforcement.
 
+## Validated Local Evidence (2026-04-19)
+
+Validated against local Docker stack (`gitgov-server` on `:3001`) with real commits from repo
+`yohandry10/Git-Gov`:
+
+- Failing Sonar commit: `fd3fb268dc4c34aad9f01aec5e8da3f69017be74`
+- Green Sonar evidence commit: `edca03409724c0c4ed1d49b59f1607c557ca1108` (manual Sonar Jenkins event ingested with `job_name` containing `sonar`)
+
+Observed results:
+
+- `quality_gates=warn` + failing commit:
+  - `allowed=true`
+  - `advisory=true`
+  - `violations` includes `quality_gate_green` with `enforcement=warn`
+- `quality_gates=block` + failing commit:
+  - `allowed=false`
+  - `advisory=false`
+  - `reasons` includes non-green quality gate message
+- `quality_gates=block` + green-evidence commit:
+  - `allowed=true`
+  - no `quality_gate_green` violation
+- Signal verification:
+  - `policy_violation` signal created with `evidence.rule=quality_gate_green`
+  - includes repo, commit, job name, gate status, enforcement
+
 ## Troubleshooting
 
 - If response says quality check skipped: ensure `commit` is present and that Sonar telemetry was ingested for that SHA.
 - If no Sonar rows are visible in dashboard: verify workflow variables/secrets and `/integrations/jenkins` auth.
 - If Jenkins fails on transport: verify `GITGOV_URL`, API key, and network access from Jenkins node.
 - If signal is missing: verify policy check hit a non-green gate and inspect server logs for `Failed to persist quality gate policy signal`.
+- If local Docker backend keeps restarting after rebuilding server: set `GITGOV_ENV=dev` in `docker-compose.yml` (or provide required prod hardening secrets, including `GITHUB_WEBHOOK_SECRET`).

@@ -31,6 +31,7 @@ services:
       gitgov-db:
         condition: service_healthy
     environment:
+      GITGOV_ENV: dev
       DATABASE_URL: postgresql://gitgov:gitgov_dev_password@gitgov-db:5432/gitgov
       GITGOV_JWT_SECRET: change-me-in-real-env
       GITGOV_SERVER_ADDR: 0.0.0.0:3000

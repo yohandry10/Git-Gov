@@ -50,8 +50,8 @@ if ($remoteUrls.Count -eq 0) {
 }
 
 $uniqueUrls = $remoteUrls | Select-Object -Unique
-$legacyMatches = @($uniqueUrls | Where-Object { $_ -match '(?i)mapfrepe|mapfre' })
 $expectedFound = @($uniqueUrls | Where-Object { $_ -eq $ExpectedRepoUrl })
+$unexpectedRemotes = @($uniqueUrls | Where-Object { $_ -ne $ExpectedRepoUrl })
 
 Write-Host "Jenkins job: $JobName"
 Write-Host "Detected SCM remotes:"
@@ -59,8 +59,8 @@ foreach ($url in $uniqueUrls) {
   Write-Host "  - $url"
 }
 
-if ($legacyMatches.Count -gt 0) {
-  Write-Error ("FAIL: Legacy repo reference detected: {0}" -f ($legacyMatches -join ", "))
+if ($unexpectedRemotes.Count -gt 0) {
+  Write-Error ("FAIL: Unexpected SCM remote(s) detected: {0}" -f ($unexpectedRemotes -join ", "))
   exit 1
 }
 

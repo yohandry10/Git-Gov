@@ -173,6 +173,11 @@ Si ya existe el volumen, los scripts **no** se vuelven a ejecutar.
 | PostgreSQL db/user | `gitgov` / `gitgov` |
 | PostgreSQL password | `gitgov_dev_password` |
 
+Nota de runtime local:
+
+- En `docker-compose.yml`, `gitgov-server` debe correr con `GITGOV_ENV=dev`.
+- El binario release por defecto asume hardening no-dev; sin ese ajuste exige secretos de producción (por ejemplo `GITHUB_WEBHOOK_SECRET`) y reinicia el contenedor.
+
 ### Integrar con Desktop App
 
 En la configuración del Control Plane:
