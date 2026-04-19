@@ -15,7 +15,15 @@ export interface DesktopUpdateProgress {
   totalBytes?: number
 }
 
-const DEFAULT_FALLBACK_DOWNLOAD_URL = 'https://github.com/yohandry10/Git-Gov/releases/latest'
+const PUBLIC_REPO_URL =
+  (import.meta.env.VITE_PUBLIC_REPO_URL as string | undefined)?.trim() ||
+  'https://github.com'
+const DEFAULT_FALLBACK_DOWNLOAD_URL =
+  /^https?:\/\/github\.com\/?$/i.test(PUBLIC_REPO_URL)
+    ? PUBLIC_REPO_URL
+    : /\/releases\/latest$/i.test(PUBLIC_REPO_URL)
+      ? PUBLIC_REPO_URL
+      : `${PUBLIC_REPO_URL.replace(/\/+$/, '')}/releases/latest`
 const UPDATE_CHANNEL_HEADER = 'x-gitgov-update-channel'
 
 function normalizeChannel(channel: string | undefined): DesktopUpdateChannel {
@@ -28,6 +36,9 @@ export function getDesktopUpdateFallbackUrl(channel?: DesktopUpdateChannel): str
   const base = envValue || DEFAULT_FALLBACK_DOWNLOAD_URL
   if (base.includes('{channel}')) {
     return base.replaceAll('{channel}', selectedChannel)
+  }
+  if (/^https?:\/\/github\.com\/?$/i.test(base)) {
+    return base
   }
   if (/\/releases\/latest$/i.test(base) || /\.exe$/i.test(base) || /\.json$/i.test(base)) {
     return base

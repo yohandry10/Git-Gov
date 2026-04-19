@@ -104,7 +104,7 @@ export function ControlPlaneAuthScreen() {
               value={githubLogin}
               onChange={(e) => setGithubLogin(e.target.value)}
               className="input"
-              placeholder="ej: yohandry10"
+              placeholder="ej: octocat"
             />
           </div>
 

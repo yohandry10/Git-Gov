@@ -9,7 +9,7 @@ vi.mock('@/lib/updater', () => ({
   canUseDesktopUpdater: vi.fn().mockReturnValue(false),
   checkDesktopUpdate: vi.fn(),
   downloadAndInstallDesktopUpdate: vi.fn(),
-  getDesktopUpdateFallbackUrl: vi.fn().mockReturnValue('https://github.com/yohandry10/Git-Gov/releases/latest'),
+  getDesktopUpdateFallbackUrl: vi.fn().mockReturnValue('https://github.com'),
   isUpdaterNotConfiguredError: vi.fn().mockReturnValue(false),
   normalizeUpdaterErrorMessage: vi.fn().mockImplementation((e: unknown) => String(e)),
 }))
@@ -35,7 +35,7 @@ describe('useUpdateStore', () => {
       lastCheckedAt: null,
       error: null,
       channel: 'stable',
-      fallbackDownloadUrl: 'https://github.com/yohandry10/Git-Gov/releases/latest',
+      fallbackDownloadUrl: 'https://github.com',
       changelogExpanded: false,
       _updateHandle: null,
     })

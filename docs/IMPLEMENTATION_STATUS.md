@@ -141,6 +141,10 @@ Updated: 2026-04-19
   - `CONTRIBUTING.md` clone command generalized to `<owner>/<repo>`.
   - Deployment and validation runbooks now use neutral placeholders (`<owner>/<repo>`, `<owner>_<repo>`) instead of personal repository identifiers.
   - `gitgov-web` Control Plane docs (EN/ES) role table now reflects current access for `Architect` and `PM`.
+- Desktop UI/infra hardcoded-repo coupling reduced:
+  - Login/download repo link now supports `VITE_PUBLIC_REPO_URL`.
+  - Desktop updater fallback now derives from `VITE_PUBLIC_REPO_URL` (or explicit `VITE_DESKTOP_DOWNLOAD_FALLBACK_URL`).
+  - UI placeholder examples use generic values (no personal usernames/repo names).
 - Publication hardening guardrails added:
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
   - `.gitignore` now excludes local assistant/editor scratch artifacts to avoid accidental publication.

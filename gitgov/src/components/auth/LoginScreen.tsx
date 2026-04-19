@@ -6,6 +6,9 @@ import { Github, ExternalLink, Download, Copy, Check } from 'lucide-react'
 import { isTauriDesktop, tauriInvoke } from '@/lib/tauri'
 
 const GITHUB_DEVICE_URL = 'https://github.com/login/device'
+const PUBLIC_REPO_URL =
+  (import.meta.env.VITE_PUBLIC_REPO_URL as string | undefined)?.trim() ||
+  'https://github.com'
 
 export function LoginScreen() {
   const { authStep, deviceFlowInfo, error, startAuth, pollAuth, cancelAuth, clearError } = useAuthStore()
@@ -72,7 +75,7 @@ export function LoginScreen() {
             </div>
 
             <Button
-              onClick={() => window.open('https://github.com/yohandry10/Git-Gov', '_blank')}
+              onClick={() => window.open(PUBLIC_REPO_URL, '_blank')}
               className="w-full"
               size="lg"
             >

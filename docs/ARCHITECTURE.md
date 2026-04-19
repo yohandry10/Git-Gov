@@ -245,6 +245,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | Package manager | npm | pnpm |
 | i18n | No | Sí (EN/ES) |
 | Server URL config | `GITGOV_SERVER_URL` (Rust) / `VITE_SERVER_URL` (Vite) | N/A |
+| Desktop download URL overrides | `VITE_PUBLIC_REPO_URL`, `VITE_DESKTOP_DOWNLOAD_FALLBACK_URL` | N/A |
 
 ---
 

@@ -14,20 +14,19 @@ import {
 
 describe('updater utility', () => {
   describe('getDesktopUpdateFallbackUrl', () => {
-    it('returns GitHub releases URL by default', () => {
+    it('returns generic GitHub URL by default when no env is configured', () => {
       const url = getDesktopUpdateFallbackUrl()
-      expect(url).toContain('github.com/yohandry10/Git-Gov/releases')
+      expect(url).toBe('https://github.com')
     })
 
-    it('returns same URL for stable channel (no template)', () => {
+    it('returns same URL for stable channel with generic default URL', () => {
       const url = getDesktopUpdateFallbackUrl('stable')
-      expect(url).toContain('releases/latest')
+      expect(url).toBe('https://github.com')
     })
 
-    it('returns same URL for beta channel (no template in default URL)', () => {
+    it('returns same URL for beta channel with generic default URL', () => {
       const url = getDesktopUpdateFallbackUrl('beta')
-      // Default URL ends with /releases/latest — no {channel} template
-      expect(url).toContain('releases/latest')
+      expect(url).toBe('https://github.com')
     })
   })
 
