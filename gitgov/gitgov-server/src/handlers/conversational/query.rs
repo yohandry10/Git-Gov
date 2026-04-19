@@ -305,6 +305,24 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             || q.contains("fallan")
             || q.contains("failing")
             || asks_count);
+    let asks_tickets_released_non_green_quality_gate = (q.contains("ticket")
+        || q.contains("tickets")
+        || q.contains("jira"))
+        && (q.contains("quality gate")
+            || q.contains("quality_gates")
+            || q.contains("sonar")
+            || q.contains("gate de calidad")
+            || q.contains("rojo")
+            || q.contains("red"))
+        && (q.contains("prod")
+            || q.contains("produccion")
+            || q.contains("producción")
+            || q.contains("deploy")
+            || q.contains("deployed")
+            || q.contains("desplieg")
+            || q.contains("release")
+            || q.contains("llego")
+            || q.contains("llegó"));
     let asks_developers_non_green_quality_gate = (q.contains("dev")
         || q.contains("developer")
         || q.contains("desarrollador")
@@ -413,6 +431,22 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
 
     if asks_executive_summary {
         return Some(ChatQuery::ControlPlaneExecutiveSummary);
+    }
+
+    if asks_tickets_released_non_green_quality_gate {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(10);
+        return Some(ChatQuery::TicketsReleasedWithNonGreenQualityGate { hours, limit });
     }
 
     if asks_tickets_non_green_quality_gate {

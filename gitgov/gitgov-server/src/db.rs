@@ -7915,6 +7915,114 @@ impl Database {
             .collect())
     }
 
+    /// Q6e: Rank Jira tickets that had non-green quality gate and a successful deploy/release run.
+    pub async fn chat_query_tickets_released_with_non_green_quality_gate(
+        &self,
+        org_id: Option<&str>,
+        hours: i64,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, DbError> {
+        let safe_hours = hours.clamp(1, 24 * 30) as i32;
+        let safe_limit = limit.clamp(1, 20) as i32;
+
+        let rows = sqlx::query(
+            r#"
+            WITH quality_gate_non_green AS (
+              SELECT
+                pe.commit_sha,
+                COALESCE(pe.repo_full_name, 'unknown') AS repo_full_name,
+                pe.ingested_at AS quality_gate_at
+              FROM pipeline_events pe
+              CROSS JOIN LATERAL jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(pe.stages) = 'array' THEN pe.stages
+                  ELSE '[]'::jsonb
+                END
+              ) AS stage
+              WHERE pe.ingested_at >= NOW() - make_interval(hours => $1::int)
+                AND pe.commit_sha IS NOT NULL
+                AND ($2::uuid IS NULL OR pe.org_id = $2::uuid)
+                AND lower(COALESCE(stage->>'name', '')) = 'quality_gate'
+                AND lower(COALESCE(stage->>'status', 'unknown')) NOT IN ('passed', 'ok', 'green', 'success')
+            ),
+            release_success AS (
+              SELECT
+                pe.pipeline_id,
+                pe.commit_sha,
+                pe.ingested_at AS release_at
+              FROM pipeline_events pe
+              WHERE pe.ingested_at >= NOW() - make_interval(hours => $1::int)
+                AND pe.commit_sha IS NOT NULL
+                AND ($2::uuid IS NULL OR pe.org_id = $2::uuid)
+                AND lower(COALESCE(pe.status, '')) = 'success'
+                AND (
+                  lower(COALESCE(pe.job_name, '')) LIKE '%deploy%'
+                  OR lower(COALESCE(pe.job_name, '')) LIKE '%release%'
+                  OR lower(COALESCE(pe.job_name, '')) LIKE '%prod%'
+                  OR lower(COALESCE(pe.job_name, '')) LIKE '%promote%'
+                  OR lower(COALESCE(pe.branch, '')) = 'main'
+                )
+            ),
+            ticket_release_hits AS (
+              SELECT
+                ctc.ticket_id,
+                q.repo_full_name,
+                q.commit_sha,
+                rs.pipeline_id,
+                rs.release_at
+              FROM quality_gate_non_green q
+              JOIN release_success rs
+                ON (
+                     rs.commit_sha = q.commit_sha
+                     OR rs.commit_sha LIKE q.commit_sha || '%'
+                     OR q.commit_sha LIKE rs.commit_sha || '%'
+                   )
+               AND rs.release_at >= q.quality_gate_at
+              JOIN commit_ticket_correlations ctc
+                ON ctc.commit_sha IS NOT NULL
+               AND (
+                    ctc.commit_sha = q.commit_sha
+                    OR ctc.commit_sha LIKE q.commit_sha || '%'
+                    OR q.commit_sha LIKE ctc.commit_sha || '%'
+               )
+              WHERE ($2::uuid IS NULL OR ctc.org_id = $2::uuid)
+            )
+            SELECT
+              ticket_id,
+              COUNT(*)::bigint AS non_green_runs,
+              COUNT(DISTINCT pipeline_id)::bigint AS successful_release_runs,
+              COUNT(DISTINCT repo_full_name)::bigint AS repos_affected,
+              COUNT(DISTINCT commit_sha)::bigint AS commits_affected,
+              (EXTRACT(EPOCH FROM MAX(release_at)) * 1000)::bigint AS last_release_ms
+            FROM ticket_release_hits
+            GROUP BY ticket_id
+            ORDER BY successful_release_runs DESC, non_green_runs DESC, MAX(release_at) DESC
+            LIMIT $3::int
+            "#,
+        )
+        .bind(safe_hours)
+        .bind(org_id)
+        .bind(safe_limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "ticket_id": r.get::<String, _>("ticket_id"),
+                    "non_green_runs": r.get::<i64, _>("non_green_runs"),
+                    "successful_release_runs": r.get::<i64, _>("successful_release_runs"),
+                    "repos_affected": r.get::<i64, _>("repos_affected"),
+                    "commits_affected": r.get::<i64, _>("commits_affected"),
+                    "last_release_ms": r.get::<i64, _>("last_release_ms"),
+                    "window_hours": safe_hours,
+                })
+            })
+            .collect())
+    }
+
     /// Q6d: Rank developers (triggered_by) linked to non-green quality gate outcomes.
     pub async fn chat_query_developers_with_non_green_quality_gate(
         &self,

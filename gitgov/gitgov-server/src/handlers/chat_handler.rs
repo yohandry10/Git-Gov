@@ -4,6 +4,7 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
         ChatQuery::ControlPlaneExecutiveSummary
             | ChatQuery::QualityGateTopFailingRepos { .. }
             | ChatQuery::TicketsWithNonGreenQualityGate { .. }
+            | ChatQuery::TicketsReleasedWithNonGreenQualityGate { .. }
             | ChatQuery::DevelopersWithNonGreenQualityGate { .. }
             | ChatQuery::QualityGateHealthWindow { .. }
             | ChatQuery::ReleaseReadinessTopFailingRepos { .. }
@@ -1060,6 +1061,131 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     trace_id: None,
 },
             );
+        }
+        Some(ChatQuery::TicketsReleasedWithNonGreenQualityGate { hours, limit }) => {
+            match state
+                .db
+                .chat_query_tickets_released_with_non_green_quality_gate(
+                    scoped_org_id.as_deref(),
+                    hours,
+                    limit,
+                )
+                .await
+            {
+                Ok(rows) => {
+                    if rows.is_empty() {
+                        return finalize_chat_response(
+                            &state,
+                            &conversation_key,
+                            &mut session,
+                            &nlp,
+                            StatusCode::OK,
+                            ChatAskResponse {
+                                status: "ok".to_string(),
+                                answer: format!(
+                                    "No se detectaron tickets desplegados con quality gate no verde en las últimas {}h.",
+                                    hours
+                                ),
+                                missing_capability: None,
+                                can_report_feature: false,
+                                data_refs: vec![
+                                    "pipeline_events".to_string(),
+                                    "commit_ticket_correlations".to_string(),
+                                ],
+                                sources: vec![],
+                                entities_detected: vec![],
+                                time_range_used: Some(format!("last_{}h", hours)),
+                                actions_recommended: vec![],
+                                confidence: Some(0.8),
+                                trace_id: None,
+                            },
+                        );
+                    }
+
+                    let mut lines = Vec::with_capacity(rows.len());
+                    for (idx, item) in rows.iter().enumerate() {
+                        let ticket_id = item
+                            .get("ticket_id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let non_green_runs =
+                            item.get("non_green_runs").and_then(|v| v.as_i64()).unwrap_or(0);
+                        let successful_release_runs = item
+                            .get("successful_release_runs")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0);
+                        lines.push(format!(
+                            "{}. {} -> releases: {}, non_green_runs: {}",
+                            idx + 1,
+                            ticket_id,
+                            successful_release_runs,
+                            non_green_runs
+                        ));
+                    }
+
+                    let answer = format!(
+                        "Top tickets desplegados con quality gate no verde (últimas {hours}h, top {limit}):\n{lines}",
+                        hours = hours,
+                        limit = limit,
+                        lines = lines.join("\n")
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![
+                                "pipeline_events".to_string(),
+                                "commit_ticket_correlations".to_string(),
+                            ],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: vec![
+                                "Revisar riesgo residual de tickets ya desplegados con gate no verde".to_string(),
+                                "Priorizar remediación y seguimiento en próximos sprints".to_string(),
+                            ],
+                            confidence: Some(0.89),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "chat_query_tickets_released_with_non_green_quality_gate error: {}",
+                        e
+                    );
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer:
+                                "Error consultando tickets desplegados con quality gate no verde"
+                                    .to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
         }
         Some(ChatQuery::TicketsWithNonGreenQualityGate { hours, limit }) => {
             match state
