@@ -591,7 +591,7 @@ Esto previene que alguien envíe webhooks falsos.
 
 ### Rate Limiting
 
-El servidor implementa un rate limiter en memoria por `{IP}:{SHA256(auth_header)[0:12]}`.
+El servidor implementa rate limiting por `{IP}:{SHA256(auth_header)[0:12]}` en modo in-memory o distribuido (DB), según configuración.
 
 | Variable de entorno | Default | Descripción |
 |---------------------|---------|-------------|
@@ -599,6 +599,8 @@ El servidor implementa un rate limiter en memoria por `{IP}:{SHA256(auth_header)
 | `GITGOV_RATE_LIMIT_AUDIT_STREAM_PER_MIN` | 60 | req/min para `/audit-stream/github` |
 | `GITGOV_RATE_LIMIT_JENKINS_PER_MIN` | 120 | req/min para `/integrations/jenkins` |
 | `GITGOV_RATE_LIMIT_JIRA_PER_MIN` | 120 | req/min para `/integrations/jira` |
+| `GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN` | 240 | req/min para `POST /webhooks/github` (ruta pública) |
+| `GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN` | 90 | req/min para `GET /org-invitations/preview/{token}` y `POST /org-invitations/accept` (rutas públicas) |
 | `GITGOV_RATE_LIMIT_ADMIN_PER_MIN` | 60 | req/min para endpoints admin (logs, stats, dashboard) |
 | `GITGOV_JENKINS_MAX_BODY_BYTES` | 262144 | Límite de body para Jenkins (256 KB) |
 | `GITGOV_JIRA_MAX_BODY_BYTES` | 524288 | Límite de body para Jira (512 KB) |
