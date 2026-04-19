@@ -98,6 +98,9 @@ Updated: 2026-04-19
   - Verified `quality_gates=block` denies (`allowed=false`) on non-green Sonar.
   - Verified `policy_violation` signal persistence for `quality_gate_green`.
   - Runbook aligned to real API contract (`PUT /policy/{repo_name}/override`, URL-encoded repo path, `offset` on `/signals`).
+- Jenkins commit/pipeline correlation validated end-to-end (local stack):
+  - Ingested client commit event with contract-correct fields (`repo_full_name`, `commit_sha`).
+  - Verified `/integrations/jenkins/correlations` resolves pipeline metadata for matching commit SHA.
 - Branch protection automation prepared:
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
@@ -118,7 +121,7 @@ Updated: 2026-04-19
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
-2. Validate Sonar pipeline events end-to-end in Control Plane logs/correlations.
+2. Add an automated smoke script for commit/pipeline correlation (`/events` + `/integrations/jenkins/correlations`) to avoid contract regressions.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.
 5. Mark `Security Guard` as a required check on `main`.
