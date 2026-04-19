@@ -125,8 +125,10 @@ dashboard_url=${dashboardValue}
             ).trim()
 
             if (dashboardUrl) {
-              if (sonarProjectKey && (dashboardUrl.endsWith('id') || dashboardUrl.endsWith('id='))) {
+              if (sonarProjectKey && dashboardUrl.endsWith('id=')) {
                 sonarDashboardUrl = "${dashboardUrl}${sonarProjectKey}"
+              } else if (sonarProjectKey && dashboardUrl.endsWith('id')) {
+                sonarDashboardUrl = "${dashboardUrl}=${sonarProjectKey}"
               } else {
                 sonarDashboardUrl = dashboardUrl
               }
