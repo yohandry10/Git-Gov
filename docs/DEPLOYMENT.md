@@ -208,6 +208,7 @@ Para evitar merges sin controles activos, aplicar branch protection en `main` co
 
 Checks mínimos recomendados:
 
+- `Workflow Lint`
 - `Server Clippy + Check`
 - `Desktop Rust Clippy`
 - `Frontend Lint + Typecheck`

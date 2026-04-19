@@ -115,6 +115,7 @@ Updated: 2026-04-19
   - `Security Guard` now also blocks tracked `.env` files (except `.env.example`) and assistant-local artifacts (`.agents/`, `skills/`, `gitgov-video/`).
 - CI coverage expanded for documentation website:
   - `.github/workflows/ci.yml` now includes `Website Lint + Typecheck + Build` for `gitgov-web`.
+  - `.github/workflows/ci.yml` now includes `Workflow Lint` (`rhysd/actionlint`) to catch invalid GitHub Actions syntax before merge.
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
   - Job order hardened for clean runners (`build` before standalone `typecheck`) to ensure `.next/types` is present.
   - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.

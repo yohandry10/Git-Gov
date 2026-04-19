@@ -11,6 +11,16 @@ env:
   GITGOV_ENV: ci
 
 jobs:
+  workflow-lint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+      - name: Lint GitHub workflows
+        uses: rhysd/actionlint@v1
+
   server-lint:
     name: Server Clippy + Check
     runs-on: ubuntu-latest

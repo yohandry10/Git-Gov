@@ -4,6 +4,7 @@ param(
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   [string[]]$RequiredChecks = @(
+    "Workflow Lint",
     "Server Clippy + Check",
     "Desktop Rust Clippy",
     "Frontend Lint + Typecheck",
