@@ -160,9 +160,10 @@ export function ContactClient() {
                             {/* Right — Form */}
                             <div>
                                 <div
-                                    className="rounded-2xl p-8 md:p-10 border border-white/5"
-                                    style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)), #0d1117' }}
+                                    className="glass-card rounded-2xl p-8 md:p-10 border glow-border group relative overflow-hidden"
                                 >
+                                    <div className="absolute inset-0 bg-brand-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                    <div className="relative z-10">
                                     {formState === 'success' ? (
                                         <div className="text-center py-14">
                                             <div className="w-16 h-16 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-6">
@@ -242,6 +243,7 @@ export function ContactClient() {
                                             </div>
                                         </form>
                                     )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -80,17 +80,17 @@ export function FeaturesClient() {
                             {/* Badge */}
                             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/25 mb-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                                <span className="text-brand-400 text-[11px] font-black tracking-[0.2em] uppercase">
+                                <span className="text-brand-400 text-[11px] font-bold tracking-widest uppercase">
                                     {t('features.badge') as string}
                                 </span>
                             </div>
 
                             {/* Headline — maximum drama */}
-                            <h1 className="font-black tracking-tight leading-[0.9] mb-8">
-                                <span className="block text-white text-5xl md:text-6xl lg:text-7xl xl:text-[88px]">
+                            <h1 className="font-semibold tracking-tight leading-[1] mb-8">
+                                <span className="block text-white text-4xl md:text-5xl lg:text-6xl">
                                     {t('features.title') as string}
                                 </span>
-                                <span className="block gradient-text text-5xl md:text-6xl lg:text-7xl xl:text-[88px]">
+                                <span className="block gradient-text text-4xl md:text-5xl lg:text-6xl">
                                     {t('features.titleAccent') as string}
                                 </span>
                             </h1>
@@ -520,13 +520,13 @@ export function FeaturesClient() {
                                     </div>
                                     <div className="divide-y divide-white/[0.04]">
                                         {[
-                                            { method: 'POST', path: '/events',     note: 'batch ingest' },
-                                            { method: 'GET',  path: '/logs',       note: 'scoped by role' },
-                                            { method: 'GET',  path: '/stats',      note: 'admin only' },
-                                            { method: 'GET',  path: '/dashboard',  note: 'admin only' },
+                                            { method: 'POST', path: '/events', note: 'batch ingest' },
+                                            { method: 'GET', path: '/logs', note: 'scoped by role' },
+                                            { method: 'GET', path: '/stats', note: 'admin only' },
+                                            { method: 'GET', path: '/dashboard', note: 'admin only' },
                                             { method: 'POST', path: '/integrations/jenkins', note: 'CI events' },
-                                            { method: 'POST', path: '/integrations/jira',    note: 'ticket coverage' },
-                                            { method: 'GET',  path: '/health',     note: 'public' },
+                                            { method: 'POST', path: '/integrations/jira', note: 'ticket coverage' },
+                                            { method: 'GET', path: '/health', note: 'public' },
                                         ].map((ep, i) => (
                                             <div key={i} className="flex items-center gap-3 px-4 py-2">
                                                 <span className={`text-[9px] font-mono font-black w-8 shrink-0 ${ep.method === 'POST' ? 'text-brand-400' : 'text-gray-400'}`}>
@@ -671,8 +671,8 @@ export function FeaturesClient() {
                                                                         pct > 80
                                                                             ? 'rgba(249,115,22,0.7)'
                                                                             : pct > 65
-                                                                            ? 'rgba(249,115,22,0.45)'
-                                                                            : 'rgba(248,113,113,0.55)',
+                                                                                ? 'rgba(249,115,22,0.45)'
+                                                                                : 'rgba(248,113,113,0.55)',
                                                                 }}
                                                             />
                                                         </div>
@@ -762,9 +762,8 @@ export function FeaturesClient() {
                                                 <React.Fragment key={i}>
                                                     <div className="flex-1 bg-white/[0.03] rounded-lg p-2.5 text-center border border-white/[0.04]">
                                                         <div
-                                                            className={`text-[9px] font-mono font-bold mb-1 ${
-                                                                s.ok ? 'text-brand-400' : 'text-red-400'
-                                                            }`}
+                                                            className={`text-[9px] font-mono font-bold mb-1 ${s.ok ? 'text-brand-400' : 'text-red-400'
+                                                                }`}
                                                         >
                                                             {s.ok ? '●' : '✕'} {s.stage}
                                                         </div>
@@ -832,19 +831,17 @@ export function FeaturesClient() {
                                             ].map((item, i) => (
                                                 <div key={i} className="flex items-center gap-2.5 text-[10px] font-mono">
                                                     <span
-                                                        className={`shrink-0 w-16 ${
-                                                            item.linked ? 'text-brand-400' : 'text-gray-600'
-                                                        }`}
+                                                        className={`shrink-0 w-16 ${item.linked ? 'text-brand-400' : 'text-gray-600'
+                                                            }`}
                                                     >
                                                         {item.id}
                                                     </span>
                                                     <span className="text-gray-500 truncate flex-1">{item.msg}</span>
                                                     <span
-                                                        className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                                                            item.linked
+                                                        className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-bold ${item.linked
                                                                 ? 'text-brand-400 bg-brand-400/10'
                                                                 : 'text-red-400 bg-red-400/10'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {item.linked ? '✓' : '✗'}
                                                     </span>
