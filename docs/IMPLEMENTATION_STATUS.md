@@ -149,6 +149,7 @@ Updated: 2026-04-19
   - `.github/workflows/secret-scan.yml` now includes `Security Guard` steps that enforce restricted-doc exclusions on PR/push.
   - `.gitignore` now excludes local assistant/editor scratch artifacts to avoid accidental publication.
   - Local equivalent guard added: `scripts/security/publication_guard.ps1` for pre-push validation (`restricted/env/legacy` checks).
+  - Neutral naming guard added in CI + local guardrails: branch/PR/commit metadata now fail validation if they include internal tooling markers.
 - Secret scanning widened and mandatory on CI surface:
   - `.github/workflows/secret-scan.yml` now runs on all push/PR branches plus manual dispatch.
   - Security permissions for findings publication are declared in workflow.

@@ -2,7 +2,7 @@ param(
   [string]$Owner = "",
   [string]$Repo = "",
   [string]$Base = "main",
-  [string]$Head = "codex/tier-risk-sla-tuning",
+  [string]$Head = "",
   [string]$Title = "",
   [string]$Body = "",
   [string]$BodyFile = "",
@@ -30,8 +30,36 @@ if ([string]::IsNullOrWhiteSpace($token)) {
   exit 1
 }
 
+if ([string]::IsNullOrWhiteSpace($Head)) {
+  try {
+    $Head = (git rev-parse --abbrev-ref HEAD 2>$null).Trim()
+  } catch {
+    $Head = ""
+  }
+}
+if ([string]::IsNullOrWhiteSpace($Head)) {
+  Write-Error "Could not resolve PR head branch. Provide -Head or run from a git branch."
+  exit 1
+}
+
 if ([string]::IsNullOrWhiteSpace($Title)) {
   $Title = "chore: merge $Head into $Base"
+}
+
+if ($Head -eq $Base) {
+  Write-Error "Head branch cannot be the same as base branch ($Base)."
+  exit 1
+}
+
+$namingPolicyRegex = @(
+  ("co" + "dex"),
+  ("cl" + "aude"),
+  ("ai[-_ ]?agent"),
+  ("ai[-_ ]?assistant")
+) -join "|"
+if ($Head -match $namingPolicyRegex -or $Title -match $namingPolicyRegex) {
+  Write-Error "Branch/PR title violates publication naming policy. Use neutral names without internal tooling markers."
+  exit 1
 }
 
 if ([string]::IsNullOrWhiteSpace($Body) -and -not [string]::IsNullOrWhiteSpace($BodyFile)) {

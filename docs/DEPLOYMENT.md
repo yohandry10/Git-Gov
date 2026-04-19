@@ -261,7 +261,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/create_or_print_pr.ps1 `
   -Owner "<owner>" `
   -Repo "<repo>" `
   -Base "main" `
-  -Head "codex/tier-risk-sla-tuning" `
+  -Head "feature/governance-hardening" `
   -Title "feat: governance hardening bundle"
 ```
 
