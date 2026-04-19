@@ -32,52 +32,102 @@ function Get-NameSet {
     [string]$CollectionField,
     [hashtable]$Headers
   )
-  $response = Invoke-RestMethod -Method Get -Uri $Uri -Headers $Headers
+  try {
+    $response = Invoke-RestMethod -Method Get -Uri $Uri -Headers $Headers
+  } catch {
+    if ($_.Exception.Response) {
+      $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
+      $body = $reader.ReadToEnd()
+      throw "GitHub API request failed ($Uri): $body"
+    }
+    throw
+  }
+
+  $names = @()
+  if ($null -eq $response) {
+    return $names
+  }
+
   $items = @()
-  if ($null -ne $response -and $null -ne $response.$CollectionField) {
+  if ($response.PSObject.Properties.Name -contains $CollectionField) {
     $items = @($response.$CollectionField)
   }
-  $set = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-  foreach ($item in $items) {
-    if ($item.name) {
-      [void]$set.Add([string]$item.name)
+
+  foreach ($item in @($items)) {
+    if ($null -ne $item -and $item.PSObject.Properties.Name -contains "name" -and -not [string]::IsNullOrWhiteSpace([string]$item.name)) {
+      $names += ([string]$item.name).Trim().ToUpperInvariant()
     }
   }
-  return $set
+  return @($names | Select-Object -Unique)
 }
 
 $base = "https://api.github.com/repos/$Owner/$Repo/actions"
 $secretNames = Get-NameSet -Uri "$base/secrets?per_page=100" -CollectionField "secrets" -Headers $headers
 $variableNames = Get-NameSet -Uri "$base/variables?per_page=100" -CollectionField "variables" -Headers $headers
+if ($null -eq $secretNames) { $secretNames = @() }
+if ($null -eq $variableNames) { $variableNames = @() }
 
-$missingRequiredSecrets = @($requiredSecrets | Where-Object { -not $secretNames.Contains($_) })
-$missingRequiredVariables = @($requiredVariables | Where-Object { -not $variableNames.Contains($_) })
-$missingOptionalSecrets = @($optionalSecrets | Where-Object { -not $secretNames.Contains($_) })
-$missingOptionalVariables = @($optionalVariables | Where-Object { -not $variableNames.Contains($_) })
+function Set-ContainsName {
+  param(
+    [Parameter()][object]$SetObject,
+    [Parameter(Mandatory = $true)][string]$Name
+  )
+  if ($null -eq $SetObject) { return $false }
+  $normalized = $Name.Trim().ToUpperInvariant()
+  return @($SetObject) -contains $normalized
+}
+
+$missingRequiredSecrets = @()
+foreach ($name in $requiredSecrets) {
+  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+    $missingRequiredSecrets += $name
+  }
+}
+
+$missingRequiredVariables = @()
+foreach ($name in $requiredVariables) {
+  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+    $missingRequiredVariables += $name
+  }
+}
+
+$missingOptionalSecrets = @()
+foreach ($name in $optionalSecrets) {
+  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+    $missingOptionalSecrets += $name
+  }
+}
+
+$missingOptionalVariables = @()
+foreach ($name in $optionalVariables) {
+  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+    $missingOptionalVariables += $name
+  }
+}
 
 Write-Host "Repository: $Owner/$Repo"
 Write-Host ""
 Write-Host "Required secrets:"
 foreach ($name in $requiredSecrets) {
-  $status = if ($secretNames.Contains($name)) { "OK" } else { "MISSING" }
+  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
   Write-Host ("  [{0}] {1}" -f $status, $name)
 }
 Write-Host ""
 Write-Host "Optional secrets:"
 foreach ($name in $optionalSecrets) {
-  $status = if ($secretNames.Contains($name)) { "OK" } else { "MISSING" }
+  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
   Write-Host ("  [{0}] {1}" -f $status, $name)
 }
 Write-Host ""
 Write-Host "Required variables:"
 foreach ($name in $requiredVariables) {
-  $status = if ($variableNames.Contains($name)) { "OK" } else { "MISSING" }
+  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
   Write-Host ("  [{0}] {1}" -f $status, $name)
 }
 Write-Host ""
 Write-Host "Optional variables:"
 foreach ($name in $optionalVariables) {
-  $status = if ($variableNames.Contains($name)) { "OK" } else { "MISSING" }
+  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
   Write-Host ("  [{0}] {1}" -f $status, $name)
 }
 

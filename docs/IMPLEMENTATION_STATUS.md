@@ -109,9 +109,12 @@ Updated: 2026-04-19
   - `scripts/github/set_required_checks.ps1` applies required checks and PR protection to `main` via GitHub API.
   - `scripts/github/check_branch_protection.ps1` validates required checks currently configured on `main`.
   - `scripts/github/harden_repo_governance.ps1` orchestrates CI config check + branch protection apply/verify in one execution.
-  - `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
+  - Scripts now accept `-GitHubToken` plus env fallbacks (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`) for non-interactive runs.
+  - Live execution completed: branch protection applied and verified on `main` with required checks (`server-lint`, `desktop-lint`, `frontend-lint`, `website-lint`, `Security Guard`), strict checks enabled, admins enforced.
+- `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
 - Sonar CI rollout preflight automation prepared:
   - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
+  - `scripts/github/bootstrap_ci_variables.ps1` bootstraps CI variables (`SONAR_PROJECT_KEY` required, optional `SONAR_HOST_URL` / `GITGOV_URL`).
   - `docs/DEPLOYMENT.md` now includes command + PASS/FAIL expectations for repo CI config.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
@@ -125,6 +128,8 @@ Updated: 2026-04-19
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables for Sonar and GitGov telemetry.
+   - Current live status: `SONAR_PROJECT_KEY` configured.
+   - Pending required secrets: `SONAR_TOKEN`, `GITGOV_API_KEY`.
 2. Wire correlation smoke script into CI/manual release checklist to catch contract drift before deployment.
 3. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 4. Tune scoring weights/thresholds with production telemetry and define SLA bands per repo tier.

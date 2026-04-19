@@ -734,6 +734,20 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
 Resultado esperado:
 - `PASS` si secrets/variables requeridos están presentes.
 - Los scripts también aceptan token por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`) si no se pasa `-GitHubToken`.
+
+Bootstrap de variables CI (sin tocar secrets):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/bootstrap_ci_variables.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ACTIONS_WRITE>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -SonarProjectKey "yohandry10_git-gov"
+```
+
+Opcional:
+- `-SonarHostUrl "https://sonarcloud.io"`
+- `-GitGovUrl "https://<tu-control-plane>"`
 - `FAIL` con lista concreta de faltantes si aún falta configuración.
 
 **Local signed build:**
