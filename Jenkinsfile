@@ -141,7 +141,8 @@ dashboard_url=${dashboardValue}
             def analysisId = ''
             withEnv([
               "SQ_HOST_URL=${sonarHostUrl}",
-              "SQ_CE_TASK_ID=${ceTaskId}"
+              "SQ_CE_TASK_ID=${ceTaskId}",
+              "SONAR_TOKEN=${sonarToken}"
             ]) {
               for (int i = 0; i < 60; i++) {
                 def ceTaskRaw = sh(
@@ -178,7 +179,8 @@ dashboard_url=${dashboardValue}
 
             withEnv([
               "SQ_HOST_URL=${sonarHostUrl}",
-              "SQ_ANALYSIS_ID=${analysisId}"
+              "SQ_ANALYSIS_ID=${analysisId}",
+              "SONAR_TOKEN=${sonarToken}"
             ]) {
               def gateRaw = sh(
                 script: '''
