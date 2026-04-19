@@ -128,10 +128,10 @@ Para evitar merges sin controles activos, aplicar branch protection en `main` co
 
 Checks mínimos recomendados:
 
-- `server-lint`
-- `desktop-lint`
-- `frontend-lint`
-- `website-lint`
+- `Server Clippy + Check`
+- `Desktop Rust Clippy`
+- `Frontend Lint + Typecheck`
+- `Website Lint + Typecheck + Build`
 - `Security Guard`
 
 Script automático (usa API de GitHub):
@@ -171,6 +171,18 @@ powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.p
   -Repo "Git-Gov" `
   -Branch "main" `
   -ApplyBranchProtection
+```
+
+Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto-aprobación):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
+  -Owner "yohandry10" `
+  -Repo "Git-Gov" `
+  -Branch "main" `
+  -ApplyBranchProtection `
+  -RequiredApprovals 0
 ```
 
 ### Jira (opcional)
