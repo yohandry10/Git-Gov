@@ -486,16 +486,34 @@ def extractJsonObjectField(String raw, String objectName, String fieldName) {
   if (!raw) {
     return null
   }
-  def objectMatcher = (raw =~ /"${objectName}"\\s*:\\s*\\{([\\s\\S]*?)\\}/)
-  if (!objectMatcher.find()) {
+  def objectMarker = "\"${objectName}\""
+  def objectStart = raw.indexOf(objectMarker)
+  if (objectStart < 0) {
     return null
   }
-  def objectBody = objectMatcher.group(1)
-  def fieldMatcher = (objectBody =~ /"${fieldName}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"/)
-  if (!fieldMatcher.find()) {
+
+  def fieldMarker = "\"${fieldName}\""
+  def fieldStart = raw.indexOf(fieldMarker, objectStart)
+  if (fieldStart < 0) {
     return null
   }
-  return fieldMatcher.group(1).replace('\\"', '"').replace('\\\\', '\\')
+
+  def colon = raw.indexOf(':', fieldStart + fieldMarker.length())
+  if (colon < 0) {
+    return null
+  }
+
+  def valueStart = raw.indexOf('"', colon + 1)
+  if (valueStart < 0) {
+    return null
+  }
+
+  def valueEnd = raw.indexOf('"', valueStart + 1)
+  if (valueEnd < 0) {
+    return null
+  }
+
+  return raw.substring(valueStart + 1, valueEnd)
 }
 
 def loadSimplePropertiesFile(String path) {
