@@ -99,6 +99,13 @@ Updated: 2026-04-19
 - Role UX/API alignment improvement:
   - `/chat/ask` now allows `Admin`, `Architect`, and `PM` roles (previously admin-only).
   - Dashboard renders `ConversationalChatPanel` for `Architect` and `PM` in non-admin view.
+- Conversational bot quality/risk deterministic queries added:
+  - `detect_query` now classifies quality gate health questions and release-readiness gate health questions.
+  - `/chat/ask` now returns scoped summaries for:
+    - quality gate outcomes (`green/non-green`, affected repos/commits, policy-violation signals)
+    - release-readiness gate outcomes (`pass/warn/fail/other`, affected repos/commits)
+  - Backed by new DB aggregations over `pipeline_events` + `noncompliance_signals` with window support (`24h/7d/30d` via query intent).
+  - Classification regression tests updated and passing.
 - Documentation/API contract drift (P0 docs pass) reduced:
   - `/policy/check` examples aligned to real payload keys (`repo`, `commit`) in EN/ES governance docs.
   - `docs/ARCHITECTURE.md` auth semantics aligned for `/signals`, `/violations/{id}/decisions`, and `/policy/check`.

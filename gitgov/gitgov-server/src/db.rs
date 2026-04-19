@@ -7696,6 +7696,137 @@ impl Database {
         Ok(row.get("cnt"))
     }
 
+    /// Q6: Aggregate quality gate stage health over a recent time window.
+    pub async fn chat_query_quality_gate_window_summary(
+        &self,
+        org_id: Option<&str>,
+        hours: i64,
+    ) -> Result<serde_json::Value, DbError> {
+        let safe_hours = hours.clamp(1, 24 * 30) as i32;
+        let row = sqlx::query(
+            r#"
+            WITH quality_gate_events AS (
+              SELECT
+                lower(COALESCE(stage->>'status', 'unknown')) AS gate_status,
+                COALESCE(pe.repo_full_name, 'unknown') AS repo_full_name,
+                pe.commit_sha
+              FROM pipeline_events pe
+              CROSS JOIN LATERAL jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(pe.stages) = 'array' THEN pe.stages
+                  ELSE '[]'::jsonb
+                END
+              ) AS stage
+              WHERE pe.ingested_at >= NOW() - make_interval(hours => $1::int)
+                AND ($2::uuid IS NULL OR pe.org_id = $2::uuid)
+                AND lower(COALESCE(stage->>'name', '')) = 'quality_gate'
+            ),
+            signal_events AS (
+              SELECT COUNT(*)::bigint AS policy_violation_signals
+              FROM noncompliance_signals ns
+              WHERE ns.created_at >= NOW() - make_interval(hours => $1::int)
+                AND ($2::uuid IS NULL OR ns.org_id = $2::uuid)
+                AND ns.signal_type = 'policy_violation'
+                AND COALESCE(ns.evidence->>'rule', '') = 'quality_gate_green'
+                AND COALESCE(ns.status, 'open') <> 'resolved'
+            )
+            SELECT
+              COUNT(*)::bigint AS total_runs,
+              COUNT(*) FILTER (
+                WHERE gate_status IN ('passed', 'ok', 'green', 'success')
+              )::bigint AS green_runs,
+              COUNT(*) FILTER (
+                WHERE gate_status NOT IN ('passed', 'ok', 'green', 'success')
+              )::bigint AS non_green_runs,
+              COUNT(DISTINCT repo_full_name)::bigint AS repos_affected,
+              COUNT(DISTINCT commit_sha)::bigint AS commits_affected,
+              COALESCE((SELECT policy_violation_signals FROM signal_events), 0)::bigint AS policy_violation_signals
+            FROM quality_gate_events
+            "#,
+        )
+        .bind(safe_hours)
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(serde_json::json!({
+            "window_hours": safe_hours,
+            "total_runs": row.get::<i64, _>("total_runs"),
+            "green_runs": row.get::<i64, _>("green_runs"),
+            "non_green_runs": row.get::<i64, _>("non_green_runs"),
+            "repos_affected": row.get::<i64, _>("repos_affected"),
+            "commits_affected": row.get::<i64, _>("commits_affected"),
+            "policy_violation_signals": row.get::<i64, _>("policy_violation_signals"),
+        }))
+    }
+
+    /// Q7: Aggregate release readiness gate outcomes over a recent time window.
+    pub async fn chat_query_release_readiness_window_summary(
+        &self,
+        org_id: Option<&str>,
+        hours: i64,
+    ) -> Result<serde_json::Value, DbError> {
+        let safe_hours = hours.clamp(1, 24 * 30) as i32;
+        let row = sqlx::query(
+            r#"
+            WITH readiness_events AS (
+              SELECT
+                lower(COALESCE(stage->>'status', 'unknown')) AS readiness_status,
+                COALESCE(pe.repo_full_name, 'unknown') AS repo_full_name,
+                pe.commit_sha
+              FROM pipeline_events pe
+              CROSS JOIN LATERAL jsonb_array_elements(
+                CASE
+                  WHEN jsonb_typeof(pe.stages) = 'array' THEN pe.stages
+                  ELSE '[]'::jsonb
+                END
+              ) AS stage
+              WHERE pe.ingested_at >= NOW() - make_interval(hours => $1::int)
+                AND ($2::uuid IS NULL OR pe.org_id = $2::uuid)
+                AND lower(COALESCE(stage->>'name', '')) = 'release_readiness'
+            )
+            SELECT
+              COUNT(*)::bigint AS total_runs,
+              COUNT(*) FILTER (
+                WHERE readiness_status IN ('pass', 'passed', 'ok', 'green', 'success')
+              )::bigint AS pass_runs,
+              COUNT(*) FILTER (
+                WHERE readiness_status IN ('warn', 'warning', 'unstable', 'advisory')
+              )::bigint AS warn_runs,
+              COUNT(*) FILTER (
+                WHERE readiness_status IN ('fail', 'failure', 'blocked', 'deny', 'denied', 'error')
+              )::bigint AS fail_runs,
+              COUNT(*) FILTER (
+                WHERE readiness_status NOT IN (
+                  'pass', 'passed', 'ok', 'green', 'success',
+                  'warn', 'warning', 'unstable', 'advisory',
+                  'fail', 'failure', 'blocked', 'deny', 'denied', 'error'
+                )
+              )::bigint AS other_runs,
+              COUNT(DISTINCT repo_full_name)::bigint AS repos_affected,
+              COUNT(DISTINCT commit_sha)::bigint AS commits_affected
+            FROM readiness_events
+            "#,
+        )
+        .bind(safe_hours)
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(serde_json::json!({
+            "window_hours": safe_hours,
+            "total_runs": row.get::<i64, _>("total_runs"),
+            "pass_runs": row.get::<i64, _>("pass_runs"),
+            "warn_runs": row.get::<i64, _>("warn_runs"),
+            "fail_runs": row.get::<i64, _>("fail_runs"),
+            "other_runs": row.get::<i64, _>("other_runs"),
+            "repos_affected": row.get::<i64, _>("repos_affected"),
+            "commits_affected": row.get::<i64, _>("commits_affected"),
+        }))
+    }
+
     /// Insert a feature request record. Returns the new UUID as String.
     pub async fn create_feature_request(
         &self,

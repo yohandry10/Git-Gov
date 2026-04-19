@@ -533,6 +533,8 @@ mod tests {
                 Some(ChatQuery::PushesNoTicket) => "pushes_no_ticket",
                 Some(ChatQuery::BlockedPushesMonth) => "blocked_month",
                 Some(ChatQuery::ControlPlaneExecutiveSummary) => "executive_summary",
+                Some(ChatQuery::QualityGateHealthWindow { .. }) => "quality_gate_health",
+                Some(ChatQuery::ReleaseReadinessHealthWindow { .. }) => "release_readiness_health",
                 Some(ChatQuery::OnlineDevelopersNow { .. }) => "online_devs",
                 Some(ChatQuery::CommitsWithoutTicketWindow { .. }) => "commits_no_ticket",
                 Some(ChatQuery::UserPushesCount { .. }) => "user_pushes_count",
@@ -587,6 +589,8 @@ mod tests {
             ("cuantos devs hay on ahora en control plane", "online_devs"),
             ("cuantos commits sin ticket hubo esta semana", "commits_no_ticket"),
             ("todo lo que hay en control plane resumen ejecutivo", "executive_summary"),
+            ("resumen de quality gate en esta semana", "quality_gate_health"),
+            ("estado release readiness gate este mes", "release_readiness_health"),
         ];
 
         let correct = cases

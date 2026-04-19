@@ -2,6 +2,8 @@ fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
     matches!(
         query,
         ChatQuery::ControlPlaneExecutiveSummary
+            | ChatQuery::QualityGateHealthWindow { .. }
+            | ChatQuery::ReleaseReadinessHealthWindow { .. }
             | ChatQuery::OnlineDevelopersNow { .. }
             | ChatQuery::CommitsWithoutTicketWindow { .. }
             | ChatQuery::PushesNoTicket
@@ -1054,6 +1056,245 @@ Corte temporal: {lima} (America/Lima) | {utc} UTC.",
                     trace_id: None,
 },
             );
+        }
+        Some(ChatQuery::QualityGateHealthWindow { hours }) => {
+            match state
+                .db
+                .chat_query_quality_gate_window_summary(scoped_org_id.as_deref(), hours)
+                .await
+            {
+                Ok(summary) => {
+                    let total_runs = summary
+                        .get("total_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let green_runs = summary
+                        .get("green_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let non_green_runs = summary
+                        .get("non_green_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let repos_affected = summary
+                        .get("repos_affected")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let commits_affected = summary
+                        .get("commits_affected")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let policy_violation_signals = summary
+                        .get("policy_violation_signals")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+
+                    let green_rate = if total_runs > 0 {
+                        (green_runs as f64 / total_runs as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let non_green_rate = if total_runs > 0 {
+                        (non_green_runs as f64 / total_runs as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+
+                    let answer = format!(
+                        "Resumen quality gate (últimas {hours}h)\n\
+Runs con señal quality_gate: {total_runs}\n\
+Gate verde: {green_runs} ({green_rate:.1}%)\n\
+Gate no verde: {non_green_runs} ({non_green_rate:.1}%)\n\
+Repos afectados: {repos_affected}\n\
+Commits afectados: {commits_affected}\n\
+Signals policy_violation (quality_gate_green, no resueltas): {policy_violation_signals}",
+                        hours = hours,
+                        total_runs = total_runs,
+                        green_runs = green_runs,
+                        green_rate = green_rate,
+                        non_green_runs = non_green_runs,
+                        non_green_rate = non_green_rate,
+                        repos_affected = repos_affected,
+                        commits_affected = commits_affected,
+                        policy_violation_signals = policy_violation_signals
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![
+                                "pipeline_events".to_string(),
+                                "noncompliance_signals".to_string(),
+                            ],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: if non_green_runs > 0 {
+                                vec![
+                                    "Revisar pipelines con stage quality_gate no verde".to_string(),
+                                    "Validar excepciones activas y expiración de overrides".to_string(),
+                                ]
+                            } else {
+                                vec![]
+                            },
+                            confidence: Some(if total_runs > 0 { 0.92 } else { 0.75 }),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("chat_query_quality_gate_window_summary error: {}", e);
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer: "Error consultando health de quality gate".to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
+        }
+        Some(ChatQuery::ReleaseReadinessHealthWindow { hours }) => {
+            match state
+                .db
+                .chat_query_release_readiness_window_summary(scoped_org_id.as_deref(), hours)
+                .await
+            {
+                Ok(summary) => {
+                    let total_runs = summary
+                        .get("total_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let pass_runs = summary
+                        .get("pass_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let warn_runs = summary
+                        .get("warn_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let fail_runs = summary
+                        .get("fail_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let other_runs = summary
+                        .get("other_runs")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let repos_affected = summary
+                        .get("repos_affected")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    let commits_affected = summary
+                        .get("commits_affected")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+
+                    let pass_rate = if total_runs > 0 {
+                        (pass_runs as f64 / total_runs as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let fail_rate = if total_runs > 0 {
+                        (fail_runs as f64 / total_runs as f64) * 100.0
+                    } else {
+                        0.0
+                    };
+
+                    let answer = format!(
+                        "Resumen release readiness gate (últimas {hours}h)\n\
+Runs con stage release_readiness: {total_runs}\n\
+PASS: {pass_runs} ({pass_rate:.1}%)\n\
+WARN: {warn_runs}\n\
+FAIL: {fail_runs} ({fail_rate:.1}%)\n\
+Otros estados: {other_runs}\n\
+Repos afectados: {repos_affected}\n\
+Commits afectados: {commits_affected}",
+                        hours = hours,
+                        total_runs = total_runs,
+                        pass_runs = pass_runs,
+                        pass_rate = pass_rate,
+                        warn_runs = warn_runs,
+                        fail_runs = fail_runs,
+                        fail_rate = fail_rate,
+                        other_runs = other_runs,
+                        repos_affected = repos_affected,
+                        commits_affected = commits_affected
+                    );
+
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::OK,
+                        ChatAskResponse {
+                            status: "ok".to_string(),
+                            answer,
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec!["pipeline_events".to_string()],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: Some(format!("last_{}h", hours)),
+                            actions_recommended: if fail_runs > 0 {
+                                vec![
+                                    "Revisar ramas con release readiness FAIL y razones en stage payload".to_string(),
+                                    "Ajustar thresholds/tier si el ruido operativo supera el baseline".to_string(),
+                                ]
+                            } else {
+                                vec![]
+                            },
+                            confidence: Some(if total_runs > 0 { 0.9 } else { 0.72 }),
+                            trace_id: None,
+                        },
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("chat_query_release_readiness_window_summary error: {}", e);
+                    return finalize_chat_response(
+                        &state,
+                        &conversation_key,
+                        &mut session,
+                        &nlp,
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ChatAskResponse {
+                            status: "error".to_string(),
+                            answer: "Error consultando health de release readiness gate".to_string(),
+                            missing_capability: None,
+                            can_report_feature: false,
+                            data_refs: vec![],
+                            sources: vec![],
+                            entities_detected: vec![],
+                            time_range_used: None,
+                            actions_recommended: vec![],
+                            confidence: None,
+                            trace_id: None,
+                        },
+                    );
+                }
+            }
         }
         Some(ChatQuery::OnlineDevelopersNow { minutes }) => {
             match state

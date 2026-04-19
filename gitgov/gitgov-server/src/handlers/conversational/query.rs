@@ -253,6 +253,40 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             || q.contains("gitgov")
             || q.contains("metricas")
             || q.contains("métricas"));
+    let asks_quality_gate_health = (q.contains("quality gate")
+        || q.contains("quality_gates")
+        || q.contains("sonar")
+        || q.contains("gate de calidad")
+        || q.contains("calidad"))
+        && (q.contains("fail")
+            || q.contains("failed")
+            || q.contains("falla")
+            || q.contains("fallaron")
+            || q.contains("rojo")
+            || q.contains("red")
+            || q.contains("estado")
+            || q.contains("salud")
+            || q.contains("health")
+            || q.contains("resumen")
+            || q.contains("overview")
+            || asks_count);
+    let asks_release_readiness_health = (q.contains("release readiness")
+        || q.contains("readiness gate")
+        || q.contains("readiness")
+        || q.contains("gate de release")
+        || q.contains("gate de despliegue"))
+        && (q.contains("fail")
+            || q.contains("failed")
+            || q.contains("falla")
+            || q.contains("fallaron")
+            || q.contains("warn")
+            || q.contains("warning")
+            || q.contains("estado")
+            || q.contains("salud")
+            || q.contains("health")
+            || q.contains("resumen")
+            || q.contains("overview")
+            || asks_count);
 
     let parse_date = |s: &str| -> Option<i64> {
         chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
@@ -304,6 +338,28 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
 
     if asks_executive_summary {
         return Some(ChatQuery::ControlPlaneExecutiveSummary);
+    }
+
+    if asks_quality_gate_health {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        return Some(ChatQuery::QualityGateHealthWindow { hours });
+    }
+
+    if asks_release_readiness_health {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        return Some(ChatQuery::ReleaseReadinessHealthWindow { hours });
     }
 
     if asks_online_devs && asks_count {
