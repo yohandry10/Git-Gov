@@ -37,10 +37,23 @@ pipeline {
           env.GITGOV_SONAR_HOST_URL = (env.SONAR_HOST_URL ?: 'http://host.docker.internal:9000').trim()
           env.GITGOV_SONAR_DASHBOARD_URL = ''
 
+          def persistSonarMeta = {
+            def statusValue = (env.GITGOV_SONAR_STATUS ?: '').replace('\n', ' ').replace('\r', ' ')
+            def projectKeyValue = (env.GITGOV_SONAR_PROJECT_KEY ?: '').replace('\n', ' ').replace('\r', ' ')
+            def hostUrlValue = (env.GITGOV_SONAR_HOST_URL ?: '').replace('\n', ' ').replace('\r', ' ')
+            def dashboardValue = (env.GITGOV_SONAR_DASHBOARD_URL ?: '').replace('\n', ' ').replace('\r', ' ')
+            writeFile file: 'gitgov-sonar-meta.properties', text: """status=${statusValue}
+project_key=${projectKeyValue}
+host_url=${hostUrlValue}
+dashboard_url=${dashboardValue}
+"""
+          }
+
           def sonarToken = (env.SONAR_TOKEN ?: '').trim()
           def sonarProjectKey = (env.SONAR_PROJECT_KEY ?: '').trim()
           if (!sonarToken || !sonarProjectKey) {
             echo 'Skipping Sonar scan (missing SONAR_TOKEN or SONAR_PROJECT_KEY).'
+            persistSonarMeta()
             return
           }
 
@@ -160,6 +173,8 @@ pipeline {
               error("${msg}; aborting because GITGOV_STRICT=true")
             }
             echo "${msg}; continuing because GITGOV_STRICT=false"
+          } finally {
+            persistSonarMeta()
           }
         }
       }
@@ -264,10 +279,11 @@ def notifyGitGov(String status) {
   def branchName = (env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'unknown').replaceFirst('^origin/', '')
   def commitSha = env.GIT_COMMIT ?: sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
   def durationMs = currentBuild.duration ?: 0
-  def sonarStatus = (env.GITGOV_SONAR_STATUS ?: '').trim()
-  def sonarProjectKey = (env.GITGOV_SONAR_PROJECT_KEY ?: '').trim()
-  def sonarHostUrl = (env.GITGOV_SONAR_HOST_URL ?: '').trim()
-  def sonarDashboardUrl = (env.GITGOV_SONAR_DASHBOARD_URL ?: '').trim()
+  def sonarMeta = loadSimplePropertiesFile('gitgov-sonar-meta.properties')
+  def sonarStatus = (sonarMeta.status ?: env.GITGOV_SONAR_STATUS ?: '').trim()
+  def sonarProjectKey = (sonarMeta.project_key ?: env.GITGOV_SONAR_PROJECT_KEY ?: '').trim()
+  def sonarHostUrl = (sonarMeta.host_url ?: env.GITGOV_SONAR_HOST_URL ?: '').trim()
+  def sonarDashboardUrl = (sonarMeta.dashboard_url ?: env.GITGOV_SONAR_DASHBOARD_URL ?: '').trim()
 
   def stagesPayload = []
   if (sonarStatus && sonarStatus != 'NOT_RUN') {
@@ -441,4 +457,25 @@ def extractJsonObjectField(String raw, String objectName, String fieldName) {
     return null
   }
   return fieldMatcher.group(1).replace('\\"', '"').replace('\\\\', '\\')
+}
+
+def loadSimplePropertiesFile(String path) {
+  if (!fileExists(path)) {
+    return [:]
+  }
+  def out = [:]
+  readFile(path).split(/\r?\n/).each { line ->
+    def clean = line?.trim()
+    if (!clean || clean.startsWith('#') || !clean.contains('=')) {
+      return
+    }
+    int idx = clean.indexOf('=')
+    if (idx <= 0) {
+      return
+    }
+    def key = clean.substring(0, idx).trim()
+    def value = clean.substring(idx + 1).trim()
+    out[key] = value
+  }
+  return out
 }
