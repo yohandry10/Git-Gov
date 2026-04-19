@@ -32,16 +32,16 @@ pipeline {
     stage('Sonar Scan (Optional)') {
       steps {
         script {
-          env.GITGOV_SONAR_STATUS = 'SKIPPED'
-          env.GITGOV_SONAR_PROJECT_KEY = (env.SONAR_PROJECT_KEY ?: '').trim()
-          env.GITGOV_SONAR_HOST_URL = (env.SONAR_HOST_URL ?: 'http://host.docker.internal:9000').trim()
-          env.GITGOV_SONAR_DASHBOARD_URL = ''
+          def sonarStatus = 'SKIPPED'
+          def sonarProjectKey = (env.SONAR_PROJECT_KEY ?: '').trim()
+          def sonarHostUrl = (env.SONAR_HOST_URL ?: 'http://host.docker.internal:9000').trim()
+          def sonarDashboardUrl = ''
 
           def persistSonarMeta = {
-            def statusValue = (env.GITGOV_SONAR_STATUS ?: '').replace('\n', ' ').replace('\r', ' ')
-            def projectKeyValue = (env.GITGOV_SONAR_PROJECT_KEY ?: '').replace('\n', ' ').replace('\r', ' ')
-            def hostUrlValue = (env.GITGOV_SONAR_HOST_URL ?: '').replace('\n', ' ').replace('\r', ' ')
-            def dashboardValue = (env.GITGOV_SONAR_DASHBOARD_URL ?: '').replace('\n', ' ').replace('\r', ' ')
+            def statusValue = (sonarStatus ?: '').replace('\n', ' ').replace('\r', ' ')
+            def projectKeyValue = (sonarProjectKey ?: '').replace('\n', ' ').replace('\r', ' ')
+            def hostUrlValue = (sonarHostUrl ?: '').replace('\n', ' ').replace('\r', ' ')
+            def dashboardValue = (sonarDashboardUrl ?: '').replace('\n', ' ').replace('\r', ' ')
             writeFile file: 'gitgov-sonar-meta.properties', text: """status=${statusValue}
 project_key=${projectKeyValue}
 host_url=${hostUrlValue}
@@ -50,7 +50,6 @@ dashboard_url=${dashboardValue}
           }
 
           def sonarToken = (env.SONAR_TOKEN ?: '').trim()
-          def sonarProjectKey = (env.SONAR_PROJECT_KEY ?: '').trim()
           if (!sonarToken || !sonarProjectKey) {
             echo 'Skipping Sonar scan (missing SONAR_TOKEN or SONAR_PROJECT_KEY).'
             persistSonarMeta()
@@ -59,7 +58,10 @@ dashboard_url=${dashboardValue}
 
           try {
             def scannerBin = ensureSonarScannerBinary()
-            withEnv(["SONAR_SCANNER_BIN=${scannerBin}"]) {
+            withEnv([
+              "SONAR_SCANNER_BIN=${scannerBin}",
+              "SONAR_HOST_URL=${sonarHostUrl}"
+            ]) {
               def scanStatus = sh(
                 script: '''
                   set -euo pipefail
@@ -70,13 +72,13 @@ dashboard_url=${dashboardValue}
                     -Dsonar.exclusions=**/node_modules/**,**/target/**,**/dist/**,**/.next/**,**/coverage/**,**/public/**,**/*.min.js \
                     -Dsonar.sourceEncoding=UTF-8 \
                     -Dsonar.scm.provider=git \
-                    -Dsonar.host.url="${GITGOV_SONAR_HOST_URL}" \
+                    -Dsonar.host.url="${SONAR_HOST_URL}" \
                     -Dsonar.token="${SONAR_TOKEN}"
                 ''',
                 returnStatus: true
               )
               if (scanStatus != 0) {
-                env.GITGOV_SONAR_STATUS = 'SCAN_FAILED'
+                sonarStatus = 'SCAN_FAILED'
                 def msg = "Sonar scanner returned non-zero exit (${scanStatus})"
                 if (gitgovStrictModeEnabled()) {
                   error("${msg}; aborting because GITGOV_STRICT=true")
@@ -87,7 +89,7 @@ dashboard_url=${dashboardValue}
             }
 
             if (!fileExists('.scannerwork/report-task.txt')) {
-              env.GITGOV_SONAR_STATUS = 'UNKNOWN'
+              sonarStatus = 'UNKNOWN'
               echo 'Sonar report-task not found; unable to resolve quality gate.'
               return
             }
@@ -106,14 +108,14 @@ dashboard_url=${dashboardValue}
             ).trim()
 
             if (dashboardUrl) {
-              env.GITGOV_SONAR_DASHBOARD_URL = dashboardUrl
+              sonarDashboardUrl = dashboardUrl
             }
             if (serverUrl) {
-              env.GITGOV_SONAR_HOST_URL = serverUrl
+              sonarHostUrl = serverUrl
             }
 
             if (!ceTaskId) {
-              env.GITGOV_SONAR_STATUS = 'UNKNOWN'
+              sonarStatus = 'UNKNOWN'
               echo 'Sonar CE task id is empty; unable to resolve quality gate.'
               return
             }
@@ -121,7 +123,7 @@ dashboard_url=${dashboardValue}
             def ceStatus = 'PENDING'
             def analysisId = ''
             withEnv([
-              "SQ_HOST_URL=${env.GITGOV_SONAR_HOST_URL}",
+              "SQ_HOST_URL=${sonarHostUrl}",
               "SQ_CE_TASK_ID=${ceTaskId}"
             ]) {
               for (int i = 0; i < 60; i++) {
@@ -145,13 +147,13 @@ dashboard_url=${dashboardValue}
             }
 
             if (!analysisId) {
-              env.GITGOV_SONAR_STATUS = (ceStatus == 'PENDING') ? 'TIMEOUT' : ceStatus
-              echo "Sonar analysis id unavailable (ce_status=${env.GITGOV_SONAR_STATUS})."
+              sonarStatus = (ceStatus == 'PENDING') ? 'TIMEOUT' : ceStatus
+              echo "Sonar analysis id unavailable (ce_status=${sonarStatus})."
               return
             }
 
             withEnv([
-              "SQ_HOST_URL=${env.GITGOV_SONAR_HOST_URL}",
+              "SQ_HOST_URL=${sonarHostUrl}",
               "SQ_ANALYSIS_ID=${analysisId}"
             ]) {
               def gateRaw = sh(
@@ -162,12 +164,12 @@ dashboard_url=${dashboardValue}
                   returnStdout: true
                 ).trim()
               writeFile file: 'sonar-quality-gate.json', text: gateRaw
-              env.GITGOV_SONAR_STATUS = (extractJsonObjectField(gateRaw, 'projectStatus', 'status') ?: 'UNKNOWN').toUpperCase()
+              sonarStatus = (extractJsonObjectField(gateRaw, 'projectStatus', 'status') ?: 'UNKNOWN').toUpperCase()
             }
 
-            echo "Sonar quality gate status: ${env.GITGOV_SONAR_STATUS}"
+            echo "Sonar quality gate status: ${sonarStatus}"
           } catch (err) {
-            env.GITGOV_SONAR_STATUS = 'SCAN_FAILED'
+            sonarStatus = 'SCAN_FAILED'
             def msg = "Sonar scan stage failed: ${err}"
             if (gitgovStrictModeEnabled()) {
               error("${msg}; aborting because GITGOV_STRICT=true")
