@@ -721,6 +721,39 @@ Resultado:
 - `WARN`: hay observaciones no bloqueantes
 - `FAIL`: hay fallo crítico (DNS/HTTPS/health/rutas)
 
+### Bundle unificado de readiness
+
+Ejecuta todas las validaciones clave en un solo comando (infra pública, updater, matrix quality gates, baseline tier y prechecks GitHub):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/run_enterprise_readiness_bundle.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -PublicBaseUrl "https://<tu-dominio>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main"
+```
+
+Salida:
+- carpeta `docs/reports/readiness-bundle-<timestamp>/`
+- reporte principal `readiness-bundle-summary.md`
+
+Workflow cloud (manual + semanal):
+- `.github/workflows/enterprise-readiness-bundle.yml`
+- corre lunes 12:30 UTC + `workflow_dispatch`
+- genera artifact `enterprise-readiness-bundle-<run_id>` con:
+  - `readiness-bundle-summary.md`
+  - `public-infra.md`
+  - `desktop-updater.md`
+  - `quality-gate-matrix*.{md,json}` (si hay `GITGOV_API_KEY`)
+  - `risk-tier-baseline-standard.md` (si hay `GITGOV_API_KEY`)
+  - `github-token-permissions.json` / `github-ci-config-precheck.txt` (si hay PAT)
+
+Variables/secrets recomendados para el workflow:
+- Variable requerida: `GITGOV_URL`
+- Variable opcional: `GITGOV_PUBLIC_BASE_URL`
+- Secret opcional: `GITGOV_API_KEY` (habilita matrix+baseline)
+- Secret opcional: `GITHUB_PERSONAL_ACCESS_TOKEN` (precheck cloud estricto/best-effort)
+
 ### Nota de seguridad
 
 Si una API key fue compartida en chat/capturas, **rotarla**:

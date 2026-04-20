@@ -219,6 +219,12 @@ Updated: 2026-04-20
 - Public infra preflight automation added:
   - `scripts/deploy/validate_public_infra.ps1` validates domain DNS, TLS certificate, health endpoint, authenticated stats, and webhook/integration route reachability.
   - Local dry-run evidence generated at `docs/reports/public-infra-validation-local-2026-04-20.md` (expected `WARN` on non-HTTPS localhost).
+- Enterprise readiness bundle automation added:
+  - `scripts/deploy/run_enterprise_readiness_bundle.ps1` orchestrates infra, updater, quality-gate matrix, tier baseline, and GitHub cloud prechecks in one run.
+  - Evidence bundles generated at:
+    - `docs/reports/readiness-bundle-2026-04-20T075942Z/`
+    - `docs/reports/readiness-bundle-2026-04-20T183000Z/`
+  - Optional weekly/manual workflow added: `.github/workflows/enterprise-readiness-bundle.yml`.
 - Desktop updater readiness automation added:
   - `scripts/deploy/validate_desktop_updater_readiness.ps1` validates `plugins.updater` config, endpoint syntax, and live `latest.json` reachability/manifest shape.
   - Local evidence generated at `docs/reports/desktop-updater-readiness-local-2026-04-20.md` (current warning: updater endpoint returns `404` for `latest.json` and requires publish step).
@@ -364,7 +370,7 @@ Before adding or keeping any `/features` claim:
 2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
    - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
-   - Pending: run same calibration against production telemetry and lock business-domain SLO targets.
+   - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml`); pending closure is to lock business-domain SLO targets on top of production data.
 4. Expand GitHub evidence ingestion beyond current scope:
    - store review activity as first-class evidence
    - ingest status checks / check runs / check suites
