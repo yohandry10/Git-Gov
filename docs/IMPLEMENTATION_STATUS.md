@@ -320,8 +320,9 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins pipeline ingestion exists.
   - Commit-to-pipeline correlation exists.
   - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
-  - GitHub webhook ingestion exists for `push`, `create`, and merged `pull_request` events.
+  - GitHub webhook ingestion exists for `push`, `create`, merged `pull_request`, and `pull_request_review` events.
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
+  - Review activity is now stored as first-class evidence in `github_events` (`event_type=pull_request_review`) with PR/review context in payload.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -331,9 +332,9 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins correlation
   - Jira ticket coverage
   - merged pull request evidence
+  - pull request review evidence
   - GitHub webhook context
 - Not implemented yet:
-  - GitHub review-event ingestion as first-class stored evidence
   - GitHub status checks / check runs / check suites ingestion as first-class stored evidence
   - full PR lifecycle capture beyond merged PR storage
 - Website consequence:
@@ -386,9 +387,9 @@ Before adding or keeping any `/features` claim:
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
 4. Expand GitHub evidence ingestion beyond current scope:
-   - store review activity as first-class evidence
    - ingest status checks / check runs / check suites
-   - decide whether `/features` should market merged PR evidence only or full PR lifecycle coverage
+   - capture additional PR lifecycle events beyond merge/review (opened, synchronized, requested reviewers, dismissals)
+   - decide whether `/features` should market current webhook coverage or wait for full lifecycle parity
 
 ## Required GitHub Configuration (for Sonar workflow)
 
