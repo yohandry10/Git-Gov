@@ -1156,6 +1156,22 @@ Block `downloads.gitgov.com` at the firewall. The app continues functioning; onl
 | "No se pudo verificar/instalar" | URL inaccesible, firma incorrecta o pubkey mal | Verificar URL, signature y pubkey |
 | Usuario no ve notificación | Throttling ~6h o no está en Desktop | Probar `Buscar actualizaciones` manual |
 
+### Validación automática de readiness del updater
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/validate_desktop_updater_readiness.ps1 `
+  -TauriConfigPath "gitgov/src-tauri/tauri.conf.json" `
+  -OutputPath "docs/reports/desktop-updater-readiness-<fecha>.md"
+```
+
+El validador verifica:
+- `plugins.updater` presente
+- `updater.endpoints` y `updater.pubkey` configurados
+- sintaxis HTTPS de endpoints
+- probe real de `latest.json` (HTTP + shape del manifest `version/platforms`)
+
+Si devuelve `WARN` por `404` en `latest.json`, falta publicar assets/manifest en el endpoint configurado.
+
 ### Próximas fases
 
 - **Fase 2:** Canales beta/stable, telemetría de updater, reintento de descarga

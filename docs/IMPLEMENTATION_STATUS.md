@@ -214,6 +214,9 @@ Updated: 2026-04-20
 - Public infra preflight automation added:
   - `scripts/deploy/validate_public_infra.ps1` validates domain DNS, TLS certificate, health endpoint, authenticated stats, and webhook/integration route reachability.
   - Local dry-run evidence generated at `docs/reports/public-infra-validation-local-2026-04-20.md` (expected `WARN` on non-HTTPS localhost).
+- Desktop updater readiness automation added:
+  - `scripts/deploy/validate_desktop_updater_readiness.ps1` validates `plugins.updater` config, endpoint syntax, and live `latest.json` reachability/manifest shape.
+  - Local evidence generated at `docs/reports/desktop-updater-readiness-local-2026-04-20.md` (current warning: updater endpoint returns `404` for `latest.json` and requires publish step).
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 - CI lint stability hardening:
