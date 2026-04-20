@@ -103,6 +103,11 @@ Updated: 2026-04-20
     - `docs/reports/risk-tier-baseline-local-internal-2026-04-20.md` (internal)
   - Deployment runbook updated with execution command and expected output.
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/risk-tier-baseline-calibration.yml` (weekly Monday 12:00 UTC, skips cleanly when `GITGOV_URL`/`GITGOV_API_KEY` are missing).
+- Domain SLO lock/validation automation added:
+  - `ops/slo/domain-slo-targets.json` defines per-domain tier + explicit SLO targets.
+  - `scripts/control-plane/validate_domain_slo_targets.ps1` validates each domain against locked targets using live Control Plane telemetry.
+  - GitHub Actions scheduler/manual trigger added: `.github/workflows/domain-slo-validation.yml` (weekly Monday 12:45 UTC + manual dispatch).
+  - Local evidence generated at `docs/reports/domain-slo-validation-local-2026-04-20/domain-slo-summary.md`.
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:
@@ -373,7 +378,8 @@ Before adding or keeping any `/features` claim:
 2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
    - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
-   - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml`); pending closure is to lock business-domain SLO targets on top of production data.
+   - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
+   - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
 4. Expand GitHub evidence ingestion beyond current scope:
    - store review activity as first-class evidence
    - ingest status checks / check runs / check suites

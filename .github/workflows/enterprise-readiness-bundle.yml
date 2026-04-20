@@ -84,21 +84,21 @@ jobs:
             $branch = "${{ github.ref_name }}"
           }
 
-          $args = @(
-            "-GitGovUrl", $env:GITGOV_URL,
-            "-PublicBaseUrl", $publicBaseUrl,
-            "-RepoFullName", $repoFullName,
-            "-Branch", $branch,
-            "-ApiKey", $env:GITGOV_API_KEY,
-            "-GitHubToken", $env:GITHUB_PERSONAL_ACCESS_TOKEN,
-            "-OutputRoot", $outputRoot
-          )
-
-          if ("${{ github.event.inputs.probe_updater_endpoint }}" -eq "true") {
-            $args += "-ProbeUpdaterEndpoint"
+          $params = @{
+            GitGovUrl = $env:GITGOV_URL
+            PublicBaseUrl = $publicBaseUrl
+            RepoFullName = $repoFullName
+            Branch = $branch
+            ApiKey = $env:GITGOV_API_KEY
+            GitHubToken = $env:GITHUB_PERSONAL_ACCESS_TOKEN
+            OutputRoot = $outputRoot
           }
 
-          & ./scripts/deploy/run_enterprise_readiness_bundle.ps1 @args
+          if ("${{ github.event.inputs.probe_updater_endpoint }}" -eq "true") {
+            $params.ProbeUpdaterEndpoint = $true
+          }
+
+          & ./scripts/deploy/run_enterprise_readiness_bundle.ps1 @params
           $exitCode = $LASTEXITCODE
 
           Add-Content -Path $env:GITHUB_OUTPUT -Value "output_root=$outputRoot"

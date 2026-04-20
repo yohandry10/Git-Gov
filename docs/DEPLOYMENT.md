@@ -177,6 +177,31 @@ Automatización en GitHub Actions:
 - Comportamiento sin configuración:
 - El job hace `skip` explícito (no rompe CI) cuando faltan `GITGOV_URL`/`GITGOV_API_KEY`.
 
+Lock y validación SLO por dominio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/validate_domain_slo_targets.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -TargetsPath "ops/slo/domain-slo-targets.json" `
+  -OutputDir "docs/reports/domain-slo-validation-local"
+```
+
+Salida:
+- `docs/reports/domain-slo-validation-<timestamp>/domain-slo-summary.md`
+- baseline por dominio: `domain-<name>-baseline.md`
+
+Workflow:
+- `.github/workflows/domain-slo-validation.yml`
+- Trigger:
+  - `schedule` semanal: lunes 12:45 UTC
+  - `workflow_dispatch` manual (inputs: `domain_name`, `hours`, `correlation_limit`, `fail_on_breach`)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Fuente de lock:
+  - `ops/slo/domain-slo-targets.json` (targets por dominio/tier).
+
 #### Gate de release readiness por rama (SQ-10 fase 2)
 
 Validación ejecutable para bloquear/promover release por score de readiness en una rama específica.

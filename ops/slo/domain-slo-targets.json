@@ -1,0 +1,43 @@
+{
+  "domains": [
+    {
+      "name": "core-platform",
+      "org_name": "",
+      "tier": "critical",
+      "slo": {
+        "readiness_min": 85,
+        "blocked_push_rate_max": 5,
+        "traceability_gap_max": 15,
+        "pipeline_failure_rate_max": 10,
+        "sonar_failure_rate_max": 12,
+        "unresolved_violation_rate_max": 30
+      }
+    },
+    {
+      "name": "standard-services",
+      "org_name": "",
+      "tier": "standard",
+      "slo": {
+        "readiness_min": 75,
+        "blocked_push_rate_max": 10,
+        "traceability_gap_max": 25,
+        "pipeline_failure_rate_max": 20,
+        "sonar_failure_rate_max": 20,
+        "unresolved_violation_rate_max": 40
+      }
+    },
+    {
+      "name": "internal-tools",
+      "org_name": "",
+      "tier": "internal",
+      "slo": {
+        "readiness_min": 65,
+        "blocked_push_rate_max": 15,
+        "traceability_gap_max": 35,
+        "pipeline_failure_rate_max": 30,
+        "sonar_failure_rate_max": 30,
+        "unresolved_violation_rate_max": 50
+      }
+    }
+  ]
+}
