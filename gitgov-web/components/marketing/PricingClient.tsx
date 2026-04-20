@@ -3,70 +3,170 @@
 import React from 'react';
 import Link from 'next/link';
 import { Container } from '@/components/layout';
-import { CTASection, SectionHeader } from '@/components/marketing';
+import { SectionHeader } from '@/components/marketing';
 import { SectionReveal } from '@/components/ui';
 import { useTranslation } from '@/lib/i18n';
 import {
-    HiOutlineCloud,
-    HiOutlineShieldCheck,
-    HiOutlineOfficeBuilding,
     HiOutlineCheckCircle,
-    HiOutlineArrowRight,
-    HiOutlineClipboardCheck,
+    HiOutlineLightningBolt,
+    HiOutlineMail,
+    HiOutlineOfficeBuilding,
+    HiOutlineUser,
 } from 'react-icons/hi';
 
-interface DeploymentOption {
-    title: string;
+interface PlanFeature {
+    label: string;
+    included: boolean;
+}
+
+interface Plan {
+    name: string;
     description: string;
+    price: string;
+    priceNote: string;
+    features: PlanFeature[];
+    ctaLabel: string;
+    ctaHref: string;
+    highlighted?: boolean;
+    badge?: string;
     icon: React.ReactNode;
 }
 
-interface ProcessStep {
-    title: string;
-    description: string;
-}
-
 export function PricingClient() {
-    const { t } = useTranslation();
+    const { locale } = useTranslation();
+    const isEs = locale === 'es';
 
-    const deploymentOptions: DeploymentOption[] = [
-        {
-            title: t('pricing.deployment.self.title') as string,
-            description: t('pricing.deployment.self.desc') as string,
-            icon: <HiOutlineShieldCheck size={22} />,
-        },
-        {
-            title: t('pricing.deployment.managed.title') as string,
-            description: t('pricing.deployment.managed.desc') as string,
-            icon: <HiOutlineCloud size={22} />,
-        },
-        {
-            title: t('pricing.deployment.hybrid.title') as string,
-            description: t('pricing.deployment.hybrid.desc') as string,
-            icon: <HiOutlineOfficeBuilding size={22} />,
-        },
-    ];
+    const copy = isEs
+        ? {
+            badge: 'Precios',
+            title: 'Planes y',
+            titleAccent: 'Precios',
+            description:
+                'Precios simples y transparentes para equipos que quieren trazabilidad operativa sin improvisar el rollout.',
+            footerNote:
+                'Precios en USD. Team requiere mínimo 10 seats. Enterprise se cotiza según despliegue, soporte y alcance organizacional.',
+        }
+        : {
+            badge: 'Pricing',
+            title: 'Plans &',
+            titleAccent: 'Pricing',
+            description:
+                'Simple, transparent pricing for teams that need operational traceability without improvising the rollout.',
+            footerNote:
+                'Prices shown in USD. Team requires a 10-seat minimum. Enterprise is scoped around deployment, support, and org-wide rollout.',
+        };
 
-    const qualificationPoints = [
-        t('pricing.fit.item1') as string,
-        t('pricing.fit.item2') as string,
-        t('pricing.fit.item3') as string,
-    ];
-
-    const processSteps: ProcessStep[] = [
-        {
-            title: t('pricing.process.step1.title') as string,
-            description: t('pricing.process.step1.desc') as string,
-        },
-        {
-            title: t('pricing.process.step2.title') as string,
-            description: t('pricing.process.step2.desc') as string,
-        },
-        {
-            title: t('pricing.process.step3.title') as string,
-            description: t('pricing.process.step3.desc') as string,
-        },
-    ];
+    const plans: Plan[] = isEs
+        ? [
+            {
+                name: 'Starter',
+                description: 'Empieza con gobernanza Git para equipos pequeños y evaluación inicial.',
+                price: 'Gratis',
+                priceNote: 'Hasta 5 desarrolladores',
+                ctaLabel: 'Empezar',
+                ctaHref: '/download',
+                icon: <HiOutlineUser size={22} />,
+                features: [
+                    { label: 'Captura de operaciones Git', included: true },
+                    { label: 'Timeline local de evidencia', included: true },
+                    { label: 'Hasta 5 usuarios', included: true },
+                    { label: 'Correlación Jenkins CI', included: false },
+                    { label: 'Cobertura de tickets Jira', included: false },
+                    { label: 'Reportes exportables', included: false },
+                ],
+            },
+            {
+                name: 'Team',
+                description: 'Gobernanza completa para equipos de ingeniería en crecimiento.',
+                price: '$24',
+                priceNote: 'por desarrollador / mes',
+                ctaLabel: 'Contactar por Precios',
+                ctaHref: '/contact',
+                highlighted: true,
+                badge: 'Más popular',
+                icon: <HiOutlineLightningBolt size={22} />,
+                features: [
+                    { label: 'Todo en Starter', included: true },
+                    { label: 'Logs de auditoría inmutables', included: true },
+                    { label: 'Correlación Jenkins CI', included: true },
+                    { label: 'Cobertura de tickets Jira', included: true },
+                    { label: 'Verificaciones de gobernanza', included: true },
+                    { label: 'Reportes exportables', included: true },
+                ],
+            },
+            {
+                name: 'Enterprise',
+                description: 'Control total para despliegues regulados y rollout organizacional.',
+                price: 'Desde $2,500',
+                priceNote: 'por mes',
+                ctaLabel: 'Hablar con Ventas',
+                ctaHref: '/contact',
+                icon: <HiOutlineOfficeBuilding size={22} />,
+                features: [
+                    { label: 'Todo en Team', included: true },
+                    { label: 'Usuarios ilimitados', included: true },
+                    { label: 'Soporte prioritario', included: true },
+                    { label: 'Onboarding dedicado', included: true },
+                    { label: 'Arquitectura híbrida o self-hosted', included: true },
+                    { label: 'Rollout de políticas a nivel organización', included: true },
+                ],
+            },
+        ]
+        : [
+            {
+                name: 'Starter',
+                description: 'Start Git governance for small teams and early evaluation.',
+                price: 'Free',
+                priceNote: 'Up to 5 developers',
+                ctaLabel: 'Get Started',
+                ctaHref: '/download',
+                icon: <HiOutlineUser size={22} />,
+                features: [
+                    { label: 'Git operation capture', included: true },
+                    { label: 'Local evidence timeline', included: true },
+                    { label: 'Up to 5 users', included: true },
+                    { label: 'Jenkins CI correlation', included: false },
+                    { label: 'Jira ticket coverage', included: false },
+                    { label: 'Exportable reporting', included: false },
+                ],
+            },
+            {
+                name: 'Team',
+                description: 'Full governance coverage for growing engineering teams.',
+                price: '$24',
+                priceNote: 'per developer / month',
+                ctaLabel: 'Contact for Pricing',
+                ctaHref: '/contact',
+                highlighted: true,
+                badge: 'Most Popular',
+                icon: <HiOutlineLightningBolt size={22} />,
+                features: [
+                    { label: 'Everything in Starter', included: true },
+                    { label: 'Immutable audit logs', included: true },
+                    { label: 'Jenkins CI correlation', included: true },
+                    { label: 'Jira ticket coverage', included: true },
+                    { label: 'Governance checks', included: true },
+                    { label: 'Exportable reporting', included: true },
+                ],
+            },
+            {
+                name: 'Enterprise',
+                description: 'Full control for regulated rollouts and org-wide deployment.',
+                price: 'From $2,500',
+                priceNote: 'per month',
+                ctaLabel: 'Talk to Sales',
+                ctaHref: '/contact',
+                icon: <HiOutlineOfficeBuilding size={22} />,
+                features: [
+                    { label: 'Everything in Team', included: true },
+                    { label: 'Unlimited users', included: true },
+                    { label: 'Priority support', included: true },
+                    { label: 'Dedicated onboarding', included: true },
+                    { label: 'Hybrid or self-hosted architecture', included: true },
+                    { label: 'Org-wide policy rollout', included: true },
+                ],
+            },
+        ];
 
     return (
         <>
@@ -79,130 +179,111 @@ export function PricingClient() {
                             backgroundSize: '40px 40px',
                         }}
                     />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[320px] bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[340px] bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
                 </div>
                 <Container>
                     <SectionHeader
-                        badge={t('pricing.badge') as string}
-                        title={t('pricing.title') as string}
-                        titleAccent={t('pricing.titleAccent') as string}
-                        description={t('pricing.description') as string}
+                        badge={copy.badge}
+                        title={copy.title}
+                        titleAccent={copy.titleAccent}
+                        description={copy.description}
                     />
                 </Container>
             </section>
 
-            <section className="pb-32">
+            <section className="pb-28">
                 <Container>
-                    <div className="max-w-6xl mx-auto space-y-8">
-                        <SectionReveal>
-                            <div className="grid lg:grid-cols-[1.3fr_0.9fr] gap-8">
-                                <div className="glass-card rounded-[2rem] p-8 md:p-10 border border-white/5 relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(249,115,22,0.08),transparent_55%)] pointer-events-none" />
-                                    <div className="relative z-10">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-[11px] font-bold uppercase tracking-widest mb-6">
-                                            <HiOutlineClipboardCheck size={14} />
-                                            {t('pricing.story.badge') as string}
+                    <SectionReveal>
+                        <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-6 items-stretch">
+                            {plans.map((plan) => (
+                                <div
+                                    key={plan.name}
+                                    className={`rounded-[2rem] p-[1px] ${
+                                        plan.highlighted
+                                            ? 'bg-gradient-to-b from-brand-500/40 via-brand-500/20 to-transparent shadow-[0_0_30px_rgba(249,115,22,0.12)]'
+                                            : 'bg-gradient-to-b from-white/10 to-transparent'
+                                    }`}
+                                >
+                                    <div
+                                        className={`h-full rounded-[31px] border p-8 md:p-9 flex flex-col ${
+                                            plan.highlighted
+                                                ? 'border-brand-500/20 bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.12),rgba(9,9,9,0.96)_55%)]'
+                                                : 'border-white/5 bg-[#090909]'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-400">
+                                                {plan.icon}
+                                            </div>
+                                            {plan.badge && (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                                                    {plan.badge}
+                                                </span>
+                                            )}
                                         </div>
-                                        <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
-                                            {t('pricing.story.title') as string}
-                                        </h2>
-                                        <p className="text-sm md:text-base text-gray-400 leading-relaxed max-w-2xl mb-8">
-                                            {t('pricing.story.desc') as string}
-                                        </p>
+
+                                        <div className="mb-8">
+                                            <h2 className="text-3xl font-black text-white tracking-tight mb-3">
+                                                {plan.name}
+                                            </h2>
+                                            <p className="text-sm text-gray-400 leading-relaxed min-h-[48px]">
+                                                {plan.description}
+                                            </p>
+                                        </div>
+
+                                        <div className="mb-8">
+                                            <div className="text-5xl md:text-6xl font-black tracking-tight text-white leading-none">
+                                                {plan.price}
+                                            </div>
+                                            <p className="mt-3 text-xs font-bold uppercase tracking-widest text-brand-400">
+                                                {plan.priceNote}
+                                            </p>
+                                        </div>
+
+                                        <div className="pt-6 border-t border-white/6 mb-8">
+                                            <ul className="space-y-4">
+                                                {plan.features.map((feature) => (
+                                                    <li key={feature.label} className="flex items-start gap-3">
+                                                        <HiOutlineCheckCircle
+                                                            size={18}
+                                                            className={feature.included ? 'text-brand-400 mt-0.5 shrink-0' : 'text-gray-700 mt-0.5 shrink-0'}
+                                                        />
+                                                        <span
+                                                            className={`text-sm leading-relaxed ${
+                                                                feature.included ? 'text-gray-200' : 'text-gray-600'
+                                                            }`}
+                                                        >
+                                                            {feature.label}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+
                                         <Link
-                                            href="/contact"
-                                            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-500 text-white font-bold shadow-[0_0_20px_rgba(249,115,22,0.18)] hover:shadow-[0_0_30px_rgba(249,115,22,0.32)] transition-all duration-300"
+                                            href={plan.ctaHref}
+                                            className={`mt-auto inline-flex items-center justify-center gap-2 rounded-xl px-5 py-4 font-bold transition-all duration-300 ${
+                                                plan.highlighted
+                                                    ? 'bg-brand-500 text-white shadow-[0_0_24px_rgba(249,115,22,0.22)] hover:shadow-[0_0_34px_rgba(249,115,22,0.34)]'
+                                                    : 'bg-black text-white border border-white/8 hover:border-white/16 hover:bg-white/[0.03]'
+                                            }`}
                                         >
-                                            {t('pricing.cta.primary') as string}
-                                            <HiOutlineArrowRight size={16} />
+                                            <HiOutlineMail size={18} />
+                                            {plan.ctaLabel}
                                         </Link>
                                     </div>
                                 </div>
+                            ))}
+                        </div>
+                    </SectionReveal>
 
-                                <div className="rounded-[2rem] p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-                                    <div className="h-full rounded-[31px] bg-[#090909] p-8 md:p-10 border border-white/5">
-                                        <h3 className="text-xl font-bold text-white mb-3">{t('pricing.fit.title') as string}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed mb-6">
-                                            {t('pricing.fit.desc') as string}
-                                        </p>
-                                        <ul className="space-y-4">
-                                            {qualificationPoints.map((item) => (
-                                                <li key={item} className="flex items-start gap-3">
-                                                    <HiOutlineCheckCircle size={18} className="text-brand-400 mt-0.5 shrink-0" />
-                                                    <span className="text-sm text-gray-300 leading-relaxed">{item}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        <SectionReveal delay={0.08}>
-                            <div className="rounded-[2rem] p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-                                <div className="rounded-[31px] bg-[#090909] p-8 md:p-10 border border-white/5">
-                                    <div className="max-w-2xl mb-8">
-                                        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
-                                            {t('pricing.deployment.title') as string}
-                                        </h2>
-                                        <p className="text-sm text-gray-400 leading-relaxed">
-                                            {t('pricing.deployment.desc') as string}
-                                        </p>
-                                    </div>
-
-                                    <div className="grid md:grid-cols-3 gap-6">
-                                        {deploymentOptions.map((option, index) => (
-                                            <div
-                                                key={option.title}
-                                                className={`rounded-2xl p-7 border transition-all duration-300 ${
-                                                    index === 1
-                                                        ? 'border-brand-500/25 bg-brand-500/5 shadow-[0_0_24px_rgba(249,115,22,0.08)]'
-                                                        : 'border-white/5 bg-surface-300/50'
-                                                }`}
-                                            >
-                                                <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-400 mb-5">
-                                                    {option.icon}
-                                                </div>
-                                                <h3 className="text-lg font-bold text-white mb-2">{option.title}</h3>
-                                                <p className="text-sm text-gray-400 leading-relaxed">{option.description}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        <SectionReveal delay={0.16}>
-                            <div className="rounded-[2rem] p-[1px] bg-gradient-to-b from-white/10 to-transparent">
-                                <div className="rounded-[31px] bg-[#090909] p-8 md:p-10 border border-white/5">
-                                    <div className="max-w-2xl mb-8">
-                                        <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
-                                            {t('pricing.process.title') as string}
-                                        </h2>
-                                    </div>
-
-                                    <div className="grid md:grid-cols-3 gap-6">
-                                        {processSteps.map((step) => (
-                                            <div key={step.title} className="rounded-2xl border border-white/5 bg-surface-300/50 p-7">
-                                                <h3 className="text-base font-bold text-white mb-3">{step.title}</h3>
-                                                <p className="text-sm text-gray-400 leading-relaxed">{step.description}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-                    </div>
+                    <SectionReveal delay={0.08}>
+                        <p className="max-w-4xl mx-auto mt-10 text-center text-sm text-gray-500 leading-relaxed">
+                            {copy.footerNote}
+                        </p>
+                    </SectionReveal>
                 </Container>
             </section>
-
-            <CTASection
-                title={t('pricing.title') as string}
-                titleAccent={t('pricing.titleAccent') as string}
-                description={t('pricing.description') as string}
-                primaryCta={{ label: t('pricing.cta.primary') as string, href: '/contact' }}
-                secondaryCta={{ label: t('pricing.cta.secondary') as string, href: '/docs' }}
-            />
         </>
     );
 }

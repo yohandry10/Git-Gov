@@ -22,8 +22,8 @@ export const metadata: Metadata = {
     ...generatePageMetadata(),
     manifest: '/manifest.json',
     icons: {
-        icon: '/logo.png',
-        apple: '/logo.png',
+        icon: '/logo-192.png',
+        apple: '/logo-192.png',
     },
 };
 

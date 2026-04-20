@@ -55,7 +55,7 @@ export default function FoxIntro({ onComplete }: FoxIntroProps) {
         const img = new window.Image();
         img.onload  = run;
         img.onerror = run;
-        img.src = '/fox.png';
+        img.src = '/fox-768.png';
 
         // Hard fallback: 4s
         const fb = setTimeout(run, 4000);
@@ -190,7 +190,7 @@ export default function FoxIntro({ onComplete }: FoxIntroProps) {
                         }}
                     >
                         <Image
-                            src="/fox.png"
+                            src="/fox-768.png"
                             alt=""
                             fill
                             priority

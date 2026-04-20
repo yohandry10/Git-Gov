@@ -5,7 +5,7 @@ export const translations = {
     'nav.features': { en: 'Features', es: 'Características' },
     'nav.download': { en: 'Download', es: 'Descargar' },
     'nav.docs': { en: 'Docs', es: 'Documentación' },
-    'nav.pricing': { en: 'Talk to Sales', es: 'Hablar con Ventas' },
+    'nav.pricing': { en: 'Pricing', es: 'Precios' },
     'nav.contact': { en: 'Contact', es: 'Contacto' },
 
     // ═══ Hero ═══
