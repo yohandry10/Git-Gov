@@ -12,6 +12,23 @@ export interface ReleaseMetadata {
 }
 
 const REMOTE_CHECK_TIMEOUT_MS = 5000;
+const REMOTE_CACHE_TTL_MS = 60_000;
+
+interface CachedLocalRelease {
+    absolutePath: string;
+    size: number;
+    mtimeMs: number;
+    result: ReleaseMetadata;
+}
+
+interface CachedRemoteRelease {
+    url: string;
+    checkedAt: number;
+    result: ReleaseMetadata;
+}
+
+let cachedLocalRelease: CachedLocalRelease | null = null;
+let cachedRemoteRelease: CachedRemoteRelease | null = null;
 
 function isHttpUrl(value: string): boolean {
     return /^https?:\/\//i.test(value);
@@ -58,15 +75,30 @@ export async function getReleaseMetadata(): Promise<ReleaseMetadata> {
 
     // External URL mode: validate the remote asset exists before enabling CTA.
     if (isHttpUrl(siteConfig.downloadPath)) {
-        const available = await checkRemoteAsset(siteConfig.downloadPath);
+        if (
+            cachedRemoteRelease &&
+            cachedRemoteRelease.url === siteConfig.downloadPath &&
+            Date.now() - cachedRemoteRelease.checkedAt < REMOTE_CACHE_TTL_MS
+        ) {
+            return cachedRemoteRelease.result;
+        }
 
-        return {
+        const available = await checkRemoteAsset(siteConfig.downloadPath);
+        const result = {
             version: siteConfig.version,
             downloadUrl: siteConfig.downloadPath,
             checksum: siteConfig.downloadChecksum,
             msiUrl,
             available,
         };
+
+        cachedRemoteRelease = {
+            url: siteConfig.downloadPath,
+            checkedAt: Date.now(),
+            result,
+        };
+
+        return result;
     }
 
     const relativePath = siteConfig.downloadPath.replace(/^\//, '');
@@ -84,16 +116,33 @@ export async function getReleaseMetadata(): Promise<ReleaseMetadata> {
             };
         }
 
+        if (
+            cachedLocalRelease &&
+            cachedLocalRelease.absolutePath === absolutePath &&
+            cachedLocalRelease.size === stat.size &&
+            cachedLocalRelease.mtimeMs === stat.mtimeMs
+        ) {
+            return cachedLocalRelease.result;
+        }
+
         const buffer = await fs.readFile(absolutePath);
         const checksum = `sha256:${createHash('sha256').update(buffer).digest('hex')}`;
-
-        return {
+        const result = {
             version: siteConfig.version,
             downloadUrl: siteConfig.downloadPath,
             checksum,
             msiUrl,
             available: true,
         };
+
+        cachedLocalRelease = {
+            absolutePath,
+            size: stat.size,
+            mtimeMs: stat.mtimeMs,
+            result,
+        };
+
+        return result;
     } catch {
         return {
             version: siteConfig.version,
