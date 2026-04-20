@@ -235,6 +235,9 @@ Updated: 2026-04-20
   - Optional cloud readiness workflow added: `.github/workflows/desktop-updater-readiness.yml` (push/main + manual dispatch, artifact report per run).
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
+- Public naming hardening added:
+  - `.github/workflows/public-naming-guard.yml` enforces branch/commit naming policy and blocks internal-assistant markers (for public history hygiene).
+  - `scripts/github/check_public_naming_policy.ps1` performs deterministic validation for branch name and commit subjects.
 - CI lint stability hardening:
   - Refactored `gitgov-server` DB insert APIs to typed input structs to satisfy `clippy -D warnings` (removed `too_many_arguments` failures).
   - Local validation completed: `cargo clippy -- -D warnings` and `cargo test` (150 passed).

@@ -1,0 +1,48 @@
+name: Public Naming Guard
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  naming-guard:
+    name: Block internal-assistant markers in branch/commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build commit range context
+        id: range
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "branch_name=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+            echo "commit_range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            before_sha="${{ github.event.before }}"
+            after_sha="${{ github.sha }}"
+            if [[ -n "$before_sha" && "$before_sha" != "0000000000000000000000000000000000000000" ]]; then
+              echo "commit_range=${before_sha}..${after_sha}" >> "$GITHUB_OUTPUT"
+            else
+              echo "commit_range=${after_sha}" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Enforce naming policy
+        shell: pwsh
+        run: |
+          ./scripts/github/check_public_naming_policy.ps1 `
+            -BranchName "${{ steps.range.outputs.branch_name }}" `
+            -CommitRange "${{ steps.range.outputs.commit_range }}"

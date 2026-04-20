@@ -9,7 +9,8 @@ param(
     "Desktop Rust Clippy",
     "Frontend Lint + Typecheck",
     "Website Lint + Typecheck + Build",
-    "Security Guard"
+    "Security Guard",
+    "Block internal-assistant markers in branch/commits"
   ),
   [int]$RequiredApprovals = 1
 )

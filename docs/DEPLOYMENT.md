@@ -228,6 +228,7 @@ Checks mínimos recomendados:
 - `Frontend Lint + Typecheck`
 - `Website Lint + Typecheck + Build`
 - `Security Guard`
+- `Block internal-assistant markers in branch/commits`
 
 Script automático (usa API de GitHub):
 
