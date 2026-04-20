@@ -320,9 +320,9 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins pipeline ingestion exists.
   - Commit-to-pipeline correlation exists.
   - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
-  - GitHub webhook ingestion exists for `push`, `create`, merged `pull_request`, `pull_request_review`, `check_run`, `check_suite`, and `status` events.
+  - GitHub webhook ingestion exists for `push`, `create`, all `pull_request` actions, all `pull_request_review` actions, `check_run`, `check_suite`, and `status` events.
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
-  - Review activity and CI status-check activity are now stored as first-class evidence in `github_events` (`event_type=pull_request_review|check_run|check_suite|status`) with contextual metadata.
+  - PR lifecycle, review activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|check_run|check_suite|status`) with contextual metadata.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -331,14 +331,15 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 - Safe website wording:
   - Jenkins correlation
   - Jira ticket coverage
-  - merged pull request evidence
+  - pull request lifecycle evidence
   - pull request review evidence
   - GitHub status-check evidence (check runs/suites + commit status)
   - GitHub webhook context
 - Not implemented yet:
-  - full PR lifecycle capture beyond current scope (opened/synchronize/requested_reviewers/review_dismissed)
+  - PR discussion-comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) as first-class stored events
 - Website consequence:
-  - `/features` must not claim broad GitHub reviews/status-check capture until the above is implemented and moved to `Implemented` here
+  - `/features` can claim PR lifecycle + reviews + status-check evidence ingestion.
+  - Avoid claiming PR discussion-thread/comment ingestion until that scope exists.
 
 ### 4. Risk, Readiness, and Reporting
 
@@ -387,9 +388,9 @@ Before adding or keeping any `/features` claim:
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
 4. Expand GitHub evidence ingestion beyond current scope:
-   - capture additional PR lifecycle events beyond current scope (opened, synchronized, requested reviewers, review dismissals)
+   - ingest PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`)
    - definir mapeo de métricas para los nuevos eventos GitHub en dashboard/reporting (tendencias y score)
-   - decidir si `/features` comunica cobertura parcial de lifecycle o espera paridad completa
+   - publicar en `/features` el wording actualizado para lifecycle/reviews/status-checks (sin sobreprometer comments)
 
 ## Required GitHub Configuration (for Sonar workflow)
 

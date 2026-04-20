@@ -787,14 +787,18 @@ async fn fetch_pr_approvers(
 }
 
 // Processes pull_request webhook events.
-// Only stores merged PRs (action == "closed" && pull_request.merged == true).
-// All other actions (opened, reviewed, etc.) are silently skipped — no error.
+// Stores every pull_request action as first-class evidence in github_events.
+// Additionally stores merged PRs (action == "closed" && merged == true) in pr_merges.
 async fn process_pull_request_event(
     state: &Arc<AppState>,
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let action = payload.get("action").and_then(|v| v.as_str()).unwrap_or("");
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
     let pr = match payload.get("pull_request") {
         Some(pr) => pr,
         None => {
@@ -802,13 +806,6 @@ async fn process_pull_request_event(
             return Ok(());
         }
     };
-
-    // Only capture merged PRs
-    let merged = pr.get("merged").and_then(|v| v.as_bool()).unwrap_or(false);
-    if action != "closed" || !merged {
-        tracing::debug!("Skipping non-merged pull_request event: action={}, delivery_id={}", action, delivery_id);
-        return Ok(());
-    }
 
     // Extract repository info for org/repo lookup
     let repo_val = match payload.get("repository") {
@@ -828,12 +825,89 @@ async fn process_pull_request_event(
 
     let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
 
+    let merged = pr.get("merged").and_then(|v| v.as_bool()).unwrap_or(false);
+    let draft = pr.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
     let pr_number = pr.get("number").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
     let pr_title = pr.get("title").and_then(|v| v.as_str()).map(String::from);
     let author_login = pr.get("user").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let merged_by_login = pr.get("merged_by").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let head_sha = pr.get("head").and_then(|h| h.get("sha")).and_then(|v| v.as_str()).map(String::from);
     let base_branch = pr.get("base").and_then(|b| b.get("ref")).and_then(|v| v.as_str()).map(String::from);
+    let sender_actor = payload
+        .get("sender")
+        .and_then(|v| serde_json::from_value::<GitHubUser>(v.clone()).ok());
+    let actor_login = sender_actor.as_ref().map(|s| s.login.clone());
+    let actor_id = sender_actor.as_ref().map(|s| s.id);
+    let requested_reviewers_count = pr
+        .get("requested_reviewers")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.len())
+        .unwrap_or(0);
+
+    let mut pr_payload = payload.clone();
+    if let Some(obj) = pr_payload.as_object_mut() {
+        obj.insert(
+            "gitgov".to_string(),
+            serde_json::json!({
+                "action": action.clone(),
+                "merged": merged,
+                "draft": draft,
+                "pr_number": pr_number,
+                "requested_reviewers_count": requested_reviewers_count
+            }),
+        );
+    }
+
+    let pr_event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id.clone()),
+        repo_id: Some(repo_id.clone()),
+        delivery_id: delivery_id.to_string(),
+        event_type: "pull_request".to_string(),
+        actor_login: actor_login.clone(),
+        actor_id,
+        ref_name: base_branch
+            .clone()
+            .or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
+        ref_type: Some("pull_request".to_string()),
+        before_sha: None,
+        after_sha: head_sha.clone(),
+        commit_shas: head_sha.clone().map(|sha| vec![sha]).unwrap_or_default(),
+        commits_count: head_sha.as_ref().map(|_| 1).unwrap_or(0),
+        payload: pr_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    match state.db.insert_github_event(&pr_event).await {
+        Ok(()) => {}
+        Err(DbError::Duplicate(_)) => {
+            tracing::debug!("Duplicate pull_request event ignored: delivery_id={}", delivery_id);
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::error!("Failed to insert pull_request github event: {}", e);
+            return Err("Internal database error".to_string());
+        }
+    }
+
+    if let Some(ref org_id) = pr_event.org_id {
+        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+        }
+    }
+
+    // Only merged PRs are materialized into pr_merges.
+    if action != "closed" || !merged {
+        tracing::info!(
+            "Processed pull_request event: repo={} pr=#{} action={} actor={}",
+            repo.full_name,
+            pr_number,
+            action,
+            actor_login.as_deref().unwrap_or("unknown"),
+        );
+        return Ok(());
+    }
+
     let approvers = match state.github_personal_access_token.as_deref() {
         Some(token) => match fetch_pr_approvers(&state.http_client, token, &repo.full_name, pr_number).await {
             Ok(v) => v,
@@ -865,6 +939,11 @@ async fn process_pull_request_event(
         obj.insert(
             "gitgov".to_string(),
             serde_json::json!({
+                "action": action.clone(),
+                "merged": merged,
+                "draft": draft,
+                "pr_number": pr_number,
+                "requested_reviewers_count": requested_reviewers_count,
                 "approvers": approvers,
                 "approvals_count": approvals_count
             }),
