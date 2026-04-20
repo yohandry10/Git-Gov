@@ -173,6 +173,10 @@ Updated: 2026-04-20
   - Verified `quality_gates=block` denies (`allowed=false`) on non-green Sonar.
   - Verified `policy_violation` signal persistence for `quality_gate_green`.
   - Runbook aligned to real API contract (`PUT /policy/{repo_name}/override`, URL-encoded repo path, `offset` on `/signals`).
+  - Added automated matrix validator script:
+    - `scripts/jenkins/validate_quality_gate_policy_matrix.ps1` toggles `quality_gates=warn/block`, validates failing+green commits, and restores original policy.
+  - Latest local evidence report:
+    - `docs/reports/quality-gate-policy-matrix-local-2026-04-20.md`
 - Jenkins commit/pipeline correlation validated end-to-end (local stack):
   - Ingested client commit event with contract-correct fields (`repo_full_name`, `commit_sha`).
   - Verified `/integrations/jenkins/correlations` resolves pipeline metadata for matching commit SHA.

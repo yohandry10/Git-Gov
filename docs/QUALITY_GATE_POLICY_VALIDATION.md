@@ -186,7 +186,31 @@ If `GITGOV_ALERT_WEBHOOK_URL` is configured:
 
 - Expect one alert payload with message `Quality Gate no verde` including actor/repo/branch/commit/job/status/enforcement.
 
-## Validated Local Evidence (2026-04-19)
+## Automated matrix runner
+
+Use the script to validate `warn/block` end-to-end and automatically restore policy afterward:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_quality_gate_policy_matrix.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<ADMIN_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
+  -FailingCommitSha "<commit_sha_with_failed_quality_gate>" `
+  -GreenCommitSha "<commit_sha_with_green_quality_gate>"
+```
+
+Outputs:
+
+- markdown evidence report under `docs/reports/quality-gate-policy-matrix-<timestamp>.md`
+- non-zero exit when any matrix assertion fails
+- original policy restored unless `-LeavePolicyAsIs` is explicitly set
+
+## Validated Local Evidence (2026-04-20)
+
+Automated run evidence:
+
+- `docs/reports/quality-gate-policy-matrix-local-2026-04-20.md`
 
 Validated against local Docker stack (`gitgov-server` on `:3001`) with real commits from repo
 `<owner>/<repo>`:
