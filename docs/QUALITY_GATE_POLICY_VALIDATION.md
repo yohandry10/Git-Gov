@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-19
+Updated: 2026-04-20
 
 ## Objective
 
@@ -14,14 +14,18 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 
 ## Preconditions
 
-1. Sonar workflow is configured:
+1. Sonar workflow is configured (GitHub-hosted or Jenkins local):
    - `SONAR_TOKEN`
    - `SONAR_PROJECT_KEY`
    - `GITGOV_URL`
    - `GITGOV_API_KEY`
+   - For GitHub-hosted strict validation, PAT/API visibility must allow:
+     - `secrets=read`
+     - `actions_variables=read`
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
 3. Jenkins uses the current `Jenkinsfile`:
    - `Sonar Scan (Optional)` enabled when `SONAR_TOKEN` + `SONAR_PROJECT_KEY` exist.
+   - If `SONAR_TOKEN` env is absent, credential fallback uses Jenkins Secret Text id `gitgov-token`.
    - `Policy Check (Advisory)` parses JSON response from `/policy/check`.
 4. You have an admin API key for policy override/check.
 5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.

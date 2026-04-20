@@ -41,7 +41,7 @@ function Get-Number {
 
 function Clamp-Percent {
   param([double]$Value)
-  if (-not [double]::IsFinite($Value)) { return 0.0 }
+  if ([double]::IsNaN($Value) -or [double]::IsInfinity($Value)) { return 0.0 }
   if ($Value -lt 0) { return 0.0 }
   if ($Value -gt 100) { return 100.0 }
   return $Value
@@ -285,7 +285,7 @@ Generated (UTC): $($timestamp.ToString("yyyy-MM-dd HH:mm:ss"))
 
 ## Context
 
-- Tier profile: $($profile.label) (`$Tier`)
+- Tier profile: $($profile.label) ($Tier)
 - GitGov URL: $GitGovUrl
 - Window hours: $Hours
 - Org filter: $(if ([string]::IsNullOrWhiteSpace($OrgName)) { "none" } else { $OrgName })

@@ -62,7 +62,7 @@ dashboard_url=${dashboardValue}
           def sonarToken = (env.SONAR_TOKEN ?: '').trim()
           if (!sonarToken) {
             try {
-              withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN_FROM_CREDENTIAL')]) {
+              withCredentials([string(credentialsId: 'gitgov-token', variable: 'SONAR_TOKEN_FROM_CREDENTIAL')]) {
                 sonarToken = (env.SONAR_TOKEN_FROM_CREDENTIAL ?: '').trim()
               }
             } catch (ignored) {

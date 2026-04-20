@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-19
+Updated: 2026-04-20
 
 ## Completed
 
@@ -34,7 +34,7 @@ Updated: 2026-04-19
   - `Jenkinsfile` now includes stage `Sonar Scan (Optional)`.
   - Stage bootstraps `sonar-scanner` if missing, polls CE task and quality gate via Sonar API.
   - Telemetry publish now includes `quality_gate` stage and optional `sonar_dashboard` artifact.
-  - Fallback credential supported: `sonar-token` (Jenkins Secret Text) when `SONAR_TOKEN` env is not present.
+  - Fallback credential supported: `gitgov-token` (Jenkins Secret Text) when `SONAR_TOKEN` env is not present.
   - `SONAR_PROJECT_KEY` is auto-inferred from repo name when missing (example: `<owner>_<repo>`).
   - Jenkins shell scripts hardened for `/bin/sh` compatibility and secret-safe execution (no token echo in logs).
   - Event payload contract aligned with backend (`artifacts` as string array).
@@ -97,6 +97,10 @@ Updated: 2026-04-19
 - Weekly calibration automation added for tier baselines:
   - `scripts/control-plane/calibrate_risk_tier_baseline.ps1` computes release readiness + composite risk + KPI snapshot by tier from live Control Plane APIs.
   - Exports markdown evidence to `docs/reports/risk-tier-baseline-<timestamp>.md`.
+  - Local baseline execution evidence captured for all tier profiles:
+    - `docs/reports/risk-tier-baseline-local-2026-04-20.md` (standard)
+    - `docs/reports/risk-tier-baseline-local-critical-2026-04-20.md` (critical)
+    - `docs/reports/risk-tier-baseline-local-internal-2026-04-20.md` (internal)
   - Deployment runbook updated with execution command and expected output.
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/risk-tier-baseline-calibration.yml` (weekly Monday 12:00 UTC, skips cleanly when `GITGOV_URL`/`GITGOV_API_KEY` are missing).
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
@@ -201,6 +205,8 @@ Updated: 2026-04-19
     - `-RequireGitGovTelemetry` (enforces `GITGOV_API_KEY` + `GITGOV_URL`).
     - `-NoFailOnForbidden` (best-effort mode when fine-grained token cannot read Actions secrets/variables; reports `UNKNOWN` instead of failing).
   - `scripts/github/harden_repo_governance.ps1` forwards CI preflight flags for end-to-end governance runs (`AllowMissingSonar`, `RequireGitGovTelemetry`, and best-effort `NoFailOnForbidden`).
+- Cloud CI preflight evidence captured:
+  - `docs/reports/github-ci-preflight-2026-04-20.md` includes current PAT-scope diagnostic and required permission hints to close strict GitHub-hosted validation.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 - CI lint stability hardening:
@@ -211,15 +217,138 @@ Updated: 2026-04-19
 
 - SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
+- GitHub Actions CI config visibility is currently blocked by PAT scope (`secrets=read`, `actions_variables=read`, `administration=read` missing on current token preflight).
+
+## Website Feature Claims Alignment
+
+This section is the source of truth for `gitgov-web` `/features`.
+If a capability is described on the marketing site, it must be represented here as one of:
+- `Implemented`
+- `Implemented with scope limits`
+- `Not implemented yet`
+
+If a website claim is not reflected here, treat it as unverified and do not publish it as a product capability.
+
+### 1. Workstation Capture
+
+- `Implemented`
+- What is real:
+  - Desktop captures Git activity locally and emits audit events from workstation commands.
+  - Local offline queue persists to `outbox.jsonl`.
+  - Retry behavior uses exponential backoff and fail-open connectivity semantics.
+- Source files:
+  - `gitgov/src-tauri/src/commands/git_commands.rs`
+  - `gitgov/src-tauri/src/commands/branch_commands.rs`
+  - `gitgov/src-tauri/src/outbox/queue.rs`
+  - `gitgov/src-tauri/src/audit/db.rs`
+- Safe website wording:
+  - workstation capture
+  - local evidence logging
+  - offline queue / retry
+  - append-only evidence flow
+- Avoid overstating:
+  - do not imply code content inspection
+  - do not imply every workstation action is blocked; enforcement is specific to configured rules and command flows
+
+### 2. Governance Engine
+
+- `Implemented with scope limits`
+- What is real:
+  - Policy model exposes `Off / Warn / Block`.
+  - Desktop push flow performs governance pre-check against Control Plane.
+  - Branch naming / protected-branch rules are enforced in desktop command flows.
+  - Server-side policy evaluation includes branches, commits, pull requests, traceability, and quality gates.
+  - Governed quality-gate exceptions are implemented.
+- Source files:
+  - `gitgov/src-tauri/src/models/branch_rule.rs`
+  - `gitgov/src-tauri/src/commands/git_commands.rs`
+  - `gitgov/src-tauri/src/commands/branch_commands.rs`
+  - `gitgov/gitgov-server/src/handlers/client_ingest_dashboard.rs`
+  - `gitgov/gitgov-server/src/handlers/policy_admin.rs`
+- Safe website wording:
+  - policy-aware workflows
+  - push governance pre-check
+  - configurable enforcement modes
+  - governed exceptions for quality gates
+- Avoid overstating:
+  - do not say GitGov blocks "all non-compliant code" generically
+  - current strongest blocking surface is around push / branch / policy-check flows, not arbitrary editing activity
+
+### 3. Integrations and Evidence Correlation
+
+- `Implemented with scope limits`
+- What is real:
+  - Jenkins pipeline ingestion exists.
+  - Commit-to-pipeline correlation exists.
+  - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
+  - GitHub webhook ingestion exists for `push`, `create`, and merged `pull_request` events.
+  - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
+- Source files:
+  - `gitgov/gitgov-server/src/handlers/integrations.rs`
+  - `gitgov/gitgov-server/src/db.rs`
+  - `gitgov/gitgov-server/src/handlers/github_webhook.rs`
+  - `gitgov/src-tauri/src/control_plane/server.rs`
+- Safe website wording:
+  - Jenkins correlation
+  - Jira ticket coverage
+  - merged pull request evidence
+  - GitHub webhook context
+- Not implemented yet:
+  - GitHub review-event ingestion as first-class stored evidence
+  - GitHub status checks / check runs / check suites ingestion as first-class stored evidence
+  - full PR lifecycle capture beyond merged PR storage
+- Website consequence:
+  - `/features` must not claim broad GitHub reviews/status-check capture until the above is implemented and moved to `Implemented` here
+
+### 4. Risk, Readiness, and Reporting
+
+- `Implemented with scope limits`
+- What is real:
+  - Control Plane dashboard includes pipeline health, ticket coverage, risk outcomes, recent commits, policy editor, export panel, and chat panel.
+  - Release readiness scoring exists.
+  - Tier-aware scoring and SLA profiles exist.
+  - Export flow exists with content hash generation and export history.
+  - Risk outcomes widget is operational.
+- Source files:
+  - `gitgov/src/components/control_plane/ServerDashboard.tsx`
+  - `gitgov/src/components/control_plane/PipelineHealthWidget.tsx`
+  - `gitgov/src/components/control_plane/RiskOutcomesWidget.tsx`
+  - `gitgov/src/components/control_plane/risk-scoring.ts`
+  - `gitgov/src/components/control_plane/ExportPanel.tsx`
+  - `gitgov/gitgov-server/src/handlers/violations_policy_export.rs`
+- Safe website wording:
+  - release readiness scoring
+  - tier-aware governance visibility
+  - exportable audit evidence
+  - centralized reporting
+- Avoid overstating:
+  - do not use invented sample metrics as product facts
+  - if the website shows numeric examples, label them clearly as illustrative or remove them
+  - `MTTR` and `Time-to-Evidence` are not complete yet and should not be presented as finished capabilities
+
+### 5. Website Gating Rule
+
+Before adding or keeping any `/features` claim:
+1. Confirm the implementation exists in code.
+2. Confirm it is listed in this section.
+3. If scope-limited, write the website copy to match the real scope.
+4. If still missing, move it to roadmap/internal planning, not public marketing.
 
 ## Next Technical Steps
 
 1. Configure repository-level CI secrets/variables per rollout mode (Sonar scan vs telemetry publish).
-   - Current live status: `SONAR_PROJECT_KEY` and `SONAR_HOST_URL` configured.
-   - Pending for Sonar scan mode: `SONAR_TOKEN`.
+   - Current live status in GitHub-hosted CI: **UNKNOWN** with current PAT (limited token cannot read Actions secrets/variables).
+   - Token preflight evidence (`scripts/github/check_token_permissions.ps1`): `403` on Actions secrets, Actions variables, and branch protection.
+   - Pending for Sonar scan mode: `SONAR_TOKEN` (+ strict visibility check with PAT that has `secrets=read` / `actions_variables=read`).
    - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
 2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
 3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
+   - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
+   - Pending: run same calibration against production telemetry and lock business-domain SLO targets.
+4. Expand GitHub evidence ingestion beyond current scope:
+   - store review activity as first-class evidence
+   - ingest status checks / check runs / check suites
+   - decide whether `/features` should market merged PR evidence only or full PR lifecycle coverage
 
 ## Required GitHub Configuration (for Sonar workflow)
 

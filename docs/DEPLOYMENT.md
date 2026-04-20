@@ -60,7 +60,7 @@ Para usar SonarQube local con Jenkins en Docker:
 - definir `SONAR_PROJECT_KEY` por repo (ej. `<owner>_<repo>`)
 
 Compatibilidad actual del `Jenkinsfile`:
-- si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `sonar-token` (Secret Text).
+- si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `gitgov-token` (Secret Text).
 - si `SONAR_PROJECT_KEY` no existe, lo infiere desde el repo (`owner/repo` -> `owner_repo`).
 - la telemetría Sonar se publica en el payload Jenkins con:
   - `stages[].name = quality_gate`
@@ -867,6 +867,40 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
   -Owner "<owner>" `
   -Repo "<repo>"
 ```
+
+### Cierre cloud CI (strict mode)
+
+Para cerrar Sonar + telemetría en GitHub-hosted CI sin `UNKNOWN`, el PAT debe tener visibilidad de:
+
+- `secrets=read`
+- `actions_variables=read`
+- `administration=read` (si también validarás branch protection)
+
+Validación de permisos del PAT:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Branch "main"
+```
+
+Validación estricta de configuración CI (sin best-effort):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -RequireGitGovTelemetry
+```
+
+Resultado esperado para considerar cierre cloud:
+
+- `PASS` en `check_token_permissions.ps1` (sin `FORBIDDEN`).
+- `PASS` en `check_ci_repo_config.ps1` (sin `UNKNOWN`).
+- Un run exitoso de `.github/workflows/sonar-governance.yml` con scan activo.
 
 Nota:
 - `-Owner` y `-Repo` ahora son opcionales en scripts de `scripts/github/*`; si no se pasan, se auto-resuelven desde `GITHUB_REPOSITORY` o `git remote origin`.
