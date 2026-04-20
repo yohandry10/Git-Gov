@@ -130,6 +130,20 @@ Automatización en GitHub Actions (opcional, no bloqueante):
 - Si faltan `GITGOV_URL` o `GITGOV_API_KEY`, el workflow se salta en `PASS` (skip explícito).
 - Si `JENKINS_WEBHOOK_SECRET` está activo en backend, configurar `GITGOV_JENKINS_SECRET` (secret opcional) para que el smoke pueda publicar en `/integrations/jenkins`.
 
+Matrix de policy quality gates en cloud (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/quality-gate-policy-matrix.yml`
+- Trigger:
+  - `push` a `main`
+  - `workflow_dispatch` manual (permite override de SHAs)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Comportamiento:
+  - auto-resuelve SHAs failing/green con `scripts/jenkins/resolve_quality_gate_matrix_commits.ps1`
+  - valida `warn/block` con `scripts/jenkins/validate_quality_gate_policy_matrix.ps1`
+  - sube artefactos de resolución + reporte markdown por run
+
 #### Calibración semanal de riesgo/readiness por tier
 
 Para cerrar el tuning de score con evidencia operativa real, generar baseline semanal por tier:

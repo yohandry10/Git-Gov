@@ -206,6 +206,27 @@ Outputs:
 - non-zero exit when any matrix assertion fails
 - original policy restored unless `-LeavePolicyAsIs` is explicitly set
 
+Resolver automático de SHAs (sin pasar commits manuales):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/resolve_quality_gate_matrix_commits.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<ADMIN_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main"
+```
+
+El resolver toma:
+- commit failing desde correlaciones Sonar (`pipeline.status` no verde) o fallback por señales `policy_violation` (`quality_gate_green`),
+- commit green desde correlaciones Sonar (`pipeline.status=success`).
+
+GitHub Actions (cloud, no bloqueante):
+
+- Workflow: `.github/workflows/quality-gate-policy-matrix.yml`
+- Trigger: `push/main` + `workflow_dispatch`
+- Precheck: auto-skip si faltan `GITGOV_URL` / `GITGOV_API_KEY`
+- Artefactos: reporte de matrix + resolución de SHAs por run
+
 ## Validated Local Evidence (2026-04-20)
 
 Automated run evidence:
