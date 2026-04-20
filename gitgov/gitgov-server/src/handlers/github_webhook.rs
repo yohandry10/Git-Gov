@@ -101,6 +101,9 @@ pub async fn handle_github_webhook(
         "pull_request_review" => {
             process_pull_request_review_event(&state, &delivery_id, &payload).await
         }
+        "check_run" => process_check_run_event(&state, &delivery_id, &payload).await,
+        "check_suite" => process_check_suite_event(&state, &delivery_id, &payload).await,
+        "status" => process_status_event(&state, &delivery_id, &payload).await,
         _ => {
             tracing::debug!("Unhandled event type: {}", event_type);
             Ok(())
@@ -434,6 +437,265 @@ async fn process_pull_request_review_event(
     );
 
     Ok(())
+}
+
+fn extract_sender_actor(payload: &serde_json::Value) -> (Option<String>, Option<i64>) {
+    let sender = payload
+        .get("sender")
+        .and_then(|v| serde_json::from_value::<GitHubUser>(v.clone()).ok());
+    (
+        sender.as_ref().map(|s| s.login.clone()),
+        sender.as_ref().map(|s| s.id),
+    )
+}
+
+async fn store_generic_repo_evidence_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+    event_type: &str,
+    actor_login: Option<String>,
+    actor_id: Option<i64>,
+    ref_name: Option<String>,
+    ref_type: Option<String>,
+    after_sha: Option<String>,
+    metadata: serde_json::Value,
+) -> Result<(), String> {
+    let repo_val = match payload.get("repository") {
+        Some(r) => r,
+        None => {
+            tracing::warn!(
+                "{} event missing 'repository' field, delivery_id={}",
+                event_type,
+                delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let repo: GitHubRepository = match serde_json::from_value(repo_val.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to parse repository in {} event: {}, delivery_id={}",
+                event_type,
+                e,
+                delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
+
+    let commit_shas = after_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let mut enriched_payload = payload.clone();
+    if let Some(obj) = enriched_payload.as_object_mut() {
+        obj.insert("gitgov".to_string(), metadata);
+    }
+
+    let event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id),
+        repo_id: Some(repo_id),
+        delivery_id: delivery_id.to_string(),
+        event_type: event_type.to_string(),
+        actor_login,
+        actor_id,
+        ref_name,
+        ref_type,
+        before_sha: None,
+        after_sha,
+        commit_shas: commit_shas.clone(),
+        commits_count: commit_shas.len() as i32,
+        payload: enriched_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    state.db.insert_github_event(&event).await.map_err(|e| {
+        tracing::error!("Failed to insert {} github event: {}", event_type, e);
+        "Internal database error".to_string()
+    })?;
+
+    if let Some(ref org_id) = event.org_id {
+        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+        }
+    }
+
+    tracing::info!(
+        "Processed {} event: repo={} ref={} sha={} actor={}",
+        event_type,
+        repo.full_name,
+        event.ref_name.as_deref().unwrap_or("n/a"),
+        event.after_sha.as_deref().unwrap_or("n/a"),
+        event.actor_login.as_deref().unwrap_or("unknown")
+    );
+
+    Ok(())
+}
+
+async fn process_check_run_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let check_run = payload.get("check_run");
+    let status = check_run
+        .and_then(|v| v.get("status"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let conclusion = check_run
+        .and_then(|v| v.get("conclusion"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = check_run
+        .and_then(|v| v.get("head_sha"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = check_run
+        .and_then(|v| v.get("check_suite"))
+        .and_then(|v| v.get("head_branch"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .or_else(|| {
+            check_run
+                .and_then(|v| v.get("head_branch"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        });
+    let details_url = check_run
+        .and_then(|v| v.get("details_url"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(
+        state,
+        delivery_id,
+        payload,
+        "check_run",
+        actor_login,
+        actor_id,
+        ref_name,
+        Some("branch".to_string()),
+        after_sha,
+        serde_json::json!({
+            "action": action,
+            "status": status,
+            "conclusion": conclusion,
+            "details_url": details_url
+        }),
+    )
+    .await
+}
+
+async fn process_check_suite_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let check_suite = payload.get("check_suite");
+    let status = check_suite
+        .and_then(|v| v.get("status"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let conclusion = check_suite
+        .and_then(|v| v.get("conclusion"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = check_suite
+        .and_then(|v| v.get("head_sha"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = check_suite
+        .and_then(|v| v.get("head_branch"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(
+        state,
+        delivery_id,
+        payload,
+        "check_suite",
+        actor_login,
+        actor_id,
+        ref_name,
+        Some("branch".to_string()),
+        after_sha,
+        serde_json::json!({
+            "action": action,
+            "status": status,
+            "conclusion": conclusion
+        }),
+    )
+    .await
+}
+
+async fn process_status_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let state_name = payload
+        .get("state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let context = payload
+        .get("context")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let description = payload
+        .get("description")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let target_url = payload
+        .get("target_url")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = payload
+        .get("sha")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = payload
+        .get("branches")
+        .and_then(|v| v.as_array())
+        .and_then(|branches| branches.first())
+        .and_then(|entry| entry.get("name"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(
+        state,
+        delivery_id,
+        payload,
+        "status",
+        actor_login,
+        actor_id,
+        ref_name,
+        Some("branch".to_string()),
+        after_sha,
+        serde_json::json!({
+            "state": state_name,
+            "context": context,
+            "description": description,
+            "target_url": target_url
+        }),
+    )
+    .await
 }
 
 #[derive(Debug, Deserialize)]

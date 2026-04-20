@@ -320,9 +320,9 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins pipeline ingestion exists.
   - Commit-to-pipeline correlation exists.
   - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
-  - GitHub webhook ingestion exists for `push`, `create`, merged `pull_request`, and `pull_request_review` events.
+  - GitHub webhook ingestion exists for `push`, `create`, merged `pull_request`, `pull_request_review`, `check_run`, `check_suite`, and `status` events.
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
-  - Review activity is now stored as first-class evidence in `github_events` (`event_type=pull_request_review`) with PR/review context in payload.
+  - Review activity and CI status-check activity are now stored as first-class evidence in `github_events` (`event_type=pull_request_review|check_run|check_suite|status`) with contextual metadata.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -333,10 +333,10 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jira ticket coverage
   - merged pull request evidence
   - pull request review evidence
+  - GitHub status-check evidence (check runs/suites + commit status)
   - GitHub webhook context
 - Not implemented yet:
-  - GitHub status checks / check runs / check suites ingestion as first-class stored evidence
-  - full PR lifecycle capture beyond merged PR storage
+  - full PR lifecycle capture beyond current scope (opened/synchronize/requested_reviewers/review_dismissed)
 - Website consequence:
   - `/features` must not claim broad GitHub reviews/status-check capture until the above is implemented and moved to `Implemented` here
 
@@ -387,9 +387,9 @@ Before adding or keeping any `/features` claim:
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
 4. Expand GitHub evidence ingestion beyond current scope:
-   - ingest status checks / check runs / check suites
-   - capture additional PR lifecycle events beyond merge/review (opened, synchronized, requested reviewers, dismissals)
-   - decide whether `/features` should market current webhook coverage or wait for full lifecycle parity
+   - capture additional PR lifecycle events beyond current scope (opened, synchronized, requested reviewers, review dismissals)
+   - definir mapeo de métricas para los nuevos eventos GitHub en dashboard/reporting (tendencias y score)
+   - decidir si `/features` comunica cobertura parcial de lifecycle o espera paridad completa
 
 ## Required GitHub Configuration (for Sonar workflow)
 
