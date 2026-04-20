@@ -1,0 +1,58 @@
+name: Desktop Updater Readiness (Optional)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      probe_endpoint:
+        description: "Probe latest.json endpoint (may warn/fail if release artifact not published yet)"
+        required: false
+        default: false
+        type: boolean
+      fail_on_warnings:
+        description: "Treat warnings as failure"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  updater-readiness:
+    name: Validate desktop updater readiness
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run updater readiness validator
+        shell: pwsh
+        run: |
+          $outputPath = "docs/reports/desktop-updater-readiness-${{ github.run_id }}.md"
+          $probe = "${{ github.event.inputs.probe_endpoint || '' }}"
+          $failOnWarnings = "${{ github.event.inputs.fail_on_warnings || '' }}"
+
+          $args = @(
+            "-TauriConfigPath", "gitgov/src-tauri/tauri.conf.json",
+            "-OutputPath", $outputPath
+          )
+
+          if ($probe -ne "true") {
+            $args += @("-SkipEndpointProbe")
+          }
+          if ($failOnWarnings -eq "true") {
+            $args += @("-FailOnWarnings")
+          }
+
+          & ./scripts/deploy/validate_desktop_updater_readiness.ps1 @args
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload updater readiness report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-updater-readiness-${{ github.run_id }}
+          path: docs/reports/desktop-updater-readiness-${{ github.run_id }}.md
+          if-no-files-found: warn
+          retention-days: 30

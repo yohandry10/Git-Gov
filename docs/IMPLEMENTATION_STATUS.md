@@ -222,6 +222,11 @@ Updated: 2026-04-20
 - Desktop updater readiness automation added:
   - `scripts/deploy/validate_desktop_updater_readiness.ps1` validates `plugins.updater` config, endpoint syntax, and live `latest.json` reachability/manifest shape.
   - Local evidence generated at `docs/reports/desktop-updater-readiness-local-2026-04-20.md` (current warning: updater endpoint returns `404` for `latest.json` and requires publish step).
+- Desktop updater release helpers implemented:
+  - `scripts/release/desktop-updater/New-TauriUpdaterManifest.ps1`
+  - `scripts/release/desktop-updater/Publish-DesktopUpdateAws.ps1`
+  - `scripts/release/desktop-updater/New-TauriUpdaterConfigSnippet.ps1`
+  - Optional cloud readiness workflow added: `.github/workflows/desktop-updater-readiness.yml` (push/main + manual dispatch, artifact report per run).
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 - CI lint stability hardening:

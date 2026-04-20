@@ -1186,6 +1186,15 @@ El validador verifica:
 
 Si devuelve `WARN` por `404` en `latest.json`, falta publicar assets/manifest en el endpoint configurado.
 
+Automatización GitHub Actions (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/desktop-updater-readiness.yml`
+- Trigger: `push/main` + `workflow_dispatch`
+- Artifact: `desktop-updater-readiness-<run_id>.md`
+- Inputs manuales:
+  - `probe_endpoint=true` para validar `latest.json` en endpoint real
+  - `fail_on_warnings=true` para tratar `WARN` como `FAIL`
+
 ### Próximas fases
 
 - **Fase 2:** Canales beta/stable, telemetría de updater, reintento de descarga
