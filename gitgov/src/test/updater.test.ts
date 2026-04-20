@@ -6,6 +6,8 @@ vi.mock('@/lib/tauri', () => ({
 }))
 
 import {
+  compareAppVersions,
+  evaluateDesktopUpdateEnforcement,
   getDesktopUpdateFallbackUrl,
   canUseDesktopUpdater,
   isUpdaterNotConfiguredError,
@@ -89,6 +91,59 @@ describe('updater utility', () => {
       const resultUndefined = normalizeUpdaterErrorMessage(undefined)
       expect(typeof resultNull).toBe('string')
       expect(typeof resultUndefined).toBe('string')
+    })
+  })
+
+  describe('compareAppVersions', () => {
+    it('compares semantic versions correctly', () => {
+      expect(compareAppVersions('1.2.3', '1.2.3')).toBe(0)
+      expect(compareAppVersions('1.2.3', '1.2.4')).toBeLessThan(0)
+      expect(compareAppVersions('1.3.0', '1.2.9')).toBeGreaterThan(0)
+    })
+
+    it('treats prerelease as lower than stable', () => {
+      expect(compareAppVersions('1.0.0-beta.1', '1.0.0')).toBeLessThan(0)
+      expect(compareAppVersions('1.0.0', '1.0.0-rc.1')).toBeGreaterThan(0)
+    })
+  })
+
+  describe('evaluateDesktopUpdateEnforcement', () => {
+    it('requires update when current version is below minimum supported', () => {
+      const enforcement = evaluateDesktopUpdateEnforcement({
+        currentVersion: '1.4.0',
+        version: '1.5.0',
+        rawJson: {
+          min_supported_version: '1.5.0',
+        },
+      })
+      expect(enforcement.required).toBe(true)
+      expect(enforcement.reason).toBe('min-supported-version')
+      expect(enforcement.currentBelowMinSupported).toBe(true)
+      expect(enforcement.minSupportedVersion).toBe('1.5.0')
+    })
+
+    it('requires update when force flag is set', () => {
+      const enforcement = evaluateDesktopUpdateEnforcement({
+        currentVersion: '1.5.0',
+        version: '1.5.1',
+        rawJson: {
+          force_update: true,
+          force_update_reason: 'Security hotfix',
+        },
+      })
+      expect(enforcement.required).toBe(true)
+      expect(enforcement.reason).toBe('force-update')
+      expect(enforcement.note).toBe('Security hotfix')
+    })
+
+    it('does not require update by default', () => {
+      const enforcement = evaluateDesktopUpdateEnforcement({
+        currentVersion: '1.5.0',
+        version: '1.5.1',
+        rawJson: {},
+      })
+      expect(enforcement.required).toBe(false)
+      expect(enforcement.reason).toBe('none')
     })
   })
 })

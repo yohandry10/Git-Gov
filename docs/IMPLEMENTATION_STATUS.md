@@ -238,6 +238,11 @@ Updated: 2026-04-20
   - `scripts/release/desktop-updater/Publish-DesktopUpdateAws.ps1`
   - `scripts/release/desktop-updater/New-TauriUpdaterConfigSnippet.ps1`
   - Optional cloud readiness workflow added: `.github/workflows/desktop-updater-readiness.yml` (push/main + manual dispatch, artifact report per run).
+- Desktop updater phase 3 enforcement completed:
+  - Runtime policy evaluator now enforces `min_supported_version` and `force_update` metadata from updater manifest (`latest.json`).
+  - App-level mandatory update gate blocks normal navigation until update action/manual fallback.
+  - Manifest helper script now supports critical-policy keys (`min_supported_version`, `force_update`, `force_update_reason`, `critical_update`).
+  - Updater readiness validator now checks policy metadata shape and warns on missing/invalid enforcement fields.
 - Legacy migration hardening added:
   - `Security Guard` in `.github/workflows/secret-scan.yml` blocks forbidden legacy-repo markers in tracked files.
 - Public naming hardening added:

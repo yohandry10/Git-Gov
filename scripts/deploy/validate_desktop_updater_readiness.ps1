@@ -52,6 +52,12 @@ function Invoke-EndpointProbe {
   }
 }
 
+function Test-VersionLike {
+  param([string]$Value)
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  return $Value -match '^[vV]?\d+\.\d+\.\d+([\-+][0-9A-Za-z\.\-]+)?$'
+}
+
 $results = New-Object System.Collections.Generic.List[object]
 $warnings = New-Object System.Collections.Generic.List[string]
 $failures = New-Object System.Collections.Generic.List[string]
@@ -138,6 +144,32 @@ if (-not $SkipEndpointProbe.IsPresent) {
     } else {
       Add-CheckResult -Bag $results -Check $label -Status "WARN" -Details "HTTP 200 but manifest misses version/platforms."
       $warnings.Add("Manifest shape incomplete for $endpoint") | Out-Null
+    }
+
+    if ($manifest.PSObject.Properties.Name -contains "min_supported_version") {
+      $minSupportedVersion = [string]$manifest.min_supported_version
+      if (Test-VersionLike -Value $minSupportedVersion) {
+        Add-CheckResult -Bag $results -Check "manifest min_supported_version: $endpoint" -Status "PASS" -Details "min_supported_version present and semver-like."
+      } else {
+        Add-CheckResult -Bag $results -Check "manifest min_supported_version: $endpoint" -Status "WARN" -Details "min_supported_version present but format is not semver-like."
+        $warnings.Add("min_supported_version format is not semver-like for $endpoint") | Out-Null
+      }
+    } else {
+      Add-CheckResult -Bag $results -Check "manifest min_supported_version: $endpoint" -Status "WARN" -Details "Not present (forced update policy cannot enforce minimum supported version)."
+      $warnings.Add("Manifest without min_supported_version: $endpoint") | Out-Null
+    }
+
+    $forceFlagPresent = $manifest.PSObject.Properties.Name -contains "force_update"
+    if ($forceFlagPresent -and ($manifest.force_update -eq $true)) {
+      $forceReason = if ($manifest.PSObject.Properties.Name -contains "force_update_reason") { [string]$manifest.force_update_reason } else { "" }
+      if ([string]::IsNullOrWhiteSpace($forceReason)) {
+        Add-CheckResult -Bag $results -Check "manifest force_update_reason: $endpoint" -Status "WARN" -Details "force_update=true without explicit reason."
+        $warnings.Add("force_update=true without force_update_reason: $endpoint") | Out-Null
+      } else {
+        Add-CheckResult -Bag $results -Check "manifest force_update_reason: $endpoint" -Status "PASS" -Details "force_update reason configured."
+      }
+    } else {
+      Add-CheckResult -Bag $results -Check "manifest force_update flag: $endpoint" -Status "PASS" -Details "force_update not active."
     }
   }
 } else {

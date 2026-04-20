@@ -1110,6 +1110,12 @@ Actualizaciones in-app usando `tauri-plugin-updater` con full updates (sin delta
 - Auto-check al iniciar (throttling ~6h)
 - Changelog simple (campo `body` del manifest)
 - Fallback de descarga manual
+- Soporte de canales `stable` / `beta` en runtime
+- Telemetría local de updater (checks, descargas, installs, errores)
+- Reintento de descarga desde UI
+- Enforcement de actualización obligatoria por metadata de release:
+  - `min_supported_version`
+  - `force_update` / `critical_update`
 
 ### Requisito para producción
 
@@ -1123,7 +1129,7 @@ Y firmar el update con la clave del updater de Tauri.
 
 - **S3**: almacenar artefactos y manifests
 - **CloudFront**: servir con HTTPS y CDN
-- Canales: `stable` (y `beta` posterior)
+- Canales: `stable` y `beta`
 
 ```
 s3://gitgov-downloads/desktop/
@@ -1198,6 +1204,10 @@ npx tauri signer sign .\src-tauri\target\release\bundle\nsis\GitGov_0.1.1_x64-se
   -Url "https://downloads.gitgov.com/desktop/stable/GitGov_0.1.1_x64-setup.exe" `
   -Signature "FIRMA" `
   -Notes "Changelog" `
+  -MinSupportedVersion "0.1.0" `
+  -ForceUpdate `
+  -ForceUpdateReason "Security hotfix CVE-xxxx" `
+  -CriticalUpdate `
   -OutputPath ".\release\desktop\stable\latest.json"
 
 # Publicar a S3
@@ -1242,6 +1252,7 @@ El validador verifica:
 - `updater.endpoints` y `updater.pubkey` configurados
 - sintaxis HTTPS de endpoints
 - probe real de `latest.json` (HTTP + shape del manifest `version/platforms`)
+- metadata de enforcement (`min_supported_version`, `force_update`, `force_update_reason`)
 
 Si devuelve `WARN` por `404` en `latest.json`, falta publicar assets/manifest en el endpoint configurado.
 
@@ -1254,10 +1265,10 @@ Automatización GitHub Actions (opcional, no bloqueante):
   - `probe_endpoint=true` para validar `latest.json` en endpoint real
   - `fail_on_warnings=true` para tratar `WARN` como `FAIL`
 
-### Próximas fases
+### Fases cerradas
 
-- **Fase 2:** Canales beta/stable, telemetría de updater, reintento de descarga
-- **Fase 3:** `min_supported_version` desde backend, forced updates (solo críticos)
+- **Fase 2:** Canales beta/stable, telemetría de updater y reintento de descarga (implementado).
+- **Fase 3:** enforcement de `min_supported_version` y forced updates críticos desde metadata firmada del `latest.json` (implementado).
 
 ---
 

@@ -34,6 +34,9 @@ export function SettingsPage() {
     progress,
     lastCheckedAt,
     error: updaterError,
+    isMandatoryUpdateRequired,
+    mandatoryUpdateReason,
+    minimumSupportedVersion,
     channel: updateChannel,
     fallbackDownloadUrl,
     changelogExpanded,
@@ -240,6 +243,8 @@ export function SettingsPage() {
                     ? 'Updater in-app no disponible fuera de Tauri Desktop.'
                     : updaterStatus === 'not-configured'
                       ? 'Updater no configurado (faltan endpoint/pubkey firmados).'
+                      : updaterStatus === 'mandatory-update'
+                        ? 'Esta versión requiere actualización obligatoria.'
                       : updaterStatus === 'update-available'
                         ? `Nueva versión disponible: ${updateInfo?.version ?? 'desconocida'}`
                         : updaterStatus === 'installed'
@@ -267,6 +272,13 @@ export function SettingsPage() {
                 )}
                 {updaterError && (
                   <p className="text-[10px] text-danger-400 mt-1 wrap-break-word">{updaterError}</p>
+                )}
+                {isMandatoryUpdateRequired && (
+                  <p className="text-[10px] text-warning-300 mt-1 wrap-break-word">
+                    Update obligatorio activo.
+                    {minimumSupportedVersion ? ` Mínimo soportado: v${minimumSupportedVersion}.` : ''}
+                    {mandatoryUpdateReason ? ` ${mandatoryUpdateReason}` : ''}
+                  </p>
                 )}
                 {!isUpdaterConfigured && isUpdaterSupported && (
                   <p className="text-[10px] text-warning-300 mt-1">
