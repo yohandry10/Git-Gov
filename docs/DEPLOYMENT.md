@@ -680,6 +680,33 @@ Resultado esperado:
 2. HTTPS con `certbot` + Nginx
 3. Configurar webhooks GitHub/Jira
 
+### Validación automática de dominio/HTTPS/webhooks
+
+Script de preflight público:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/validate_public_infra.ps1 `
+  -BaseUrl "https://<tu-dominio>" `
+  -ApiKey "<GITGOV_API_KEY_ADMIN>" `
+  -ExpectedIp "<ELASTIC_IP_OPCIONAL>" `
+  -OutputPath "docs/reports/public-infra-validation-<fecha>.md"
+```
+
+Checks incluidos:
+- resolución DNS del host
+- certificado TLS (expiración y handshake)
+- `GET /health`
+- `GET /stats` autenticado (si se pasa `-ApiKey`)
+- reachability de rutas de integración:
+  - `/webhooks/github`
+  - `/integrations/jenkins`
+  - `/integrations/jira`
+
+Resultado:
+- `PASS`: listo para continuar con hardening productivo
+- `WARN`: hay observaciones no bloqueantes
+- `FAIL`: hay fallo crítico (DNS/HTTPS/health/rutas)
+
 ### Nota de seguridad
 
 Si una API key fue compartida en chat/capturas, **rotarla**:
