@@ -27,3 +27,5 @@ export {
     FlowDiagram,
     FAQSection,
 };
+
+export { CapabilitiesSection } from './CapabilitiesSection';

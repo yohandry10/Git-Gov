@@ -14,7 +14,7 @@ const navKeys: Record<string, string> = {
     '/features': 'nav.features',
     '/download': 'nav.download',
     '/docs': 'nav.docs',
-    '/pricing': 'nav.pricing',
+
     '/contact': 'nav.contact',
 };
 

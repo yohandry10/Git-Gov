@@ -2,6 +2,7 @@
 title: Gobernanza y Políticas
 description: Define controles de acceso, protección de ramas y permisos basados en grupos en tus repositorios mediante gitgov.toml.
 order: 4
+category: Operate
 ---
 
 GitGov transforma Git de una simple herramienta de almacenamiento en una **plataforma gobernada**. Al definir un archivo `gitgov.toml` por repositorio, puedes aplicar protección de ramas, control de acceso basado en grupos y verificaciones advisorías de políticas en cada estación de trabajo de desarrollador.

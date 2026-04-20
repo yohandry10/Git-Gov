@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        const { name, email, company, message } = body;
+        const { name, email, company, teamSize, toolchain, interestType, message } = body;
 
         // Basic validation
         if (!name || typeof name !== 'string' || !name.trim()) {
@@ -31,6 +31,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (!company || typeof company !== 'string' || !company.trim()) {
+            return NextResponse.json(
+                { error: 'Company is required' },
+                { status: 400 }
+            );
+        }
+
+        if (!teamSize || typeof teamSize !== 'string' || !teamSize.trim()) {
+            return NextResponse.json(
+                { error: 'Team size is required' },
+                { status: 400 }
+            );
+        }
+
+        if (!interestType || typeof interestType !== 'string' || !interestType.trim()) {
+            return NextResponse.json(
+                { error: 'Interest type is required' },
+                { status: 400 }
+            );
+        }
+
         if (!message || typeof message !== 'string' || !message.trim()) {
             return NextResponse.json(
                 { error: 'Message is required' },
@@ -43,6 +64,9 @@ export async function POST(request: NextRequest) {
             name: name.trim(),
             email: email.trim(),
             company: (company || '').trim(),
+            teamSize: (teamSize || '').trim(),
+            toolchain: (toolchain || '').trim(),
+            interestType: (interestType || '').trim(),
             message: message.trim(),
             timestamp: new Date().toISOString(),
         });

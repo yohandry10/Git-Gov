@@ -2,6 +2,7 @@
 title: Política de Seguridad
 description: Qué captura GitGov, dónde se almacena, quién puede acceder y cómo se protegen tus datos en cada capa.
 order: 7
+category: Operate
 ---
 
 GitGov se diseña con el principio de **mínimos datos, máxima protección**. Esta página detalla la postura de seguridad completa de la plataforma — qué entra al sistema, cómo se almacena, quién puede acceder y qué controles técnicos están en vigor.

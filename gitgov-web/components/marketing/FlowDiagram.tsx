@@ -3,38 +3,34 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { SectionReveal } from '@/components/ui/SectionReveal';
-import { HiOutlineDesktopComputer, HiOutlineServer, HiOutlineLink } from 'react-icons/hi';
+import { HiOutlineDesktopComputer, HiOutlineServer, HiOutlineLink, HiOutlineArrowNarrowRight } from 'react-icons/hi';
 import { useTranslation } from '@/lib/i18n';
 
 interface StepConfig {
     icon: React.ReactNode;
     labelKey: string;
     descKey: string;
-    color: string;
-    dotColor: string;
+    step: string;
 }
 
 const stepConfigs: StepConfig[] = [
     {
-        icon: <HiOutlineDesktopComputer size={28} />,
+        icon: <HiOutlineDesktopComputer size={22} />,
         labelKey: 'howItWorks.desktop',
         descKey: 'howItWorks.desktopDesc',
-        color: 'brand',
-        dotColor: 'bg-brand-500',
+        step: '01',
     },
     {
-        icon: <HiOutlineServer size={28} />,
+        icon: <HiOutlineServer size={22} />,
         labelKey: 'howItWorks.controlPlane',
         descKey: 'howItWorks.controlPlaneDesc',
-        color: 'brand',
-        dotColor: 'bg-brand-400',
+        step: '02',
     },
     {
-        icon: <HiOutlineLink size={28} />,
+        icon: <HiOutlineLink size={22} />,
         labelKey: 'howItWorks.integrations',
         descKey: 'howItWorks.integrationsDesc',
-        color: 'accent',
-        dotColor: 'bg-accent-400',
+        step: '03',
     },
 ];
 
@@ -49,78 +45,68 @@ export function FlowDiagram() {
 
     return (
         <SectionReveal>
-            <div className="relative">
-                {/* Desktop: horizontal flow */}
-                <div className="hidden md:flex items-start justify-between relative">
-                    {/* Connecting line */}
-                    <div className="absolute top-10 left-[15%] right-[15%] h-px">
+            {/* Horizontal numbered timeline */}
+            <div className="relative max-w-4xl mx-auto">
+
+                {/* Desktop */}
+                <div className="hidden md:block">
+                    {/* The line */}
+                    <div className="absolute top-[28px] left-[80px] right-[80px] h-[2px] bg-white/[0.06] z-0">
                         <motion.div
-                            className="h-full bg-gradient-to-r from-brand-500/40 via-brand-400/30 to-accent-400/40"
+                            className="h-full bg-gradient-to-r from-brand-500 via-brand-400 to-accent-400"
                             initial={{ scaleX: 0 }}
                             whileInView={{ scaleX: 1 }}
                             viewport={{ once: true }}
-                            transition={{ duration: 1.2, delay: 0.3, ease: 'easeInOut' }}
+                            transition={{ duration: 1.5, delay: 0.3, ease: 'easeOut' }}
                             style={{ transformOrigin: 'left' }}
                         />
                     </div>
 
-                    {/* Animated data dots on the line */}
-                    <motion.div
-                        className="absolute top-[38px] left-[15%] w-2 h-2 rounded-full bg-brand-400 shadow-glow"
-                        animate={{ x: [0, 800, 0] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                        style={{ opacity: 0.6 }}
-                    />
+                    <div className="grid grid-cols-3 relative z-10">
+                        {steps.map((step, i) => (
+                            <motion.div
+                                key={step.labelKey}
+                                className="flex flex-col items-center"
+                                initial={{ opacity: 0, y: 15 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.4 + i * 0.2, duration: 0.5 }}
+                            >
+                                {/* Step circle */}
+                                <div className="w-14 h-14 rounded-full bg-surface-200 border-2 border-brand-500/40 flex items-center justify-center text-brand-400 mb-4 relative">
+                                    {step.icon}
+                                    <span className="absolute -top-2 -right-2 text-[10px] font-black text-brand-400 bg-surface-500 border border-brand-500/30 rounded-full w-6 h-6 flex items-center justify-center">
+                                        {step.step}
+                                    </span>
+                                </div>
 
-                    {steps.map((step, i) => (
-                        <motion.div
-                            key={step.labelKey}
-                            className="flex flex-col items-center text-center w-1/3 relative z-10"
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: i * 0.2, duration: 0.5 }}
-                        >
-                            {/* Node */}
-                            <div className={`w-20 h-20 rounded-2xl glass-card flex items-center justify-center mb-5 ${step.color === 'brand' ? 'text-brand-400 border-brand-500/20' : 'text-accent-400 border-accent-400/20'} border`}>
-                                {step.icon}
-                            </div>
-
-                            {/* Step indicator */}
-                            <div className={`w-3 h-3 rounded-full ${step.dotColor} mb-4 shadow-glow`} />
-
-                            <h3 className="text-base font-semibold text-white mb-2">{step.label}</h3>
-                            <p className="text-sm text-gray-400 max-w-[200px]">{step.description}</p>
-                        </motion.div>
-                    ))}
+                                <h3 className="text-sm font-bold text-white mb-1 text-center">{step.label}</h3>
+                                <p className="text-xs text-gray-500 max-w-[180px] text-center leading-relaxed">{step.description}</p>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Mobile: vertical flow */}
-                <div className="md:hidden space-y-6">
+                {/* Mobile: compact vertical */}
+                <div className="md:hidden space-y-0">
                     {steps.map((step, i) => (
-                        <motion.div
-                            key={step.labelKey}
-                            className="flex items-start gap-4"
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: i * 0.15 }}
-                        >
+                        <div key={step.labelKey} className="flex items-start gap-4">
                             <div className="flex flex-col items-center">
-                                <div className={`w-12 h-12 rounded-xl glass-card flex items-center justify-center ${step.color === 'brand' ? 'text-brand-400' : 'text-accent-400'}`}>
+                                <div className="w-10 h-10 rounded-full bg-surface-200 border border-brand-500/30 flex items-center justify-center text-brand-400 shrink-0">
                                     {step.icon}
                                 </div>
                                 {i < steps.length - 1 && (
-                                    <div className="w-px h-12 bg-gradient-to-b from-brand-500/30 to-transparent mt-2" />
+                                    <div className="w-px h-8 bg-gradient-to-b from-brand-500/30 to-transparent" />
                                 )}
                             </div>
-                            <div className="pt-2">
-                                <h3 className="text-base font-semibold text-white">{step.label}</h3>
-                                <p className="text-sm text-gray-400 mt-1">{step.description}</p>
+                            <div className="pt-1.5 pb-4">
+                                <h3 className="text-sm font-bold text-white">{step.label}</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
                             </div>
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
+
             </div>
         </SectionReveal>
     );

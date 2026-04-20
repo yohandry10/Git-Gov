@@ -12,7 +12,7 @@ export function Footer() {
     const { t } = useTranslation();
 
     return (
-        <footer className="relative border-t border-white/[0.06] bg-[#04060a]" role="contentinfo">
+        <footer className="relative border-t border-white/[0.06] bg-[#020202]" role="contentinfo">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-500/30 to-transparent" />
 
             <Container>

@@ -2,6 +2,7 @@
 title: Introducción a GitGov
 description: Domina la gobernanza distribuida de Git y establece trazabilidad operativa completa en todo tu ciclo de desarrollo.
 order: 1
+category: Evaluate
 ---
 
 GitGov es un **Sistema de Gobernanza de Git Distribuido de Grado Empresarial**. Está diseñado específicamente para equipos de ingeniería con altos requisitos de seguridad que necesitan evidencia operativa inmutable, trazabilidad profunda y aplicación automatizada de cumplimiento en cada commit, push y despliegue.

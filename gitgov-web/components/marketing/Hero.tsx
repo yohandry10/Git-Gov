@@ -82,7 +82,7 @@ export function Hero() {
                                   <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500 shadow-[0_0_10px_#f97316]" />
                                 </span>
                                 <span className="text-[10px] font-bold tracking-[0.25em] text-white/50 uppercase font-mono">
-                                    GitGov Engine v{siteConfig.version}
+                                    {t('hero.badge')}
                                 </span>
                             </div>
                         </motion.div>
@@ -93,10 +93,10 @@ export function Hero() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
                         >
-                            <span className="text-white">Gobernanza operativa</span>
+                            <span className="text-white">{t('hero.title1')}</span>
                             <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-accent-300 to-white pb-2 relative z-10 inline-block drop-shadow-[0_4px_16px_rgba(249,115,22,0.2)]">
-                                en tiempo real.
+                                {t('hero.title2')}
                             </span>
                         </motion.h1>
 
@@ -106,7 +106,7 @@ export function Hero() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                         >
-                            {t('hero.subtitle')} El estándar inmutable para equipos de ingeniería críticos.
+                            <p className="opacity-90">{t('hero.subtitle')}</p>
                         </motion.p>
 
                         <motion.div
@@ -115,12 +115,12 @@ export function Hero() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
                         >
-                            <button className="group relative w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-lg font-bold tracking-tight overflow-hidden hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(255,255,255,0.25)]">
-                                <span className="relative z-10">Conectar Pipeline</span>
+                            <Link href="/contact" className="group relative w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white text-black rounded-lg font-bold tracking-tight overflow-hidden hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:shadow-[0_0_60px_rgba(255,255,255,0.25)]">
+                                <span className="relative z-10">{t('hero.cta')}</span>
                                 <HiOutlineArrowRight size={18} className="group-hover:translate-x-1 transition-transform relative z-10" />
                                 {/* Internal glowing sheen swipe line */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-700" />
-                            </button>
+                            </Link>
                             
                             <Link
                                 href="/docs/"
@@ -139,27 +139,28 @@ export function Hero() {
                                 <span className="absolute inset-0 rounded-lg shadow-[inset_0_0_0px_rgba(249,115,22,0)] group-hover:shadow-[inset_0_0_20px_rgba(249,115,22,0.15)] transition-shadow duration-500" />
 
                                 <span className="relative z-10 text-white/50 group-hover:text-white transition-colors duration-300">
-                                    Leer Documentación
+                                    {t('hero.ctaSecondary')}
                                 </span>
                             </Link>
                         </motion.div>
 
                         <motion.div
-                            className="mt-16 flex items-center gap-4 pt-8 border-t border-white/[0.05]"
+                            className="mt-16 flex flex-wrap items-center gap-4 pt-8 border-t border-white/[0.05]"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 1, delay: 0.5 }}
                         >
-                             <div className="flex -space-x-2">
-                                {['#1a3a2a', '#1a2d4a', '#3d1a4a'].map((bg, i) => (
-                                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[#020202] flex items-center justify-center text-[9px] font-bold text-white shadow-xl" style={{ background: bg }}>
-                                        {['MS', 'SB', 'GV'][i]}
-                                    </div>
-                                ))}
+                            <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/[0.02] border border-white/[0.05] text-xs font-medium text-gray-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shadow-[0_0_8px_#f97316]"></span>
+                                {t('hero.trust.metadata')}
                             </div>
-                            <div className="text-xs text-[#a1a1aa] font-medium leading-snug">
-                                <strong className="text-white">Confianza global.</strong><br/>
-                                <span className="opacity-70">Auditorías aprobadas un 98% más rápido.</span>
+                            <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/[0.02] border border-white/[0.05] text-xs font-medium text-gray-400">
+                                <HiOutlineShieldCheck size={14} className="text-brand-500" />
+                                {t('hero.trust.selfhosted')}
+                            </div>
+                            <div className="flex items-center gap-2 px-3 py-1 rounded bg-white/[0.02] border border-white/[0.05] text-xs font-medium text-gray-400">
+                                <HiOutlineDatabase size={14} className="text-brand-500" />
+                                {t('hero.trust.appendonly')}
                             </div>
                         </motion.div>
                     </motion.div>
@@ -191,10 +192,13 @@ export function Hero() {
 
 /* ═══════════════════════════════════════════════════════
    THE HOLOGRAM CORE (Pure Math, SVG, Motion Divs)
-   No WebGL/Canvas overhead. Flawless 120fps physics.
+   Orchestrating the "Evidence Pipeline" sequence
 ═══════════════════════════════════════════════════════ */
 
 function HolographicEngine() {
+    // Pipeline sequence duration: 12 seconds total loop
+    const DURATION = 12;
+
     return (
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
             
@@ -219,49 +223,89 @@ function HolographicEngine() {
                 <HiOutlineShieldCheck size={32} className="text-white absolute z-10" />
             </motion.div>
 
-            {/* 2. Middle Ring: "Policy Evaluation Grid" */}
+             {/* 2. Middle Ring: "Policy Evaluation Grid" (Visual ONLY) */}
             <motion.div 
-                className="absolute w-[450px] h-[450px] rounded-full border border-white/10"
+                className="absolute w-[450px] h-[450px] rounded-full"
                 style={{ transform: 'translateZ(30px)' }}
                 animate={{ rotate: -360 }}
                 transition={{ duration: 80, repeat: Infinity, ease: 'linear' }}
             >
-                 <svg className="absolute inset-0 w-full h-full" viewBox="0 0 450 450" style={{ filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.15))' }}>
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 450 450" style={{ filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.15))' }}>
                      <circle cx="225" cy="225" r="224" stroke="rgba(255,255,255,0.2)" strokeWidth="1" fill="none" strokeDasharray="1 8" />
                      <circle cx="225" cy="225" r="224" stroke="rgba(249,115,22,0.8)" strokeWidth="3" fill="none" strokeDasharray="40 120" strokeLinecap="round" />
                      <circle cx="225" cy="225" r="210" stroke="rgba(255,255,255,0.05)" strokeWidth="10" fill="none" />
                  </svg>
-                 {/* Satellite: Ticket Correlation */}
-                 <div className="absolute top-1/2 -right-4 -translate-y-1/2 origin-left" style={{ transform: 'rotate(45deg)' }}>
-                     <GlassPill label="Jira: Linked" color="border-brand-500/50" />
-                 </div>
-                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2" style={{ transform: 'rotate(-45deg)' }}>
-                     <GlassPill label="Policy: ACTIVE" color="border-emerald-500/50" />
-                 </div>
             </motion.div>
 
             {/* 3. Outer Ring: "Data Ingestion Stream (Commits/CI)" */}
+            <div className="absolute w-[700px] h-[700px] rounded-full" style={{ transform: 'translateZ(-50px)' }}>
+                {/* Visual Ring Background */}
+                <motion.div className="absolute inset-0 pointer-events-none" animate={{ rotate: 360 }} transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}>
+                    <svg className="w-full h-full opacity-60" viewBox="0 0 700 700">
+                         <circle cx="350" cy="350" r="349" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" strokeDasharray="6 12" />
+                         <circle cx="350" cy="350" r="349" stroke="rgba(245,158,11,0.6)" strokeWidth="4" fill="none" strokeDasharray="200 2000" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 20px #f59e0b)' }} />
+                    </svg>
+                </motion.div>
+
+                {/* Satellite Event Train */}
+                {[
+                    { label: "Commit [a3f8c]", color: "border-brand-500/40 text-brand-400", pulse: true },
+                    { label: "Policy: ACTIVE", color: "border-white/20 text-gray-300", pulse: false },
+                    { label: "Signature Check", color: "border-white/20 text-gray-300", pulse: false },
+                    { label: "CI Workflow: OK", color: "border-white/20 text-gray-300", pulse: false },
+                    { label: "Jira: Linked", color: "border-accent-500/40 text-accent-400", pulse: false },
+                ].map((event, index) => {
+                    const startDelay = index * 2.5; // Stagger spawns
+                    return (
+                        <motion.div 
+                            key={`train-${index}`}
+                            className="absolute inset-0 z-20 pointer-events-none"
+                            initial={{ rotate: -90 }} // Start rotation from the top
+                            animate={{ rotate: 270 }} // Rotate one full circle
+                            transition={{ duration: 25, repeat: Infinity, ease: 'linear', delay: startDelay }}
+                        >
+                            {/* Anchor point at 12 o'clock */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                {/* The Pill (Fade in and Counter-rotate) */}
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.5, rotate: 90 }}
+                                    animate={{ opacity: 1, scale: 1, rotate: -270 }}
+                                    transition={{ 
+                                        opacity: { duration: 0.8, delay: startDelay },
+                                        scale: { duration: 0.8, delay: startDelay, type: 'spring' },
+                                        rotate: { duration: 25, repeat: Infinity, ease: 'linear', delay: startDelay }
+                                    }}
+                                    style={{ transformOrigin: 'center' }}
+                                >
+                                    <GlassPill label={event.label} color={event.color} pulse={event.pulse} />
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    );
+                })}
+            </div>
+
+            {/* Connecting Laser Beams (Flashing at 7.5s) */}
             <motion.div 
-                className="absolute w-[700px] h-[700px] rounded-full"
-                style={{ transform: 'translateZ(-50px)' }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}
+                className="absolute inset-0 pointer-events-none"
+                animate={{ 
+                    opacity: [0, 0, 0, 1, 0, 0],
+                    scale: [0.8, 0.8, 0.8, 1.05, 0.8, 0.8]
+                }}
+                transition={{ 
+                    duration: DURATION,
+                    repeat: Infinity,
+                    times: [0, 0.60, 0.62, 0.65, 0.68, 1], // Flash occurs between 7.2s and 8.1s
+                    ease: "easeInOut"
+                }}
             >
-                <svg className="absolute inset-0 w-full h-full opacity-60" viewBox="0 0 700 700">
-                     <circle cx="350" cy="350" r="349" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" strokeDasharray="6 12" />
-                     {/* The energetic scanning beam of the outer ring */}
-                     <circle cx="350" cy="350" r="349" stroke="rgba(245,158,11,0.6)" strokeWidth="4" fill="none" strokeDasharray="200 2000" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 20px #f59e0b)' }} />
+                <svg className="w-full h-full" viewBox="0 0 800 800">
+                    <line x1="400" y1="400" x2="250" y2="150" stroke="#f97316" strokeWidth="2" strokeDasharray="5 5" style={{ filter: 'drop-shadow(0 0 10px #f97316)' }} />
+                    <line x1="400" y1="400" x2="600" y2="250" stroke="#f97316" strokeWidth="2" strokeDasharray="5 5" style={{ filter: 'drop-shadow(0 0 10px #f97316)' }} />
+                    <line x1="400" y1="400" x2="650" y2="650" stroke="#f97316" strokeWidth="3" style={{ filter: 'drop-shadow(0 0 15px #f97316)' }} />
+                    <line x1="400" y1="400" x2="150" y2="500" stroke="#f97316" strokeWidth="2" strokeDasharray="5 5" style={{ filter: 'drop-shadow(0 0 10px #f97316)' }} />
+                    <circle cx="400" cy="400" r="150" stroke="rgba(249,115,22,0.8)" strokeWidth="4" fill="none" style={{ filter: 'drop-shadow(0 0 20px #f97316)' }} />
                 </svg>
-                 {/* Satellite Orbiters - Rotating around the massive ring */}
-                <div className="absolute top-2 left-1/4 origin-center" style={{ transform: 'rotate(-25deg)' }}>
-                     <GlassPill label="Commit [a3f8c]" color="border-white/20" delay={0.2} pulse />
-                </div>
-                <div className="absolute bottom-10 right-[15%]" style={{ transform: 'rotate(15deg)' }}>
-                     <GlassPill label="CI Workflow: OK" color="border-blue-500/40" delay={0.6} />
-                </div>
-                <div className="absolute top-[40%] -left-8" style={{ transform: 'rotate(-90deg)' }}>
-                     <GlassPill label="Signature Check" color="border-purple-500/40" />
-                </div>
             </motion.div>
 
             {/* 4. Connectivity Beams & Grid Geometry */}
@@ -279,19 +323,14 @@ function HolographicEngine() {
     );
 }
 
-function GlassPill({ label, color, delay = 0, pulse = false }: { label: string, color: string, delay?: number, pulse?: boolean }) {
+function GlassPill({ label, color, pulse = false }: { label: string, color: string, pulse?: boolean }) {
     return (
-        <motion.div 
-            className={`flex items-center gap-3 px-4 py-2 rounded-xl backdrop-blur-xl border bg-black/60 shadow-2xl ${color}`}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: delay }}
-        >
-            <div className="relative flex h-2 w-2">
-                {pulse && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75" style={{ background: 'currentColor' }} />}
-                <span className="relative inline-flex rounded-full h-2 w-2 shadow-lg" style={{ background: 'currentColor', boxShadow: '0 0 8px currentColor' }} />
+        <div className={`flex items-center gap-3 px-4 py-2 rounded-xl backdrop-blur-xl border bg-black/60 shadow-2xl whitespace-nowrap ${color}`}>
+            <div className="relative flex h-2 w-2 items-center justify-center">
+                {pulse && <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-brand-400 opacity-60" />}
+                <span className="relative inline-flex rounded-full h-2 w-2 shadow-[0_0_8px_currentColor]" style={{ background: 'currentColor' }} />
             </div>
-            <span className="text-xs font-mono font-black text-white/90 uppercase tracking-widest">{label}</span>
-        </motion.div>
+            <span className="text-xs font-mono font-black uppercase tracking-widest">{label}</span>
+        </div>
     );
 }

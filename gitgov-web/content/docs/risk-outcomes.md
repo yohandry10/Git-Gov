@@ -2,6 +2,7 @@
 title: Risk Outcomes
 description: Turn governance telemetry into measurable engineering risk outcomes for leadership and audits.
 order: 9
+category: Operate
 ---
 
 GitGov already captures policy, CI, and traceability signals. The next step is to present these as **business outcomes** your engineering leadership can track over time.

@@ -11,7 +11,6 @@ import {
     HiOutlineShieldCheck,
     HiOutlineLightningBolt,
     HiOutlineSupport,
-    HiOutlineGlobe,
 } from 'react-icons/hi';
 import { useTranslation } from '@/lib/i18n';
 
@@ -31,13 +30,19 @@ export function ContactClient() {
             name: formData.get('name') as string,
             email: formData.get('email') as string,
             company: formData.get('company') as string,
+            teamSize: formData.get('teamSize') as string,
+            toolchain: formData.get('toolchain') as string,
+            interestType: formData.get('interestType') as string,
             message: formData.get('message') as string,
         };
 
         const newErrors: Record<string, string> = {};
         if (!data.name.trim()) newErrors.name = t('contact.errors.name') as string;
+        if (!data.company.trim()) newErrors.company = t('contact.errors.company') as string;
         if (!data.email.trim()) newErrors.email = t('contact.errors.email') as string;
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) newErrors.email = t('contact.errors.emailInvalid') as string;
+        if (!data.teamSize || data.teamSize === '') newErrors.teamSize = t('contact.errors.teamSize') as string;
+        if (!data.interestType || data.interestType === '') newErrors.interestType = t('contact.errors.interestType') as string;
         if (!data.message.trim()) newErrors.message = t('contact.errors.message') as string;
 
         if (Object.keys(newErrors).length > 0) {
@@ -74,11 +79,6 @@ export function ContactClient() {
             icon: <HiOutlineSupport size={20} />,
             title: t('contact.side.h3title') as string,
             desc: t('contact.side.h3desc') as string,
-        },
-        {
-            icon: <HiOutlineGlobe size={20} />,
-            title: t('contact.side.h4title') as string,
-            desc: t('contact.side.h4desc') as string,
         },
     ];
 
@@ -206,11 +206,71 @@ export function ContactClient() {
                                                         required
                                                     />
                                                 </div>
-                                                <Input
-                                                    label={t('contact.form.company') as string}
-                                                    name="company"
-                                                    placeholder={t('contact.form.companyPlaceholder') as string}
-                                                />
+                                                <div className="grid sm:grid-cols-2 gap-5">
+                                                    <Input
+                                                        label={t('contact.form.company') as string}
+                                                        name="company"
+                                                        placeholder={t('contact.form.companyPlaceholder') as string}
+                                                        error={errors.company}
+                                                        required
+                                                    />
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-sm font-semibold text-gray-300">
+                                                            {t('contact.form.teamSize') as string} <span className="text-red-400">*</span>
+                                                        </label>
+                                                        <select
+                                                            name="teamSize"
+                                                            required
+                                                            defaultValue=""
+                                                            className={`
+                                                                w-full bg-surface-100 border rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-300
+                                                                appearance-none focus:ring-2 focus:ring-brand-500/20 text-white
+                                                                ${errors.teamSize ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-brand-500/50 hover:border-white/20'}
+                                                            `}
+                                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                                                        >
+                                                            <option value="" disabled>{t('contact.form.teamSizePlaceholder') as string}</option>
+                                                            <option value="1-10">{t('contact.form.teamSize.option1') as string}</option>
+                                                            <option value="11-50">{t('contact.form.teamSize.option2') as string}</option>
+                                                            <option value="51-200">{t('contact.form.teamSize.option3') as string}</option>
+                                                            <option value="201-1000">{t('contact.form.teamSize.option4') as string}</option>
+                                                            <option value="1000+">{t('contact.form.teamSize.option5') as string}</option>
+                                                        </select>
+                                                        {errors.teamSize && <span className="text-xs text-red-400 font-medium">{errors.teamSize}</span>}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid sm:grid-cols-2 gap-5">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-sm font-semibold text-gray-300">
+                                                            {t('contact.form.interestType') as string} <span className="text-red-400">*</span>
+                                                        </label>
+                                                        <select
+                                                            name="interestType"
+                                                            required
+                                                            defaultValue=""
+                                                            className={`
+                                                                w-full bg-surface-100 border rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-300
+                                                                appearance-none focus:ring-2 focus:ring-brand-500/20 text-white
+                                                                ${errors.interestType ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-brand-500/50 hover:border-white/20'}
+                                                            `}
+                                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                                                        >
+                                                            <option value="" disabled>{t('contact.form.interestTypePlaceholder') as string}</option>
+                                                            <option value="demo">{t('contact.form.interestType.demo') as string}</option>
+                                                            <option value="pilot">{t('contact.form.interestType.pilot') as string}</option>
+                                                            <option value="pricing">{t('contact.form.interestType.pricing') as string}</option>
+                                                            <option value="partnership">{t('contact.form.interestType.partnership') as string}</option>
+                                                            <option value="other">{t('contact.form.interestType.other') as string}</option>
+                                                        </select>
+                                                        {errors.interestType && <span className="text-xs text-red-400 font-medium">{errors.interestType}</span>}
+                                                    </div>
+                                                    <Input
+                                                        label={t('contact.form.toolchain') as string}
+                                                        name="toolchain"
+                                                        placeholder={t('contact.form.toolchainPlaceholder') as string}
+                                                    />
+                                                </div>
                                                 <Textarea
                                                     label={t('contact.form.message') as string}
                                                     name="message"

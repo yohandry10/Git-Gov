@@ -2,6 +2,7 @@
 title: Introduction to GitGov
 description: Master distributed Git governance and establish full operational traceability across your development lifecycle.
 order: 1
+category: Evaluate
 ---
 
 GitGov is an **Enterprise-Grade Distributed Git Governance System**. It is built specifically for security-conscious engineering teams that require immutable operational evidence, deep traceability, and automated compliance enforcement across every commit, push, and deployment.

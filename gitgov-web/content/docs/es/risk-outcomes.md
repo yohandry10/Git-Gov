@@ -2,6 +2,7 @@
 title: Resultados de Riesgo
 description: Convierte la telemetría de gobernanza en resultados medibles de riesgo técnico para liderazgo y auditoría.
 order: 9
+category: Operate
 ---
 
 GitGov ya captura señales de políticas, CI y trazabilidad. El siguiente paso es mostrarlas como **resultados de negocio** que liderazgo técnico y compliance puedan seguir en el tiempo.

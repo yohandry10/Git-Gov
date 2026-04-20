@@ -5,7 +5,7 @@ import { Container } from '@/components/layout';
 import { SectionHeader } from '@/components/marketing';
 import { SectionReveal } from '@/components/ui';
 import { siteConfig } from '@/lib/config/site';
-import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
+import { FaWindows } from 'react-icons/fa';
 import {
     HiOutlineDownload,
     HiOutlineShieldCheck,
@@ -13,13 +13,7 @@ import {
     HiOutlineCheck,
     HiOutlineInformationCircle,
     HiOutlineLightningBolt,
-    HiOutlineWifi,
-    HiOutlineDesktopComputer,
     HiOutlineClipboardCheck,
-    HiOutlineBell,
-    HiOutlineChat,
-    HiOutlineRefresh,
-    HiOutlineExclamation,
 } from 'react-icons/hi';
 import { useTranslation } from '@/lib/i18n';
 import type { ReleaseMetadata } from '@/lib/release';
@@ -31,6 +25,28 @@ interface DownloadClientProps {
 export function DownloadClient({ release }: DownloadClientProps) {
     const { t } = useTranslation();
     const [copied, setCopied] = React.useState(false);
+    const desktopCoverage = [
+        {
+            title: t('download.side.h1title') as string,
+            description: t('download.side.h1desc') as string,
+            icon: <HiOutlineClipboardCheck size={16} />,
+        },
+        {
+            title: t('download.side.h2title') as string,
+            description: t('download.side.h2desc') as string,
+            icon: <HiOutlineLightningBolt size={16} />,
+        },
+        {
+            title: t('download.side.h3title') as string,
+            description: t('download.side.h3desc') as string,
+            icon: <HiOutlineShieldCheck size={16} />,
+        },
+        {
+            title: t('download.side.h4title') as string,
+            description: t('download.side.h4desc') as string,
+            icon: <HiOutlineInformationCircle size={16} />,
+        },
+    ];
 
     const exeFileName =
         release.downloadUrl.split('/').pop() ?? siteConfig.downloadFileName;
@@ -41,50 +57,6 @@ export function DownloadClient({ release }: DownloadClientProps) {
             setTimeout(() => setCopied(false), 2000);
         });
     }
-
-    const highlights = [
-        {
-            icon: <HiOutlineLightningBolt size={20} />,
-            title: t('download.side.h1title') as string,
-            desc: t('download.side.h1desc') as string,
-        },
-        {
-            icon: <HiOutlineWifi size={20} />,
-            title: t('download.side.h2title') as string,
-            desc: t('download.side.h2desc') as string,
-        },
-        {
-            icon: <HiOutlineDesktopComputer size={20} />,
-            title: t('download.side.h3title') as string,
-            desc: t('download.side.h3desc') as string,
-        },
-        {
-            icon: <HiOutlineClipboardCheck size={20} />,
-            title: t('download.side.h4title') as string,
-            desc: t('download.side.h4desc') as string,
-        },
-        {
-            icon: <HiOutlineBell size={20} />,
-            title: t('download.side.h5title') as string,
-            desc: t('download.side.h5desc') as string,
-        },
-        {
-            icon: <HiOutlineChat size={20} />,
-            title: t('download.side.h6title') as string,
-            desc: t('download.side.h6desc') as string,
-        },
-        {
-            icon: <HiOutlineRefresh size={20} />,
-            title: t('download.side.h7title') as string,
-            desc: t('download.side.h7desc') as string,
-        },
-        {
-            icon: <HiOutlineExclamation size={20} />,
-            title: t('download.side.h8title') as string,
-            desc: t('download.side.h8desc') as string,
-        },
-    ];
-
     const hasPendingChecksum = release.checksum.includes('pending');
 
     return (
@@ -137,19 +109,61 @@ export function DownloadClient({ release }: DownloadClientProps) {
                                             {t('download.side.intro') as string}
                                         </p>
 
-                                        {/* Highlights */}
-                                        <div className="space-y-6">
-                                            {highlights.map((h, i) => (
-                                                <div key={i} className="flex items-start gap-4 group/item">
-                                                    <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0 transition-colors group-hover/item:border-brand-500/30 group-hover/item:text-brand-300">
-                                                        {h.icon}
-                                                    </div>
-                                                    <div className="pt-0.5">
-                                                        <p className="text-sm font-bold text-white mb-1 tracking-wide">{h.title}</p>
-                                                        <p className="text-xs text-gray-400 leading-relaxed font-medium">{h.desc}</p>
-                                                    </div>
+                                        {/* Simplified Value Prop & Trust */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
+                                                    <HiOutlineShieldCheck size={20} />
                                                 </div>
-                                            ))}
+                                                <div className="pt-0.5">
+                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.security.title') as string}</p>
+                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.security.desc') as string}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
+                                                    <HiOutlineLightningBolt size={20} />
+                                                </div>
+                                                <div className="pt-0.5">
+                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.zeroOverhead.title') as string}</p>
+                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.zeroOverhead.desc') as string}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
+                                                    <HiOutlineClipboardCheck size={20} />
+                                                </div>
+                                                <div className="pt-0.5">
+                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.offline.title') as string}</p>
+                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.offline.desc') as string}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-8 pt-6 border-t border-white/5">
+                                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.18em] mb-4">
+                                                {t('download.side.detailTitle') as string}
+                                            </p>
+                                            <div className="grid sm:grid-cols-2 gap-3">
+                                                {desktopCoverage.map((item) => (
+                                                    <div
+                                                        key={item.title}
+                                                        className="rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-4"
+                                                    >
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="w-7 h-7 rounded-lg bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 shrink-0">
+                                                                {item.icon}
+                                                            </div>
+                                                            <p className="text-xs font-bold text-white tracking-wide">
+                                                                {item.title}
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-[11px] text-gray-400 leading-relaxed">
+                                                            {item.description}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -244,22 +258,6 @@ export function DownloadClient({ release }: DownloadClientProps) {
                                     </div>
                                 </div>
 
-                                {/* Other platforms */}
-                                <div className="rounded-2xl px-6 py-5 bg-surface-400 border border-white/5 flex items-center justify-between shadow-lg hover:border-white/10 transition-colors">
-                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                                        {t('download.otherPlatforms') as string}
-                                    </p>
-                                    <div className="flex items-center gap-5 shrink-0 ml-4">
-                                        <div className="flex items-center gap-2 text-gray-600">
-                                            <FaApple size={16} />
-                                            <span className="text-[10px] font-mono font-bold">{t('download.planned') as string}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-gray-600">
-                                            <FaLinux size={16} />
-                                            <span className="text-[10px] font-mono font-bold">{t('download.planned') as string}</span>
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Installation notes */}
                                 <div className="rounded-2xl p-8 bg-surface-400 border border-white/5 shadow-lg relative overflow-hidden group flex-1">

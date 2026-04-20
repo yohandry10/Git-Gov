@@ -21,14 +21,14 @@ export function CTASection({
     secondaryCta,
 }: CTASectionProps) {
     return (
-        <section className="relative py-24 md:py-32 overflow-hidden bg-[#05070c]">
+        <section className="relative py-24 md:py-32 overflow-hidden bg-surface-500">
             {/* Background gradient — pointer-events-none so clicks reach buttons */}
             <div className="absolute inset-0 pointer-events-none">
                 <div
                     className="absolute inset-0"
                     style={{
                         background:
-                            'linear-gradient(180deg, rgba(5,7,12,0.88) 0%, rgba(5,7,12,0.98) 56%, rgba(4,6,10,1) 100%)',
+                            'linear-gradient(180deg, rgba(9,9,9,0.88) 0%, rgba(5,5,5,0.98) 56%, rgba(3,3,3,1) 100%)',
                     }}
                 />
                 <div

@@ -18,6 +18,7 @@ interface DocData {
 interface DocMeta {
     slug: string;
     title: string;
+    category?: string;
 }
 
 interface DocsClientProps {
@@ -34,6 +35,7 @@ interface DocsClientProps {
 
 export function DocsClient({ slug, docs, allDocs }: DocsClientProps) {
     const { locale, t } = useTranslation();
+    const categories = ['Evaluate', 'Deploy', 'Operate'] as const;
 
     const currentDoc = locale === 'es' ? docs.es : docs.en;
     const currentMenu = locale === 'es' ? allDocs.es : allDocs.en;
@@ -57,37 +59,51 @@ export function DocsClient({ slug, docs, allDocs }: DocsClientProps) {
                             </div>
 
                             <nav aria-label="Documentation navigation">
-                                <ul className="space-y-1" role="list">
-                                    {currentMenu.map((d) => (
-                                        <li key={d.slug}>
-                                            <Link
-                                                href={`/docs/${d.slug}`}
-                                                className={`
-                                                    group flex items-center justify-between px-4 py-2.5 text-sm rounded-xl transition-all duration-300
-                                                    ${d.slug === slug
-                                                        ? 'bg-gradient-to-r from-brand-500/15 to-transparent text-brand-400 font-semibold border-l-2 border-brand-500 shadow-sm'
-                                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                                    }
-                                                `}
-                                            >
-                                                <div className="flex items-center gap-2.5">
-                                                    <HiOutlineDocumentText size={18} className={`flex-shrink-0 transition-colors ${d.slug === slug ? 'text-brand-400' : 'text-gray-500 group-hover:text-gray-300'}`} />
-                                                    <span>{d.title}</span>
-                                                </div>
-                                                <AnimatePresence>
-                                                    {d.slug === slug && (
-                                                        <motion.div
-                                                            layoutId="active-indicator"
-                                                            initial={{ opacity: 0, scale: 0 }}
-                                                            animate={{ opacity: 1, scale: 1 }}
-                                                            exit={{ opacity: 0, scale: 0 }}
-                                                            className="w-1.5 h-1.5 rounded-full bg-brand-400 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
-                                                        />
-                                                    )}
-                                                </AnimatePresence>
-                                            </Link>
-                                        </li>
-                                    ))}
+                                <ul className="space-y-6" role="list">
+                                    {categories.map((category) => {
+                                        const categoryDocs = currentMenu.filter(d => (d.category || 'Operate') === category);
+                                        if (categoryDocs.length === 0) return null;
+
+                                        return (
+                                            <li key={category}>
+                                                <h4 className="text-[10px] font-black tracking-widest uppercase text-gray-500 mb-3 pl-4">
+                                                    {t(`docs.category.${category.toLowerCase()}` as any)}
+                                                </h4>
+                                                <ul className="space-y-1">
+                                                    {categoryDocs.map((d) => (
+                                                        <li key={d.slug}>
+                                                            <Link
+                                                                href={`/docs/${d.slug}`}
+                                                                className={`
+                                                                    group flex items-center justify-between px-4 py-2.5 text-sm rounded-xl transition-all duration-300
+                                                                    ${d.slug === slug
+                                                                        ? 'bg-gradient-to-r from-brand-500/15 to-transparent text-brand-400 font-semibold border-l-2 border-brand-500 shadow-sm'
+                                                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                                                    }
+                                                                `}
+                                                            >
+                                                                <div className="flex items-center gap-2.5">
+                                                                    <HiOutlineDocumentText size={18} className={`flex-shrink-0 transition-colors ${d.slug === slug ? 'text-brand-400' : 'text-gray-500 group-hover:text-gray-300'}`} />
+                                                                    <span>{d.title}</span>
+                                                                </div>
+                                                                <AnimatePresence>
+                                                                    {d.slug === slug && (
+                                                                        <motion.div
+                                                                            layoutId="active-indicator"
+                                                                            initial={{ opacity: 0, scale: 0 }}
+                                                                            animate={{ opacity: 1, scale: 1 }}
+                                                                            exit={{ opacity: 0, scale: 0 }}
+                                                                            className="w-1.5 h-1.5 rounded-full bg-brand-400 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                                                                        />
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </Link>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </nav>
 

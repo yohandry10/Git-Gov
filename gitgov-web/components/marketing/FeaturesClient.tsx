@@ -48,6 +48,40 @@ function SectionLabel({
 ───────────────────────────────────────────────────────────────────────── */
 export function FeaturesClient() {
     const { t } = useTranslation();
+    const navigation = [
+        { label: t('features.nav.capture') as string, href: '#capture' },
+        { label: t('features.nav.governance') as string, href: '#governance' },
+        { label: t('features.nav.correlation') as string, href: '#correlation' },
+        { label: t('features.nav.reporting') as string, href: '#reporting' },
+    ];
+    const governanceModes = [
+        t('features.policy.mode.off') as string,
+        t('features.policy.mode.warn') as string,
+        t('features.policy.mode.block') as string,
+    ];
+    const reportingSurface = [
+        {
+            title: t('features.dashboard.surface.pipeline') as string,
+            description: t('features.dashboard.surface.pipelineDesc') as string,
+        },
+        {
+            title: t('features.dashboard.surface.coverage') as string,
+            description: t('features.dashboard.surface.coverageDesc') as string,
+        },
+        {
+            title: t('features.dashboard.surface.risk') as string,
+            description: t('features.dashboard.surface.riskDesc') as string,
+        },
+        {
+            title: t('features.dashboard.surface.export') as string,
+            description: t('features.dashboard.surface.exportDesc') as string,
+        },
+    ];
+    const auditItems = [
+        t('features.risk.audit.item1') as string,
+        t('features.risk.audit.item2') as string,
+        t('features.risk.audit.item3') as string,
+    ];
 
     return (
         <>
@@ -55,7 +89,6 @@ export function FeaturesClient() {
                 HERO
             ══════════════════════════════════════════════════════ */}
             <section className="pt-32 md:pt-44 pb-0 relative overflow-hidden">
-                {/* Fine grid */}
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
@@ -65,7 +98,6 @@ export function FeaturesClient() {
                         backgroundSize: '72px 72px',
                     }}
                 />
-                {/* Central bloom */}
                 <div
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-[1400px] h-[700px] pointer-events-none"
                     style={{
@@ -77,7 +109,6 @@ export function FeaturesClient() {
                 <Container>
                     <div className="text-center max-w-5xl mx-auto">
                         <SectionReveal>
-                            {/* Badge */}
                             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/25 mb-10">
                                 <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
                                 <span className="text-brand-400 text-[11px] font-bold tracking-widest uppercase">
@@ -85,7 +116,6 @@ export function FeaturesClient() {
                                 </span>
                             </div>
 
-                            {/* Headline — maximum drama */}
                             <h1 className="font-semibold tracking-tight leading-[1] mb-8">
                                 <span className="block text-white text-4xl md:text-5xl lg:text-6xl">
                                     {t('features.title') as string}
@@ -103,11 +133,7 @@ export function FeaturesClient() {
                         {/* Anchor navigation */}
                         <SectionReveal delay={0.1}>
                             <div className="flex flex-wrap justify-center gap-3 mb-20">
-                                {[
-                                    { label: 'Core', href: '#core' },
-                                    { label: 'Infrastructure', href: '#infra' },
-                                    { label: 'Integrations', href: '#integrations' },
-                                ].map((p) => (
+                                {navigation.map((p) => (
                                     <a
                                         key={p.label}
                                         href={p.href}
@@ -120,825 +146,365 @@ export function FeaturesClient() {
                             </div>
                         </SectionReveal>
                     </div>
-
-                    {/* Architecture flow */}
-                    <SectionReveal delay={0.2}>
-                        <div className="relative max-w-2xl mx-auto">
-                            {/* Connector line */}
-                            <div
-                                className="absolute top-[44px] left-[calc(16.67%+28px)] right-[calc(16.67%+28px)] h-px pointer-events-none hidden sm:block"
-                                style={{
-                                    background:
-                                        'linear-gradient(90deg, rgba(249,115,22,0.5) 0%, rgba(249,115,22,0.3) 50%, rgba(249,115,22,0.5) 100%)',
-                                }}
-                            />
-                            <div className="grid grid-cols-3 gap-4 relative z-10">
-                                {[
-                                    {
-                                        icon: <HiOutlineDesktopComputer size={22} />,
-                                        label: 'Desktop',
-                                        sub: 'Tauri · Rust · React',
-                                    },
-                                    {
-                                        icon: <HiOutlineShieldCheck size={22} />,
-                                        label: 'Control Plane',
-                                        sub: 'Axum · PostgreSQL',
-                                    },
-                                    {
-                                        icon: <HiOutlinePuzzle size={22} />,
-                                        label: 'Integrations',
-                                        sub: 'Jenkins · Jira · GitHub',
-                                    },
-                                ].map((node, i) => (
-                                    <div
-                                        key={i}
-                                        className="glass-card rounded-2xl p-5 border border-brand-500/30 text-center relative overflow-hidden group cursor-default"
-                                    >
-                                        <div
-                                            className="absolute inset-0 bg-brand-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                        />
-                                        <div
-                                            className="w-11 h-11 rounded-xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400 mx-auto mb-3 relative z-10"
-                                        >
-                                            {node.icon}
-                                        </div>
-                                        <div className="text-white text-sm font-bold mb-0.5 relative z-10">{node.label}</div>
-                                        <div className="text-gray-600 text-[10px] font-mono relative z-10">{node.sub}</div>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-400 mx-auto mt-3 relative z-10 animate-pulse" />
-                                    </div>
-                                ))}
-                            </div>
-                            {/* Arrow overlays */}
-                            {[
-                                'left-[calc(33.33%-6px)]',
-                                'left-[calc(66.67%-6px)]',
-                            ].map((pos, i) => (
-                                <div
-                                    key={i}
-                                    className={`absolute top-[36px] ${pos} hidden sm:flex items-center pointer-events-none z-20`}
-                                >
-                                    <div className="w-3 h-px bg-white/20" />
-                                    <HiOutlineArrowRight size={10} className="text-white/30 -ml-0.5" />
-                                </div>
-                            ))}
-                        </div>
-                    </SectionReveal>
                 </Container>
-
-                {/* ── Metrics strip ── */}
-                <div className="mt-20 border-y border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.015)' }}>
-                    <Container>
-                        <SectionReveal delay={0.3}>
-                            <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/[0.06]">
-                                {[
-                                    { value: '100%', label: 'Event Capture', sub: 'commit · push · merge · rebase', valueCls: 'text-brand-400' },
-                                    { value: '0', label: 'Data Overwrites', sub: 'append-only guarantee', valueCls: 'text-brand-400' },
-                                    { value: '30s', label: 'Auto-Refresh', sub: 'dashboard live updates', valueCls: 'text-brand-400' },
-                                    { value: '4+', label: 'Integrations', sub: 'Jenkins · Jira · GitHub · API', valueCls: 'text-brand-400' },
-                                ].map((m, i) => (
-                                    <div key={i} className="text-center py-8 px-4">
-                                        <div className={`text-4xl md:text-5xl font-black tracking-tight mb-1.5 ${m.valueCls}`}>
-                                            {m.value}
-                                        </div>
-                                        <div className="text-xs font-bold text-white/70 uppercase tracking-widest mb-0.5">
-                                            {m.label}
-                                        </div>
-                                        <div className="text-[10px] font-mono text-gray-600">{m.sub}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </SectionReveal>
-                    </Container>
-                </div>
             </section>
 
             {/* ══════════════════════════════════════════════════════
-                CORE
+                1. WORKSTATION CAPTURE
             ══════════════════════════════════════════════════════ */}
-            <section id="core" className="py-28 relative">
-                {/* Section spotlight */}
+            <section id="capture" className="py-28 relative">
                 <div
                     className="absolute top-1/2 left-[-200px] -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
                     style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)' }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-500/[0.02] to-transparent pointer-events-none" />
 
+                <Container>
+                    <SectionLabel
+                        icon={<HiOutlineDesktopComputer size={16} className="text-brand-400" />}
+                        label={t('features.core.badge') as string}
+                        iconCls="text-brand-400 bg-brand-500/10 border-brand-500/25"
+                        textCls="text-brand-400"
+                        lineCls="from-brand-500/30"
+                    />
+
+                    <div className="mb-12 max-w-3xl">
+                         <h2 className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight">
+                             {t('features.core.title') as string}{' '}
+                             <span className="gradient-text">{t('features.core.titleAccent') as string}</span>
+                         </h2>
+                         <p className="text-gray-400 text-lg leading-relaxed">
+                             {t('features.core.description') as string}
+                         </p>
+                    </div>
+
+                    <div className="grid lg:grid-cols-5 gap-6">
+                        {/* Dominant Terminal Canvas */}
+                        <SectionReveal className="lg:col-span-3">
+                            <div className="glass-card rounded-3xl p-10 h-full border-white/5 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group hover:border-brand-500/30 transition-colors duration-500">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-500/20 transition-colors duration-500" />
+                                
+                                <div className="mb-10 relative z-10 flex items-center justify-between">
+                                    <div>
+                                        <div className="w-14 h-14 rounded-2xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-6 shadow-[0_0_20px_rgba(249,115,22,0.15)] group-hover:scale-110 transition-transform duration-500">
+                                            <HiOutlineCode size={28} />
+                                        </div>
+                                        <h3 className="text-2xl font-bold text-white mb-2">{t('features.commit.title') as string}</h3>
+                                        <p className="text-gray-400 text-sm max-w-sm">
+                                            {t('features.commit.desc') as string}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                {/* Visual Representation Canvas */}
+                                <div className="w-full bg-[#0d0d0d] rounded-xl border border-white/10 p-6 font-mono text-sm relative z-10 shadow-2xl overflow-hidden group-hover:border-brand-500/20 transition-colors duration-500">
+                                     <div className="absolute top-0 left-0 w-1 h-full bg-brand-500/50" />
+                                    <div className="flex gap-2 mb-6 ml-2">
+                                        <div className="w-3 h-3 rounded-full bg-white/10 border border-white/20" />
+                                        <div className="w-3 h-3 rounded-full bg-white/10 border border-white/20" />
+                                        <div className="w-3 h-3 rounded-full bg-white/10 border border-white/20" />
+                                    </div>
+                                    <div className="text-gray-500 ml-2">$ git commit -m &quot;feat: login system&quot;</div>
+                                    <div className="text-brand-400 mt-2 font-semibold ml-2">› Intercepting git hook...</div>
+                                    <div className="text-gray-400 mt-1 ml-2">› Capturing workstation state...</div>
+                                    <div className="text-gray-300 mt-2 font-mono bg-white/5 inline-block px-2 py-1 rounded ml-2 border border-white/10">✓ Evidence logged locally [a3f8c01]</div>
+                                </div>
+                            </div>
+                        </SectionReveal>
+
+                        {/* Offline Sync Canvas */}
+                        <SectionReveal delay={0.1} className="lg:col-span-2">
+                            <div className="glass-card rounded-3xl p-10 h-full border-white/5 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group hover:border-brand-500/30 transition-colors duration-500 flex flex-col">
+                                 <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-500/20 transition-colors duration-500" />
+                                
+                                <div className="mb-10 relative z-10">
+                                    <div className="w-14 h-14 rounded-2xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-6 shadow-[0_0_20px_rgba(249,115,22,0.15)] group-hover:scale-110 transition-transform duration-500">
+                                        <HiOutlineWifi size={28} />
+                                    </div>
+                                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">{t('features.offline.title') as string}</h3>
+                                    <p className="text-gray-400 text-sm">
+                                        {t('features.offline.desc') as string}
+                                    </p>
+                                </div>
+
+                                {/* Visual Representation Canvas */}
+                                <div className="w-full h-40 mt-auto rounded-xl border border-white/10 flex items-center justify-center relative z-10 overflow-hidden bg-black/40 shadow-inner group-hover:border-brand-500/20 transition-colors duration-500">
+                                     <div className="flex flex-col sm:flex-row items-center justify-between w-full px-6 opacity-90 gap-4">
+                                         {/* Dev Machine */}
+                                         <div className="w-14 h-14 shrink-0 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center relative shadow-lg">
+                                             <HiOutlineDesktopComputer size={28} className="text-gray-300" />
+                                         </div>
+                                         
+                                         {/* Broken Network Link */}
+                                         <div className="hidden sm:block flex-1 h-px border-t-2 border-dashed border-gray-600 relative mx-4 group-hover:border-brand-500/30 transition-colors duration-500">
+                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 text-gray-400 text-[9px] font-bold px-2 py-0.5 rounded border border-white/10 shadow-inner">OFFLINE</div>
+                                         </div>
+                                         
+                                         {/* Local Queue Vault */}
+                                         <div className="w-32 h-16 shrink-0 rounded-xl border border-brand-500/40 bg-brand-500/10 flex flex-col justify-center px-4 relative overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.1)] group-hover:border-brand-500/60 transition-colors duration-500">
+                                             <div className="absolute top-0 right-0 w-16 h-16 bg-brand-500/20 blur-xl group-hover:bg-brand-500/30 transition-colors duration-500" />
+                                             <div className="text-[9px] text-brand-400 font-bold mb-1.5 tracking-widest leading-none shrink-0 relative z-10">LOCAL QUEUE</div>
+                                             <div className="flex gap-1 grayscale-0 relative z-10">
+                                                 <div className="w-1/3 h-1 bg-brand-400 rounded-sm shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                                                 <div className="w-1/3 h-1 bg-brand-500/60 rounded-sm" />
+                                                 <div className="w-1/3 h-1 bg-brand-500/30 rounded-sm" />
+                                             </div>
+                                         </div>
+                                     </div>
+                                </div>
+                            </div>
+                        </SectionReveal>
+                    </div>
+                </Container>
+            </section>
+
+             {/* ══════════════════════════════════════════════════════
+                2. GOVERNANCE ENGINE
+            ══════════════════════════════════════════════════════ */}
+            <section id="governance" className="py-28 relative bg-surface-100/30">
                 <Container>
                     <SectionLabel
                         icon={<HiOutlineShieldCheck size={16} className="text-brand-400" />}
-                        label="Core"
+                        label={t('features.policy.badge') as string}
                         iconCls="text-brand-400 bg-brand-500/10 border-brand-500/25"
                         textCls="text-brand-400"
                         lineCls="from-brand-500/30"
                     />
 
-                    {/* Bento grid — Row 1 */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                    <div className="mb-12">
+                         <h2 className="text-3xl md:text-4xl font-black text-white mb-3">
+                             {t('features.policy.title') as string}{' '}
+                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-400">{t('features.policy.titleAccent') as string}</span>
+                         </h2>
+                         <p className="text-gray-400 max-w-xl text-sm">
+                             {t('features.policy.description') as string}
+                         </p>
+                    </div>
 
-                        {/* [A] Terminal card — 2 cols */}
+                    <div className="grid lg:grid-cols-3 gap-6">
                         <SectionReveal className="lg:col-span-2">
-                            <div className="glass-card rounded-2xl overflow-hidden glow-border h-full group hover:-translate-y-1 transition-transform duration-300 relative">
-                                <div
-                                    className="absolute -top-20 -right-20 w-80 h-80 rounded-full pointer-events-none"
-                                    style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.1) 0%, transparent 70%)' }}
-                                />
-                                <div className="p-7 md:p-8 relative z-10 flex flex-col h-full">
-                                    <div className="w-14 h-14 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-5 group-hover:bg-brand-500/20 transition-colors">
-                                        <HiOutlineShieldCheck size={26} />
-                                    </div>
-                                    <h3 className="text-2xl font-black text-white mb-2">
-                                        {t('features.commit.title') as string}
-                                    </h3>
-                                    <p className="text-gray-400 text-sm leading-relaxed mb-7 max-w-md">
-                                        {t('features.commit.desc') as string}
-                                    </p>
-
-                                    {/* Terminal mockup */}
-                                    <div className="mt-auto bg-black/60 rounded-xl border border-white/[0.07] overflow-hidden font-mono">
-                                        {/* Title bar */}
-                                        <div className="flex items-center gap-1.5 px-4 py-3 bg-white/[0.04] border-b border-white/[0.06]">
-                                            <div className="flex gap-1.5">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-                                                <div className="w-2.5 h-2.5 rounded-full bg-white/20" />
-                                                <div className="w-2.5 h-2.5 rounded-full bg-brand-500/70" />
-                                            </div>
-                                            <span className="text-gray-600 ml-2.5 text-[10px] tracking-wide flex-1">
-                                                gitgov · event log · live
-                                            </span>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                                                <span className="text-gray-600 text-[10px]">capturing</span>
-                                            </div>
-                                        </div>
-                                        {/* Events */}
-                                        <div className="p-4 space-y-3">
-                                            {[
-                                                { type: 'commit', sha: 'a3f8c2e', msg: 'feat: add Jenkins correlation widget', ago: '2ms', typeCls: 'text-brand-400', dotCls: 'bg-brand-400' },
-                                                { type: 'push  ', sha: 'a3f8c2e', msg: '→ origin/main · 3 files changed', ago: '3ms', typeCls: 'text-brand-300', dotCls: 'bg-brand-300' },
-                                                { type: 'commit', sha: 'b91d04f', msg: 'fix: offset default in pagination', ago: '12s', typeCls: 'text-brand-400', dotCls: 'bg-brand-400' },
-                                                { type: 'stage ', sha: 'c44e71a', msg: 'src/handlers.rs · src/models.rs', ago: '28s', typeCls: 'text-gray-400', dotCls: 'bg-gray-500' },
-                                            ].map((row, i) => (
-                                                <div key={i} className="flex items-center gap-3 text-[11px] leading-none">
-                                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${row.dotCls}`} />
-                                                    <span className={`${row.typeCls} font-bold w-[46px] shrink-0`}>{row.type}</span>
-                                                    <span className="text-gray-500/80 shrink-0">{row.sha}</span>
-                                                    <span className="text-gray-300 truncate flex-1">{row.msg}</span>
-                                                    <span className="text-gray-600 shrink-0">{row.ago}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        {/* Status bar */}
-                                        <div className="px-4 py-2.5 bg-white/[0.025] border-t border-white/[0.05] flex items-center gap-4">
-                                            {[
-                                                { key: 'events/min', val: '247', valCls: 'text-brand-400' },
-                                                { key: 'queue', val: '0', valCls: 'text-brand-400' },
-                                                { key: 'uptime', val: '99.9%', valCls: 'text-brand-400' },
-                                            ].map((stat, i) => (
-                                                <React.Fragment key={stat.key}>
-                                                    {i > 0 && <div className="w-px h-3 bg-white/10" />}
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-[9px] text-gray-600 font-mono uppercase tracking-wider">{stat.key}</span>
-                                                        <span className={`text-[10px] font-bold ${stat.valCls}`}>{stat.val}</span>
-                                                    </div>
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
-                                    </div>
+                            <div className="glass-card rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300 h-full border-white/5">
+                                <div className="w-12 h-12 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-6">
+                                    <HiOutlineClipboardCheck size={24} />
                                 </div>
+                                <h3 className="text-xl font-bold text-white mb-3">{t('features.policy.check.title') as string}</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed">
+                                    {t('features.policy.check.desc') as string}
+                                </p>
                             </div>
                         </SectionReveal>
 
-                        {/* [B] Zero overwrites stat card — 1 col */}
                         <SectionReveal delay={0.1}>
-                            <div className="glass-card rounded-2xl p-6 h-full hover:-translate-y-1 transition-transform duration-300 relative overflow-hidden group flex flex-col">
-                                {/* Watermark number */}
-                                <div className="absolute -right-3 -bottom-3 text-[120px] font-black leading-none select-none pointer-events-none text-brand-400/[0.06]">
-                                    0
-                                </div>
-                                <div className="relative z-10 flex flex-col h-full">
-                                    <div className="w-10 h-10 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0 text-brand-400 mb-5">
-                                        <HiOutlineLockClosed size={20} />
-                                    </div>
-                                    <h3 className="text-base font-black text-white mb-2 leading-tight">
-                                        {t('features.appendOnly.title') as string}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 leading-relaxed mb-6">
-                                        {t('features.appendOnly.desc') as string}
-                                    </p>
-                                    {/* Big stat */}
-                                    <div className="mt-auto">
-                                        <div className="flex items-baseline gap-2 mb-1">
-                                            <span className="text-5xl font-black text-brand-400 leading-none">0</span>
-                                            <span className="text-sm font-bold text-white/60">overwrites</span>
+                             <div className="glass-card rounded-2xl p-8 hover:-translate-y-1 transition-transform duration-300 h-full border-white/5 flex flex-col justify-center">
+                                 <div className="space-y-4">
+                                    {governanceModes.map((mode, i) => (
+                                        <div key={i} className="flex items-center gap-3">
+                                            <HiOutlineCheckCircle className="text-brand-400" size={18} />
+                                            <span className="text-sm font-semibold text-gray-200">{mode}</span>
                                         </div>
-                                        <p className="text-[10px] font-mono text-gray-600">UUID dedup · append-only guarantee</p>
-                                        <div className="mt-5 pt-5 border-t border-white/[0.06] flex flex-col gap-2">
-                                            {['0 deletes', '0 updates', '∞ reads'].map((item, i) => (
-                                                <div key={i} className="flex items-center gap-2">
-                                                    <HiOutlineCheckCircle size={12} className="text-brand-400 shrink-0" />
-                                                    <span className="text-[11px] font-mono text-gray-500">{item}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-                    </div>
-
-                    {/* Bento grid — Row 2 */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-
-                        {/* [C] Policy card with toml snippet */}
-                        <SectionReveal delay={0.15} className="flex">
-                            <div className="glass-card rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300 group w-full flex flex-col">
-                                <div className="flex items-start gap-4 flex-1">
-                                    <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center shrink-0 text-brand-400">
-                                        <HiOutlineClipboardCheck size={20} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <h3 className="text-sm font-black text-white">{t('features.policy.title') as string}</h3>
-                                            <span className="px-1.5 py-0.5 text-[9px] font-black tracking-widest uppercase rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                                                {t('advisory') as string}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                                            {t('features.policy.desc') as string}
-                                        </p>
-                                        {/* gitgov.toml snippet */}
-                                        <div className="bg-black/50 rounded-lg border border-white/[0.06] overflow-hidden">
-                                            <div className="px-3 py-1.5 bg-white/[0.03] border-b border-white/[0.04] flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-brand-400/50" />
-                                                <span className="text-[9px] font-mono text-gray-600">gitgov.toml</span>
-                                            </div>
-                                            <div className="px-3 py-2.5 text-[10px] font-mono space-y-1">
-                                                <div><span className="text-gray-600">[policy]</span></div>
-                                                <div>
-                                                    <span className="text-gray-500">branch_pattern</span>
-                                                    <span className="text-gray-600"> = </span>
-                                                    <span className="text-brand-400/80">&quot;feat/*&quot;</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-gray-500">require_ticket</span>
-                                                    <span className="text-gray-600"> = </span>
-                                                    <span className="text-brand-400/80">true</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-gray-500">enforce_msg_format</span>
-                                                    <span className="text-gray-600"> = </span>
-                                                    <span className="text-brand-400/80">true</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        {/* [D] Offline resilience with retry bars */}
-                        <SectionReveal delay={0.2} className="flex">
-                            <div className="glass-card rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300 group w-full flex flex-col">
-                                <div className="flex items-start gap-4 flex-1">
-                                    <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center shrink-0 text-brand-400">
-                                        <HiOutlineWifi size={20} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-sm font-black text-white mb-2">{t('features.offline.title') as string}</h3>
-                                        <p className="text-xs text-gray-500 leading-relaxed mb-5">
-                                            {t('features.offline.desc') as string}
-                                        </p>
-                                        {/* Exponential backoff visualization */}
-                                        <div className="bg-black/30 rounded-lg border border-white/[0.05] px-4 py-3">
-                                            <div className="text-[9px] font-mono text-gray-600 uppercase tracking-wider mb-3">
-                                                retry schedule · exponential backoff
-                                            </div>
-                                            <div className="flex items-end gap-2 h-10">
-                                                {[
-                                                    { delay: '1s', h: 18, cls: 'bg-red-400/50' },
-                                                    { delay: '2s', h: 28, cls: 'bg-red-400/50' },
-                                                    { delay: '5s', h: 38, cls: 'bg-white/20' },
-                                                    { delay: '10s', h: 52, cls: 'bg-white/20' },
-                                                    { delay: '20s', h: 68, cls: 'bg-brand-400/60' },
-                                                    { delay: '40s', h: 82, cls: 'bg-brand-400/70' },
-                                                ].map((bar, i) => (
-                                                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                                        <div
-                                                            className={`w-full rounded-sm ${bar.cls}`}
-                                                            style={{ height: `${bar.h}%` }}
-                                                        />
-                                                        <span className="text-[7px] font-mono text-gray-700">{bar.delay}</span>
-                                                    </div>
-                                                ))}
-                                                <div className="flex items-end pb-3.5">
-                                                    <span className="text-[9px] font-mono text-gray-600 whitespace-nowrap ml-1">→ ×32</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                    ))}
+                                 </div>
+                             </div>
                         </SectionReveal>
                     </div>
                 </Container>
             </section>
 
-            {/* ══════════════════════════════════════════════════════
-                INFRASTRUCTURE
+             {/* ══════════════════════════════════════════════════════
+                3. INTEGRATIONS & CORRELATION
             ══════════════════════════════════════════════════════ */}
-            <section id="infra" className="py-28 relative">
-                {/* Dot grid */}
-                <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                        opacity: 0.025,
-                        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(249,115,22,0.9) 1px, transparent 0)`,
-                        backgroundSize: '44px 44px',
-                    }}
-                />
-                {/* Section spotlight */}
-                <div
+            <section id="correlation" className="py-28 relative">
+                 <div
                     className="absolute top-1/2 right-[-200px] -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-                    style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)' }}
+                    style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.07) 0%, transparent 65%)' }}
                 />
-
-                <Container>
-                    <SectionLabel
-                        icon={<HiOutlineDocumentSearch size={16} className="text-brand-400" />}
-                        label="Infrastructure"
-                        iconCls="text-brand-400 bg-brand-500/10 border-brand-500/25"
-                        textCls="text-brand-400"
-                        lineCls="from-brand-500/30"
-                    />
-
-                    <div className="grid lg:grid-cols-2 gap-8 items-stretch">
-                        {/* Left — full-height card */}
-                        <SectionReveal direction="left" className="flex">
-                            <div
-                                className="glass-card rounded-2xl p-7 flex flex-col justify-between w-full"
-                                style={{ background: 'linear-gradient(145deg, rgba(249,115,22,0.05), rgba(249,115,22,0.01)), #0d1117' }}
-                            >
-                                <div>
-                                    <h2 className="text-3xl md:text-4xl font-black text-white mb-3 leading-[0.95]">
-                                        {t('features.infra.title') as string}{' '}
-                                        <span className="gradient-text">{t('features.infra.titleAccent') as string}</span>
-                                    </h2>
-                                    <p className="text-gray-400 leading-relaxed mb-7 text-sm">
-                                        {t('features.infra.description') as string}
-                                    </p>
-
-                                    {/* Spec table */}
-                                    <div className="border-t border-white/[0.07] pt-5 space-y-3 mb-7">
-                                        {[
-                                            { label: 'Event ingestion', val: 'Batch · deduplicated' },
-                                            { label: 'Auto-refresh', val: '30 s interval' },
-                                            { label: 'Access roles', val: 'Admin · Dev · PM · Architect' },
-                                            { label: 'Backend', val: 'Rust · Axum · PostgreSQL' },
-                                            { label: 'Event scoping', val: 'Admin sees all · Dev sees own' },
-                                            { label: 'Auth', val: 'Bearer token · SHA256 hashed' },
-                                            { label: 'Rate limiting', val: '240 events/min default' },
-                                            { label: 'Deduplication', val: 'UUID per event · idempotent' },
-                                        ].map((row) => (
-                                            <div key={row.label} className="flex items-center gap-3">
-                                                <HiOutlineCheckCircle size={13} className="text-brand-400 shrink-0" />
-                                                <span className="text-gray-500 text-xs">{row.label}</span>
-                                                <span className="text-gray-300 font-semibold ml-auto text-right text-xs font-mono">
-                                                    {row.val}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Bottom — API endpoints */}
-                                <div className="bg-black/40 rounded-xl border border-white/[0.06] overflow-hidden">
-                                    <div className="px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.05] flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                                        <span className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">
-                                            Key API endpoints
-                                        </span>
-                                    </div>
-                                    <div className="divide-y divide-white/[0.04]">
-                                        {[
-                                            { method: 'POST', path: '/events', note: 'batch ingest' },
-                                            { method: 'GET', path: '/logs', note: 'scoped by role' },
-                                            { method: 'GET', path: '/stats', note: 'admin only' },
-                                            { method: 'GET', path: '/dashboard', note: 'admin only' },
-                                            { method: 'POST', path: '/integrations/jenkins', note: 'CI events' },
-                                            { method: 'POST', path: '/integrations/jira', note: 'ticket coverage' },
-                                            { method: 'GET', path: '/health', note: 'public' },
-                                        ].map((ep, i) => (
-                                            <div key={i} className="flex items-center gap-3 px-4 py-2">
-                                                <span className={`text-[9px] font-mono font-black w-8 shrink-0 ${ep.method === 'POST' ? 'text-brand-400' : 'text-gray-400'}`}>
-                                                    {ep.method}
-                                                </span>
-                                                <span className="text-[10px] font-mono text-gray-300 flex-1">{ep.path}</span>
-                                                <span className="text-[9px] font-mono text-gray-600 shrink-0">{ep.note}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        {/* Right — feature cards */}
-                        <div className="space-y-4">
-
-                            {/* Centralized store with event table */}
-                            <SectionReveal delay={0} direction="right">
-                                <div className="glass-card rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300 group">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-11 h-11 rounded-xl border border-brand-500/25 bg-brand-500/10 flex items-center justify-center shrink-0 text-brand-400">
-                                            <HiOutlineDocumentSearch size={22} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-base font-black text-white mb-1.5 group-hover:text-brand-300 transition-colors">
-                                                {t('features.centralized.title') as string}
-                                            </h3>
-                                            <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                                                {t('features.centralized.desc') as string}
-                                            </p>
-                                            {/* Mini event table */}
-                                            <div className="bg-black/40 rounded-lg border border-white/[0.06] overflow-hidden">
-                                                <div
-                                                    className="grid px-3 py-2 bg-white/[0.03] border-b border-white/[0.05]"
-                                                    style={{ gridTemplateColumns: '76px 1fr 48px' }}
-                                                >
-                                                    {['event_type', 'user_login', 'ts'].map((h) => (
-                                                        <span key={h} className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">
-                                                            {h}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                {[
-                                                    { type: 'commit', user: 'carlos.dev', ts: 'now' },
-                                                    { type: 'push', user: 'carlos.dev', ts: '3s' },
-                                                    { type: 'stage', user: 'ana.pm', ts: '9s' },
-                                                ].map((row, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="grid px-3 py-1.5 border-b border-white/[0.03] last:border-0"
-                                                        style={{ gridTemplateColumns: '76px 1fr 48px' }}
-                                                    >
-                                                        <span className="text-[10px] font-mono text-brand-400">{row.type}</span>
-                                                        <span className="text-[10px] font-mono text-gray-400">{row.user}</span>
-                                                        <span className="text-[10px] font-mono text-gray-600">{row.ts}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 mt-2.5">
-                                                <div className="w-1 h-1 rounded-full bg-brand-400" />
-                                                <span className="text-[10px] font-mono text-gray-600">
-                                                    PostgreSQL · Supabase · append-only · UUID dedup
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </SectionReveal>
-
-                            {/* Real-time visibility with filter pills */}
-                            <SectionReveal delay={0.1} direction="right">
-                                <div className="glass-card rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300 group">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-11 h-11 rounded-xl border border-brand-500/20 bg-brand-500/10 flex items-center justify-center shrink-0 text-brand-400">
-                                            <HiOutlineEye size={22} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-base font-black text-white mb-1.5 group-hover:text-brand-300 transition-colors">
-                                                {t('features.realtime.title') as string}
-                                            </h3>
-                                            <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                                                {t('features.realtime.desc') as string}
-                                            </p>
-                                            {/* Active filter pills */}
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {[
-                                                    { label: 'author: carlos' },
-                                                    { label: 'branch: main' },
-                                                    { label: 'type: commit' },
-                                                    { label: 'last 7d' },
-                                                ].map((f, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-semibold border text-brand-400 border-brand-500/25 bg-brand-500/10"
-                                                    >
-                                                        <span className="opacity-60">×</span> {f.label}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </SectionReveal>
-
-                            {/* Admin dashboard with 7-day bar chart */}
-                            <SectionReveal delay={0.2} direction="right">
-                                <div className="glass-card rounded-2xl p-6 hover:-translate-y-1 transition-transform duration-300 group">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-11 h-11 rounded-xl border border-brand-500/20 bg-brand-500/10 flex items-center justify-center shrink-0 text-brand-400">
-                                            <HiOutlineDesktopComputer size={22} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-base font-black text-white mb-1.5 group-hover:text-brand-300 transition-colors">
-                                                {t('features.dashboard.title') as string}
-                                            </h3>
-                                            <p className="text-sm text-gray-400 leading-relaxed mb-4">
-                                                {t('features.dashboard.desc') as string}
-                                            </p>
-                                            {/* 7-day pipeline health bars */}
-                                            <div className="bg-black/30 rounded-lg border border-white/[0.05] px-4 py-3">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-[9px] font-mono text-gray-600 uppercase tracking-wider">
-                                                        pipeline health · 7 days
-                                                    </span>
-                                                    <span className="text-[9px] font-mono text-brand-400 font-bold">
-                                                        30s auto-refresh
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-end gap-1.5 h-8">
-                                                    {[68, 84, 58, 92, 76, 95, 81].map((pct, i) => (
-                                                        <div
-                                                            key={i}
-                                                            className="flex-1 rounded-sm overflow-hidden flex flex-col justify-end"
-                                                            style={{ background: 'rgba(249,115,22,0.08)' }}
-                                                        >
-                                                            <div
-                                                                className="rounded-sm"
-                                                                style={{
-                                                                    height: `${pct}%`,
-                                                                    background:
-                                                                        pct > 80
-                                                                            ? 'rgba(249,115,22,0.7)'
-                                                                            : pct > 65
-                                                                                ? 'rgba(249,115,22,0.45)'
-                                                                                : 'rgba(248,113,113,0.55)',
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="flex justify-between mt-1.5">
-                                                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-                                                        <span key={d} className="text-[8px] font-mono text-gray-700 flex-1 text-center">
-                                                            {d}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </SectionReveal>
-                        </div>
-                    </div>
-                </Container>
-            </section>
-
-            {/* ══════════════════════════════════════════════════════
-                INTEGRATIONS
-            ══════════════════════════════════════════════════════ */}
-            <section id="integrations" className="py-28 relative overflow-hidden">
-                {/* Section spotlight */}
-                <div
-                    className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full pointer-events-none"
-                    style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.06) 0%, transparent 65%)' }}
-                />
-
                 <Container>
                     <SectionLabel
                         icon={<HiOutlinePuzzle size={16} className="text-brand-400" />}
-                        label="Integrations"
+                        label={t('features.integrations.badge') as string}
                         iconCls="text-brand-400 bg-brand-500/10 border-brand-500/25"
                         textCls="text-brand-400"
                         lineCls="from-brand-500/30"
                     />
 
-                    <SectionReveal>
-                        <div className="mb-16">
-                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3 leading-[0.95]">
-                                {t('features.integrations.title') as string}{' '}
-                                <span className="gradient-text">{t('features.integrations.titleAccent') as string}</span>
-                            </h2>
-                            <p className="text-gray-400 max-w-xl text-sm">
-                                {t('features.integrations.description') as string}
-                            </p>
-                        </div>
-                    </SectionReveal>
-
-                    <div className="grid md:grid-cols-3 gap-5">
-
-                        {/* Jenkins */}
-                        <SectionReveal delay={0}>
-                            <div className="group glass-card rounded-2xl overflow-hidden hover:-translate-y-2 transition-transform duration-300 h-full flex flex-col">
-                                <div className="h-[3px] bg-brand-500/50" />
-                                <div className="p-6 flex flex-col flex-1">
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
-                                            <HiOutlineLightningBolt size={24} className="text-brand-400" />
-                                        </div>
-                                        <span className="px-2.5 py-1 text-[9px] font-black tracking-widest uppercase rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/25">
-                                            Jenkins
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-black text-white mb-2 group-hover:text-brand-300 transition-colors">
-                                        {t('features.jenkins.title') as string}
-                                    </h3>
-                                    <p className="text-sm text-gray-400 leading-relaxed mb-5 flex-1">
-                                        {t('features.jenkins.desc') as string}
-                                    </p>
-
-                                    {/* Pipeline stages visualization */}
-                                    <div className="mb-5 bg-black/40 rounded-xl p-3.5 border border-white/[0.06]">
-                                        <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest mb-3">
-                                            pipeline · last run
-                                        </div>
-                                        <div className="flex items-stretch gap-1">
-                                            {[
-                                                { stage: 'Build', ok: true, time: '2m14s' },
-                                                { stage: 'Test', ok: true, time: '4m32s' },
-                                                { stage: 'Deploy', ok: true, time: '1m03s' },
-                                            ].map((s, i) => (
-                                                <React.Fragment key={i}>
-                                                    <div className="flex-1 bg-white/[0.03] rounded-lg p-2.5 text-center border border-white/[0.04]">
-                                                        <div
-                                                            className={`text-[9px] font-mono font-bold mb-1 ${s.ok ? 'text-brand-400' : 'text-red-400'
-                                                                }`}
-                                                        >
-                                                            {s.ok ? '●' : '✕'} {s.stage}
-                                                        </div>
-                                                        <div className="text-[8px] text-gray-600 font-mono">{s.time}</div>
-                                                    </div>
-                                                    {i < 2 && (
-                                                        <div className="flex items-center shrink-0">
-                                                            <div className="w-2 h-px bg-white/15" />
-                                                            <HiOutlineArrowRight size={8} className="text-white/20" />
-                                                        </div>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
-                                        <div className="mt-2.5 flex items-center gap-2">
-                                            <span className="text-[9px] font-mono text-gray-600">commit a3f8c2e</span>
-                                            <div className="flex-1 h-px bg-white/[0.06]" />
-                                            <span className="text-[9px] font-mono text-brand-400">all passed</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-white/[0.06] space-y-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-                                            <span className="text-xs text-gray-400 font-bold">Live · V1.2-A</span>
-                                        </div>
-                                        <p className="text-[11px] font-mono text-gray-600">
-                                            POST /integrations/jenkins · admin Bearer
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        {/* Jira */}
-                        <SectionReveal delay={0.1}>
-                            <div className="group glass-card rounded-2xl overflow-hidden hover:-translate-y-2 transition-transform duration-300 h-full flex flex-col">
-                                <div className="h-[3px] bg-brand-500/50" />
-                                <div className="p-6 flex flex-col flex-1">
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
-                                            <HiOutlinePuzzle size={24} className="text-brand-400" />
-                                        </div>
-                                        <span className="px-2.5 py-1 text-[9px] font-black tracking-widest uppercase rounded-full bg-white/5 text-gray-400 border border-white/10">
-                                            {t('preview') as string}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-black text-white mb-2 group-hover:text-brand-300 transition-colors">
-                                        {t('features.jira.title') as string}
-                                    </h3>
-                                    <p className="text-sm text-gray-400 leading-relaxed mb-5 flex-1">
-                                        {t('features.jira.desc') as string}
-                                    </p>
-
-                                    {/* Ticket coverage visualization */}
-                                    <div className="mb-5 bg-black/40 rounded-xl p-3.5 border border-white/[0.06]">
-                                        <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest mb-3">
-                                            ticket coverage
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            {[
-                                                { id: 'PROJ-123', msg: 'feat: auth refresh', linked: true },
-                                                { id: 'PROJ-456', msg: 'fix: offset default', linked: true },
-                                                { id: '–', msg: 'style: lint fixes', linked: false },
-                                            ].map((item, i) => (
-                                                <div key={i} className="flex items-center gap-2.5 text-[10px] font-mono">
-                                                    <span
-                                                        className={`shrink-0 w-16 ${item.linked ? 'text-brand-400' : 'text-gray-600'
-                                                            }`}
-                                                    >
-                                                        {item.id}
-                                                    </span>
-                                                    <span className="text-gray-500 truncate flex-1">{item.msg}</span>
-                                                    <span
-                                                        className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-bold ${item.linked
-                                                                ? 'text-brand-400 bg-brand-400/10'
-                                                                : 'text-red-400 bg-red-400/10'
-                                                            }`}
-                                                    >
-                                                        {item.linked ? '✓' : '✗'}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="mt-2.5 pt-2.5 border-t border-white/[0.05] flex items-center justify-between">
-                                            <span className="text-[9px] font-mono text-gray-600">2 / 3 linked</span>
-                                            <div className="flex-1 mx-3 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                                                <div className="h-full w-2/3 rounded-full bg-brand-400/50" />
-                                            </div>
-                                            <span className="text-[9px] font-mono text-brand-400 font-bold">66%</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-white/[0.06] space-y-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-brand-400/60" />
-                                            <span className="text-xs text-gray-400 font-bold">Preview · V1.2-B</span>
-                                        </div>
-                                        <p className="text-[11px] font-mono text-gray-600">
-                                            ticket_coverage · correlation_batch
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
-
-                        {/* GitHub */}
-                        <SectionReveal delay={0.2}>
-                            <div className="group glass-card rounded-2xl overflow-hidden hover:-translate-y-2 transition-transform duration-300 h-full flex flex-col">
-                                <div className="h-[3px] bg-brand-500/50" />
-                                <div className="p-6 flex flex-col flex-1">
-                                    <div className="flex items-start justify-between mb-5">
-                                        <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center">
-                                            <HiOutlineTrendingUp size={24} className="text-brand-400" />
-                                        </div>
-                                        <span className="px-2.5 py-1 text-[9px] font-black tracking-widest uppercase rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/25">
-                                            {t('available') as string}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-black text-white mb-2 group-hover:text-brand-300 transition-colors">
-                                        {t('features.github.title') as string}
-                                    </h3>
-                                    <p className="text-sm text-gray-400 leading-relaxed mb-5 flex-1">
-                                        {t('features.github.desc') as string}
-                                    </p>
-
-                                    {/* Webhook events visualization */}
-                                    <div className="mb-5 bg-black/40 rounded-xl p-3.5 border border-white/[0.06]">
-                                        <div className="text-[9px] font-mono text-gray-600 uppercase tracking-widest mb-3">
-                                            webhook events · hmac validated
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5 mb-3">
-                                            {['push', 'create', 'pull_request', 'status', 'review'].map((ev, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-2 py-1 rounded-md text-[9px] font-mono font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20"
-                                                >
-                                                    {ev}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                                            <span className="text-[9px] font-mono text-brand-400">HMAC signature validated</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-white/[0.06] space-y-1.5">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
-                                            <span className="text-xs text-gray-400 font-bold">Available · HMAC</span>
-                                        </div>
-                                        <p className="text-[11px] font-mono text-gray-600">
-                                            /webhooks/github · push · create
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </SectionReveal>
+                    <div className="mb-12">
+                         <h2 className="text-3xl md:text-4xl font-black text-white mb-3">
+                             {t('features.integrations.title') as string}{' '}
+                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-400">{t('features.integrations.titleAccent') as string}</span>
+                         </h2>
+                         <p className="text-gray-400 max-w-xl text-sm">
+                             {t('features.integrations.description') as string}
+                         </p>
                     </div>
 
-                    {/* Auth note */}
-                    <SectionReveal delay={0.3}>
-                        <div className="mt-8 glass rounded-xl px-5 py-4 flex items-center gap-3 max-w-2xl mx-auto border border-white/[0.08]">
-                            <HiOutlineCode size={16} className="text-brand-400 shrink-0" />
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                                All integrations communicate with the Control Plane via authenticated REST API.{' '}
-                                <span className="text-brand-400 font-semibold">Bearer token · no plaintext secrets in logs.</span>
-                            </p>
+                    <SectionReveal>
+                        <div className="w-full glass-card rounded-3xl p-8 lg:p-12 h-full border-white/5 bg-gradient-to-r from-transparent via-brand-500/5 to-transparent relative overflow-hidden group">
+                            
+                            {/* Visual Pipeline Canvas */}
+                            <div className="w-full h-48 md:h-64 rounded-2xl border border-white/5 bg-black/40 mb-12 flex items-center justify-between px-6 md:px-16 relative overflow-hidden shadow-inner hidden md:flex">
+                                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.1)_0%,transparent_70%)]" />
+                                
+                                {/* Node 1: Git */}
+                                <div className="flex flex-col items-center relative z-10 w-24">
+                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(255,255,255,0.05)] text-gray-400 group-hover:text-white transition-colors duration-500">
+                                        <HiOutlineCode size={32} />
+                                    </div>
+                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Git Commit</div>
+                                </div>
+
+                                {/* Link 1 */}
+                                <div className="flex-1 h-px border-t border-brand-500/30 relative overflow-hidden mx-4">
+                                     <div className="absolute top-1/2 left-0 w-12 h-[2px] bg-brand-500 shadow-[0_0_10px_#f97316] -translate-y-1/2" style={{ animation: 'pipeline-flow 2s linear infinite' }} />
+                                </div>
+
+                                {/* Node 2: CI (Jenkins/Actions) */}
+                                <div className="flex flex-col items-center relative z-10 w-24">
+                                    <div className="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/30 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(249,115,22,0.15)] text-brand-400 group-hover:scale-110 transition-transform duration-500">
+                                        <HiOutlineLightningBolt size={32} />
+                                    </div>
+                                    <div className="text-[10px] font-bold text-brand-400 uppercase tracking-widest text-center">CI Pipeline</div>
+                                </div>
+
+                                {/* Link 2 */}
+                                <div className="flex-1 h-px border-t border-brand-500/30 relative overflow-hidden mx-4">
+                                     <div className="absolute top-1/2 left-0 w-12 h-[2px] bg-brand-500 shadow-[0_0_10px_#f97316] -translate-y-1/2" style={{ animation: 'pipeline-flow 2s linear infinite', animationDelay: '1s' }} />
+                                </div>
+
+                                {/* Node 3: Ticket (Jira) */}
+                                <div className="flex flex-col items-center relative z-10 w-24">
+                                    <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(255,255,255,0.05)] text-gray-400 group-hover:text-white transition-colors duration-500">
+                                        <HiOutlineDocumentSearch size={32} />
+                                    </div>
+                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Jira Ticket</div>
+                                </div>
+                            </div>
+                            
+                            {/* Descriptive Text Split */}
+                            <div className="flex flex-col md:flex-row gap-10 lg:gap-20">
+                                <div className="flex-1">
+                                    <h3 className="text-xl md:text-2xl font-bold text-white mb-3 flex items-center gap-3">
+                                        <HiOutlineLightningBolt className="text-brand-400" /> {t('features.jenkins.title') as string}
+                                    </h3>
+                                    <p className="text-gray-400 text-sm leading-relaxed">
+                                        {t('features.jenkins.desc') as string}
+                                    </p>
+                                </div>
+                                <div className="hidden md:block w-px bg-white/10" />
+                                <div className="flex-1">
+                                    <h3 className="text-xl md:text-2xl font-bold text-white mb-3 flex items-center gap-3">
+                                        <HiOutlineDocumentSearch className="text-gray-300" /> {t('features.jira.title') as string}
+                                    </h3>
+                                    <p className="text-gray-400 text-sm leading-relaxed">
+                                        {t('features.jira.desc') as string}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-10 pt-6 border-t border-white/8">
+                                <h3 className="text-lg md:text-xl font-bold text-white mb-2 flex items-center gap-3">
+                                    <HiOutlinePuzzle className="text-brand-400" /> {t('features.github.title') as string}
+                                </h3>
+                                <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">
+                                    {t('features.github.desc') as string}
+                                </p>
+                            </div>
                         </div>
                     </SectionReveal>
                 </Container>
             </section>
 
-            {/* CTA */}
+             {/* ══════════════════════════════════════════════════════
+                4. RISK, READINESS & REPORTING
+            ══════════════════════════════════════════════════════ */}
+             <section id="reporting" className="py-28 relative bg-surface-100/30">
+                <Container>
+                    <SectionLabel
+                        icon={<HiOutlineTrendingUp size={16} className="text-brand-400" />}
+                        label={t('features.risk.badge') as string}
+                        iconCls="text-brand-400 bg-brand-500/10 border-brand-500/25"
+                        textCls="text-brand-400"
+                        lineCls="from-brand-500/30"
+                    />
+
+                    <div className="mb-12">
+                         <h2 className="text-3xl md:text-4xl font-black text-white mb-3">
+                             {t('features.risk.title') as string}{' '}
+                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-400">{t('features.risk.titleAccent') as string}</span>
+                         </h2>
+                         <p className="text-gray-400 max-w-xl text-sm">
+                             {t('features.risk.description') as string}
+                         </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {/* Status Matrix */}
+                        <SectionReveal className="md:col-span-2">
+                            <div className="glass-card rounded-3xl p-8 h-full border-white/5 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+                                
+                                <div className="flex flex-col md:flex-row gap-8 relative z-10">
+                                    <div className="flex-1">
+                                        <div className="w-12 h-12 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 mb-6 shadow-lg">
+                                            <HiOutlineEye size={24} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white mb-3">{t('features.centralized.title') as string}</h3>
+                                        <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
+                                            {t('features.centralized.desc') as string}
+                                        </p>
+                                    </div>
+                                    
+                                    {/* Reporting Surface */}
+                                    <div className="flex-1 min-w-[240px] bg-black/40 border border-white/10 rounded-2xl p-5 shadow-inner">
+                                        <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-4 font-bold">
+                                            {t('features.dashboard.surface.title') as string}
+                                        </div>
+                                        <div className="grid gap-3">
+                                            {reportingSurface.map((item) => (
+                                                <div key={item.title} className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
+                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-brand-400" />
+                                                        <span className="text-[11px] font-semibold tracking-wide text-white">
+                                                            {item.title}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] leading-relaxed text-gray-400">
+                                                        {item.description}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </SectionReveal>
+
+                        {/* Audit Trail Vertical Card */}
+                        <SectionReveal delay={0.1}>
+                             <div className="glass-card rounded-3xl p-8 h-full border-white/5 bg-gradient-to-b from-brand-500/10 to-transparent flex flex-col relative overflow-hidden group">
+                                 <div className="w-12 h-12 rounded-xl bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-400 mb-6 shadow-[0_0_20px_rgba(249,115,22,0.2)]">
+                                    <HiOutlineLockClosed size={24} />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3">{t('features.risk.audit.title') as string}</h3>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                                    {t('features.risk.audit.desc') as string}
+                                </p>
+                                
+                                <div className="mt-auto space-y-2">
+                                     {auditItems.map((item) => (
+                                         <div key={item} className="flex items-center gap-3 text-[10px] font-mono border-b border-white/[0.03] pb-2 last:border-0 last:pb-0">
+                                             <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
+                                             <span className="text-gray-400">{item}</span>
+                                         </div>
+                                     ))}
+                                </div>
+                             </div>
+                        </SectionReveal>
+                    </div>
+                </Container>
+            </section>
+
+            {/* ══════════════════════════════════════════════════════
+                CTA
+            ══════════════════════════════════════════════════════ */}
             <CTASection
                 title={t('features.cta.title') as string}
                 titleAccent={t('features.cta.titleAccent') as string}

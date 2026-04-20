@@ -2,6 +2,7 @@
 title: FAQ
 description: Frequently asked questions about GitGov — what it does, what it doesn't, and how it works.
 order: 8
+category: Evaluate
 ---
 
 ## General
@@ -282,7 +283,7 @@ Configurable per endpoint. Defaults: 240 req/min (events), 60 req/min (admin), 1
 
 ### Does GitGov help with GDPR?
 
-**Yes.** Data minimization, right of access, portability (export), right to erasure, controller/processor distinction. See [Privacy & Signal Liability](/docs/privacy).
+**Yes.** Data minimization, right of access, portability (export), right to erasure, controller/processor distinction. See [Security Policy](/docs/security).
 
 ### Does GitGov help with ISO 27001?
 
@@ -290,7 +291,7 @@ Configurable per endpoint. Defaults: 240 req/min (events), 60 req/min (admin), 1
 
 ### What is a "signal"?
 
-An automated flag for a potential policy deviation (e.g., unauthorized push to protected branch, commit without ticket). **Advisory only** — requires human review. See [Privacy & Signal Liability](/docs/privacy).
+An automated flag for a potential policy deviation (e.g., unauthorized push to protected branch, commit without ticket). **Advisory only** — requires human review. See [Security Policy](/docs/security).
 
 ### Can I review and dismiss signals?
 
@@ -301,6 +302,5 @@ An automated flag for a potential policy deviation (e.g., unauthorized push to p
 ## Related
 
 - [**Security Policy**](/docs/security) — Encryption, storage, access controls.
-- [**Privacy & Signal Liability**](/docs/privacy) — Legal boundaries and GDPR.
 - [**Privacy Policy**](/privacy) — Legal terms for end-users.
 - [**Introduction**](/docs/introduction) — Getting started with GitGov.
