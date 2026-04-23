@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-20
+Updated: 2026-04-23
 
 ## Completed
 
@@ -184,9 +184,10 @@ Updated: 2026-04-20
     - `scripts/jenkins/resolve_quality_gate_matrix_commits.ps1` (correlations-first + signal fallback).
   - Added GitHub Actions optional matrix workflow:
     - `.github/workflows/quality-gate-policy-matrix.yml` (`push/main` + `workflow_dispatch`, auto-skip without config).
-  - Latest local evidence report:
-    - `docs/reports/quality-gate-policy-matrix-local-2026-04-20.md`
-    - `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-20.md`
+  - Evidence reports:
+    - `docs/reports/quality-gate-policy-matrix-local-2026-04-20.md` (baseline)
+    - `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-20.md` (baseline)
+    - `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-23.md` (latest)
 - Jenkins commit/pipeline correlation validated end-to-end (local stack):
   - Ingested client commit event with contract-correct fields (`repo_full_name`, `commit_sha`).
   - Verified `/integrations/jenkins/correlations` resolves pipeline metadata for matching commit SHA.
@@ -221,6 +222,15 @@ Updated: 2026-04-20
   - `scripts/github/harden_repo_governance.ps1` forwards CI preflight flags for end-to-end governance runs (`AllowMissingSonar`, `RequireGitGovTelemetry`, and best-effort `NoFailOnForbidden`).
 - Cloud CI preflight evidence captured:
   - `docs/reports/github-ci-preflight-2026-04-20.md` includes current PAT-scope diagnostic and required permission hints to close strict GitHub-hosted validation.
+- Quality gate matrix revalidated end-to-end (local stack, latest):
+  - `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-23.md`
+  - `docs/reports/quality-gate-matrix-commit-resolution-auto-local-2026-04-23.json`
+  - Result: `PASS` (`warn` allows with violation; `block` denies non-green and allows green).
+- GitHub-hosted matrix dispatch attempt evidence captured:
+  - `docs/reports/quality-gate-policy-matrix-github-attempt-2026-04-23.md` (current PAT receives `403`, required `actions=write`).
+- GitHub-hosted matrix execution evidence captured:
+  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934` (branch `ci/quality-gate-matrix-main`).
+  - Workflow completed but matrix validation steps were skipped by precheck (`missing_gitgov_url_or_api_key`).
 - Public infra preflight automation added:
   - `scripts/deploy/validate_public_infra.ps1` validates domain DNS, TLS certificate, health endpoint, authenticated stats, and webhook/integration route reachability.
   - Local dry-run evidence generated at `docs/reports/public-infra-validation-local-2026-04-20.md` (expected `WARN` on non-HTTPS localhost).
@@ -257,6 +267,9 @@ Updated: 2026-04-20
 - SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
 - GitHub Actions CI config visibility is currently blocked by PAT scope (`secrets=read`, `actions_variables=read`, `administration=read` missing on current token preflight).
+- GitHub-hosted quality-gate matrix cloud execution is pending publication of `.github/workflows/quality-gate-policy-matrix.yml` on `main` (currently present on `tier-risk-sla-tuning`).
+- API-driven cloud matrix dispatch is currently blocked by PAT scope (`actions=write` missing on current token).
+- Cloud matrix precheck still skips in GitHub-hosted runner until repo Actions config provides `GITGOV_URL` + `GITGOV_API_KEY`.
 
 ## Website Feature Claims Alignment
 
@@ -382,7 +395,12 @@ Before adding or keeping any `/features` claim:
    - Token preflight evidence (`scripts/github/check_token_permissions.ps1`): `403` on Actions secrets, Actions variables, and branch protection.
    - Pending for Sonar scan mode: `SONAR_TOKEN` (+ strict visibility check with PAT that has `secrets=read` / `actions_variables=read`).
    - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
-2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI once SonarCloud org onboarding is available (local/Jenkins validation already complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
+   - Note: local app `.env` commonly uses `GITGOV_SERVER_URL`; GitHub Actions workflows require repo variable `GITGOV_URL`.
+2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI (local/Jenkins validation is complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
+   - Publish/merge `.github/workflows/quality-gate-policy-matrix.yml` to `main`.
+   - Configure repo variable/secret used by precheck: `GITGOV_URL` + `GITGOV_API_KEY`.
+   - Run cloud matrix (`workflow_dispatch` or push on `main`) with token/app permissions that include `actions=write` when dispatching via API.
+   - Collect and archive cloud artifact report under `docs/reports/`.
 3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
    - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).

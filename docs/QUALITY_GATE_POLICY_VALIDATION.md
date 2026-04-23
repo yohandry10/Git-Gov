@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-20
+Updated: 2026-04-23
 
 ## Objective
 
@@ -22,6 +22,8 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
    - For GitHub-hosted strict validation, PAT/API visibility must allow:
      - `secrets=read`
      - `actions_variables=read`
+   - For API-driven `workflow_dispatch` automation, PAT/API visibility must allow:
+     - `actions=write`
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
 3. Jenkins uses the current `Jenkinsfile`:
    - `Sonar Scan (Optional)` enabled when `SONAR_TOKEN` + `SONAR_PROJECT_KEY` exist.
@@ -227,7 +229,61 @@ GitHub Actions (cloud, no bloqueante):
 - Precheck: auto-skip si faltan `GITGOV_URL` / `GITGOV_API_KEY`
 - Artefactos: reporte de matrix + resolución de SHAs por run
 
-## Validated Local Evidence (2026-04-20)
+## GitHub-hosted Matrix Status (2026-04-23)
+
+Attempted cloud execution against `yohandry10/Git-Gov` from local automation:
+
+- Workflow file exists on remote branch `tier-risk-sla-tuning`:
+  - `.github/workflows/quality-gate-policy-matrix.yml`
+- Workflow file is not present on `origin/main` yet, so it is not part of the active default-branch workflow inventory.
+- API dispatch attempt returned `403 FORBIDDEN` with header:
+  - `x-accepted-github-permissions: actions=write`
+- Strict CI-config visibility remains best-effort with current PAT:
+  - `403` on Actions secrets and Actions variables read endpoints.
+- GitHub-hosted run executed via temporary push trigger on branch `ci/quality-gate-matrix-main`:
+  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934`
+  - Outcome: workflow completed, matrix steps skipped by precheck.
+  - Logged reason: `missing_gitgov_url_or_api_key`
+
+Blocking gaps to close for cloud matrix validation:
+
+1. Publish/merge `.github/workflows/quality-gate-policy-matrix.yml` to `main`.
+2. Configure repo-level cloud matrix inputs for GitHub-hosted runs:
+   - variable `GITGOV_URL`
+   - secret `GITGOV_API_KEY`
+3. Use PAT (or GitHub App token) with `actions=write` to trigger `workflow_dispatch` from scripts.
+4. For strict CI-config auditing scripts, also grant `secrets=read` and `actions_variables=read`.
+
+## Validated Local Evidence
+
+### 2026-04-23 (latest)
+
+Automated run evidence:
+
+- `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-23.md`
+- `docs/reports/quality-gate-matrix-commit-resolution-auto-local-2026-04-23.json`
+
+Validated against local Docker stack (`gitgov-server` on `:3001`) with repo
+`yohandry10/Git-Gov`:
+
+- Failing Sonar commit: `fd3fb268dc4c34aad9f01aec5e8da3f69017be74`
+- Green Sonar commit: `3a5ddde5c616706e52b5c0ed2ff4e587c6863870`
+
+Observed results:
+
+- `quality_gates=warn` + failing commit:
+  - `allowed=true`
+  - `advisory=true`
+  - `violations` includes `quality_gate_green` with `enforcement=warn`
+- `quality_gates=block` + failing commit:
+  - `allowed=false`
+  - `advisory=false`
+  - `reasons` includes non-green quality gate message
+- `quality_gates=block` + green commit:
+  - `allowed=true`
+  - no `quality_gate_green` violation
+
+### 2026-04-20 (baseline)
 
 Automated run evidence:
 
