@@ -2,7 +2,7 @@ name: Quality Gate Policy Matrix (Optional)
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/quality-gate-matrix-main]
   workflow_dispatch:
     inputs:
       repo_full_name:
@@ -41,14 +41,14 @@ jobs:
     continue-on-error: true
     permissions:
       contents: read
+    env:
+      GITGOV_URL: ${{ vars.GITGOV_URL || vars.GITGOV_SERVER_URL || vars.GIT_GOV_URL || '' }}
+      GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY || secrets.GITGOV_TOKEN || secrets.GITGOV_APIKEY || secrets.GIT_GOV_API_KEY || secrets['GITGOV-API-KEY'] || secrets['gitgov-api-key'] || '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Matrix precheck (GitGov URL + API key)
         id: precheck
-        env:
-          GITGOV_URL: ${{ vars.GITGOV_URL }}
-          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${GITGOV_URL:-}" ] || [ -z "${GITGOV_API_KEY:-}" ]; then
@@ -69,8 +69,6 @@ jobs:
         id: resolve
         shell: pwsh
         env:
-          GITGOV_URL: ${{ vars.GITGOV_URL }}
-          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
           INPUT_REPO: ${{ github.event.inputs.repo_full_name || '' }}
           INPUT_BRANCH: ${{ github.event.inputs.branch || '' }}
           INPUT_FAILING: ${{ github.event.inputs.failing_commit_sha || '' }}
@@ -119,9 +117,6 @@ jobs:
       - name: Run quality gate matrix validator
         if: ${{ steps.precheck.outputs.enabled == 'true' }}
         shell: pwsh
-        env:
-          GITGOV_URL: ${{ vars.GITGOV_URL }}
-          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
         run: |
           $outputPath = "docs/reports/quality-gate-policy-matrix-${{ github.run_id }}.md"
           & ./scripts/jenkins/validate_quality_gate_policy_matrix.ps1 `
