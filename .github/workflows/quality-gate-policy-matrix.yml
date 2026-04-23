@@ -2,7 +2,7 @@ name: Quality Gate Policy Matrix (Optional)
 
 on:
   push:
-    branches: [main, ci/quality-gate-matrix-main]
+    branches: [main]
   workflow_dispatch:
     inputs:
       repo_full_name:
