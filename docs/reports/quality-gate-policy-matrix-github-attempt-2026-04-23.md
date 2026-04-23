@@ -41,6 +41,23 @@ A GitHub-hosted run was executed by temporarily enabling push trigger on branch
 After collecting evidence, branch trigger was reverted in commit
 `7496477` to keep workflow trigger scope as `push/main`.
 
+## Additional Cloud Execution Evidence (Fallback Name Mapping)
+
+A second GitHub-hosted run was executed after extending workflow mapping to accept
+alternate variable/secret names (`GITGOV_SERVER_URL`, `GIT_GOV_URL`,
+`GITGOV_TOKEN`, `GIT_GOV_API_KEY`, and hyphenated variants).
+
+- Run URL: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`
+- Workflow: `Quality Gate Policy Matrix (Optional)`
+- Job conclusion: `success`
+- Effective matrix execution: `skipped`
+- Skip reason from job logs:
+  - `missing_gitgov_url_or_api_key`
+  - `Skipping quality gate matrix: missing GITGOV_URL or GITGOV_API_KEY.`
+
+After collecting evidence, temporary branch trigger was reverted again in commit
+`dbae64c` to keep workflow trigger scope as `push/main`.
+
 ## Missing to Close
 
 1. Ensure `.github/workflows/quality-gate-policy-matrix.yml` is published on `main`.

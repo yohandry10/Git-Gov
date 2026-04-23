@@ -228,9 +228,13 @@ Updated: 2026-04-23
   - Result: `PASS` (`warn` allows with violation; `block` denies non-green and allows green).
 - GitHub-hosted matrix dispatch attempt evidence captured:
   - `docs/reports/quality-gate-policy-matrix-github-attempt-2026-04-23.md` (current PAT receives `403`, required `actions=write`).
+- GitHub Actions config bootstrap attempt (repo variables) remains blocked with current PAT:
+  - `scripts/github/bootstrap_ci_variables.ps1 -GitGovUrl "<url>"` returns `403` (`accepted_permissions=actions_variables=read`), so automation cannot write/verify required repo vars with this token.
 - GitHub-hosted matrix execution evidence captured:
   - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934` (branch `ci/quality-gate-matrix-main`).
   - Workflow completed but matrix validation steps were skipped by precheck (`missing_gitgov_url_or_api_key`).
+  - Re-run after fallback-name mapping update: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`.
+  - Result unchanged: precheck skip (`missing_gitgov_url_or_api_key`).
 - Public infra preflight automation added:
   - `scripts/deploy/validate_public_infra.ps1` validates domain DNS, TLS certificate, health endpoint, authenticated stats, and webhook/integration route reachability.
   - Local dry-run evidence generated at `docs/reports/public-infra-validation-local-2026-04-20.md` (expected `WARN` on non-HTTPS localhost).
@@ -270,6 +274,7 @@ Updated: 2026-04-23
 - GitHub-hosted quality-gate matrix cloud execution is pending publication of `.github/workflows/quality-gate-policy-matrix.yml` on `main` (currently present on `tier-risk-sla-tuning`).
 - API-driven cloud matrix dispatch is currently blocked by PAT scope (`actions=write` missing on current token).
 - Cloud matrix precheck still skips in GitHub-hosted runner until repo Actions config provides `GITGOV_URL` + `GITGOV_API_KEY`.
+- Cloud matrix precheck skip persists even with fallback-name mapping, confirming missing repo-level Actions config rather than name mismatch.
 
 ## Website Feature Claims Alignment
 

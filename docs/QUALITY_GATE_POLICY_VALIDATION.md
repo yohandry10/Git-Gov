@@ -244,6 +244,10 @@ Attempted cloud execution against `yohandry10/Git-Gov` from local automation:
   - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934`
   - Outcome: workflow completed, matrix steps skipped by precheck.
   - Logged reason: `missing_gitgov_url_or_api_key`
+- Second GitHub-hosted run executed after fallback-name mapping update:
+  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`
+  - Outcome: workflow completed, matrix steps skipped by precheck.
+  - Logged reason remains: `missing_gitgov_url_or_api_key`
 
 Blocking gaps to close for cloud matrix validation:
 
