@@ -1,0 +1,141 @@
+name: Quality Gate Policy Matrix (Optional)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      repo_full_name:
+        description: "Repository full name (owner/repo). Empty = current repository."
+        required: false
+        default: ""
+        type: string
+      branch:
+        description: "Branch for commit resolution"
+        required: false
+        default: "main"
+        type: string
+      failing_commit_sha:
+        description: "Optional failing commit SHA override (non-green quality gate)"
+        required: false
+        default: ""
+        type: string
+      green_commit_sha:
+        description: "Optional green commit SHA override"
+        required: false
+        default: ""
+        type: string
+      limit:
+        description: "Correlation/signal lookup limit for auto-resolution"
+        required: false
+        default: "500"
+        type: string
+
+env:
+  GITGOV_ENV: ci
+
+jobs:
+  quality-gate-matrix:
+    name: Validate quality_gates warn/block matrix
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    env:
+      GITGOV_URL: ${{ vars.GITGOV_URL || vars.GITGOV_SERVER_URL || vars.GIT_GOV_URL || '' }}
+      GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY || secrets.GITGOV_TOKEN || secrets.GITGOV_APIKEY || secrets.GIT_GOV_API_KEY || secrets['GITGOV-API-KEY'] || secrets['gitgov-api-key'] || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Matrix precheck (GitGov URL + API key)
+        id: precheck
+        run: |
+          set -euo pipefail
+          if [ -z "${GITGOV_URL:-}" ] || [ -z "${GITGOV_API_KEY:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_gitgov_url_or_api_key" >> "$GITHUB_OUTPUT"
+            echo "Skipping quality gate matrix: missing GITGOV_URL or GITGOV_API_KEY."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Matrix skip notice
+        if: ${{ steps.precheck.outputs.enabled != 'true' }}
+        run: echo "Quality gate matrix skipped (reason=${{ steps.precheck.outputs.reason }})."
+
+      - name: Resolve commits for matrix
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        id: resolve
+        shell: pwsh
+        env:
+          INPUT_REPO: ${{ github.event.inputs.repo_full_name || '' }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch || '' }}
+          INPUT_FAILING: ${{ github.event.inputs.failing_commit_sha || '' }}
+          INPUT_GREEN: ${{ github.event.inputs.green_commit_sha || '' }}
+          INPUT_LIMIT: ${{ github.event.inputs.limit || '' }}
+          DEFAULT_REPO: ${{ github.repository }}
+        run: |
+          $repo = $env:INPUT_REPO
+          if ([string]::IsNullOrWhiteSpace($repo)) { $repo = $env:DEFAULT_REPO }
+
+          $branch = $env:INPUT_BRANCH
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
+
+          $limit = $env:INPUT_LIMIT
+          if ([string]::IsNullOrWhiteSpace($limit)) { $limit = "500" }
+
+          $failing = $env:INPUT_FAILING
+          $green = $env:INPUT_GREEN
+          $resolutionPath = "docs/reports/quality-gate-matrix-commit-resolution-${{ github.run_id }}.json"
+
+          if ([string]::IsNullOrWhiteSpace($failing) -or [string]::IsNullOrWhiteSpace($green)) {
+            & ./scripts/jenkins/resolve_quality_gate_matrix_commits.ps1 `
+              -GitGovUrl "$env:GITGOV_URL" `
+              -ApiKey "$env:GITGOV_API_KEY" `
+              -RepoFullName "$repo" `
+              -Branch "$branch" `
+              -Limit ([int]$limit) `
+              -OutputPath "$resolutionPath"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            $resolved = Get-Content $resolutionPath -Raw | ConvertFrom-Json
+            if ([string]::IsNullOrWhiteSpace($failing)) { $failing = [string]$resolved.failing_commit_sha }
+            if ([string]::IsNullOrWhiteSpace($green)) { $green = [string]$resolved.green_commit_sha }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($failing) -or [string]::IsNullOrWhiteSpace($green)) {
+            throw "Unable to resolve failing/green commit SHAs."
+          }
+
+          "repo_full_name=$repo" >> $env:GITHUB_OUTPUT
+          "branch=$branch" >> $env:GITHUB_OUTPUT
+          "failing_commit_sha=$failing" >> $env:GITHUB_OUTPUT
+          "green_commit_sha=$green" >> $env:GITHUB_OUTPUT
+          "resolution_path=$resolutionPath" >> $env:GITHUB_OUTPUT
+
+      - name: Run quality gate matrix validator
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        shell: pwsh
+        run: |
+          $outputPath = "docs/reports/quality-gate-policy-matrix-${{ github.run_id }}.md"
+          & ./scripts/jenkins/validate_quality_gate_policy_matrix.ps1 `
+            -GitGovUrl "$env:GITGOV_URL" `
+            -ApiKey "$env:GITGOV_API_KEY" `
+            -RepoFullName "${{ steps.resolve.outputs.repo_full_name }}" `
+            -Branch "${{ steps.resolve.outputs.branch }}" `
+            -FailingCommitSha "${{ steps.resolve.outputs.failing_commit_sha }}" `
+            -GreenCommitSha "${{ steps.resolve.outputs.green_commit_sha }}" `
+            -OutputPath "$outputPath"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload matrix artifacts
+        if: ${{ always() && steps.precheck.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-policy-matrix-${{ github.run_id }}
+          path: |
+            docs/reports/quality-gate-policy-matrix-${{ github.run_id }}.md
+            docs/reports/quality-gate-matrix-commit-resolution-${{ github.run_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
