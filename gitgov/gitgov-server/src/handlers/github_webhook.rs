@@ -449,25 +449,29 @@ fn extract_sender_actor(payload: &serde_json::Value) -> (Option<String>, Option<
     )
 }
 
-async fn store_generic_repo_evidence_event(
-    state: &Arc<AppState>,
-    delivery_id: &str,
-    payload: &serde_json::Value,
-    event_type: &str,
+struct GenericRepoEvidenceEvent<'a> {
+    state: &'a Arc<AppState>,
+    delivery_id: &'a str,
+    payload: &'a serde_json::Value,
+    event_type: &'a str,
     actor_login: Option<String>,
     actor_id: Option<i64>,
     ref_name: Option<String>,
     ref_type: Option<String>,
     after_sha: Option<String>,
     metadata: serde_json::Value,
+}
+
+async fn store_generic_repo_evidence_event(
+    input: GenericRepoEvidenceEvent<'_>,
 ) -> Result<(), String> {
-    let repo_val = match payload.get("repository") {
+    let repo_val = match input.payload.get("repository") {
         Some(r) => r,
         None => {
             tracing::warn!(
                 "{} event missing 'repository' field, delivery_id={}",
-                event_type,
-                delivery_id
+                input.event_type,
+                input.delivery_id
             );
             return Ok(());
         }
@@ -477,53 +481,53 @@ async fn store_generic_repo_evidence_event(
         Err(e) => {
             tracing::warn!(
                 "Failed to parse repository in {} event: {}, delivery_id={}",
-                event_type,
+                input.event_type,
                 e,
-                delivery_id
+                input.delivery_id
             );
             return Ok(());
         }
     };
-    let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
+    let (org_id, repo_id) = get_or_create_org_repo(&input.state.db, &repo).await?;
 
-    let commit_shas = after_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
-    let mut enriched_payload = payload.clone();
+    let commit_shas = input.after_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let mut enriched_payload = input.payload.clone();
     if let Some(obj) = enriched_payload.as_object_mut() {
-        obj.insert("gitgov".to_string(), metadata);
+        obj.insert("gitgov".to_string(), input.metadata);
     }
 
     let event = GitHubEvent {
         id: Uuid::new_v4().to_string(),
         org_id: Some(org_id),
         repo_id: Some(repo_id),
-        delivery_id: delivery_id.to_string(),
-        event_type: event_type.to_string(),
-        actor_login,
-        actor_id,
-        ref_name,
-        ref_type,
+        delivery_id: input.delivery_id.to_string(),
+        event_type: input.event_type.to_string(),
+        actor_login: input.actor_login,
+        actor_id: input.actor_id,
+        ref_name: input.ref_name,
+        ref_type: input.ref_type,
         before_sha: None,
-        after_sha,
+        after_sha: input.after_sha,
         commit_shas: commit_shas.clone(),
         commits_count: commit_shas.len() as i32,
         payload: enriched_payload,
         created_at: chrono::Utc::now().timestamp_millis(),
     };
 
-    state.db.insert_github_event(&event).await.map_err(|e| {
-        tracing::error!("Failed to insert {} github event: {}", event_type, e);
+    input.state.db.insert_github_event(&event).await.map_err(|e| {
+        tracing::error!("Failed to insert {} github event: {}", input.event_type, e);
         "Internal database error".to_string()
     })?;
 
     if let Some(ref org_id) = event.org_id {
-        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+        if let Err(e) = input.state.db.enqueue_job(org_id, "detect_signals", None).await {
             tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
         }
     }
 
     tracing::info!(
         "Processed {} event: repo={} ref={} sha={} actor={}",
-        event_type,
+        input.event_type,
         repo.full_name,
         event.ref_name.as_deref().unwrap_or("n/a"),
         event.after_sha.as_deref().unwrap_or("n/a"),
@@ -574,23 +578,23 @@ async fn process_check_run_event(
         .map(str::to_string);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
-    store_generic_repo_evidence_event(
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
         state,
         delivery_id,
         payload,
-        "check_run",
+        event_type: "check_run",
         actor_login,
         actor_id,
         ref_name,
-        Some("branch".to_string()),
+        ref_type: Some("branch".to_string()),
         after_sha,
-        serde_json::json!({
+        metadata: serde_json::json!({
             "action": action,
             "status": status,
             "conclusion": conclusion,
             "details_url": details_url
         }),
-    )
+    })
     .await
 }
 
@@ -624,22 +628,22 @@ async fn process_check_suite_event(
         .map(str::to_string);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
-    store_generic_repo_evidence_event(
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
         state,
         delivery_id,
         payload,
-        "check_suite",
+        event_type: "check_suite",
         actor_login,
         actor_id,
         ref_name,
-        Some("branch".to_string()),
+        ref_type: Some("branch".to_string()),
         after_sha,
-        serde_json::json!({
+        metadata: serde_json::json!({
             "action": action,
             "status": status,
             "conclusion": conclusion
         }),
-    )
+    })
     .await
 }
 
@@ -678,23 +682,23 @@ async fn process_status_event(
         .map(str::to_string);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
-    store_generic_repo_evidence_event(
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
         state,
         delivery_id,
         payload,
-        "status",
+        event_type: "status",
         actor_login,
         actor_id,
         ref_name,
-        Some("branch".to_string()),
+        ref_type: Some("branch".to_string()),
         after_sha,
-        serde_json::json!({
+        metadata: serde_json::json!({
             "state": state_name,
             "context": context,
             "description": description,
             "target_url": target_url
         }),
-    )
+    })
     .await
 }
 
