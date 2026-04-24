@@ -64,11 +64,20 @@ function Invoke-GitGovJson {
     if ($_.Exception.Response) {
       $response = $_.Exception.Response
       $responseBody = ""
-      if ($response.PSObject.Properties.Name -contains "Content" -and $null -ne $response.Content) {
-        $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-      } elseif ($response.PSObject.Methods.Name -contains "GetResponseStream") {
-        $reader = New-Object IO.StreamReader($response.GetResponseStream())
-        $responseBody = $reader.ReadToEnd()
+      if ($null -ne $_.ErrorDetails -and ($_.ErrorDetails.PSObject.Properties.Name -contains "Message")) {
+        $responseBody = [string]$_.ErrorDetails.Message
+      }
+      if ([string]::IsNullOrWhiteSpace($responseBody)) {
+        try {
+          if ($response.PSObject.Properties.Name -contains "Content" -and $null -ne $response.Content) {
+            $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+          } elseif ($response.PSObject.Methods.Name -contains "GetResponseStream") {
+            $reader = New-Object IO.StreamReader($response.GetResponseStream())
+            $responseBody = $reader.ReadToEnd()
+          }
+        } catch {
+          $responseBody = $_.Exception.Message
+        }
       }
       throw "HTTP error calling $Method $uri -> $responseBody"
     }
@@ -148,14 +157,8 @@ function Set-PolicyForMatrix {
     }
   }
 
-  $exceptionPolicy = Get-JsonClone -InputObject $Config
-  if ($exceptionPolicy.PSObject.Properties.Name -contains "quality_gate_exception") {
-    $exceptionPolicy.quality_gate_exception = New-TemporaryQualityGateException
-  } else {
-    $exceptionPolicy | Add-Member -NotePropertyName "quality_gate_exception" -NotePropertyValue (New-TemporaryQualityGateException)
-  }
-  [void](Invoke-PolicyOverride -Config $exceptionPolicy)
-  [void](Invoke-PolicyOverride -Config $Config)
+  [void](Invoke-PolicyOverride -Config $Config -QualityGateException (New-TemporaryQualityGateException) -Governed)
+  [void](Invoke-PolicyOverride -Config $Config -QualityGateException $null -Governed)
 }
 
 function Restore-OriginalPolicy {
@@ -172,15 +175,9 @@ function Restore-OriginalPolicy {
     }
   }
 
-  $exceptionPolicy = Get-JsonClone -InputObject $Config
-  if ($exceptionPolicy.PSObject.Properties.Name -contains "quality_gate_exception") {
-    $exceptionPolicy.quality_gate_exception = New-TemporaryQualityGateException
-  } else {
-    $exceptionPolicy | Add-Member -NotePropertyName "quality_gate_exception" -NotePropertyValue (New-TemporaryQualityGateException)
-  }
-  [void](Invoke-PolicyOverride -Config $exceptionPolicy)
+  [void](Invoke-PolicyOverride -Config $Config -QualityGateException (New-TemporaryQualityGateException) -Governed)
   if (($Config.PSObject.Properties.Name -notcontains "quality_gate_exception") -or $null -eq $Config.quality_gate_exception) {
-    [void](Invoke-PolicyOverride -Config $Config)
+    [void](Invoke-PolicyOverride -Config $Config -QualityGateException $null -Governed)
   }
 }
 
