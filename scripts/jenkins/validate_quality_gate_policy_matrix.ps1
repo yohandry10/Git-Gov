@@ -64,11 +64,20 @@ function Invoke-GitGovJson {
     if ($_.Exception.Response) {
       $response = $_.Exception.Response
       $responseBody = ""
-      if ($response.PSObject.Properties.Name -contains "Content" -and $null -ne $response.Content) {
-        $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-      } elseif ($response.PSObject.Methods.Name -contains "GetResponseStream") {
-        $reader = New-Object IO.StreamReader($response.GetResponseStream())
-        $responseBody = $reader.ReadToEnd()
+      if ($null -ne $_.ErrorDetails -and ($_.ErrorDetails.PSObject.Properties.Name -contains "Message")) {
+        $responseBody = [string]$_.ErrorDetails.Message
+      }
+      if ([string]::IsNullOrWhiteSpace($responseBody)) {
+        try {
+          if ($response.PSObject.Properties.Name -contains "Content" -and $null -ne $response.Content) {
+            $responseBody = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+          } elseif ($response.PSObject.Methods.Name -contains "GetResponseStream") {
+            $reader = New-Object IO.StreamReader($response.GetResponseStream())
+            $responseBody = $reader.ReadToEnd()
+          }
+        } catch {
+          $responseBody = $_.Exception.Message
+        }
       }
       throw "HTTP error calling $Method $uri -> $responseBody"
     }
