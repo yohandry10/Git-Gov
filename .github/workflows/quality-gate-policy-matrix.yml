@@ -108,24 +108,57 @@ jobs:
             throw "Unable to resolve failing/green commit SHAs."
           }
 
-          "repo_full_name=$repo" >> $env:GITHUB_OUTPUT
-          "branch=$branch" >> $env:GITHUB_OUTPUT
-          "failing_commit_sha=$failing" >> $env:GITHUB_OUTPUT
-          "green_commit_sha=$green" >> $env:GITHUB_OUTPUT
-          "resolution_path=$resolutionPath" >> $env:GITHUB_OUTPUT
+          @(
+            "repo_full_name=$repo"
+            "branch=$branch"
+            "failing_commit_sha=$failing"
+            "green_commit_sha=$green"
+            "resolution_path=$resolutionPath"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Run quality gate matrix validator
         if: ${{ steps.precheck.outputs.enabled == 'true' }}
         shell: pwsh
+        env:
+          RESOLVED_REPO: ${{ steps.resolve.outputs.repo_full_name }}
+          RESOLVED_BRANCH: ${{ steps.resolve.outputs.branch }}
+          RESOLVED_FAILING_COMMIT: ${{ steps.resolve.outputs.failing_commit_sha }}
+          RESOLVED_GREEN_COMMIT: ${{ steps.resolve.outputs.green_commit_sha }}
+          RESOLUTION_PATH: ${{ steps.resolve.outputs.resolution_path }}
+          DEFAULT_REPO: ${{ github.repository }}
         run: |
           $outputPath = "docs/reports/quality-gate-policy-matrix-${{ github.run_id }}.md"
+          $resolutionPath = $env:RESOLUTION_PATH
+          if ([string]::IsNullOrWhiteSpace($resolutionPath)) {
+            $resolutionPath = "docs/reports/quality-gate-matrix-commit-resolution-${{ github.run_id }}.json"
+          }
+
+          $repo = $env:RESOLVED_REPO
+          $branch = $env:RESOLVED_BRANCH
+          $failing = $env:RESOLVED_FAILING_COMMIT
+          $green = $env:RESOLVED_GREEN_COMMIT
+
+          if (([string]::IsNullOrWhiteSpace($repo) -or
+              [string]::IsNullOrWhiteSpace($branch) -or
+              [string]::IsNullOrWhiteSpace($failing) -or
+              [string]::IsNullOrWhiteSpace($green)) -and (Test-Path $resolutionPath)) {
+            $resolved = Get-Content $resolutionPath -Raw | ConvertFrom-Json
+            if ([string]::IsNullOrWhiteSpace($repo)) { $repo = [string]$resolved.repo }
+            if ([string]::IsNullOrWhiteSpace($branch)) { $branch = [string]$resolved.branch }
+            if ([string]::IsNullOrWhiteSpace($failing)) { $failing = [string]$resolved.failing_commit_sha }
+            if ([string]::IsNullOrWhiteSpace($green)) { $green = [string]$resolved.green_commit_sha }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($repo)) { $repo = $env:DEFAULT_REPO }
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
+
           & ./scripts/jenkins/validate_quality_gate_policy_matrix.ps1 `
             -GitGovUrl "$env:GITGOV_URL" `
             -ApiKey "$env:GITGOV_API_KEY" `
-            -RepoFullName "${{ steps.resolve.outputs.repo_full_name }}" `
-            -Branch "${{ steps.resolve.outputs.branch }}" `
-            -FailingCommitSha "${{ steps.resolve.outputs.failing_commit_sha }}" `
-            -GreenCommitSha "${{ steps.resolve.outputs.green_commit_sha }}" `
+            -RepoFullName "$repo" `
+            -Branch "$branch" `
+            -FailingCommitSha "$failing" `
+            -GreenCommitSha "$green" `
             -OutputPath "$outputPath"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
