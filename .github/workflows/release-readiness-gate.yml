@@ -140,6 +140,7 @@ jobs:
               exit $readinessExitCode
             }
             Write-Warning "Release readiness is below target, but enforce_gate is false; keeping this workflow advisory."
+            exit 0
           }
 
       - name: Upload readiness artifact
