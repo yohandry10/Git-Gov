@@ -108,7 +108,7 @@ jobs:
           $strictSignals = "${{ github.event.inputs.strict_signals }}"
           $outputPath = "docs/reports/release-readiness-gate-${{ github.run_id }}.json"
 
-          $args = @(
+          $readinessArgs = @(
             "-GitGovUrl", $env:GITGOV_URL,
             "-ApiKey", $env:GITGOV_API_KEY,
             "-RepoFullName", $repoFullName,
@@ -121,13 +121,13 @@ jobs:
           )
 
           if (-not [string]::IsNullOrWhiteSpace($orgName)) {
-            $args += @("-OrgName", $orgName)
+            $readinessArgs += @("-OrgName", $orgName)
           }
           if ($strictSignals -eq "true") {
-            $args += @("-FailOnMissingSignals")
+            $readinessArgs += @("-FailOnMissingSignals")
           }
 
-          & ./scripts/jenkins/validate_release_readiness_gate.ps1 @args
+          & ./scripts/jenkins/validate_release_readiness_gate.ps1 @readinessArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload readiness artifact
