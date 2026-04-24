@@ -19,8 +19,8 @@ pub struct PolicyApiResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PolicyOverridePayload {
-    LegacyConfig(GitGovConfig),
     GovernedRequest(PolicyOverrideRequest),
+    LegacyConfig(GitGovConfig),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
