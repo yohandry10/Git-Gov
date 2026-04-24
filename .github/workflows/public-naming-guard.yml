@@ -24,15 +24,23 @@ jobs:
       - name: Build commit range context
         id: range
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.head_ref }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "branch_name=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
-            echo "commit_range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            echo "branch_name=${PR_HEAD_REF}" >> "$GITHUB_OUTPUT"
+            echo "commit_range=${PR_BASE_SHA}..${PR_HEAD_SHA}" >> "$GITHUB_OUTPUT"
           else
-            echo "branch_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            before_sha="${{ github.event.before }}"
-            after_sha="${{ github.sha }}"
+            echo "branch_name=${REF_NAME}" >> "$GITHUB_OUTPUT"
+            before_sha="$BEFORE_SHA"
+            after_sha="$AFTER_SHA"
             if [[ -n "$before_sha" && "$before_sha" != "0000000000000000000000000000000000000000" ]]; then
               echo "commit_range=${before_sha}..${after_sha}" >> "$GITHUB_OUTPUT"
             else
