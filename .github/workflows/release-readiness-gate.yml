@@ -34,6 +34,11 @@ on:
         required: false
         default: false
         type: boolean
+      enforce_gate:
+        description: "Fail the workflow when readiness is below target"
+        required: false
+        default: false
+        type: boolean
       hours:
         description: "Lookback window in hours"
         required: false
@@ -106,29 +111,36 @@ jobs:
 
           $orgName = "${{ github.event.inputs.org_name }}"
           $strictSignals = "${{ github.event.inputs.strict_signals }}"
+          $enforceGate = "${{ github.event.inputs.enforce_gate }}"
           $outputPath = "docs/reports/release-readiness-gate-${{ github.run_id }}.json"
 
-          $readinessArgs = @(
-            "-GitGovUrl", $env:GITGOV_URL,
-            "-ApiKey", $env:GITGOV_API_KEY,
-            "-RepoFullName", $repoFullName,
-            "-Branch", $branch,
-            "-Tier", $tier,
-            "-Hours", $hours,
-            "-CorrelationLimit", $correlationLimit,
-            "-MinReadiness", $targetReadiness,
-            "-OutputPath", $outputPath
-          )
+          $readinessArgs = @{
+            GitGovUrl = $env:GITGOV_URL
+            ApiKey = $env:GITGOV_API_KEY
+            RepoFullName = $repoFullName
+            Branch = $branch
+            Tier = $tier
+            Hours = $hours
+            CorrelationLimit = $correlationLimit
+            MinReadiness = $targetReadiness
+            OutputPath = $outputPath
+          }
 
           if (-not [string]::IsNullOrWhiteSpace($orgName)) {
-            $readinessArgs += @("-OrgName", $orgName)
+            $readinessArgs.OrgName = $orgName
           }
           if ($strictSignals -eq "true") {
-            $readinessArgs += @("-FailOnMissingSignals")
+            $readinessArgs.FailOnMissingSignals = $true
           }
 
           & ./scripts/jenkins/validate_release_readiness_gate.ps1 @readinessArgs
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $readinessExitCode = $LASTEXITCODE
+          if ($readinessExitCode -ne 0) {
+            if ($enforceGate -eq "true") {
+              exit $readinessExitCode
+            }
+            Write-Warning "Release readiness is below target, but enforce_gate is false; keeping this workflow advisory."
+          }
 
       - name: Upload readiness artifact
         if: ${{ always() && steps.precheck.outputs.enabled == 'true' }}

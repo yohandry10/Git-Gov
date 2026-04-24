@@ -10,6 +10,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Render API access is available via local ignored env files only. Do not commit or print token values.
 - Local Render env key name: `RENDER_API_KEY`.
 - Local GitGov API env key name: `GITGOV_API_KEY`.
+- SonarCloud direct API access is not available unless `SONAR_TOKEN` is present locally.
+- Jenkins direct API access is not available unless `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN` are present locally.
 
 ## GitHub Repository
 
@@ -38,11 +40,20 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - Repository secret required by GitGov workflows: `GITGOV_API_KEY`.
 - Repository variable required by GitGov workflows: `GITGOV_URL=https://gitgov-api.onrender.com`.
+- Repository secret used by Sonar workflows when present: `SONAR_TOKEN`.
 - Sonar variables:
   - `SONAR_HOST_URL=https://sonarcloud.io`
   - `SONAR_PROJECT_KEY=yohandry10_git-gov`
 - The quality gate policy matrix workflow is optional at workflow level but its job is required by branch protection.
 - The matrix workflow must run on both `pull_request` and `push` to `main`; otherwise PR merges can be blocked by a required check that never appears.
+- Release Readiness Gate is advisory by default on `push`; use manual `workflow_dispatch` with `enforce_gate=true` when a release must be blocked by readiness score.
+
+## External Service Credentials
+
+- SonarCloud API access requires `SONAR_TOKEN` in local ignored env files. Keep `SONAR_HOST_URL=https://sonarcloud.io` and `SONAR_PROJECT_KEY=yohandry10_git-gov`.
+- Jenkins read/build access requires `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN`.
+- Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
+- If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 
 ## Verified State
 
