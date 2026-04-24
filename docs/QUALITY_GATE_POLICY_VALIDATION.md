@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-19
+Updated: 2026-04-23
 
 ## Objective
 
@@ -14,20 +14,26 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 
 ## Preconditions
 
-1. Sonar workflow is configured:
+1. Sonar workflow is configured (GitHub-hosted or Jenkins local):
    - `SONAR_TOKEN`
    - `SONAR_PROJECT_KEY`
    - `GITGOV_URL`
    - `GITGOV_API_KEY`
+   - For GitHub-hosted strict validation, PAT/API visibility must allow:
+     - `secrets=read`
+     - `actions_variables=read`
+   - For API-driven `workflow_dispatch` automation, PAT/API visibility must allow:
+     - `actions=write`
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
 3. Jenkins uses the current `Jenkinsfile`:
    - `Sonar Scan (Optional)` enabled when `SONAR_TOKEN` + `SONAR_PROJECT_KEY` exist.
+   - If `SONAR_TOKEN` env is absent, credential fallback uses Jenkins Secret Text id `gitgov-token`.
    - `Policy Check (Advisory)` parses JSON response from `/policy/check`.
 4. You have an admin API key for policy override/check.
 5. (Optional) `GITGOV_ALERT_WEBHOOK_URL` configured if you want alert delivery validation.
 6. Use URL-encoded repo path for policy endpoints:
-   - repo full name: `yohandry10/Git-Gov`
-   - encoded path segment: `yohandry10%2FGit-Gov`
+   - repo full name: `<owner>/<repo>`
+   - encoded path segment: `<owner>%2F<repo>`
 
 ## 1) Set `quality_gates=warn`
 
@@ -95,6 +101,42 @@ Expected:
 - `"advisory": false` (if any enforcement level is `block`)
 - `reasons` includes quality gate message.
 
+## 3.1) Governed exception for temporary quality-gate downgrade
+
+When you need a temporary downgrade (`block -> warn` or `warn -> off`), use governed payload:
+
+```bash
+curl -sS -X PUT "http://127.0.0.1:3001/policy/<repo_full_name_urlencoded>/override" \
+  -H "Authorization: Bearer <ADMIN_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "config": {
+      "enforcement": {
+        "quality_gates": "warn"
+      }
+    },
+    "quality_gate_exception": {
+      "reason": "Hotfix release window",
+      "ticket_id": "OPS-777",
+      "approved_by": "security-admin",
+      "expires_at": 1760000000000
+    }
+  }'
+```
+
+Rules:
+
+- Downgrade without active exception is rejected (`400`).
+- `quality_gate_exception.reason` is required.
+- `quality_gate_exception.expires_at` must be future and <= 30 days.
+- Exception metadata is persisted in policy + admin audit log (`policy_override` metadata).
+
+Behavior in `policy/check` while exception is active:
+
+- Non-green quality gate is marked as violation with `enforcement = "override"`.
+- Response stays allowed (`allowed=true`) and includes warning `allowed by active quality gate exception`.
+- Standard quality-gate failure signal/alert is not emitted for that overridden evaluation.
+
 ## 4) Validate green commit
 
 Run `/policy/check` with a commit that has Sonar `success`.
@@ -146,10 +188,113 @@ If `GITGOV_ALERT_WEBHOOK_URL` is configured:
 
 - Expect one alert payload with message `Quality Gate no verde` including actor/repo/branch/commit/job/status/enforcement.
 
-## Validated Local Evidence (2026-04-19)
+## Automated matrix runner
+
+Use the script to validate `warn/block` end-to-end and automatically restore policy afterward:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_quality_gate_policy_matrix.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<ADMIN_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
+  -FailingCommitSha "<commit_sha_with_failed_quality_gate>" `
+  -GreenCommitSha "<commit_sha_with_green_quality_gate>"
+```
+
+Outputs:
+
+- markdown evidence report under `docs/reports/quality-gate-policy-matrix-<timestamp>.md`
+- non-zero exit when any matrix assertion fails
+- original policy restored unless `-LeavePolicyAsIs` is explicitly set
+
+Resolver automático de SHAs (sin pasar commits manuales):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/resolve_quality_gate_matrix_commits.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<ADMIN_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main"
+```
+
+El resolver toma:
+- commit failing desde correlaciones Sonar (`pipeline.status` no verde) o fallback por señales `policy_violation` (`quality_gate_green`),
+- commit green desde correlaciones Sonar (`pipeline.status=success`).
+
+GitHub Actions (cloud, no bloqueante):
+
+- Workflow: `.github/workflows/quality-gate-policy-matrix.yml`
+- Trigger: `push/main` + `workflow_dispatch`
+- Precheck: auto-skip si faltan `GITGOV_URL` / `GITGOV_API_KEY`
+- Artefactos: reporte de matrix + resolución de SHAs por run
+
+## GitHub-hosted Matrix Status (2026-04-23)
+
+Attempted cloud execution against `yohandry10/Git-Gov` from local automation:
+
+- Workflow file exists on remote branch `tier-risk-sla-tuning`:
+  - `.github/workflows/quality-gate-policy-matrix.yml`
+- Workflow file is not present on `origin/main` yet, so it is not part of the active default-branch workflow inventory.
+- API dispatch attempt returned `403 FORBIDDEN` with header:
+  - `x-accepted-github-permissions: actions=write`
+- Strict CI-config visibility remains best-effort with current PAT:
+  - `403` on Actions secrets and Actions variables read endpoints.
+- GitHub-hosted run executed via temporary push trigger on branch `ci/quality-gate-matrix-main`:
+  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934`
+  - Outcome: workflow completed, matrix steps skipped by precheck.
+  - Logged reason: `missing_gitgov_url_or_api_key`
+- Second GitHub-hosted run executed after fallback-name mapping update:
+  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`
+  - Outcome: workflow completed, matrix steps skipped by precheck.
+  - Logged reason remains: `missing_gitgov_url_or_api_key`
+
+Blocking gaps to close for cloud matrix validation:
+
+1. Publish/merge `.github/workflows/quality-gate-policy-matrix.yml` to `main`.
+2. Configure repo-level cloud matrix inputs for GitHub-hosted runs:
+   - variable `GITGOV_URL`
+   - secret `GITGOV_API_KEY`
+3. Use PAT (or GitHub App token) with `actions=write` to trigger `workflow_dispatch` from scripts.
+4. For strict CI-config auditing scripts, also grant `secrets=read` and `actions_variables=read`.
+
+## Validated Local Evidence
+
+### 2026-04-23 (latest)
+
+Automated run evidence:
+
+- `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-23.md`
+- `docs/reports/quality-gate-matrix-commit-resolution-auto-local-2026-04-23.json`
+
+Validated against local Docker stack (`gitgov-server` on `:3001`) with repo
+`yohandry10/Git-Gov`:
+
+- Failing Sonar commit: `fd3fb268dc4c34aad9f01aec5e8da3f69017be74`
+- Green Sonar commit: `3a5ddde5c616706e52b5c0ed2ff4e587c6863870`
+
+Observed results:
+
+- `quality_gates=warn` + failing commit:
+  - `allowed=true`
+  - `advisory=true`
+  - `violations` includes `quality_gate_green` with `enforcement=warn`
+- `quality_gates=block` + failing commit:
+  - `allowed=false`
+  - `advisory=false`
+  - `reasons` includes non-green quality gate message
+- `quality_gates=block` + green commit:
+  - `allowed=true`
+  - no `quality_gate_green` violation
+
+### 2026-04-20 (baseline)
+
+Automated run evidence:
+
+- `docs/reports/quality-gate-policy-matrix-local-2026-04-20.md`
 
 Validated against local Docker stack (`gitgov-server` on `:3001`) with real commits from repo
-`yohandry10/Git-Gov`:
+`<owner>/<repo>`:
 
 - Failing Sonar commit: `fd3fb268dc4c34aad9f01aec5e8da3f69017be74`
 - Green Sonar evidence commit: `edca03409724c0c4ed1d49b59f1607c557ca1108` (manual Sonar Jenkins event ingested with `job_name` containing `sonar`)

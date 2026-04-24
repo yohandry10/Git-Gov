@@ -2,6 +2,7 @@
 title: Instalación de GitGov Desktop
 description: Despliega el agente de captura GitGov en tu entorno local y comienza a rastrear las operaciones de ingeniería.
 order: 2
+category: Deploy
 ---
 
 La aplicación GitGov Desktop es el agente de captura fundamental del ecosistema. Se ejecuta en segundo plano, monitorizando tus operaciones Git activas y proporcionando feedback en tiempo real sobre el cumplimiento de políticas.

@@ -2,6 +2,7 @@
 title: Installing GitGov Desktop
 description: Deploy the GitGov capture agent to your local environment and begin tracking engineering operations.
 order: 2
+category: Deploy
 ---
 
 The GitGov Desktop application is the foundational capture agent for the ecosystem. It runs in the background, monitoring your active Git operations and providing real-time feedback on policy compliance.

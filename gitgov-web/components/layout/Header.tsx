@@ -54,7 +54,7 @@ export function Header() {
                         {/* Logo */}
                         <Link href="/" className="flex items-center gap-2.5 group" aria-label="GitGov Home">
                             <Image
-                                src="/logo.png"
+                                src="/logo-192.png"
                                 alt="GitGov"
                                 width={72}
                                 height={72}

@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { JetBrains_Mono, Outfit } from 'next/font/google';
+import { JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { generatePageMetadata } from '@/lib/seo/metadata';
 import { ClientLayout } from './client-layout';
 import './globals.css';
 
-const outfit = Outfit({
+const plusJakartaSans = Plus_Jakarta_Sans({
     subsets: ['latin'],
-    weight: ['300', '400', '500', '600', '700', '800', '900'],
+    weight: ['300', '400', '500', '600', '700', '800'],
     display: 'swap',
     variable: '--font-sans',
 });
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
     ...generatePageMetadata(),
     manifest: '/manifest.json',
     icons: {
-        icon: '/logo.png',
-        apple: '/logo.png',
+        icon: '/logo-192.png',
+        apple: '/logo-192.png',
     },
 };
 
@@ -40,7 +40,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en" className="dark" suppressHydrationWarning>
-            <body className={`${outfit.variable} ${jetBrainsMono.variable} min-h-[100dvh] bg-surface-300 text-white antialiased`}>
+            <body className={`${plusJakartaSans.variable} ${jetBrainsMono.variable} font-sans min-h-[100dvh] bg-surface-300 text-white antialiased`}>
                 <ClientLayout>{children}</ClientLayout>
             </body>
         </html>

@@ -32,6 +32,7 @@ Never publish to public repo:
 - Credentials, tokens, keys, webhook secrets
 - Database dumps, Jenkins backups, local backup artifacts
 - Internal hostnames, private URLs, account IDs, or PII
+- Referencias a tooling interno/asistentes locales, prompts operativos o artefactos de automatización no orientados a producto
 
 ## Mandatory Rules
 
@@ -40,6 +41,8 @@ Never publish to public repo:
 3. Use placeholders for repo/org/domain examples (`<owner>/<repo>`, `<your-domain>`).
 4. Any doc that includes real incidents, forensic findings, or strategy goes to internal storage.
 5. Before publishing, run secret scan and review diff for sensitive context.
+6. Public docs must describe product behavior and operator workflows, not internal assistant/tooling traces.
+7. Branch names, PR titles, and commit messages must be neutral and product-oriented; internal assistant/vendor/tooling identifiers are forbidden.
 
 ## Pre-Publish Checklist
 
@@ -53,7 +56,10 @@ Never publish to public repo:
 - CI workflow: `.github/workflows/secret-scan.yml` (job `Security Guard`)
 - The guard enforces restricted-doc exclusions and blocks legacy repository markers.
 - The guard blocks tracked `.env` files (except `.env.example`).
+- The guard blocks non-neutral naming in branch/PR/commit metadata (internal tooling markers).
 - `gitleaks` runs in the same workflow for secret detection on PR/push.
+- Local pre-push check available:
+  - `powershell -ExecutionPolicy Bypass -File scripts/security/publication_guard.ps1`
 
 ## Ownership
 

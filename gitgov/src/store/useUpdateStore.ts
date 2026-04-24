@@ -4,6 +4,7 @@ import {
   canUseDesktopUpdater,
   checkDesktopUpdate,
   downloadAndInstallDesktopUpdate,
+  evaluateDesktopUpdateEnforcement,
   getDesktopUpdateFallbackUrl,
   isUpdaterNotConfiguredError,
   normalizeUpdaterErrorMessage,
@@ -17,6 +18,7 @@ type UpdaterStatus =
   | 'checking'
   | 'no-update'
   | 'update-available'
+  | 'mandatory-update'
   | 'downloading'
   | 'installed'
   | 'error'
@@ -33,6 +35,9 @@ interface UpdateStoreState {
   progress: DesktopUpdateProgress | null
   lastCheckedAt: number | null
   error: string | null
+  isMandatoryUpdateRequired: boolean
+  mandatoryUpdateReason: string | null
+  minimumSupportedVersion: string | null
   channel: DesktopUpdateChannel
   fallbackDownloadUrl: string
   changelogExpanded: boolean
@@ -42,7 +47,14 @@ interface UpdateStoreState {
     downloadAttempts: number
     installSuccesses: number
     installFailures: number
-    lastOutcome: 'none' | 'no-update' | 'update-available' | 'install-success' | 'install-failure' | 'check-error'
+    lastOutcome:
+      | 'none'
+      | 'no-update'
+      | 'update-available'
+      | 'mandatory-update'
+      | 'install-success'
+      | 'install-failure'
+      | 'check-error'
     lastError: string | null
     lastEventAt: number | null
   }
@@ -163,6 +175,9 @@ export const useUpdateStore = create<UpdateStoreState & UpdateStoreActions>((set
   progress: null,
   lastCheckedAt: null,
   error: null,
+  isMandatoryUpdateRequired: false,
+  mandatoryUpdateReason: null,
+  minimumSupportedVersion: null,
   channel: 'stable',
   fallbackDownloadUrl: getDesktopUpdateFallbackUrl('stable'),
   changelogExpanded: false,
@@ -236,6 +251,9 @@ export const useUpdateStore = create<UpdateStoreState & UpdateStoreActions>((set
           lastCheckedAt: checkedAt,
           status: 'no-update',
           updateInfo: null,
+          isMandatoryUpdateRequired: false,
+          mandatoryUpdateReason: null,
+          minimumSupportedVersion: null,
           _updateHandle: null,
         })
         if (manual) {
@@ -256,21 +274,37 @@ export const useUpdateStore = create<UpdateStoreState & UpdateStoreActions>((set
         body: update.body,
         rawJson: update.rawJson,
       }
+      const enforcement = evaluateDesktopUpdateEnforcement(info)
+      const mandatory = enforcement.required
+      const mandatoryReason =
+        enforcement.note ??
+        (enforcement.reason === 'min-supported-version'
+          ? `Esta versión quedó fuera de soporte. Mínimo requerido: ${enforcement.minSupportedVersion}.`
+          : enforcement.reason === 'force-update'
+            ? 'Hay una actualización crítica obligatoria.'
+            : null)
       set({
         isChecking: false,
         lastCheckedAt: checkedAt,
-        status: 'update-available',
+        status: mandatory ? 'mandatory-update' : 'update-available',
         updateInfo: info,
+        isMandatoryUpdateRequired: mandatory,
+        mandatoryUpdateReason: mandatoryReason,
+        minimumSupportedVersion: enforcement.minSupportedVersion,
         _updateHandle: update,
         changelogExpanded: false,
       })
       updateTelemetry((current) => ({
         ...current,
         updateChecksWithUpdate: current.updateChecksWithUpdate + 1,
-        lastOutcome: 'update-available',
+        lastOutcome: mandatory ? 'mandatory-update' : 'update-available',
         lastEventAt: checkedAt,
       }), set)
-      toast('info', `Nueva versión disponible: ${info.version}`)
+      if (mandatory) {
+        toast('warning', mandatoryReason ?? `Actualización obligatoria disponible: ${info.version}`)
+      } else {
+        toast('info', `Nueva versión disponible: ${info.version}`)
+      }
     } catch (error) {
       const message = normalizeUpdaterErrorMessage(error)
       const notConfigured = isUpdaterNotConfiguredError(error)
@@ -364,10 +398,10 @@ export const useUpdateStore = create<UpdateStoreState & UpdateStoreActions>((set
   clearError: () => set({ error: null }),
 
   dismissUpdate: () => set({
-    updateInfo: null,
-    _updateHandle: null,
+    updateInfo: get().isMandatoryUpdateRequired ? get().updateInfo : null,
+    _updateHandle: get().isMandatoryUpdateRequired ? get()._updateHandle : null,
     progress: null,
-    status: 'idle',
+    status: get().isMandatoryUpdateRequired ? 'mandatory-update' : 'idle',
   }),
 
   setChangelogExpanded: (expanded) => set({ changelogExpanded: expanded }),

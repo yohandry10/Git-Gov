@@ -1,6 +1,7 @@
 import { Workflow } from 'lucide-react'
 import { formatDurationMs } from './dashboard-helpers'
 import { Bar } from './Bar'
+import type { ReleaseReadinessBand } from './risk-scoring'
 
 interface PipelineHealthWidgetProps {
   total: number
@@ -15,6 +16,13 @@ interface PipelineHealthWidgetProps {
   sonarPassRate: string
   releaseReadinessScore: number
   releaseReadinessSignals: number
+  releaseReadinessBand: ReleaseReadinessBand
+  readinessTierLabel: string
+  readinessTargetScore: number
+  githubPrEvents: number
+  githubPrReviewEvents: number
+  githubStatusCheckEvents: number
+  githubEvidenceSignals: number
 }
 
 export function PipelineHealthWidget({
@@ -30,12 +38,19 @@ export function PipelineHealthWidget({
   sonarPassRate,
   releaseReadinessScore,
   releaseReadinessSignals,
+  releaseReadinessBand,
+  readinessTierLabel,
+  readinessTargetScore,
+  githubPrEvents,
+  githubPrReviewEvents,
+  githubStatusCheckEvents,
+  githubEvidenceSignals,
 }: PipelineHealthWidgetProps) {
-  const readinessClass = releaseReadinessSignals === 0
+  const readinessClass = releaseReadinessBand === 'Insuficiente'
     ? 'text-surface-500'
-    : releaseReadinessScore >= 85
+    : releaseReadinessBand === 'Fuerte'
       ? 'text-emerald-300'
-      : releaseReadinessScore >= 70
+      : releaseReadinessBand === 'Vigilancia'
         ? 'text-amber-300'
         : 'text-danger-300'
 
@@ -59,12 +74,19 @@ export function PipelineHealthWidget({
               ['Avg duration', formatDurationMs(avgDurationMs), ''],
               ['Repos w/ failures', reposWithFailures, ''],
               ['Release readiness', `${releaseReadinessScore}/100`, readinessClass],
+              ['Readiness band', releaseReadinessBand, readinessClass],
               ['Readiness signals', `${releaseReadinessSignals}/3`, releaseReadinessSignals < 3 ? 'text-amber-300' : 'text-emerald-300'],
+              ['Readiness tier', readinessTierLabel, 'text-surface-200'],
+              ['Readiness SLA target', `>= ${readinessTargetScore}`, releaseReadinessScore >= readinessTargetScore ? 'text-emerald-300' : 'text-amber-300'],
               ['Sonar scans (sample)', sonarTotal, ''],
               ['Sonar pass rate', `${sonarPassRate}%`, sonarTotal > 0 ? 'text-emerald-300' : ''],
               ['Sonar failed', sonarFailed, sonarFailed > 0 ? 'text-danger-400' : ''],
               ['Sonar unstable', sonarUnstable, sonarUnstable > 0 ? 'text-amber-300' : ''],
               ['Sonar passed', sonarPassed, sonarPassed > 0 ? 'text-emerald-300' : ''],
+              ['GitHub PR events', githubPrEvents, githubPrEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub review events', githubPrReviewEvents, githubPrReviewEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub status-check events', githubStatusCheckEvents, githubStatusCheckEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub evidence signals', `${githubEvidenceSignals}/3`, githubEvidenceSignals < 3 ? 'text-amber-300' : 'text-emerald-300'],
             ] as const).map(([label, val, cls]) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <span className="text-surface-400">{label}</span>

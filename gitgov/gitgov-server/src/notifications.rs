@@ -97,7 +97,8 @@ mod tests {
 
     #[test]
     fn signal_confirmed_alert_includes_optional_repo() {
-        let with_repo = format_signal_confirmed_alert("policy_violation", "alice", Some("org/repo"));
+        let with_repo =
+            format_signal_confirmed_alert("policy_violation", "alice", Some("org/repo"));
         assert!(with_repo.contains("policy_violation"));
         assert!(with_repo.contains("alice"));
         assert!(with_repo.contains("org/repo"));

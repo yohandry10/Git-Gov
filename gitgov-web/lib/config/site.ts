@@ -8,7 +8,7 @@ export const siteConfig = {
     description: 'Distributed Git Governance — Full traceability from commit to compliance.',
     tagline: 'Governance. Traceability. Compliance.',
     url: 'https://git-gov.vercel.app',
-    ogImage: '/images/og/flag.jpg',
+    ogImage: '/images/og/eeuu-og.png',
 
     version: '0.1.0',
     downloadFileName: 'GitGov_0.1.0_x64-setup.exe',

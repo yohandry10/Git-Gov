@@ -11,16 +11,16 @@ import {
     HiOutlineShieldCheck,
     HiOutlineLightningBolt,
     HiOutlineSupport,
-    HiOutlineGlobe,
 } from 'react-icons/hi';
 import { useTranslation } from '@/lib/i18n';
 
 type FormState = 'idle' | 'loading' | 'success' | 'error';
 
 export function ContactClient() {
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const [formState, setFormState] = useState<FormState>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const isEs = locale === 'es';
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -31,13 +31,19 @@ export function ContactClient() {
             name: formData.get('name') as string,
             email: formData.get('email') as string,
             company: formData.get('company') as string,
+            teamSize: formData.get('teamSize') as string,
+            toolchain: formData.get('toolchain') as string,
+            interestType: formData.get('interestType') as string,
             message: formData.get('message') as string,
         };
 
         const newErrors: Record<string, string> = {};
         if (!data.name.trim()) newErrors.name = t('contact.errors.name') as string;
+        if (!data.company.trim()) newErrors.company = t('contact.errors.company') as string;
         if (!data.email.trim()) newErrors.email = t('contact.errors.email') as string;
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) newErrors.email = t('contact.errors.emailInvalid') as string;
+        if (!data.teamSize || data.teamSize === '') newErrors.teamSize = t('contact.errors.teamSize') as string;
+        if (!data.interestType || data.interestType === '') newErrors.interestType = t('contact.errors.interestType') as string;
         if (!data.message.trim()) newErrors.message = t('contact.errors.message') as string;
 
         if (Object.keys(newErrors).length > 0) {
@@ -75,12 +81,19 @@ export function ContactClient() {
             title: t('contact.side.h3title') as string,
             desc: t('contact.side.h3desc') as string,
         },
-        {
-            icon: <HiOutlineGlobe size={20} />,
-            title: t('contact.side.h4title') as string,
-            desc: t('contact.side.h4desc') as string,
-        },
     ];
+
+    const fitSummary = isEs
+        ? {
+            label: 'Encaja mejor si',
+            text: 'Necesitas decidir rápido si GitGov entra como piloto, rollout de equipo o despliegue enterprise.',
+            chips: ['Piloto guiado', 'Rollout de equipo', 'Evaluación enterprise'],
+        }
+        : {
+            label: 'Best fit when',
+            text: 'You need a fast decision on whether GitGov fits a pilot, a team rollout, or a broader enterprise deployment.',
+            chips: ['Guided pilot', 'Team rollout', 'Enterprise evaluation'],
+        };
 
     return (
         <>
@@ -113,7 +126,7 @@ export function ContactClient() {
 
                             {/* Left — Info panel */}
                             <div
-                                className="rounded-2xl p-8 md:p-10 border border-white/5 flex flex-col justify-between"
+                                className="h-full rounded-2xl p-8 md:p-10 border border-white/5 flex flex-col justify-between"
                                 style={{ background: 'linear-gradient(145deg, rgba(249,115,22,0.07), rgba(249,115,22,0.01)), #0d1117' }}
                             >
                                 {/* Top */}
@@ -146,23 +159,45 @@ export function ContactClient() {
                                             </div>
                                         ))}
                                     </div>
+
+                                    <div className="mt-8 pt-6 border-t border-white/5">
+                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.18em] mb-3">
+                                            {fitSummary.label}
+                                        </p>
+                                        <p className="text-xs text-gray-500 leading-relaxed">
+                                            {fitSummary.text}
+                                        </p>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {fitSummary.chips.map((chip) => (
+                                                <span
+                                                    key={chip}
+                                                    className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-gray-300"
+                                                >
+                                                    {chip}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Bottom — response time badge */}
-                                <div className="mt-10 pt-6 border-t border-white/5 flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
-                                    <p className="text-xs text-gray-600">
-                                        {t('contact.side.responseTime') as string}
-                                    </p>
+                                <div className="mt-8 pt-6 border-t border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
+                                        <p className="text-xs text-gray-600">
+                                            {t('contact.side.responseTime') as string}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Right — Form */}
-                            <div>
+                            <div className="h-full">
                                 <div
-                                    className="rounded-2xl p-8 md:p-10 border border-white/5"
-                                    style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)), #0d1117' }}
+                                    className="glass-card h-full rounded-2xl p-8 md:p-10 border glow-border group relative overflow-hidden"
                                 >
+                                    <div className="absolute inset-0 bg-brand-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                                    <div className="relative z-10">
                                     {formState === 'success' ? (
                                         <div className="text-center py-14">
                                             <div className="w-16 h-16 rounded-full bg-brand-500/10 border border-brand-500/20 flex items-center justify-center mx-auto mb-6">
@@ -200,16 +235,76 @@ export function ContactClient() {
                                                         label={t('contact.form.email') as string}
                                                         name="email"
                                                         type="email"
-                                                        placeholder="you@company.com"
+                                                        placeholder={t('contact.form.emailPlaceholder') as string}
                                                         error={errors.email}
                                                         required
                                                     />
                                                 </div>
-                                                <Input
-                                                    label={t('contact.form.company') as string}
-                                                    name="company"
-                                                    placeholder={t('contact.form.companyPlaceholder') as string}
-                                                />
+                                                <div className="grid sm:grid-cols-2 gap-5">
+                                                    <Input
+                                                        label={t('contact.form.company') as string}
+                                                        name="company"
+                                                        placeholder={t('contact.form.companyPlaceholder') as string}
+                                                        error={errors.company}
+                                                        required
+                                                    />
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-sm font-semibold text-gray-300">
+                                                            {t('contact.form.teamSize') as string} <span className="text-red-400">*</span>
+                                                        </label>
+                                                        <select
+                                                            name="teamSize"
+                                                            required
+                                                            defaultValue=""
+                                                            className={`
+                                                                w-full bg-surface-100 border rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-300
+                                                                appearance-none focus:ring-2 focus:ring-brand-500/20 text-white
+                                                                ${errors.teamSize ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-brand-500/50 hover:border-white/20'}
+                                                            `}
+                                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                                                        >
+                                                            <option value="" disabled>{t('contact.form.teamSizePlaceholder') as string}</option>
+                                                            <option value="1-10">{t('contact.form.teamSize.option1') as string}</option>
+                                                            <option value="11-50">{t('contact.form.teamSize.option2') as string}</option>
+                                                            <option value="51-200">{t('contact.form.teamSize.option3') as string}</option>
+                                                            <option value="201-1000">{t('contact.form.teamSize.option4') as string}</option>
+                                                            <option value="1000+">{t('contact.form.teamSize.option5') as string}</option>
+                                                        </select>
+                                                        {errors.teamSize && <span className="text-xs text-red-400 font-medium">{errors.teamSize}</span>}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="grid sm:grid-cols-2 gap-5">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-sm font-semibold text-gray-300">
+                                                            {t('contact.form.interestType') as string} <span className="text-red-400">*</span>
+                                                        </label>
+                                                        <select
+                                                            name="interestType"
+                                                            required
+                                                            defaultValue=""
+                                                            className={`
+                                                                w-full bg-surface-100 border rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-300
+                                                                appearance-none focus:ring-2 focus:ring-brand-500/20 text-white
+                                                                ${errors.interestType ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-brand-500/50 hover:border-white/20'}
+                                                            `}
+                                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
+                                                        >
+                                                            <option value="" disabled>{t('contact.form.interestTypePlaceholder') as string}</option>
+                                                            <option value="demo">{t('contact.form.interestType.demo') as string}</option>
+                                                            <option value="pilot">{t('contact.form.interestType.pilot') as string}</option>
+                                                            <option value="pricing">{t('contact.form.interestType.pricing') as string}</option>
+                                                            <option value="partnership">{t('contact.form.interestType.partnership') as string}</option>
+                                                            <option value="other">{t('contact.form.interestType.other') as string}</option>
+                                                        </select>
+                                                        {errors.interestType && <span className="text-xs text-red-400 font-medium">{errors.interestType}</span>}
+                                                    </div>
+                                                    <Input
+                                                        label={t('contact.form.toolchain') as string}
+                                                        name="toolchain"
+                                                        placeholder={t('contact.form.toolchainPlaceholder') as string}
+                                                    />
+                                                </div>
                                                 <Textarea
                                                     label={t('contact.form.message') as string}
                                                     name="message"
@@ -242,6 +337,7 @@ export function ContactClient() {
                                             </div>
                                         </form>
                                     )}
+                                    </div>
                                 </div>
                             </div>
                         </div>

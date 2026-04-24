@@ -2,6 +2,7 @@
 title: Risk Outcomes
 description: Turn governance telemetry into measurable engineering risk outcomes for leadership and audits.
 order: 9
+category: Operate
 ---
 
 GitGov already captures policy, CI, and traceability signals. The next step is to present these as **business outcomes** your engineering leadership can track over time.
@@ -138,6 +139,27 @@ When some signals are missing, GitGov shows **signal coverage** (`n/5`) so reade
 - **High Risk**: `>= 60`
 
 These bands are operational defaults. Tune thresholds per repository criticality once you have stable telemetry.
+
+---
+
+## Tier Profiles (Now in Dashboard)
+
+The Control Plane now supports tier-aware scoring profiles in the admin dashboard selector (`Critical`, `Standard`, `Internal`).
+
+Each profile changes:
+- score weights (readiness and composite risk),
+- readiness color bands,
+- and KPI SLA targets used for visual alerts.
+
+### Default SLA targets by tier
+
+| Tier | Min readiness | Max blocked push | Max traceability gap | Max pipeline failures | Max sonar failures | Max unresolved violations |
+| --- | --- | --- | --- | --- | --- | --- |
+| Critical | `>= 85` | `<= 5%` | `<= 15%` | `<= 10%` | `<= 12%` | `<= 30%` |
+| Standard | `>= 75` | `<= 10%` | `<= 25%` | `<= 20%` | `<= 20%` | `<= 40%` |
+| Internal | `>= 65` | `<= 15%` | `<= 35%` | `<= 30%` | `<= 30%` | `<= 50%` |
+
+Use `Standard` as baseline, then move each repository to `Critical` or `Internal` once telemetry is stable for at least 2-4 weeks.
 
 ---
 

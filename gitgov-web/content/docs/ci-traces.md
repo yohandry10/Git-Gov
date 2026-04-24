@@ -2,6 +2,7 @@
 title: CI/CD Traceability
 description: Bridge the gap between source code, build artifacts, and production deployments via Jenkins, Jira, and GitHub integrations.
 order: 5
+category: Operate
 ---
 
 A major blind spot in software security is the "phantom build" — code that exists in production but has no verifiable link back to a specific commit or developer. GitGov bridges this gap by integrating directly with your CI/CD pipelines and project management tools.
@@ -20,14 +21,14 @@ GitGov establishes an end-to-end link between your source code and your deployme
 
 ## Supported Integrations
 
-### Jenkins (V1.2-A — Live)
+### Jenkins
 GitGov integrates with Jenkins via a REST API call from your `Jenkinsfile`. After each build, a `curl` step posts the result to the Control Plane's `/integrations/jenkins` endpoint.
 
 - **Captured metadata**: Job name, commit SHA, branch, build status, build duration, per-stage results, triggered-by user, and raw payload.
 - **Correlation**: The Control Plane automatically matches `commit_sha` to existing commit events, creating a `CommitPipelineCorrelation` record.
 - **Failure analysis**: Correlates specific code changes with build regressions and failed stages.
 
-### Jira (V1.2-B — Preview)
+### Jira
 GitGov integrates with Jira webhooks to capture ticket events and compute ticket coverage. The `/integrations/jira/ticket-coverage` endpoint reports the percentage of commits in a repository that are linked to a Jira ticket.
 
 - **Coverage tracking**: Know what percentage of your commits reference a valid Jira ticket.

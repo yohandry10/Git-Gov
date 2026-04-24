@@ -1,0 +1,123 @@
+name: Enterprise Readiness Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_base_url:
+        description: "Public base URL for DNS/TLS/webhook checks (optional override)"
+        required: false
+        default: ""
+        type: string
+      repo_full_name:
+        description: "owner/repo override (optional)"
+        required: false
+        default: ""
+        type: string
+      branch:
+        description: "Branch used for matrix commit resolution"
+        required: false
+        default: "main"
+        type: string
+      probe_updater_endpoint:
+        description: "Probe updater endpoint (latest.json) instead of config-only validation"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "30 12 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    name: Run Enterprise Readiness Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Precheck required configuration
+        id: precheck
+        shell: bash
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GITGOV_URL:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_gitgov_url" >> "$GITHUB_OUTPUT"
+            echo "Skipping readiness bundle: missing GITGOV_URL."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run readiness bundle
+        id: bundle
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_PUBLIC_BASE_URL: ${{ vars.GITGOV_PUBLIC_BASE_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}
+        run: |
+          $outputRoot = "docs/reports/readiness-bundle-gh-${{ github.run_id }}"
+
+          $publicBaseUrl = "${{ github.event.inputs.public_base_url }}"
+          if ([string]::IsNullOrWhiteSpace($publicBaseUrl)) {
+            $publicBaseUrl = $env:GITGOV_PUBLIC_BASE_URL
+          }
+          if ([string]::IsNullOrWhiteSpace($publicBaseUrl)) {
+            $publicBaseUrl = $env:GITGOV_URL
+          }
+
+          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) {
+            $repoFullName = "${{ github.repository }}"
+          }
+
+          $branch = "${{ github.event.inputs.branch }}"
+          if ([string]::IsNullOrWhiteSpace($branch)) {
+            $branch = "${{ github.ref_name }}"
+          }
+
+          $params = @{
+            GitGovUrl = $env:GITGOV_URL
+            PublicBaseUrl = $publicBaseUrl
+            RepoFullName = $repoFullName
+            Branch = $branch
+            ApiKey = $env:GITGOV_API_KEY
+            GitHubToken = $env:GITHUB_PERSONAL_ACCESS_TOKEN
+            OutputRoot = $outputRoot
+          }
+
+          if ("${{ github.event.inputs.probe_updater_endpoint }}" -eq "true") {
+            $params.ProbeUpdaterEndpoint = $true
+          }
+
+          & ./scripts/deploy/run_enterprise_readiness_bundle.ps1 @params
+          $exitCode = $LASTEXITCODE
+
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "output_root=$outputRoot"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "exit_code=$exitCode"
+
+          if ($exitCode -ne 0) {
+            Write-Host "Readiness bundle ended with non-zero exit code: $exitCode"
+            exit $exitCode
+          }
+
+      - name: Upload readiness bundle artifacts
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-readiness-bundle-${{ github.run_id }}
+          path: ${{ steps.bundle.outputs.output_root }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Skip notice
+        if: ${{ steps.precheck.outputs.enabled != 'true' }}
+        run: echo "Enterprise readiness bundle skipped (reason=${{ steps.precheck.outputs.reason }})."

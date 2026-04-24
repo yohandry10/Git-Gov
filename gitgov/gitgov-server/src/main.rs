@@ -1341,6 +1341,16 @@ async fn main() {
         parse_u32_env("GITGOV_RATE_LIMIT_JIRA_PER_MIN", 120),
         true,
     );
+    let github_webhook_rate_limit = make_rate_limiter(
+        "github_webhook_public",
+        parse_u32_env("GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN", 240),
+        true,
+    );
+    let org_invitation_public_rate_limit = make_rate_limiter(
+        "org_invitation_public",
+        parse_u32_env("GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN", 90),
+        true,
+    );
     let admin_rate_limit = make_rate_limiter("admin_endpoints", admin_rate_limit_per_min, false);
     let logs_rate_limit = make_rate_limiter("logs_endpoints", logs_rate_limit_per_min, true);
     let stats_rate_limit = make_rate_limiter("stats_endpoints", stats_rate_limit_per_min, false);
@@ -1388,6 +1398,8 @@ async fn main() {
         audit_stream_per_min = audit_stream_rate_limit.limit(),
         jenkins_per_min = jenkins_rate_limit.limit(),
         jira_per_min = jira_rate_limit.limit(),
+        github_webhook_public_per_min = github_webhook_rate_limit.limit(),
+        org_invitation_public_per_min = org_invitation_public_rate_limit.limit(),
         events_body_limit_bytes,
         events_max_batch,
         jenkins_body_limit_bytes,
@@ -1706,15 +1718,27 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(handlers::health))
         .route("/health/detailed", get(handlers::detailed_health))
-        .route("/webhooks/github", post(handlers::handle_github_webhook))
+        .route(
+            "/webhooks/github",
+            post(handlers::handle_github_webhook).layer(middleware::from_fn_with_state(
+                Arc::clone(&github_webhook_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
         .route("/metrics", get(handlers::prometheus_metrics))
         .route(
             "/org-invitations/preview/{token}",
-            get(handlers::preview_org_invitation),
+            get(handlers::preview_org_invitation).layer(middleware::from_fn_with_state(
+                Arc::clone(&org_invitation_public_rate_limit),
+                rate_limit_middleware,
+            )),
         )
         .route(
             "/org-invitations/accept",
-            post(handlers::accept_org_invitation),
+            post(handlers::accept_org_invitation).layer(middleware::from_fn_with_state(
+                Arc::clone(&org_invitation_public_rate_limit),
+                rate_limit_middleware,
+            )),
         )
         .merge(auth_routes)
         .merge(
@@ -1750,7 +1774,7 @@ async fn main() {
     tracing::info!("  GET  /health/detailed           - Detailed health (public)");
     tracing::info!("  POST /webhooks/github           - GitHub webhook (HMAC auth)");
     tracing::info!("  GET  /metrics                   - Prometheus metrics (public)");
-    tracing::info!("  GET  /api-docs                  - Swagger UI (public)");
+    tracing::info!("  GET  /api-docs                  - Swagger UI (schema explorer, partial)");
     tracing::info!("  --- Authenticated endpoints ---");
     tracing::info!("  POST /events                    - Client events (auth)");
     tracing::info!("  POST /outbox/lease              - Outbox coordination lease (auth, opt-in)");

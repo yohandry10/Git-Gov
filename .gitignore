@@ -51,13 +51,12 @@ coverage/
 backups/
 .tmp/
 
-# Local AI / assistant artifacts (must never be published)
-.claude/
-CLAUDE.md
-.kiro/
-.trae/
-.windsurf/
-.agents/
+# Local private workspace artifacts (must never be published)
+.*/
+!.github/
+!.github/**
+!.githooks/
+!.githooks/**
 skills/
 skills-lock.json
 gitgov-video/

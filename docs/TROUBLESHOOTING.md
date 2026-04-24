@@ -407,27 +407,40 @@ Con `GITGOV_API_KEY` en el entorno, el servidor inserta esa key en la DB (si no 
 
 **Síntoma:** El servidor responde con status 429 en lugar de procesar el request.
 
-**Causa:** Se superó el límite de requests por segundo para ese endpoint.
+**Causa:** Se superó el límite de requests por minuto para ese endpoint.
 
 **Límites por defecto:**
 
-| Endpoint | Límite | Burst |
-|----------|--------|-------|
-| `/events` | 10 req/s | 20 |
-| `/webhooks/github` (audit-stream) | 5 req/s | 10 |
-| `/integrations/jenkins` | 5 req/s | 10 |
-| `/integrations/jira` | 5 req/s | 10 |
+| Endpoint | Límite por defecto |
+|----------|--------------------|
+| `/events` | 240 req/min |
+| `/audit-stream/github` | 60 req/min |
+| `/integrations/jenkins` | 120 req/min |
+| `/integrations/jira` | 120 req/min |
+| `/webhooks/github` (ruta pública) | 240 req/min |
+| `/org-invitations/preview` y `/org-invitations/accept` (públicas) | 90 req/min |
+| `/chat/ask` | 40 req/min |
+| `/logs` | 60 req/min (hereda `ADMIN` si no se define) |
+| `/stats` y `/dashboard` | 60 req/min (hereda `ADMIN` si no se define) |
 
-**La clave de rate limiting** es `{IP}:{SHA256(auth_header)[0:12]}`. Cada API key distinta tiene su propio límite por IP.
+**Clave de rate limiting:**
+- En rutas autenticadas: `org:{org_id}:user:{client_id}` o `user:{client_id}`.
+- En rutas públicas/no-auth: `{IP}:{SHA256(auth_header)[0:12]}`.
 
 **Solución para cargas altas:**
 
 Ajustar en `gitgov/gitgov-server/.env`:
 ```env
 GITGOV_RATE_LIMIT_EVENTS_PER_MIN=600
+GITGOV_RATE_LIMIT_AUDIT_STREAM_PER_MIN=180
 GITGOV_RATE_LIMIT_JENKINS_PER_MIN=300
 GITGOV_RATE_LIMIT_JIRA_PER_MIN=300
+GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN=600
+GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN=180
 GITGOV_RATE_LIMIT_ADMIN_PER_MIN=120
+GITGOV_RATE_LIMIT_LOGS_PER_MIN=240
+GITGOV_RATE_LIMIT_STATS_PER_MIN=240
+GITGOV_RATE_LIMIT_CHAT_PER_MIN=120
 ```
 
 Reiniciar el servidor para que tome los nuevos valores.
@@ -481,17 +494,39 @@ Si no quieres usar secret, simplemente no configures `JIRA_WEBHOOK_SECRET` (ni `
 
 ---
 
-### DB: supabase_schema_v5 / v6 no aplicados
+### Jira/Jenkins: 400 o 403 por scope de organización
+
+**Síntoma:**
+- `POST /integrations/jira` devuelve `400` con mensaje `org_name is required for global admin keys`.
+- `POST /integrations/jira` o `POST /integrations/jenkins` devuelve `403` con mensaje de scope.
+
+**Causa:**
+- Las integraciones validan scope por organización.
+- Si la API key es global admin (sin `org_id`), Jira exige `org_name` (o `organization`/`org`/`tenant`) en payload.
+- Si se envía una organización fuera del scope de la key, responde `403`.
+
+**Solución:**
+1. En Jira payload, incluir `org_name` cuando uses key global.
+2. Verificar que `org_name` exista en GitGov y esté dentro del scope de la key.
+3. Mantener headers secretos correctos (`x-gitgov-jira-secret` / `x-gitgov-jenkins-secret`) si están habilitados.
+
+---
+
+### DB: migraciones de integraciones/políticas/chat no aplicadas
 
 **Síntoma:** `POST /integrations/jenkins` falla con error de tabla no encontrada, o el widget Pipeline Health no aparece.
 
-**Causa:** No se ejecutaron los schemas incrementales de Jenkins/Jira.
+**Causa:** No se ejecutaron todas las migraciones incrementales requeridas.
 
 **Solución:**
 ```sql
 -- En Supabase SQL Editor, ejecutar en orden:
 -- supabase_schema_v5.sql  (pipeline_events para Jenkins)
 -- supabase_schema_v6.sql  (project_tickets + commit_ticket_correlations para Jira)
+-- supabase_schema_v20.sql (policy change requests + decisions)
+-- supabase_schema_v21.sql (chat_query_events + chat_query_tool_calls)
+--
+-- Recomendado: ejecutar TODAS las migraciones supabase_schema_v*.sql en orden numérico.
 ```
 
 ---

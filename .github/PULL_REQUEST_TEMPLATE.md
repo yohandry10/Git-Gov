@@ -33,6 +33,7 @@
 - [ ] `npm run typecheck` passes (frontend)
 - [ ] No new ESLint errors in changed files
 - [ ] No secrets or credentials in the diff
+- [ ] Branch name, PR title, and commits use neutral naming (no internal tooling markers)
 - [ ] Shared structs stay in sync (`models.rs` ↔ `server.rs` ↔ `types.ts`)
 
 ## Testing

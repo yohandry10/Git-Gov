@@ -2,6 +2,7 @@
 title: Governance & Policies
 description: Define access controls, branch protection, and group-based permissions across your repositories using gitgov.toml.
 order: 4
+category: Operate
 ---
 
 GitGov transforms Git from a simple storage tool into a **governed platform**. By defining a `gitgov.toml` file per repository, you can enforce branch protection, group-based access control, and policy advisory checks across every developer workstation.

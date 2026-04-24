@@ -17,6 +17,7 @@ export interface DocPage {
     title: string;
     description: string;
     order: number;
+    category?: string;
     contentMarkdown: string;
 }
 
@@ -25,6 +26,7 @@ export interface DocMeta {
     title: string;
     description: string;
     order: number;
+    category?: string;
 }
 
 function normalizeDocLocale(locale: string): string {
@@ -102,6 +104,7 @@ export function getDocsMeta(locale: string = 'en'): DocMeta[] {
             title: (data.title as string) || slug,
             description: (data.description as string) || '',
             order: (data.order as number) || 99,
+            category: (data.category as string) || 'Operate',
         };
     });
     return docs.sort((a, b) => a.order - b.order);
@@ -130,6 +133,7 @@ export async function getDocBySlug(slug: string, locale: string = 'en'): Promise
             title: (data.title as string) || normalizedSlug,
             description: (data.description as string) || '',
             order: (data.order as number) || 99,
+            category: (data.category as string) || 'Operate',
             contentMarkdown: content,
         };
     } catch {

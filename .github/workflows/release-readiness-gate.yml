@@ -1,0 +1,144 @@
+name: Release Readiness Gate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Tier profile for readiness gate"
+        required: false
+        default: "standard"
+        type: choice
+        options:
+          - critical
+          - standard
+          - internal
+      branch:
+        description: "Branch to evaluate"
+        required: false
+        default: "main"
+        type: string
+      repo_full_name:
+        description: "Repository full name (owner/repo)"
+        required: false
+        default: ""
+        type: string
+      target_readiness:
+        description: "Override readiness target (0 uses tier SLA)"
+        required: false
+        default: "0"
+        type: string
+      strict_signals:
+        description: "Fail if any signal is missing"
+        required: false
+        default: false
+        type: boolean
+      hours:
+        description: "Lookback window in hours"
+        required: false
+        default: "168"
+        type: string
+      correlation_limit:
+        description: "Max Jenkins correlations to analyze"
+        required: false
+        default: "500"
+        type: string
+      org_name:
+        description: "Optional org_name filter"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  readiness-gate:
+    name: Validate Release Readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Precheck required configuration
+        id: precheck
+        shell: bash
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GITGOV_URL:-}" || -z "${GITGOV_API_KEY:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_gitgov_url_or_api_key" >> "$GITHUB_OUTPUT"
+            echo "Skipping readiness gate: missing GITGOV_URL or GITGOV_API_KEY."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run readiness gate
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        shell: pwsh
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+        run: |
+          $tier = "${{ github.event.inputs.tier }}"
+          if ([string]::IsNullOrWhiteSpace($tier)) { $tier = "standard" }
+
+          $branch = "${{ github.event.inputs.branch }}"
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "${{ github.ref_name }}" }
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
+
+          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "${{ github.repository }}" }
+
+          $targetReadiness = "${{ github.event.inputs.target_readiness }}"
+          if ([string]::IsNullOrWhiteSpace($targetReadiness)) { $targetReadiness = "0" }
+
+          $hours = "${{ github.event.inputs.hours }}"
+          if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
+
+          $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
+          if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
+
+          $orgName = "${{ github.event.inputs.org_name }}"
+          $strictSignals = "${{ github.event.inputs.strict_signals }}"
+          $outputPath = "docs/reports/release-readiness-gate-${{ github.run_id }}.json"
+
+          $args = @(
+            "-GitGovUrl", $env:GITGOV_URL,
+            "-ApiKey", $env:GITGOV_API_KEY,
+            "-RepoFullName", $repoFullName,
+            "-Branch", $branch,
+            "-Tier", $tier,
+            "-Hours", $hours,
+            "-CorrelationLimit", $correlationLimit,
+            "-MinReadiness", $targetReadiness,
+            "-OutputPath", $outputPath
+          )
+
+          if (-not [string]::IsNullOrWhiteSpace($orgName)) {
+            $args += @("-OrgName", $orgName)
+          }
+          if ($strictSignals -eq "true") {
+            $args += @("-FailOnMissingSignals")
+          }
+
+          & ./scripts/jenkins/validate_release_readiness_gate.ps1 @args
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload readiness artifact
+        if: ${{ always() && steps.precheck.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-gate-${{ github.run_id }}
+          path: docs/reports/release-readiness-gate-${{ github.run_id }}.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Skip notice
+        if: ${{ steps.precheck.outputs.enabled != 'true' }}
+        run: echo "Release readiness gate skipped (reason=${{ steps.precheck.outputs.reason }})."

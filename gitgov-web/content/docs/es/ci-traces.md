@@ -2,6 +2,7 @@
 title: Trazabilidad CI/CD
 description: Cierra la brecha entre el código fuente, los artefactos de build y los despliegues en producción mediante integraciones con Jenkins, Jira y GitHub.
 order: 5
+category: Operate
 ---
 
 Un gran punto ciego en la seguridad del software es el "build fantasma" — código que existe en producción sin ningún enlace verificable a un commit o desarrollador específico. GitGov cierra esta brecha integrándose directamente con tus pipelines CI/CD y herramientas de gestión de proyectos.
@@ -20,14 +21,14 @@ GitGov establece un enlace de extremo a extremo entre tu código fuente y tus en
 
 ## Integraciones Soportadas
 
-### Jenkins (V1.2-A — Disponible)
+### Jenkins
 GitGov se integra con Jenkins mediante una llamada a la REST API desde tu `Jenkinsfile`. Después de cada build, un paso `curl` envía el resultado al endpoint `/integrations/jenkins` del Control Plane.
 
 - **Metadatos capturados**: Nombre del job, commit SHA, rama, estado del build, duración del build, resultados por etapa, usuario que lo disparó y payload raw.
 - **Correlación**: El Control Plane empareja automáticamente `commit_sha` con los eventos de commit existentes, creando un registro `CommitPipelineCorrelation`.
 - **Análisis de fallos**: Correlaciona cambios de código específicos con regresiones de build y etapas fallidas.
 
-### Jira (V1.2-B — Preview)
+### Jira
 GitGov se integra con webhooks de Jira para capturar eventos de tickets y calcular la cobertura de tickets. El endpoint `/integrations/jira/ticket-coverage` reporta el porcentaje de commits en un repositorio que están vinculados a un ticket de Jira.
 
 - **Seguimiento de cobertura**: Sabe qué porcentaje de tus commits referencian un ticket de Jira válido.

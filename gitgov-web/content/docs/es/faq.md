@@ -2,6 +2,7 @@
 title: Preguntas Frecuentes
 description: Preguntas frecuentes sobre GitGov — qué hace, qué no hace y cómo funciona.
 order: 8
+category: Evaluate
 ---
 
 ## General
@@ -282,7 +283,7 @@ Configurable por endpoint. Defaults: 240 req/min (eventos), 60 req/min (admin), 
 
 ### ¿GitGov ayuda con RGPD?
 
-**Sí.** Minimización de datos, derecho de acceso, portabilidad (exportación), derecho al olvido, distinción responsable/encargado. Ver [Privacidad y Responsabilidad de Señales](/docs/privacy).
+**Sí.** Minimización de datos, derecho de acceso, portabilidad (exportación), derecho al olvido, distinción responsable/encargado. Ver [Política de Seguridad](/docs/security).
 
 ### ¿GitGov ayuda con ISO 27001?
 
@@ -290,7 +291,7 @@ Configurable por endpoint. Defaults: 240 req/min (eventos), 60 req/min (admin), 
 
 ### ¿Qué es una "señal"?
 
-Un marcador automatizado de posible desviación de política (ej. push no autorizado a rama protegida, commit sin ticket). **Solo consultiva** — requiere revisión humana. Ver [Privacidad y Responsabilidad de Señales](/docs/privacy).
+Un marcador automatizado de posible desviación de política (ej. push no autorizado a rama protegida, commit sin ticket). **Solo consultiva** — requiere revisión humana. Ver [Política de Seguridad](/docs/security).
 
 ### ¿Puedo revisar y descartar señales?
 
@@ -301,6 +302,5 @@ Un marcador automatizado de posible desviación de política (ej. push no autori
 ## Relacionado
 
 - [**Política de Seguridad**](/docs/security) — Cifrado, almacenamiento, controles de acceso.
-- [**Privacidad y Responsabilidad de Señales**](/docs/privacy) — Límites legales y RGPD.
 - [**Política de Privacidad**](/privacy) — Términos legales para usuarios finales.
 - [**Introducción**](/docs/introduction) — Primeros pasos con GitGov.

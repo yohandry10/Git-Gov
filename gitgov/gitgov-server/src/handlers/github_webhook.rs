@@ -98,6 +98,12 @@ pub async fn handle_github_webhook(
         "push" => process_push_event(&state, &delivery_id, &payload).await,
         "create" => process_create_event(&state, &delivery_id, &payload).await,
         "pull_request" => process_pull_request_event(&state, &delivery_id, &payload).await,
+        "pull_request_review" => {
+            process_pull_request_review_event(&state, &delivery_id, &payload).await
+        }
+        "check_run" => process_check_run_event(&state, &delivery_id, &payload).await,
+        "check_suite" => process_check_suite_event(&state, &delivery_id, &payload).await,
+        "status" => process_status_event(&state, &delivery_id, &payload).await,
         _ => {
             tracing::debug!("Unhandled event type: {}", event_type);
             Ok(())
@@ -308,6 +314,394 @@ async fn process_create_event(
     Ok(())
 }
 
+async fn process_pull_request_review_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let repo_val = match payload.get("repository") {
+        Some(r) => r,
+        None => {
+            tracing::warn!(
+                "pull_request_review event missing 'repository' field, delivery_id={}",
+                delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let repo: GitHubRepository = match serde_json::from_value(repo_val.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to parse repository in pull_request_review event: {}, delivery_id={}",
+                e,
+                delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
+
+    let sender = payload
+        .get("sender")
+        .and_then(|v| serde_json::from_value::<GitHubUser>(v.clone()).ok());
+    let actor_login = sender.as_ref().map(|s| s.login.clone());
+    let actor_id = sender.as_ref().map(|s| s.id);
+
+    let pr = payload.get("pull_request");
+    let pr_number = pr
+        .and_then(|p| p.get("number"))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+    let base_branch = pr
+        .and_then(|p| p.get("base"))
+        .and_then(|b| b.get("ref"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let head_sha = pr
+        .and_then(|p| p.get("head"))
+        .and_then(|b| b.get("sha"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+
+    let review = payload.get("review");
+    let review_state = review
+        .and_then(|r| r.get("state"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let review_commit_sha = review
+        .and_then(|r| r.get("commit_id"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = review_commit_sha.or(head_sha);
+    let commit_shas = after_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let ref_name = base_branch
+        .clone()
+        .or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number)));
+
+    let mut enriched_payload = payload.clone();
+    if let Some(obj) = enriched_payload.as_object_mut() {
+        obj.insert(
+            "gitgov".to_string(),
+            serde_json::json!({
+                "review_action": action,
+                "review_state": review_state,
+                "pr_number": pr_number
+            }),
+        );
+    }
+
+    let event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id),
+        repo_id: Some(repo_id),
+        delivery_id: delivery_id.to_string(),
+        event_type: "pull_request_review".to_string(),
+        actor_login,
+        actor_id,
+        ref_name,
+        ref_type: Some("pull_request".to_string()),
+        before_sha: None,
+        after_sha,
+        commit_shas: commit_shas.clone(),
+        commits_count: commit_shas.len() as i32,
+        payload: enriched_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    state.db.insert_github_event(&event).await.map_err(|e| {
+        tracing::error!("Failed to insert pull_request_review github event: {}", e);
+        "Internal database error".to_string()
+    })?;
+
+    if let Some(ref org_id) = event.org_id {
+        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+        }
+    }
+
+    tracing::info!(
+        "Processed pull_request_review event: repo={} pr=#{} action={} state={} actor={}",
+        repo.full_name,
+        pr_number,
+        action,
+        review_state,
+        event.actor_login.as_deref().unwrap_or("unknown")
+    );
+
+    Ok(())
+}
+
+fn extract_sender_actor(payload: &serde_json::Value) -> (Option<String>, Option<i64>) {
+    let sender = payload
+        .get("sender")
+        .and_then(|v| serde_json::from_value::<GitHubUser>(v.clone()).ok());
+    (
+        sender.as_ref().map(|s| s.login.clone()),
+        sender.as_ref().map(|s| s.id),
+    )
+}
+
+struct GenericRepoEvidenceEvent<'a> {
+    state: &'a Arc<AppState>,
+    delivery_id: &'a str,
+    payload: &'a serde_json::Value,
+    event_type: &'a str,
+    actor_login: Option<String>,
+    actor_id: Option<i64>,
+    ref_name: Option<String>,
+    ref_type: Option<String>,
+    after_sha: Option<String>,
+    metadata: serde_json::Value,
+}
+
+async fn store_generic_repo_evidence_event(
+    input: GenericRepoEvidenceEvent<'_>,
+) -> Result<(), String> {
+    let repo_val = match input.payload.get("repository") {
+        Some(r) => r,
+        None => {
+            tracing::warn!(
+                "{} event missing 'repository' field, delivery_id={}",
+                input.event_type,
+                input.delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let repo: GitHubRepository = match serde_json::from_value(repo_val.clone()) {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to parse repository in {} event: {}, delivery_id={}",
+                input.event_type,
+                e,
+                input.delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let (org_id, repo_id) = get_or_create_org_repo(&input.state.db, &repo).await?;
+
+    let commit_shas = input.after_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let mut enriched_payload = input.payload.clone();
+    if let Some(obj) = enriched_payload.as_object_mut() {
+        obj.insert("gitgov".to_string(), input.metadata);
+    }
+
+    let event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id),
+        repo_id: Some(repo_id),
+        delivery_id: input.delivery_id.to_string(),
+        event_type: input.event_type.to_string(),
+        actor_login: input.actor_login,
+        actor_id: input.actor_id,
+        ref_name: input.ref_name,
+        ref_type: input.ref_type,
+        before_sha: None,
+        after_sha: input.after_sha,
+        commit_shas: commit_shas.clone(),
+        commits_count: commit_shas.len() as i32,
+        payload: enriched_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    input.state.db.insert_github_event(&event).await.map_err(|e| {
+        tracing::error!("Failed to insert {} github event: {}", input.event_type, e);
+        "Internal database error".to_string()
+    })?;
+
+    if let Some(ref org_id) = event.org_id {
+        if let Err(e) = input.state.db.enqueue_job(org_id, "detect_signals", None).await {
+            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+        }
+    }
+
+    tracing::info!(
+        "Processed {} event: repo={} ref={} sha={} actor={}",
+        input.event_type,
+        repo.full_name,
+        event.ref_name.as_deref().unwrap_or("n/a"),
+        event.after_sha.as_deref().unwrap_or("n/a"),
+        event.actor_login.as_deref().unwrap_or("unknown")
+    );
+
+    Ok(())
+}
+
+async fn process_check_run_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let check_run = payload.get("check_run");
+    let status = check_run
+        .and_then(|v| v.get("status"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let conclusion = check_run
+        .and_then(|v| v.get("conclusion"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = check_run
+        .and_then(|v| v.get("head_sha"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = check_run
+        .and_then(|v| v.get("check_suite"))
+        .and_then(|v| v.get("head_branch"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .or_else(|| {
+            check_run
+                .and_then(|v| v.get("head_branch"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        });
+    let details_url = check_run
+        .and_then(|v| v.get("details_url"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
+        state,
+        delivery_id,
+        payload,
+        event_type: "check_run",
+        actor_login,
+        actor_id,
+        ref_name,
+        ref_type: Some("branch".to_string()),
+        after_sha,
+        metadata: serde_json::json!({
+            "action": action,
+            "status": status,
+            "conclusion": conclusion,
+            "details_url": details_url
+        }),
+    })
+    .await
+}
+
+async fn process_check_suite_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let check_suite = payload.get("check_suite");
+    let status = check_suite
+        .and_then(|v| v.get("status"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let conclusion = check_suite
+        .and_then(|v| v.get("conclusion"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = check_suite
+        .and_then(|v| v.get("head_sha"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = check_suite
+        .and_then(|v| v.get("head_branch"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
+        state,
+        delivery_id,
+        payload,
+        event_type: "check_suite",
+        actor_login,
+        actor_id,
+        ref_name,
+        ref_type: Some("branch".to_string()),
+        after_sha,
+        metadata: serde_json::json!({
+            "action": action,
+            "status": status,
+            "conclusion": conclusion
+        }),
+    })
+    .await
+}
+
+async fn process_status_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let state_name = payload
+        .get("state")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let context = payload
+        .get("context")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let description = payload
+        .get("description")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let target_url = payload
+        .get("target_url")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let after_sha = payload
+        .get("sha")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let ref_name = payload
+        .get("branches")
+        .and_then(|v| v.as_array())
+        .and_then(|branches| branches.first())
+        .and_then(|entry| entry.get("name"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
+        state,
+        delivery_id,
+        payload,
+        event_type: "status",
+        actor_login,
+        actor_id,
+        ref_name,
+        ref_type: Some("branch".to_string()),
+        after_sha,
+        metadata: serde_json::json!({
+            "state": state_name,
+            "context": context,
+            "description": description,
+            "target_url": target_url
+        }),
+    })
+    .await
+}
+
 #[derive(Debug, Deserialize)]
 struct GitHubPrReviewUser {
     login: String,
@@ -397,14 +791,18 @@ async fn fetch_pr_approvers(
 }
 
 // Processes pull_request webhook events.
-// Only stores merged PRs (action == "closed" && pull_request.merged == true).
-// All other actions (opened, reviewed, etc.) are silently skipped — no error.
+// Stores every pull_request action as first-class evidence in github_events.
+// Additionally stores merged PRs (action == "closed" && merged == true) in pr_merges.
 async fn process_pull_request_event(
     state: &Arc<AppState>,
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let action = payload.get("action").and_then(|v| v.as_str()).unwrap_or("");
+    let action = payload
+        .get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
     let pr = match payload.get("pull_request") {
         Some(pr) => pr,
         None => {
@@ -412,13 +810,6 @@ async fn process_pull_request_event(
             return Ok(());
         }
     };
-
-    // Only capture merged PRs
-    let merged = pr.get("merged").and_then(|v| v.as_bool()).unwrap_or(false);
-    if action != "closed" || !merged {
-        tracing::debug!("Skipping non-merged pull_request event: action={}, delivery_id={}", action, delivery_id);
-        return Ok(());
-    }
 
     // Extract repository info for org/repo lookup
     let repo_val = match payload.get("repository") {
@@ -438,12 +829,89 @@ async fn process_pull_request_event(
 
     let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
 
+    let merged = pr.get("merged").and_then(|v| v.as_bool()).unwrap_or(false);
+    let draft = pr.get("draft").and_then(|v| v.as_bool()).unwrap_or(false);
     let pr_number = pr.get("number").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
     let pr_title = pr.get("title").and_then(|v| v.as_str()).map(String::from);
     let author_login = pr.get("user").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let merged_by_login = pr.get("merged_by").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let head_sha = pr.get("head").and_then(|h| h.get("sha")).and_then(|v| v.as_str()).map(String::from);
     let base_branch = pr.get("base").and_then(|b| b.get("ref")).and_then(|v| v.as_str()).map(String::from);
+    let sender_actor = payload
+        .get("sender")
+        .and_then(|v| serde_json::from_value::<GitHubUser>(v.clone()).ok());
+    let actor_login = sender_actor.as_ref().map(|s| s.login.clone());
+    let actor_id = sender_actor.as_ref().map(|s| s.id);
+    let requested_reviewers_count = pr
+        .get("requested_reviewers")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.len())
+        .unwrap_or(0);
+
+    let mut pr_payload = payload.clone();
+    if let Some(obj) = pr_payload.as_object_mut() {
+        obj.insert(
+            "gitgov".to_string(),
+            serde_json::json!({
+                "action": action.clone(),
+                "merged": merged,
+                "draft": draft,
+                "pr_number": pr_number,
+                "requested_reviewers_count": requested_reviewers_count
+            }),
+        );
+    }
+
+    let pr_event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id.clone()),
+        repo_id: Some(repo_id.clone()),
+        delivery_id: delivery_id.to_string(),
+        event_type: "pull_request".to_string(),
+        actor_login: actor_login.clone(),
+        actor_id,
+        ref_name: base_branch
+            .clone()
+            .or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
+        ref_type: Some("pull_request".to_string()),
+        before_sha: None,
+        after_sha: head_sha.clone(),
+        commit_shas: head_sha.clone().map(|sha| vec![sha]).unwrap_or_default(),
+        commits_count: head_sha.as_ref().map(|_| 1).unwrap_or(0),
+        payload: pr_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    match state.db.insert_github_event(&pr_event).await {
+        Ok(()) => {}
+        Err(DbError::Duplicate(_)) => {
+            tracing::debug!("Duplicate pull_request event ignored: delivery_id={}", delivery_id);
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::error!("Failed to insert pull_request github event: {}", e);
+            return Err("Internal database error".to_string());
+        }
+    }
+
+    if let Some(ref org_id) = pr_event.org_id {
+        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+        }
+    }
+
+    // Only merged PRs are materialized into pr_merges.
+    if action != "closed" || !merged {
+        tracing::info!(
+            "Processed pull_request event: repo={} pr=#{} action={} actor={}",
+            repo.full_name,
+            pr_number,
+            action,
+            actor_login.as_deref().unwrap_or("unknown"),
+        );
+        return Ok(());
+    }
+
     let approvers = match state.github_personal_access_token.as_deref() {
         Some(token) => match fetch_pr_approvers(&state.http_client, token, &repo.full_name, pr_number).await {
             Ok(v) => v,
@@ -475,6 +943,11 @@ async fn process_pull_request_event(
         obj.insert(
             "gitgov".to_string(),
             serde_json::json!({
+                "action": action.clone(),
+                "merged": merged,
+                "draft": draft,
+                "pr_number": pr_number,
+                "requested_reviewers_count": requested_reviewers_count,
                 "approvers": approvers,
                 "approvals_count": approvals_count
             }),

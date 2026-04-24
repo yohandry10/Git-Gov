@@ -420,6 +420,20 @@ fn finalize_chat_response(
         .map(|turn| truncate_preview(&turn.text, 2000))
         .unwrap_or_default();
     let answer_preview = truncate_preview(&response.answer, 2000);
+    let question = sanitize_chat_answer_text(&question);
+    let answer_preview = sanitize_chat_answer_text(&answer_preview);
+    let sources_for_trace = sources
+        .iter()
+        .map(|item| sanitize_chat_answer_text(item))
+        .collect::<Vec<String>>();
+    let entities_for_trace = entities_detected
+        .iter()
+        .map(|item| sanitize_chat_answer_text(item))
+        .collect::<Vec<String>>();
+    let actions_for_trace = actions_recommended
+        .iter()
+        .map(|item| sanitize_chat_answer_text(item))
+        .collect::<Vec<String>>();
     let (client_id, org_scope) = parse_conversation_scope(conversation_key);
 
     response.sources = sources.clone();
@@ -440,10 +454,14 @@ fn finalize_chat_response(
     let language = nlp.entities.language.clone();
     let status_code_u16 = status_code.as_u16();
     tokio::spawn(async move {
+        let conversation_key_hash = format!(
+            "conv_sha256:{:x}",
+            sha2::Sha256::digest(conversation_key.as_bytes())
+        );
         if let Err(err) = db
             .insert_chat_query_event(&crate::db::ChatQueryEventInsertInput {
                 trace_id: &trace_id,
-                conversation_key: &conversation_key,
+                conversation_key: &conversation_key_hash,
                 client_id: &client_id,
                 org_scope: org_scope.as_deref(),
                 question: &question,
@@ -451,10 +469,10 @@ fn finalize_chat_response(
                 response_status: &response_status,
                 confidence,
                 language: &language,
-                entities_detected: &entities_detected,
+                entities_detected: &entities_for_trace,
                 time_range_used: time_range_used.as_deref(),
-                sources: &sources,
-                actions_recommended: &actions_recommended,
+                sources: &sources_for_trace,
+                actions_recommended: &actions_for_trace,
                 answer_preview: &answer_preview,
             })
             .await
@@ -467,18 +485,18 @@ fn finalize_chat_response(
             return;
         }
 
-        let input_payload = json!({
-            "conversation_key": conversation_key,
+        let input_payload = sanitize_chat_trace_json(&json!({
+            "conversation_key_hash": conversation_key_hash,
             "intent": intent,
             "language": language
-        });
-        let output_payload = json!({
+        }));
+        let output_payload = sanitize_chat_trace_json(&json!({
             "status": response_status,
             "status_code": status_code_u16,
             "confidence": confidence,
             "sources": sources,
             "entities_detected": entities_detected
-        });
+        }));
 
         if let Err(err) = db
             .insert_chat_query_tool_call(&crate::db::ChatQueryToolCallInsertInput {

@@ -7,6 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const nextConfig = {
     reactStrictMode: true,
     outputFileTracingRoot: __dirname,
+    experimental: {
+        optimizePackageImports: ['react-icons/hi', 'react-icons/fa', 'framer-motion'],
+    },
     images: {
         formats: ['image/avif', 'image/webp'],
         remotePatterns: [],

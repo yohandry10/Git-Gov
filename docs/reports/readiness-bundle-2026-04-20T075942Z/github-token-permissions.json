@@ -1,0 +1,37 @@
+﻿{
+    "owner":  "yohandry10",
+    "repo":  "Git-Gov",
+    "branch":  "main",
+    "forbidden_count":  3,
+    "forbidden_endpoints":  [
+                                "Actions secrets",
+                                "Actions variables",
+                                "Branch protection"
+                            ],
+    "results":  [
+                    {
+                        "Label":  "Repo metadata",
+                        "Status":  200,
+                        "AcceptedPermissions":  "metadata=read",
+                        "Result":  "OK"
+                    },
+                    {
+                        "Label":  "Actions secrets",
+                        "Status":  403,
+                        "AcceptedPermissions":  "secrets=read",
+                        "Result":  "FORBIDDEN"
+                    },
+                    {
+                        "Label":  "Actions variables",
+                        "Status":  403,
+                        "AcceptedPermissions":  "actions_variables=read",
+                        "Result":  "FORBIDDEN"
+                    },
+                    {
+                        "Label":  "Branch protection",
+                        "Status":  403,
+                        "AcceptedPermissions":  "administration=read",
+                        "Result":  "FORBIDDEN"
+                    }
+                ]
+}

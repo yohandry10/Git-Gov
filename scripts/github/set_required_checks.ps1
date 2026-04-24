@@ -1,14 +1,16 @@
 param(
-  [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov",
+  [string]$Owner = "",
+  [string]$Repo = "",
   [string]$Branch = "main",
   [string]$GitHubToken = "",
   [string[]]$RequiredChecks = @(
+    "Workflow Lint",
     "Server Clippy + Check",
     "Desktop Rust Clippy",
     "Frontend Lint + Typecheck",
     "Website Lint + Typecheck + Build",
-    "Security Guard"
+    "Security Guard",
+    "Block internal-assistant markers in branch/commits"
   ),
   [int]$RequiredApprovals = 1
 )
@@ -16,12 +18,22 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-if ($tokenCandidates.Count -eq 0) {
-  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT with repository administration permissions."
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "_token_helpers.ps1")
+
+$repoInfo = Resolve-GitHubRepoCoordinates -Owner $Owner -Repo $Repo -ScriptRoot $scriptRoot
+$Owner = $repoInfo.Owner
+$Repo = $repoInfo.Repo
+if ([string]::IsNullOrWhiteSpace($Owner) -or [string]::IsNullOrWhiteSpace($Repo)) {
+  Write-Error "Could not resolve GitHub repository coordinates. Provide -Owner and -Repo, set GITHUB_REPOSITORY, or configure git remote origin to github.com/<owner>/<repo>."
   exit 1
 }
-$token = $tokenCandidates[0]
+
+$token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
+if ([string]::IsNullOrWhiteSpace($token)) {
+  Write-Error "Missing GitHub token. Provide -GitHubToken, set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN, or define GITHUB_PERSONAL_ACCESS_TOKEN in gitgov/gitgov-server/.env (repository administration permissions required)."
+  exit 1
+}
 
 if ($RequiredApprovals -lt 0) {
   Write-Error "RequiredApprovals must be >= 0."
@@ -33,6 +45,40 @@ $headers = @{
   Accept = "application/vnd.github+json"
   "X-GitHub-Api-Version" = "2022-11-28"
   "User-Agent" = "gitgov-branch-protection-script"
+}
+
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
 }
 
 $contexts = @($RequiredChecks | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
@@ -68,7 +114,13 @@ $json = $payload | ConvertTo-Json -Depth 6
 Write-Host "Applying branch protection to ${Owner}/${Repo}:$Branch ..."
 Write-Host "Required checks: $($contexts -join ', ')"
 
-$response = Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -ContentType "application/json" -Body $json
+try {
+  $response = Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -ContentType "application/json" -Body $json
+} catch {
+  $detail = Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $uri
+  Write-Error ("Failed to apply branch protection. {0}" -f $detail)
+  exit 1
+}
 
 Write-Host "Done."
 Write-Host ("Enforce admins: {0}" -f $response.enforce_admins.enabled)

@@ -68,7 +68,7 @@ pub async fn ingest_jenkins_pipeline_event(
         );
     };
 
-    let org_id = if let Some(repo_full_name) = payload.repo_full_name.as_deref() {
+    let derived_org_id = if let Some(repo_full_name) = payload.repo_full_name.as_deref() {
         match state.db.get_repo_by_full_name(repo_full_name).await {
             Ok(Some(repo)) => repo.org_id,
             Ok(None) => {
@@ -83,6 +83,21 @@ pub async fn ingest_jenkins_pipeline_event(
         }
     } else {
         None
+    };
+    let org_id = match apply_ingest_org_scope(auth_user.org_id.as_deref(), derived_org_id.as_deref())
+    {
+        Ok(value) => value,
+        Err(error) => {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(JenkinsPipelineEventResponse {
+                    accepted: false,
+                    duplicate: false,
+                    pipeline_event_id: None,
+                    error: Some(error.to_string()),
+                }),
+            );
+        }
     };
 
     let raw_payload = serde_json::to_value(&payload).unwrap_or(serde_json::Value::Null);
@@ -143,6 +158,21 @@ pub async fn ingest_jenkins_pipeline_event(
             }),
         ),
     }
+}
+
+fn apply_ingest_org_scope(
+    auth_org_id: Option<&str>,
+    derived_org_id: Option<&str>,
+) -> Result<Option<String>, &'static str> {
+    if let Some(scoped_org_id) = auth_org_id {
+        if let Some(derived) = derived_org_id {
+            if derived != scoped_org_id {
+                return Err("Requested org is outside API key scope");
+            }
+        }
+        return Ok(Some(scoped_org_id.to_string()));
+    }
+    Ok(derived_org_id.map(|value| value.to_string()))
 }
 
 // ============================================================================
@@ -282,14 +312,14 @@ pub async fn ingest_jira_webhook(
         &state,
         auth_user.org_id.as_deref(),
         requested_org_name.as_deref(),
-        false,
+        true,
     )
     .await
     {
         Ok(org_id) => org_id,
         Err(err) => {
             let error = match err {
-                OrgScopeError::BadRequest => "Invalid org scope for Jira payload",
+                OrgScopeError::BadRequest => "org_name is required for global admin keys",
                 OrgScopeError::NotFound => "Organization not found for Jira org hint",
                 OrgScopeError::Forbidden => "Requested org is outside API key scope",
                 OrgScopeError::Internal => "Internal database error while resolving org scope",

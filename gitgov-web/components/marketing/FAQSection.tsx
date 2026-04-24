@@ -85,47 +85,70 @@ function AccordionItem({ entry, isOpen, onToggle, isEs }: {
     );
 }
 
-export function FAQSection() {
+export function FAQSection({ maxItems }: { maxItems?: number } = {}) {
     const { locale, t } = useTranslation();
     const isEs = locale === 'es';
     const [openIndex, setOpenIndex] = useState<number | null>(0);
+    const displayedEntries = maxItems ? faqEntries.slice(0, maxItems) : faqEntries;
 
     return (
-        <section className="section-gap" id="faq">
+        <section className="py-20 md:py-32" id="faq">
             <Container>
-                <SectionHeader
-                    badge={isEs ? 'Preguntas Frecuentes' : 'FAQ'}
-                    title={isEs ? 'Preguntas' : 'Frequently Asked'}
-                    titleAccent={isEs ? 'Frecuentes' : 'Questions'}
-                    description={
-                        isEs
-                            ? 'Las respuestas a lo que más nos preguntan sobre GitGov — especialmente lo que NO hace.'
-                            : 'Answers to the most common questions about GitGov — especially what it does NOT do.'
-                    }
-                />
-
                 <SectionReveal>
-                    <div className="max-w-2xl mx-auto mt-12">
-                        <div className="glass-card rounded-2xl p-6 md:p-8">
-                            {faqEntries.map((entry, i) => (
-                                <AccordionItem
-                                    key={i}
-                                    entry={entry}
-                                    isOpen={openIndex === i}
-                                    onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-                                    isEs={isEs}
-                                />
-                            ))}
+                    <div className="grid md:grid-cols-12 gap-12 lg:gap-20 items-start">
+                        {/* Left Column: Context & CTA */}
+                        <div className="md:col-span-5 relative">
+                            <SectionHeader
+                                align="left"
+                                badge={isEs ? 'Preguntas Frecuentes' : 'FAQ'}
+                                title={isEs ? 'Preguntas' : 'Frequently Asked'}
+                                titleAccent={isEs ? 'Frecuentes' : 'Questions'}
+                                description={
+                                    isEs
+                                        ? 'Las respuestas a lo que más nos preguntan sobre GitGov — especialmente lo que NO hace.'
+                                        : 'Answers to the most common questions about GitGov — especially what it does NOT do.'
+                                }
+                            />
+                            
+                            <div className="hidden md:block mt-8 translate-x-1">
+                                <Link
+                                    href="/docs/faq"
+                                    className="inline-flex items-center gap-2 text-sm text-brand-400 hover:text-brand-300 transition-all font-medium group"
+                                >
+                                    {isEs ? 'Ver todas las preguntas frecuentes' : 'See all frequently asked questions'}
+                                    <HiOutlineArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            </div>
                         </div>
 
-                        <div className="text-center mt-8">
-                            <Link
-                                href="/docs/faq"
-                                className="inline-flex items-center gap-2 text-sm text-brand-400 hover:text-brand-300 transition-colors font-medium"
-                            >
-                                {isEs ? 'Ver todas las preguntas frecuentes' : 'See all frequently asked questions'}
-                                <HiOutlineArrowRight className="w-4 h-4" />
-                            </Link>
+                        {/* Right Column: Accordions */}
+                        <div className="md:col-span-7">
+                            <div className="relative rounded-3xl bg-surface-200 border border-white/[0.05] p-[1px] overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent relative z-0 opacity-50" />
+                                
+                                <div className="relative z-10 p-6 md:p-10 bg-[#090909]/80 backdrop-blur-xl rounded-[23px] h-full">
+                                    {displayedEntries.map((entry, i) => (
+                                        <AccordionItem
+                                            key={i}
+                                            entry={entry}
+                                            isOpen={openIndex === i}
+                                            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+                                            isEs={isEs}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Mobile Link */}
+                            <div className="md:hidden mt-8 text-center">
+                                <Link
+                                    href="/docs/faq"
+                                    className="inline-flex items-center gap-2 text-sm text-brand-400 hover:text-brand-300 transition-all font-medium group"
+                                >
+                                    {isEs ? 'Ver todas las preguntas frecuentes' : 'See all frequently asked questions'}
+                                    <HiOutlineArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </SectionReveal>

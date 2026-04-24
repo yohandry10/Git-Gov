@@ -72,30 +72,17 @@ GITHUB_WEBHOOK_SECRET=tu-webhook-secret
 En Supabase SQL Editor, ejecutar los archivos **en orden**:
 ```sql
 -- 1. Schema base
--- Ejecutar: gitgov/gitgov-server/supabase_schema.sql
+-- Ejecutar: gitgov/gitgov-server/supabase/supabase_schema.sql
 
--- 2. Mejoras (aplicar solo si actualizas desde v1)
--- Ejecutar: supabase_schema_v2.sql
--- Ejecutar: supabase_schema_v3.sql
--- Ejecutar: supabase_schema_v4.sql  (append-only triggers)
-
--- 3. V1.2-A — Jenkins
--- Ejecutar: supabase_schema_v5.sql  (pipeline_events)
-
--- 4. V1.2-B — Jira
--- Ejecutar: supabase_schema_v6.sql  (project_tickets, commit_ticket_correlations)
-
--- 5. V1.3 — append-only estricto + policy drift audit table
--- Ejecutar: supabase_schema_v19.sql
-
--- 6. V1.3.1 — policy change requests versionados
--- Ejecutar: supabase_schema_v20.sql
-
--- 7. V1.3.2 — chat trace audit (eventos + tool calls)
--- Ejecutar: supabase_schema_v21.sql
+-- 2. Migraciones incrementales
+-- Ejecutar TODAS las migraciones disponibles en orden numérico:
+-- supabase_schema_v2.sql
+-- supabase_schema_v3.sql
+-- ...
+-- supabase_schema_v21.sql
 ```
 
-Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico.
+Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico (actualmente hasta `v21`).
 
 ### 4. Ejecutar
 
@@ -166,14 +153,16 @@ GitGov/
 │   │   │   ├── auth.rs            # Middleware auth (SHA256 + roles)
 │   │   │   ├── db.rs              # Database queries (COALESCE siempre)
 │   │   │   └── models.rs          # Data structures (serde + defaults)
-│   │   ├── supabase_schema.sql    # Schema base (v1)
-│   │   ├── supabase_schema_v2.sql # Índices mejorados
-│   │   ├── supabase_schema_v3.sql # Governance events, signals
-│   │   ├── supabase_schema_v4.sql # Append-only triggers
-│   │   ├── supabase_schema_v5.sql # Jenkins: pipeline_events
-│   │   ├── supabase_schema_v6.sql # Jira: project_tickets, correlations
-│   │   ├── ...
-│   │   ├── supabase_schema_v19.sql # violations append-only + policy_drift_events
+│   │   ├── supabase/              # Migraciones SQL versionadas
+│   │   │   ├── supabase_schema.sql    # Schema base (v1)
+│   │   │   ├── supabase_schema_v2.sql # Índices mejorados
+│   │   │   ├── supabase_schema_v3.sql # Violation decisions + append-only violations
+│   │   │   ├── supabase_schema_v4.sql # Hotfix append-only de decisiones
+│   │   │   ├── supabase_schema_v5.sql # Jenkins: pipeline_events
+│   │   │   ├── supabase_schema_v6.sql # Jira: project_tickets, correlations
+│   │   │   ├── ...
+│   │   │   ├── supabase_schema_v20.sql # Policy change requests + decisions
+│   │   │   ├── supabase_schema_v21.sql # Chat query audit trail
 │   │   └── tests/                 # Tests E2E (bash)
 │   └── gitgov.toml                # Config del repo
 │
@@ -357,7 +346,7 @@ admins = ["admin-user"]
 | Serialization error | Verificar structs cliente/servidor coinciden |
 | Outbox no envía | Verificar `GITGOV_SERVER_URL` y `GITGOV_API_KEY` en `gitgov/.env` |
 | Dashboard vacío pero outbox OK | Verificar `VITE_SERVER_URL` y `VITE_API_KEY` en `gitgov/.env` |
-| DB error | Ejecutar supabase_schema.sql (base) + v2 a v6 en orden |
+| DB error | Ejecutar supabase_schema.sql (base) + todas `supabase_schema_v*.sql` en orden (actualmente hasta v21) |
 | App no abre | `npm install` y verificar Node.js 20+ |
 | 429 Too Many Requests | Rate limit alcanzado — ajustar `GITGOV_RATE_LIMIT_*_PER_MIN` en .env del servidor |
 | localhost vs 127.0.0.1 | Usar siempre `127.0.0.1:3000` como URL canónica en local |
@@ -373,7 +362,7 @@ admins = ["admin-user"]
 4. ✅ V1.2-A Jenkins — funcional
 5. ✅ V1.2-B Jira — preview funcional
 6. ✅ Deploy servidor en EC2 (`example.com`)
-7. ✅ Sitio web en Vercel (`https://git-gov.vercel.app`)
+7. ✅ Sitio web desplegado (`https://<your-domain>`)
 8. ⬜ Configurar webhooks GitHub en repos de producción
 9. ⬜ Activar HTTPS en EC2 (dominio + Let's Encrypt)
 10. ⬜ Configurar servidor de releases para tauri-updater

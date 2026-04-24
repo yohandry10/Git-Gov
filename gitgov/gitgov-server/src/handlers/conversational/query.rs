@@ -253,6 +253,168 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
             || q.contains("gitgov")
             || q.contains("metricas")
             || q.contains("métricas"));
+    let asks_quality_gate_health = (q.contains("quality gate")
+        || q.contains("quality_gates")
+        || q.contains("sonar")
+        || q.contains("gate de calidad")
+        || q.contains("calidad"))
+        && (q.contains("fail")
+            || q.contains("failed")
+            || q.contains("falla")
+            || q.contains("fallaron")
+            || q.contains("rojo")
+            || q.contains("red")
+            || q.contains("estado")
+            || q.contains("salud")
+            || q.contains("health")
+            || q.contains("resumen")
+            || q.contains("overview")
+            || asks_count);
+    let asks_quality_gate_repo_ranking = (q.contains("quality gate")
+        || q.contains("quality_gates")
+        || q.contains("sonar")
+        || q.contains("gate de calidad"))
+        && (q.contains("repo")
+            || q.contains("repos")
+            || q.contains("repositorio")
+            || q.contains("repository")
+            || q.contains("repositories"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fallan")
+            || q.contains("failing")
+            || q.contains("en rojo"));
+    let asks_quality_gate_branch_ranking = (q.contains("quality gate")
+        || q.contains("quality_gates")
+        || q.contains("sonar")
+        || q.contains("gate de calidad"))
+        && (q.contains("rama")
+            || q.contains("ramas")
+            || q.contains("branch")
+            || q.contains("branches"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fallan")
+            || q.contains("failing")
+            || q.contains("en rojo"));
+    let asks_tickets_non_green_quality_gate = (q.contains("ticket")
+        || q.contains("tickets")
+        || q.contains("jira"))
+        && (q.contains("quality gate")
+            || q.contains("quality_gates")
+            || q.contains("sonar")
+            || q.contains("gate de calidad")
+            || q.contains("rojo")
+            || q.contains("red"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("fallan")
+            || q.contains("failing")
+            || asks_count);
+    let asks_tickets_released_non_green_quality_gate = (q.contains("ticket")
+        || q.contains("tickets")
+        || q.contains("jira"))
+        && (q.contains("quality gate")
+            || q.contains("quality_gates")
+            || q.contains("sonar")
+            || q.contains("gate de calidad")
+            || q.contains("rojo")
+            || q.contains("red"))
+        && (q.contains("prod")
+            || q.contains("produccion")
+            || q.contains("producción")
+            || q.contains("deploy")
+            || q.contains("deployed")
+            || q.contains("desplieg")
+            || q.contains("release")
+            || q.contains("llego")
+            || q.contains("llegó"));
+    let asks_developers_non_green_quality_gate = (q.contains("dev")
+        || q.contains("developer")
+        || q.contains("desarrollador")
+        || q.contains("desarrolladores")
+        || q.contains("equipo")
+        || q.contains("equipos"))
+        && (q.contains("quality gate")
+            || q.contains("quality_gates")
+            || q.contains("sonar")
+            || q.contains("gate de calidad")
+            || q.contains("rojo")
+            || q.contains("red"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fallan")
+            || q.contains("failing")
+            || asks_count);
+    let asks_release_readiness_health = (q.contains("release readiness")
+        || q.contains("readiness gate")
+        || q.contains("readiness")
+        || q.contains("gate de release")
+        || q.contains("gate de despliegue"))
+        && (q.contains("fail")
+            || q.contains("failed")
+            || q.contains("falla")
+            || q.contains("fallaron")
+            || q.contains("warn")
+            || q.contains("warning")
+            || q.contains("estado")
+            || q.contains("salud")
+            || q.contains("health")
+            || q.contains("resumen")
+            || q.contains("overview")
+            || asks_count);
+    let asks_release_readiness_repo_ranking = (q.contains("release readiness")
+        || q.contains("readiness gate")
+        || q.contains("gate de release")
+        || q.contains("gate de despliegue"))
+        && (q.contains("repo")
+            || q.contains("repos")
+            || q.contains("repositorio")
+            || q.contains("repository")
+            || q.contains("repositories"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fail")
+            || q.contains("falla")
+            || q.contains("fallan")
+            || q.contains("fallando"));
+    let asks_release_readiness_branch_ranking = (q.contains("release readiness")
+        || q.contains("readiness gate")
+        || q.contains("gate de release")
+        || q.contains("gate de despliegue"))
+        && (q.contains("rama")
+            || q.contains("ramas")
+            || q.contains("branch")
+            || q.contains("branches"))
+        && (q.contains("top")
+            || q.contains("ranking")
+            || q.contains("mas")
+            || q.contains("más")
+            || q.contains("peor")
+            || q.contains("worst")
+            || q.contains("fail")
+            || q.contains("falla")
+            || q.contains("fallan")
+            || q.contains("fallando"));
 
     let parse_date = |s: &str| -> Option<i64> {
         chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
@@ -304,6 +466,140 @@ fn detect_query(question: &str) -> Option<ChatQuery> {
 
     if asks_executive_summary {
         return Some(ChatQuery::ControlPlaneExecutiveSummary);
+    }
+
+    if asks_tickets_released_non_green_quality_gate {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(10);
+        return Some(ChatQuery::TicketsReleasedWithNonGreenQualityGate { hours, limit });
+    }
+
+    if asks_tickets_non_green_quality_gate {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(10);
+        return Some(ChatQuery::TicketsWithNonGreenQualityGate { hours, limit });
+    }
+
+    if asks_developers_non_green_quality_gate {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::DevelopersWithNonGreenQualityGate { hours, limit });
+    }
+
+    if asks_quality_gate_branch_ranking {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::QualityGateTopFailingBranches { hours, limit });
+    }
+
+    if asks_quality_gate_repo_ranking {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::QualityGateTopFailingRepos { hours, limit });
+    }
+
+    if asks_quality_gate_health {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        return Some(ChatQuery::QualityGateHealthWindow { hours });
+    }
+
+    if asks_release_readiness_repo_ranking {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::ReleaseReadinessTopFailingRepos { hours, limit });
+    }
+
+    if asks_release_readiness_branch_ranking {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        let limit = q
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|token| token.parse::<i64>().ok())
+            .map(|v| v.clamp(1, 20))
+            .unwrap_or(5);
+        return Some(ChatQuery::ReleaseReadinessTopFailingBranches { hours, limit });
+    }
+
+    if asks_release_readiness_health {
+        let hours = if q.contains("hoy") || q.contains("today") {
+            24
+        } else if q.contains("mes") || q.contains("month") {
+            24 * 30
+        } else {
+            24 * 7
+        };
+        return Some(ChatQuery::ReleaseReadinessHealthWindow { hours });
     }
 
     if asks_online_devs && asks_count {
@@ -595,6 +891,7 @@ fn sanitize_chat_answer_text(input: &str) -> String {
     static GH_TOKEN_RE: OnceLock<Regex> = OnceLock::new();
     static SK_TOKEN_RE: OnceLock<Regex> = OnceLock::new();
     static KV_SECRET_RE: OnceLock<Regex> = OnceLock::new();
+    static EMAIL_RE: OnceLock<Regex> = OnceLock::new();
 
     let uuid_re = UUID_RE.get_or_init(|| {
         Regex::new(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b")
@@ -619,15 +916,62 @@ fn sanitize_chat_answer_text(input: &str) -> String {
         )
         .expect("valid key-value secret regex")
     });
+    let email_re = EMAIL_RE.get_or_init(|| {
+        Regex::new(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+            .expect("valid email regex")
+    });
 
     let redacted_uuid = uuid_re.replace_all(input, "[REDACTED_SECRET]");
     let redacted_bearer = bearer_re.replace_all(redacted_uuid.as_ref(), "Bearer [REDACTED_SECRET]");
     let redacted_jwt = jwt_re.replace_all(redacted_bearer.as_ref(), "[REDACTED_SECRET]");
     let redacted_gh = gh_token_re.replace_all(redacted_jwt.as_ref(), "[REDACTED_SECRET]");
     let redacted_sk = sk_token_re.replace_all(redacted_gh.as_ref(), "[REDACTED_SECRET]");
-    kv_secret_re
+    let redacted_kv = kv_secret_re
         .replace_all(redacted_sk.as_ref(), "$1: [REDACTED_SECRET]")
+        .to_string();
+    email_re
+        .replace_all(&redacted_kv, "[REDACTED_EMAIL]")
         .to_string()
+}
+
+fn is_sensitive_trace_key(key: &str) -> bool {
+    let k = key.trim().to_ascii_lowercase().replace('-', "_");
+    matches!(
+        k.as_str(),
+        "authorization" | "cookie" | "set_cookie" | "x_api_key"
+    ) || k.contains("token")
+        || k.contains("secret")
+        || k.contains("password")
+        || k.contains("api_key")
+        || k.contains("apikey")
+        || k.contains("jwt")
+        || k.contains("bearer")
+        || k.contains("conversation_key")
+        || k.contains("client_id")
+}
+
+fn sanitize_chat_trace_json(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut sanitized = serde_json::Map::new();
+            for (key, item) in map {
+                if is_sensitive_trace_key(key) {
+                    sanitized.insert(
+                        key.clone(),
+                        serde_json::Value::String("[REDACTED_SECRET]".to_string()),
+                    );
+                } else {
+                    sanitized.insert(key.clone(), sanitize_chat_trace_json(item));
+                }
+            }
+            serde_json::Value::Object(sanitized)
+        }
+        serde_json::Value::Array(items) => {
+            serde_json::Value::Array(items.iter().map(sanitize_chat_trace_json).collect())
+        }
+        serde_json::Value::String(text) => serde_json::Value::String(sanitize_chat_answer_text(text)),
+        _ => value.clone(),
+    }
 }
 
 fn weekday_es(w: chrono::Weekday) -> &'static str {

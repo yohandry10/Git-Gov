@@ -63,7 +63,7 @@ export function Preloader() {
                 }}
             >
                 <Image
-                    src="/fox.png"
+                    src="/fox-768.png"
                     alt=""
                     fill
                     priority

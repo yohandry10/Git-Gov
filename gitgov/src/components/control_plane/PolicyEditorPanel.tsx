@@ -317,7 +317,7 @@ export function PolicyEditorPanel() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleLoad()
           }}
-          placeholder="owner/repo (ej. yohandry10/Git-Gov)"
+          placeholder="owner/repo (ej. acme/platform-api)"
           className="flex-1 bg-surface-900 border border-white/6 rounded-lg px-3 py-2 text-[12px] text-surface-200 placeholder:text-surface-600 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
         />
         <button

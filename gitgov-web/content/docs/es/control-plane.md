@@ -2,6 +2,7 @@
 title: Conectar al Control Plane
 description: Configura la capa de sincronización entre tu agente de captura local y el servidor de gobernanza central.
 order: 3
+category: Deploy
 ---
 
 El Control Plane es el corazón del ecosistema GitGov. Actúa como punto de ingestión centralizado y seguro para los eventos capturados por todos los agentes Desktop de tu organización. Una vez conectado, habilita monitorización en tiempo real, auditoría y aplicación global de políticas.

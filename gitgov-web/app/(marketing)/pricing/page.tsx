@@ -4,7 +4,7 @@ import { PricingClient } from '@/components/marketing/PricingClient';
 
 export const metadata = generatePageMetadata({
     title: 'Pricing',
-    description: 'GitGov pricing and plans. Transparent governance for teams of all sizes.',
+    description: 'GitGov pricing and plans for Starter, Team, and Enterprise rollouts.',
     path: '/pricing',
 });
 

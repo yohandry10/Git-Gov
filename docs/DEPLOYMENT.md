@@ -57,15 +57,23 @@ docker compose logs -f sonarqube
 Para usar SonarQube local con Jenkins en Docker:
 - `SONAR_HOST_URL=http://host.docker.internal:9000` (o `http://sonarqube:9000` si comparte red compose)
 - generar token en `My Account > Security` y cargarlo en Jenkins como `SONAR_TOKEN`
-- definir `SONAR_PROJECT_KEY` por repo (ej. `yohandry10_git-gov`)
+- definir `SONAR_PROJECT_KEY` por repo (ej. `<owner>_<repo>`)
 
 Compatibilidad actual del `Jenkinsfile`:
-- si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `sonar-token` (Secret Text).
+- si `SONAR_TOKEN` no existe como env var, intenta credencial Jenkins `gitgov-token` (Secret Text).
 - si `SONAR_PROJECT_KEY` no existe, lo infiere desde el repo (`owner/repo` -> `owner_repo`).
 - la telemetría Sonar se publica en el payload Jenkins con:
   - `stages[].name = quality_gate`
   - `stages[].status = OK|WARN|ERROR|SCAN_FAILED|...`
   - `artifacts[]` con URL de dashboard Sonar cuando está disponible.
+- release readiness gate opcional integrado:
+  - stage `Release Readiness Gate (Optional)` en `Jenkinsfile`.
+  - habilitar con `GITGOV_RELEASE_GATE_ENABLED=true`.
+  - perfil por tier: `GITGOV_RELEASE_GATE_TIER=critical|standard|internal`.
+  - umbral opcional: `GITGOV_RELEASE_GATE_MIN` (`0` usa target del tier).
+  - modo estricto de señales: `GITGOV_RELEASE_GATE_FAIL_MISSING=true`.
+  - ventana/volumen: `GITGOV_RELEASE_GATE_HOURS`, `GITGOV_RELEASE_GATE_CORRELATION_LIMIT`.
+  - resultado se publica como stage `release_readiness` en telemetría Jenkins (`/integrations/jenkins`).
 
 #### Migración SCM de job Jenkins (repo nuevo)
 
@@ -74,13 +82,13 @@ Si el job sigue mostrando en consola un remoto anterior u otro repositorio legad
 1. Jenkins -> abrir job -> **Configurar**.
 2. En **Pipeline > Definition: Pipeline script from SCM**:
    - **SCM**: `Git`
-   - **Repository URL**: `https://github.com/yohandry10/Git-Gov.git`
+   - **Repository URL**: `https://github.com/<owner>/<repo>.git`
    - **Credentials**: seleccionar token/credencial GitHub (si aplica).
    - **Branches to build**: `*/main`
 3. Guardar.
 4. Ejecutar **Build Now**.
 5. Verificar en consola:
-   - `Fetching upstream changes from https://github.com/yohandry10/Git-Gov`
+   - `Fetching upstream changes from https://github.com/<owner>/<repo>`
    - que no aparezca referencia a repo legacy.
 
 Verificación automática (Jenkins API):
@@ -89,7 +97,7 @@ Verificación automática (Jenkins API):
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/check_job_repo.ps1 `
   -JenkinsUrl "http://127.0.0.1:8096" `
   -JobName "gitgov-demo-pipeline" `
-  -ExpectedRepoUrl "https://github.com/yohandry10/Git-Gov.git" `
+  -ExpectedRepoUrl "https://github.com/<owner>/<repo>.git" `
   -Username "<JENKINS_USER>" `
   -ApiTokenOrPassword "<JENKINS_API_TOKEN_OR_PASSWORD>"
 ```
@@ -100,7 +108,7 @@ Smoke check de correlación commit -> pipeline (Control Plane):
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -CommitSha "<COMMIT_SHA_EXISTENTE_EN_PIPELINE>"
 ```
 
@@ -110,7 +118,7 @@ Si todavía no existe un pipeline para ese SHA, se puede forzar un evento de pip
 powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_commit_pipeline_correlation.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
-  -RepoFullName "yohandry10/Git-Gov" `
+  -RepoFullName "<owner>/<repo>" `
   -CommitSha "<COMMIT_SHA>" `
   -InjectPipelineIfMissing
 ```
@@ -122,25 +130,138 @@ Automatización en GitHub Actions (opcional, no bloqueante):
 - Si faltan `GITGOV_URL` o `GITGOV_API_KEY`, el workflow se salta en `PASS` (skip explícito).
 - Si `JENKINS_WEBHOOK_SECRET` está activo en backend, configurar `GITGOV_JENKINS_SECRET` (secret opcional) para que el smoke pueda publicar en `/integrations/jenkins`.
 
+Matrix de policy quality gates en cloud (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/quality-gate-policy-matrix.yml`
+- Trigger:
+  - `push` a `main`
+  - `workflow_dispatch` manual (permite override de SHAs)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Comportamiento:
+  - auto-resuelve SHAs failing/green con `scripts/jenkins/resolve_quality_gate_matrix_commits.ps1`
+  - valida `warn/block` con `scripts/jenkins/validate_quality_gate_policy_matrix.ps1`
+  - sube artefactos de resolución + reporte markdown por run
+
+#### Calibración semanal de riesgo/readiness por tier
+
+Para cerrar el tuning de score con evidencia operativa real, generar baseline semanal por tier:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/calibrate_risk_tier_baseline.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -Tier "standard" `
+  -Hours 168
+```
+
+El script calcula:
+- `release_readiness` (0-100),
+- `composite_risk` (0-100),
+- KPIs base (trusted path, blocked push, traceability gap, pipeline failures, sonar failures, unresolved violations),
+- brechas contra SLA del tier seleccionado.
+
+Salida:
+- Reporte markdown en `docs/reports/risk-tier-baseline-<timestamp>.md`.
+
+Automatización en GitHub Actions:
+
+- Workflow: `.github/workflows/risk-tier-baseline-calibration.yml`
+- Trigger:
+  - `schedule` semanal: lunes 12:00 UTC
+  - `workflow_dispatch` manual (inputs: `tier`, `org_name`, `hours`, `correlation_limit`)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Comportamiento sin configuración:
+- El job hace `skip` explícito (no rompe CI) cuando faltan `GITGOV_URL`/`GITGOV_API_KEY`.
+
+Lock y validación SLO por dominio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/validate_domain_slo_targets.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -TargetsPath "ops/slo/domain-slo-targets.json" `
+  -OutputDir "docs/reports/domain-slo-validation-local"
+```
+
+Salida:
+- `docs/reports/domain-slo-validation-<timestamp>/domain-slo-summary.md`
+- baseline por dominio: `domain-<name>-baseline.md`
+
+Workflow:
+- `.github/workflows/domain-slo-validation.yml`
+- Trigger:
+  - `schedule` semanal: lunes 12:45 UTC
+  - `workflow_dispatch` manual (inputs: `domain_name`, `hours`, `correlation_limit`, `fail_on_breach`)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Fuente de lock:
+  - `ops/slo/domain-slo-targets.json` (targets por dominio/tier).
+
+#### Gate de release readiness por rama (SQ-10 fase 2)
+
+Validación ejecutable para bloquear/promover release por score de readiness en una rama específica.
+
+Ejecución local:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
+  -Tier "standard"
+```
+
+Modo estricto (falla si falta cualquier señal):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/jenkins/validate_release_readiness_gate.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
+  -Tier "critical" `
+  -FailOnMissingSignals
+```
+
+Automatización GitHub Actions:
+
+- Workflow: `.github/workflows/release-readiness-gate.yml`
+- Trigger:
+  - `push` a `main`
+  - `workflow_dispatch` manual (tier/branch/repo/target/strict)
+- Requisitos:
+  - Variable: `GITGOV_URL`
+  - Secret: `GITGOV_API_KEY`
+- Salida:
+  - Artifact JSON `release-readiness-gate-<run_id>.json` con score, cobertura de señales, métricas y razones de fallo.
+
 #### Branch protection (checks requeridos en GitHub)
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.
 
 Checks mínimos recomendados:
 
+- `Workflow Lint`
 - `Server Clippy + Check`
 - `Desktop Rust Clippy`
 - `Frontend Lint + Typecheck`
 - `Website Lint + Typecheck + Build`
 - `Security Guard`
+- `Block internal-assistant markers in branch/commits`
 
 Script automático (usa API de GitHub):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
   -GitHubToken "<TOKEN_CON_ADMIN_ON_REPO>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main"
 ```
 
@@ -157,8 +278,8 @@ Validación automática (API):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_branch_protection.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN_READ>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main"
 ```
 
@@ -167,10 +288,34 @@ Orquestador único (setup + validación):
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -ApplyBranchProtection
+```
+
+Helper para PR (crea PR por API o imprime URL de compare si el token no tiene permiso `pull_requests`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/create_or_print_pr.ps1 `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Base "main" `
+  -Head "feature/governance-hardening" `
+  -Title "feat: governance hardening bundle"
+```
+
+El orquestador corre preflight de permisos del token al inicio (`check_token_permissions.ps1`).
+Si necesitas omitirlo explícitamente: `-SkipTokenPermissionsCheck`.
+Si trabajas con un token limitado (sin `Administration` o sin lectura de `Actions secrets/variables`), usa `-BestEffort` para continuar en modo diagnóstico y que el flujo no se detenga.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED_LIMITADO>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Branch "main" `
+  -BestEffort
 ```
 
 Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto-aprobación):
@@ -178,8 +323,8 @@ Opcional para repositorio con único mantenedor (evita bloqueo de merge por auto
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/harden_repo_governance.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ADMIN>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
   -Branch "main" `
   -ApplyBranchProtection `
   -RequiredApprovals 0
@@ -247,7 +392,7 @@ Para usar toda la superficie reciente (drift audit + policy requests + timeline 
 
 ```bash
 # Desde la raíz del repo
-for v in 7 8 9 10 11 12 13 18 19 20; do
+for v in 7 8 9 10 11 12 13 18 19 20 21; do
   cat "gitgov/gitgov-server/supabase/supabase_schema_v${v}.sql" \
     | docker exec -i gitgov-db psql -U gitgov -d gitgov
 done
@@ -311,6 +456,11 @@ GITGOV_DB_MAX_CONNECTIONS=30
 GITGOV_DB_MIN_CONNECTIONS=6
 GITGOV_DB_ACQUIRE_TIMEOUT_SECS=12
 GITGOV_RATE_LIMIT_EVENTS_PER_MIN=1500
+GITGOV_RATE_LIMIT_AUDIT_STREAM_PER_MIN=300
+GITGOV_RATE_LIMIT_JENKINS_PER_MIN=300
+GITGOV_RATE_LIMIT_JIRA_PER_MIN=300
+GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN=600
+GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN=240
 GITGOV_RATE_LIMIT_ADMIN_PER_MIN=240
 GITGOV_RATE_LIMIT_LOGS_PER_MIN=900
 GITGOV_RATE_LIMIT_STATS_PER_MIN=900
@@ -363,6 +513,11 @@ DATABASE_URL=postgresql://gitgov:<password>@127.0.0.1:5432/gitgov
 GITGOV_DB_MAX_CONNECTIONS=60
 GITGOV_DB_MIN_CONNECTIONS=10
 GITGOV_RATE_LIMIT_EVENTS_PER_MIN=60000
+GITGOV_RATE_LIMIT_AUDIT_STREAM_PER_MIN=12000
+GITGOV_RATE_LIMIT_JENKINS_PER_MIN=12000
+GITGOV_RATE_LIMIT_JIRA_PER_MIN=12000
+GITGOV_RATE_LIMIT_GITHUB_WEBHOOK_PER_MIN=24000
+GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN=6000
 GITGOV_RATE_LIMIT_ADMIN_PER_MIN=3000
 GITGOV_RATE_LIMIT_LOGS_PER_MIN=6000
 GITGOV_RATE_LIMIT_STATS_PER_MIN=6000
@@ -528,7 +683,7 @@ curl http://127.0.0.1:3000/health
 curl -H "Authorization: Bearer <ADMIN_API_KEY>" http://127.0.0.1:3000/stats
 
 # 2) Crear policy change request (developer o admin)
-# repo path debe ir URL-encoded (ej: yohandry10%2FGit-Gov)
+# repo path debe ir URL-encoded (ej: <owner>%2F<repo>)
 curl -X POST "http://127.0.0.1:3000/policy/<repo_full_name_urlencoded>/requests" \
   -H "Authorization: Bearer <DEV_OR_ADMIN_API_KEY>" \
   -H "Content-Type: application/json" \
@@ -564,6 +719,66 @@ Resultado esperado:
 1. Dominio (A record a `example.com`)
 2. HTTPS con `certbot` + Nginx
 3. Configurar webhooks GitHub/Jira
+
+### Validación automática de dominio/HTTPS/webhooks
+
+Script de preflight público:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/validate_public_infra.ps1 `
+  -BaseUrl "https://<tu-dominio>" `
+  -ApiKey "<GITGOV_API_KEY_ADMIN>" `
+  -ExpectedIp "<ELASTIC_IP_OPCIONAL>" `
+  -OutputPath "docs/reports/public-infra-validation-<fecha>.md"
+```
+
+Checks incluidos:
+- resolución DNS del host
+- certificado TLS (expiración y handshake)
+- `GET /health`
+- `GET /stats` autenticado (si se pasa `-ApiKey`)
+- reachability de rutas de integración:
+  - `/webhooks/github`
+  - `/integrations/jenkins`
+  - `/integrations/jira`
+
+Resultado:
+- `PASS`: listo para continuar con hardening productivo
+- `WARN`: hay observaciones no bloqueantes
+- `FAIL`: hay fallo crítico (DNS/HTTPS/health/rutas)
+
+### Bundle unificado de readiness
+
+Ejecuta todas las validaciones clave en un solo comando (infra pública, updater, matrix quality gates, baseline tier y prechecks GitHub):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/run_enterprise_readiness_bundle.ps1 `
+  -GitGovUrl "http://127.0.0.1:3001" `
+  -PublicBaseUrl "https://<tu-dominio>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main"
+```
+
+Salida:
+- carpeta `docs/reports/readiness-bundle-<timestamp>/`
+- reporte principal `readiness-bundle-summary.md`
+
+Workflow cloud (manual + semanal):
+- `.github/workflows/enterprise-readiness-bundle.yml`
+- corre lunes 12:30 UTC + `workflow_dispatch`
+- genera artifact `enterprise-readiness-bundle-<run_id>` con:
+  - `readiness-bundle-summary.md`
+  - `public-infra.md`
+  - `desktop-updater.md`
+  - `quality-gate-matrix*.{md,json}` (si hay `GITGOV_API_KEY`)
+  - `risk-tier-baseline-standard.md` (si hay `GITGOV_API_KEY`)
+  - `github-token-permissions.json` / `github-ci-config-precheck.txt` (si hay PAT)
+
+Variables/secrets recomendados para el workflow:
+- Variable requerida: `GITGOV_URL`
+- Variable opcional: `GITGOV_PUBLIC_BASE_URL`
+- Secret opcional: `GITGOV_API_KEY` (habilita matrix+baseline)
+- Secret opcional: `GITHUB_PERSONAL_ACCESS_TOKEN` (precheck cloud estricto/best-effort)
 
 ### Nota de seguridad
 
@@ -740,31 +955,113 @@ Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 - consulta CE task + `quality gate` vía API Sonar y guarda estado en telemetría.
 - publica stage `quality_gate` en `/integrations/jenkins` junto con artifact `sonar_dashboard` cuando aplica.
 - si `GITGOV_STRICT=true`, errores de Sonar/telemetría escalan a fallo de build.
+- stage `Release Readiness Gate (Optional)` calcula score por `repo+branch+tier` con datos de Jira/Jenkins/Sonar en Control Plane.
+- en `GITGOV_STRICT=true`, un gate fallido (`readiness_below_target`, sin señales, etc.) falla el build.
+- en modo no estricto, el gate registra `WARN` y continúa (telemetría conserva `reasons/warnings`).
 
 Preflight de configuración CI del repo (GitHub Actions):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO/ACTIONS_READ>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov"
+  -Owner "<owner>" `
+  -Repo "<repo>"
+```
+
+### Cierre cloud CI (strict mode)
+
+Para cerrar Sonar + telemetría en GitHub-hosted CI sin `UNKNOWN`, el PAT debe tener visibilidad de:
+
+- `secrets=read`
+- `actions_variables=read`
+- `administration=read` (si también validarás branch protection)
+
+Validación de permisos del PAT:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Branch "main"
+```
+
+Validación estricta de configuración CI (sin best-effort):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -RequireGitGovTelemetry
+```
+
+Resultado esperado para considerar cierre cloud:
+
+- `PASS` en `check_token_permissions.ps1` (sin `FORBIDDEN`).
+- `PASS` en `check_ci_repo_config.ps1` (sin `UNKNOWN`).
+- Un run exitoso de `.github/workflows/sonar-governance.yml` con scan activo.
+
+Nota:
+- `-Owner` y `-Repo` ahora son opcionales en scripts de `scripts/github/*`; si no se pasan, se auto-resuelven desde `GITHUB_REPOSITORY` o `git remote origin`.
+
+Modo best-effort cuando el token es limitado (no bloquea por `403` en secrets/variables):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED_LIMITADO>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -AllowMissingSonar `
+  -NoFailOnForbidden
+```
+
+Diagnóstico rápido de permisos del token:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Branch "main"
+```
+
+Si devuelve `403`, revisa la columna `Accepted permissions hint` para habilitar exactamente ese permiso en el token.
+
+Modo máquina (JSON + no fallo en permisos parciales):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.ps1 `
+  -GitHubToken "<TOKEN_FINE_GRAINED>" `
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -Branch "main" `
+  -EmitJson `
+  -NoFailOnForbidden `
+  -Quiet
 ```
 
 Resultado esperado:
 - `PASS` si secrets/variables requeridos para el modo elegido están presentes.
+- `PASS (best-effort)` si usas `-NoFailOnForbidden` y el token no puede leer secrets/variables (se muestra `UNKNOWN` en lugar de cortar flujo).
 - Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
 - `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
 - `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
-- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`).
+- Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`).
+- Si no hay token en entorno, intentan resolverlo desde `gitgov/gitgov-server/.env` (`GITHUB_PERSONAL_ACCESS_TOKEN`).
+- Para token fine-grained, habilitar permisos mínimos:
+  - `Repository permissions > Secrets`: `Read` (o `Read and write`)
+  - `Repository permissions > Actions variables`: `Read` (o `Read and write`)
+  - `Repository permissions > Administration`: `Read` (y `Read and write` si aplicarás branch protection)
 
 Bootstrap de variables CI (sin tocar secrets):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/github/bootstrap_ci_variables.ps1 `
   -GitHubToken "<TOKEN_CON_PERMISOS_REPO_ACTIONS_WRITE>" `
-  -Owner "yohandry10" `
-  -Repo "Git-Gov" `
-  -SonarProjectKey "yohandry10_git-gov"
+  -Owner "<owner>" `
+  -Repo "<repo>" `
+  -SonarProjectKey "<owner>_<repo>"
 ```
 
 Opcional:
@@ -813,6 +1110,12 @@ Actualizaciones in-app usando `tauri-plugin-updater` con full updates (sin delta
 - Auto-check al iniciar (throttling ~6h)
 - Changelog simple (campo `body` del manifest)
 - Fallback de descarga manual
+- Soporte de canales `stable` / `beta` en runtime
+- Telemetría local de updater (checks, descargas, installs, errores)
+- Reintento de descarga desde UI
+- Enforcement de actualización obligatoria por metadata de release:
+  - `min_supported_version`
+  - `force_update` / `critical_update`
 
 ### Requisito para producción
 
@@ -826,7 +1129,7 @@ Y firmar el update con la clave del updater de Tauri.
 
 - **S3**: almacenar artefactos y manifests
 - **CloudFront**: servir con HTTPS y CDN
-- Canales: `stable` (y `beta` posterior)
+- Canales: `stable` y `beta`
 
 ```
 s3://gitgov-downloads/desktop/
@@ -901,6 +1204,10 @@ npx tauri signer sign .\src-tauri\target\release\bundle\nsis\GitGov_0.1.1_x64-se
   -Url "https://downloads.gitgov.com/desktop/stable/GitGov_0.1.1_x64-setup.exe" `
   -Signature "FIRMA" `
   -Notes "Changelog" `
+  -MinSupportedVersion "0.1.0" `
+  -ForceUpdate `
+  -ForceUpdateReason "Security hotfix CVE-xxxx" `
+  -CriticalUpdate `
   -OutputPath ".\release\desktop\stable\latest.json"
 
 # Publicar a S3
@@ -932,10 +1239,36 @@ Block `downloads.gitgov.com` at the firewall. The app continues functioning; onl
 | "No se pudo verificar/instalar" | URL inaccesible, firma incorrecta o pubkey mal | Verificar URL, signature y pubkey |
 | Usuario no ve notificación | Throttling ~6h o no está en Desktop | Probar `Buscar actualizaciones` manual |
 
-### Próximas fases
+### Validación automática de readiness del updater
 
-- **Fase 2:** Canales beta/stable, telemetría de updater, reintento de descarga
-- **Fase 3:** `min_supported_version` desde backend, forced updates (solo críticos)
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy/validate_desktop_updater_readiness.ps1 `
+  -TauriConfigPath "gitgov/src-tauri/tauri.conf.json" `
+  -OutputPath "docs/reports/desktop-updater-readiness-<fecha>.md"
+```
+
+El validador verifica:
+- `plugins.updater` presente
+- `updater.endpoints` y `updater.pubkey` configurados
+- sintaxis HTTPS de endpoints
+- probe real de `latest.json` (HTTP + shape del manifest `version/platforms`)
+- metadata de enforcement (`min_supported_version`, `force_update`, `force_update_reason`)
+
+Si devuelve `WARN` por `404` en `latest.json`, falta publicar assets/manifest en el endpoint configurado.
+
+Automatización GitHub Actions (opcional, no bloqueante):
+
+- Workflow: `.github/workflows/desktop-updater-readiness.yml`
+- Trigger: `push/main` + `workflow_dispatch`
+- Artifact: `desktop-updater-readiness-<run_id>.md`
+- Inputs manuales:
+  - `probe_endpoint=true` para validar `latest.json` en endpoint real
+  - `fail_on_warnings=true` para tratar `WARN` como `FAIL`
+
+### Fases cerradas
+
+- **Fase 2:** Canales beta/stable, telemetría de updater y reintento de descarga (implementado).
+- **Fase 3:** enforcement de `min_supported_version` y forced updates críticos desde metadata firmada del `latest.json` (implementado).
 
 ---
 

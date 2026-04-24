@@ -2,6 +2,7 @@
 title: Resultados de Riesgo
 description: Convierte la telemetría de gobernanza en resultados medibles de riesgo técnico para liderazgo y auditoría.
 order: 9
+category: Operate
 ---
 
 GitGov ya captura señales de políticas, CI y trazabilidad. El siguiente paso es mostrarlas como **resultados de negocio** que liderazgo técnico y compliance puedan seguir en el tiempo.
@@ -138,6 +139,27 @@ Cuando faltan señales, GitGov muestra **cobertura de señales** (`n/5`) para co
 - **Riesgo Alto**: `>= 60`
 
 Son umbrales operativos iniciales. Ajusta por criticidad de repositorio cuando tengas telemetría estable.
+
+---
+
+## Perfiles por Tier (Ya en Dashboard)
+
+El Control Plane ya permite seleccionar perfiles por tier en el dashboard admin (`Critical`, `Standard`, `Internal`).
+
+Cada perfil ajusta:
+- pesos del score (readiness y riesgo compuesto),
+- bandas de color para readiness,
+- y objetivos SLA usados en alertas visuales de KPIs.
+
+### Objetivos SLA base por tier
+
+| Tier | Min readiness | Max push bloqueado | Max gap trazabilidad | Max fallos pipeline | Max fallos sonar | Max violaciones abiertas |
+| --- | --- | --- | --- | --- | --- | --- |
+| Critical | `>= 85` | `<= 5%` | `<= 15%` | `<= 10%` | `<= 12%` | `<= 30%` |
+| Standard | `>= 75` | `<= 10%` | `<= 25%` | `<= 20%` | `<= 20%` | `<= 40%` |
+| Internal | `>= 65` | `<= 15%` | `<= 35%` | `<= 30%` | `<= 30%` | `<= 50%` |
+
+Usa `Standard` como baseline y mueve cada repositorio a `Critical` o `Internal` cuando tenga 2-4 semanas de telemetría estable.
 
 ---
 

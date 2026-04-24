@@ -36,6 +36,14 @@ impl AuthError {
         }
     }
 
+    fn forbidden(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            status: StatusCode::FORBIDDEN,
+            code: "FORBIDDEN",
+        }
+    }
+
     fn service_unavailable(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -129,7 +137,7 @@ fn is_sensitive_admin_path(path: &str) -> bool {
 
 pub fn require_admin(user: &AuthUser) -> Result<(), AuthError> {
     if user.role != UserRole::Admin {
-        return Err(AuthError::unauthorized("Admin access required"));
+        return Err(AuthError::forbidden("Admin access required"));
     }
     Ok(())
 }
@@ -147,7 +155,7 @@ pub fn require_same_user_or_admin(user: &AuthUser, target_login: &str) -> Result
     }
 
     if user.client_id != target_login {
-        return Err(AuthError::unauthorized("Can only access your own data"));
+        return Err(AuthError::forbidden("Can only access your own data"));
     }
 
     Ok(())
@@ -237,5 +245,13 @@ mod tests {
     fn auth_error_service_unavailable_maps_to_503() {
         let response = AuthError::service_unavailable("backend down").into_response();
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[test]
+    fn require_admin_error_maps_to_403() {
+        let response = require_admin(&dev_user("dev1"))
+            .expect_err("developer should be denied")
+            .into_response();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 }

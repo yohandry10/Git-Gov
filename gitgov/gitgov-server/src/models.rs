@@ -464,6 +464,22 @@ pub struct GitGovConfig {
     pub checklist: ChecklistConfig,
     #[serde(default)]
     pub enforcement: EnforcementConfig,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quality_gate_exception: Option<QualityGateExceptionConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualityGateExceptionConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    pub reason: String,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    #[serde(default)]
+    pub approved_by: Option<String>,
+    pub expires_at: i64,
+    #[serde(default)]
+    pub created_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -771,6 +771,40 @@ impl Default for NlpAnalysis {
 #[derive(Debug, Clone)]
 enum ChatQuery {
     ControlPlaneExecutiveSummary,
+    QualityGateTopFailingRepos {
+        hours: i64,
+        limit: i64,
+    },
+    QualityGateTopFailingBranches {
+        hours: i64,
+        limit: i64,
+    },
+    TicketsWithNonGreenQualityGate {
+        hours: i64,
+        limit: i64,
+    },
+    TicketsReleasedWithNonGreenQualityGate {
+        hours: i64,
+        limit: i64,
+    },
+    DevelopersWithNonGreenQualityGate {
+        hours: i64,
+        limit: i64,
+    },
+    QualityGateHealthWindow {
+        hours: i64,
+    },
+    ReleaseReadinessTopFailingRepos {
+        hours: i64,
+        limit: i64,
+    },
+    ReleaseReadinessTopFailingBranches {
+        hours: i64,
+        limit: i64,
+    },
+    ReleaseReadinessHealthWindow {
+        hours: i64,
+    },
     OnlineDevelopersNow {
         minutes: i64,
     },

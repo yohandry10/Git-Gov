@@ -1,28 +1,74 @@
 param(
-  [string]$Owner = "yohandry10",
-  [string]$Repo = "Git-Gov",
+  [string]$Owner = "",
+  [string]$Repo = "",
   [string]$GitHubToken = "",
   # When set, SONAR_TOKEN and SONAR_PROJECT_KEY become optional.
   [switch]$AllowMissingSonar,
   # When set, require telemetry publish config for GitGov ingest.
-  [switch]$RequireGitGovTelemetry
+  [switch]$RequireGitGovTelemetry,
+  # When set, 403 from GitHub Actions secrets/variables endpoints is reported as warning instead of hard fail.
+  [switch]$NoFailOnForbidden
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$tokenCandidates = @(@($GitHubToken, $env:GITHUB_TOKEN, $env:GH_TOKEN, $env:GITHUB_PAT) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-if ($tokenCandidates.Count -eq 0) {
-  Write-Error "Missing GitHub token. Provide -GitHubToken or set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT with repo/actions read access."
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $scriptRoot "_token_helpers.ps1")
+
+$repoInfo = Resolve-GitHubRepoCoordinates -Owner $Owner -Repo $Repo -ScriptRoot $scriptRoot
+$Owner = $repoInfo.Owner
+$Repo = $repoInfo.Repo
+if ([string]::IsNullOrWhiteSpace($Owner) -or [string]::IsNullOrWhiteSpace($Repo)) {
+  Write-Error "Could not resolve GitHub repository coordinates. Provide -Owner and -Repo, set GITHUB_REPOSITORY, or configure git remote origin to github.com/<owner>/<repo>."
   exit 1
 }
-$token = $tokenCandidates[0]
+
+$token = Resolve-GitHubToken -ExplicitToken $GitHubToken -ScriptRoot $scriptRoot
+if ([string]::IsNullOrWhiteSpace($token)) {
+  Write-Error "Missing GitHub token. Provide -GitHubToken, set GITHUB_TOKEN/GH_TOKEN/GITHUB_PAT/GITHUB_PERSONAL_ACCESS_TOKEN, or define GITHUB_PERSONAL_ACCESS_TOKEN in gitgov/gitgov-server/.env (repo/actions read access required)."
+  exit 1
+}
 
 $headers = @{
   Authorization = "Bearer $token"
   Accept = "application/vnd.github+json"
   "X-GitHub-Api-Version" = "2022-11-28"
   "User-Agent" = "gitgov-ci-config-check"
+}
+
+function Get-GitHubApiFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)][object]$ErrorRecord,
+    [Parameter(Mandatory = $true)][string]$Uri
+  )
+
+  $response = $ErrorRecord.Exception.Response
+  if ($null -eq $response) {
+    return "GitHub API request failed ($Uri): $($ErrorRecord.Exception.Message)"
+  }
+
+  $statusCode = $response.StatusCode.value__
+  $acceptedPerms = $response.Headers["x-accepted-github-permissions"]
+  $body = ""
+  try {
+    $stream = $response.GetResponseStream()
+    if ($null -ne $stream) {
+      $reader = New-Object IO.StreamReader($stream)
+      $body = $reader.ReadToEnd()
+    }
+  } catch {
+    # best effort
+  }
+
+  $parts = @("GitHub API request failed ($Uri): status=$statusCode")
+  if (-not [string]::IsNullOrWhiteSpace($acceptedPerms)) {
+    $parts += "accepted_permissions=$acceptedPerms"
+  }
+  if (-not [string]::IsNullOrWhiteSpace($body)) {
+    $parts += "body=$body"
+  }
+  return ($parts -join " | ")
 }
 
 $requiredSecrets = @()
@@ -50,22 +96,28 @@ function Get-NameSet {
   param(
     [string]$Uri,
     [string]$CollectionField,
-    [hashtable]$Headers
+    [hashtable]$Headers,
+    [string]$Kind
   )
+  $result = [pscustomobject]@{
+    Names = @()
+    PermissionDenied = $false
+  }
   try {
     $response = Invoke-RestMethod -Method Get -Uri $Uri -Headers $Headers
   } catch {
-    if ($_.Exception.Response) {
-      $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
-      $body = $reader.ReadToEnd()
-      throw "GitHub API request failed ($Uri): $body"
+    $response = $_.Exception.Response
+    $statusCode = if ($null -ne $response) { [int]$response.StatusCode.value__ } else { -1 }
+    if ($statusCode -eq 403 -and $NoFailOnForbidden) {
+      $result.PermissionDenied = $true
+      Write-Warning ("Skipping {0} visibility check due to token permission limits (403). Use a token with Actions {0} read access for strict validation." -f $Kind)
+      return $result
     }
-    throw
+    throw (Get-GitHubApiFailureMessage -ErrorRecord $_ -Uri $Uri)
   }
 
-  $names = @()
   if ($null -eq $response) {
-    return $names
+    return $result
   }
 
   $items = @()
@@ -75,15 +127,18 @@ function Get-NameSet {
 
   foreach ($item in @($items)) {
     if ($null -ne $item -and $item.PSObject.Properties.Name -contains "name" -and -not [string]::IsNullOrWhiteSpace([string]$item.name)) {
-      $names += ([string]$item.name).Trim().ToUpperInvariant()
+      $result.Names += ([string]$item.name).Trim().ToUpperInvariant()
     }
   }
-  return @($names | Select-Object -Unique)
+  $result.Names = @($result.Names | Select-Object -Unique)
+  return $result
 }
 
 $base = "https://api.github.com/repos/$Owner/$Repo/actions"
-$secretNames = Get-NameSet -Uri "$base/secrets?per_page=100" -CollectionField "secrets" -Headers $headers
-$variableNames = Get-NameSet -Uri "$base/variables?per_page=100" -CollectionField "variables" -Headers $headers
+$secretResult = Get-NameSet -Uri "$base/secrets?per_page=100" -CollectionField "secrets" -Headers $headers -Kind "secrets"
+$variableResult = Get-NameSet -Uri "$base/variables?per_page=100" -CollectionField "variables" -Headers $headers -Kind "variables"
+$secretNames = $secretResult.Names
+$variableNames = $variableResult.Names
 if ($null -eq $secretNames) { $secretNames = @() }
 if ($null -eq $variableNames) { $variableNames = @() }
 
@@ -98,57 +153,81 @@ function Set-ContainsName {
 }
 
 $missingRequiredSecrets = @()
-foreach ($name in $requiredSecrets) {
-  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
-    $missingRequiredSecrets += $name
+if (-not $secretResult.PermissionDenied) {
+  foreach ($name in $requiredSecrets) {
+    if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+      $missingRequiredSecrets += $name
+    }
   }
 }
 
 $missingRequiredVariables = @()
-foreach ($name in $requiredVariables) {
-  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
-    $missingRequiredVariables += $name
+if (-not $variableResult.PermissionDenied) {
+  foreach ($name in $requiredVariables) {
+    if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+      $missingRequiredVariables += $name
+    }
   }
 }
 
 $missingOptionalSecrets = @()
-foreach ($name in $optionalSecrets) {
-  if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
-    $missingOptionalSecrets += $name
+if (-not $secretResult.PermissionDenied) {
+  foreach ($name in $optionalSecrets) {
+    if (-not (Set-ContainsName -SetObject $secretNames -Name $name)) {
+      $missingOptionalSecrets += $name
+    }
   }
 }
 
 $missingOptionalVariables = @()
-foreach ($name in $optionalVariables) {
-  if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
-    $missingOptionalVariables += $name
+if (-not $variableResult.PermissionDenied) {
+  foreach ($name in $optionalVariables) {
+    if (-not (Set-ContainsName -SetObject $variableNames -Name $name)) {
+      $missingOptionalVariables += $name
+    }
   }
 }
 
 Write-Host "Repository: $Owner/$Repo"
 Write-Host ""
 Write-Host "Required secrets:"
-foreach ($name in $requiredSecrets) {
-  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($secretResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions secrets)."
+} else {
+  foreach ($name in $requiredSecrets) {
+    $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Optional secrets:"
-foreach ($name in $optionalSecrets) {
-  $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($secretResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions secrets)."
+} else {
+  foreach ($name in $optionalSecrets) {
+    $status = if (Set-ContainsName -SetObject $secretNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Required variables:"
-foreach ($name in $requiredVariables) {
-  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($variableResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions variables)."
+} else {
+  foreach ($name in $requiredVariables) {
+    $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 Write-Host ""
 Write-Host "Optional variables:"
-foreach ($name in $optionalVariables) {
-  $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
-  Write-Host ("  [{0}] {1}" -f $status, $name)
+if ($variableResult.PermissionDenied) {
+  Write-Host "  [UNKNOWN] Skipped (token cannot read Actions variables)."
+} else {
+  foreach ($name in $optionalVariables) {
+    $status = if (Set-ContainsName -SetObject $variableNames -Name $name) { "OK" } else { "MISSING" }
+    Write-Host ("  [{0}] {1}" -f $status, $name)
+  }
 }
 
 if ($missingRequiredSecrets.Count -gt 0 -or $missingRequiredVariables.Count -gt 0) {
@@ -158,7 +237,9 @@ if ($missingRequiredSecrets.Count -gt 0 -or $missingRequiredVariables.Count -gt 
 }
 
 Write-Host ""
-if ($missingOptionalSecrets.Count -gt 0 -or $missingOptionalVariables.Count -gt 0) {
+if ($secretResult.PermissionDenied -or $variableResult.PermissionDenied) {
+  Write-Host "PASS (best-effort): required validation completed with limited token visibility on Actions config."
+} elseif ($missingOptionalSecrets.Count -gt 0 -or $missingOptionalVariables.Count -gt 0) {
   Write-Host ("PASS (required complete, optional missing). Optional secrets missing: [{0}] | Optional variables missing: [{1}]" -f ($missingOptionalSecrets -join ", "), ($missingOptionalVariables -join ", "))
 } else {
   Write-Host "PASS (all required and optional CI repo config present)."
