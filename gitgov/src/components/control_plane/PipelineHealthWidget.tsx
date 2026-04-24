@@ -19,6 +19,10 @@ interface PipelineHealthWidgetProps {
   releaseReadinessBand: ReleaseReadinessBand
   readinessTierLabel: string
   readinessTargetScore: number
+  githubPrEvents: number
+  githubPrReviewEvents: number
+  githubStatusCheckEvents: number
+  githubEvidenceSignals: number
 }
 
 export function PipelineHealthWidget({
@@ -37,6 +41,10 @@ export function PipelineHealthWidget({
   releaseReadinessBand,
   readinessTierLabel,
   readinessTargetScore,
+  githubPrEvents,
+  githubPrReviewEvents,
+  githubStatusCheckEvents,
+  githubEvidenceSignals,
 }: PipelineHealthWidgetProps) {
   const readinessClass = releaseReadinessBand === 'Insuficiente'
     ? 'text-surface-500'
@@ -75,6 +83,10 @@ export function PipelineHealthWidget({
               ['Sonar failed', sonarFailed, sonarFailed > 0 ? 'text-danger-400' : ''],
               ['Sonar unstable', sonarUnstable, sonarUnstable > 0 ? 'text-amber-300' : ''],
               ['Sonar passed', sonarPassed, sonarPassed > 0 ? 'text-emerald-300' : ''],
+              ['GitHub PR events', githubPrEvents, githubPrEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub review events', githubPrReviewEvents, githubPrReviewEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub status-check events', githubStatusCheckEvents, githubStatusCheckEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub evidence signals', `${githubEvidenceSignals}/3`, githubEvidenceSignals < 3 ? 'text-amber-300' : 'text-emerald-300'],
             ] as const).map(([label, val, cls]) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <span className="text-surface-400">{label}</span>

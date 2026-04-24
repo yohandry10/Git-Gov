@@ -48,11 +48,52 @@ function SectionLabel({
 ───────────────────────────────────────────────────────────────────────── */
 export function FeaturesClient() {
     const { t } = useTranslation();
-    const navigation = [
-        { label: t('features.nav.capture') as string, href: '#capture' },
-        { label: t('features.nav.governance') as string, href: '#governance' },
-        { label: t('features.nav.correlation') as string, href: '#correlation' },
-        { label: t('features.nav.reporting') as string, href: '#reporting' },
+    const heroSurfaces = [
+        {
+            href: '#capture',
+            icon: <HiOutlineDesktopComputer size={18} />,
+            title: t('features.nav.capture') as string,
+            description: t('features.hero.surface.capture') as string,
+        },
+        {
+            href: '#governance',
+            icon: <HiOutlineShieldCheck size={18} />,
+            title: t('features.nav.governance') as string,
+            description: t('features.hero.surface.governance') as string,
+        },
+        {
+            href: '#correlation',
+            icon: <HiOutlinePuzzle size={18} />,
+            title: t('features.nav.correlation') as string,
+            description: t('features.hero.surface.correlation') as string,
+        },
+        {
+            href: '#reporting',
+            icon: <HiOutlineTrendingUp size={18} />,
+            title: t('features.nav.reporting') as string,
+            description: t('features.hero.surface.reporting') as string,
+        },
+    ];
+    const proofStrip = [
+        t('features.proof.metadata') as string,
+        t('features.proof.offline') as string,
+        t('features.proof.gates') as string,
+        t('features.proof.integrations') as string,
+        t('features.proof.exports') as string,
+    ];
+    const mapPoints = [
+        {
+            title: t('features.hero.point.capture.title') as string,
+            description: t('features.hero.point.capture.desc') as string,
+        },
+        {
+            title: t('features.hero.point.governance.title') as string,
+            description: t('features.hero.point.governance.desc') as string,
+        },
+        {
+            title: t('features.hero.point.outcomes.title') as string,
+            description: t('features.hero.point.outcomes.desc') as string,
+        },
     ];
     const governanceModes = [
         t('features.policy.mode.off') as string,
@@ -88,7 +129,7 @@ export function FeaturesClient() {
             {/* ══════════════════════════════════════════════════════
                 HERO
             ══════════════════════════════════════════════════════ */}
-            <section className="pt-32 md:pt-44 pb-0 relative overflow-hidden">
+            <section className="pt-28 md:pt-32 pb-20 md:pb-24 relative overflow-hidden">
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
@@ -107,43 +148,120 @@ export function FeaturesClient() {
                 />
 
                 <Container>
-                    <div className="text-center max-w-5xl mx-auto">
+                    <div className="max-w-6xl mx-auto">
                         <SectionReveal>
-                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/25 mb-10">
-                                <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
-                                <span className="text-brand-400 text-[11px] font-bold tracking-widest uppercase">
-                                    {t('features.badge') as string}
-                                </span>
+                            <div className="text-center max-w-4xl mx-auto">
+                                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/25 mb-10">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" />
+                                    <span className="text-brand-400 text-[11px] font-bold tracking-widest uppercase">
+                                        {t('features.badge') as string}
+                                    </span>
+                                </div>
+
+                                <h1 className="font-semibold tracking-tight leading-[0.98] mb-7">
+                                    <span className="block text-white text-4xl md:text-5xl lg:text-[4rem]">
+                                        {t('features.title') as string}
+                                    </span>
+                                    <span className="block gradient-text text-4xl md:text-5xl lg:text-[4rem]">
+                                        {t('features.titleAccent') as string}
+                                    </span>
+                                </h1>
+
+                                <p className="text-lg md:text-[1.28rem] text-gray-400 leading-relaxed max-w-3xl mx-auto mb-8">
+                                    {t('features.description') as string}
+                                </p>
+
+                                <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 max-w-3xl mx-auto">
+                                    {proofStrip.map((item) => (
+                                        <span
+                                            key={item}
+                                            className="inline-flex items-center gap-2 text-xs md:text-[13px] font-semibold text-gray-300"
+                                        >
+                                            <span className="h-1.5 w-1.5 rounded-full bg-brand-400 shrink-0" />
+                                            <span>{item}</span>
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-
-                            <h1 className="font-semibold tracking-tight leading-[1] mb-8">
-                                <span className="block text-white text-4xl md:text-5xl lg:text-6xl">
-                                    {t('features.title') as string}
-                                </span>
-                                <span className="block gradient-text text-4xl md:text-5xl lg:text-6xl">
-                                    {t('features.titleAccent') as string}
-                                </span>
-                            </h1>
-
-                            <p className="text-lg md:text-xl text-gray-400 leading-relaxed max-w-2xl mx-auto mb-14">
-                                {t('features.description') as string}
-                            </p>
                         </SectionReveal>
 
-                        {/* Anchor navigation */}
-                        <SectionReveal delay={0.1}>
-                            <div className="flex flex-wrap justify-center gap-3 mb-20">
-                                {navigation.map((p) => (
-                                    <a
-                                        key={p.label}
-                                        href={p.href}
-                                        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 text-brand-400 border-brand-500/30 bg-brand-500/10 hover:bg-brand-500/20"
-                                    >
-                                        {p.label}
-                                        <HiOutlineArrowRight size={13} />
-                                    </a>
-                                ))}
+                        <SectionReveal delay={0.08}>
+                            <div className="relative mt-14 overflow-hidden rounded-[30px] border border-white/8 bg-gradient-to-br from-white/[0.035] via-black/40 to-black/20 p-6 md:p-7 shadow-[0_20px_90px_rgba(0,0,0,0.38)]">
+                                <div className="absolute -right-16 top-0 h-40 w-40 rounded-full bg-brand-500/10 blur-[80px]" />
+                                <div className="absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-brand-500/5 blur-[70px]" />
+
+                                <div className="relative grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch">
+                                    <div className="rounded-[24px] border border-white/6 bg-white/[0.025] p-5 md:p-6 flex flex-col justify-between">
+                                        <div>
+                                            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-brand-400">
+                                                {t('features.hero.mapLabel') as string}
+                                            </p>
+                                            <p className="mt-3 text-sm leading-relaxed text-gray-500">
+                                                {t('features.hero.mapDescription') as string}
+                                            </p>
+
+                                            <div className="mt-6 space-y-4">
+                                                {mapPoints.map((point) => (
+                                                    <div key={point.title} className="flex gap-3">
+                                                        <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-white">
+                                                                {point.title}
+                                                            </p>
+                                                            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                                                                {point.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="mt-8 pt-5 border-t border-white/6">
+                                            <div className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-gray-500">
+                                                <span className="h-2 w-2 rounded-full bg-brand-400" />
+                                                <span>{t('features.hero.mapSignal') as string}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {heroSurfaces.map((surface, index) => (
+                                        <a
+                                            key={surface.title}
+                                            href={surface.href}
+                                            className="group relative rounded-[22px] border border-white/6 bg-black/20 p-5 transition-all duration-300 hover:border-brand-500/20 hover:bg-white/[0.03]"
+                                        >
+                                            <div className="mb-5 flex items-center justify-between gap-3">
+                                                <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-500/20 bg-[#111111] text-brand-400 shadow-[0_0_0_1px_rgba(249,115,22,0.05)] transition-transform duration-300 group-hover:scale-[1.03] group-hover:border-brand-500/35">
+                                                    {surface.icon}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700">
+                                                        0{index + 1}
+                                                    </span>
+                                                    <HiOutlineArrowRight
+                                                        size={16}
+                                                        className="text-gray-700 transition-colors duration-300 group-hover:text-brand-400"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h2 className="text-base font-bold text-white">
+                                                    {surface.title}
+                                                </h2>
+                                                <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                                                    {surface.description}
+                                                </p>
+                                            </div>
+                                        </a>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
+                        </SectionReveal>
+
+                        <SectionReveal delay={0.12}>
+                            <div className="mt-16 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
                         </SectionReveal>
                     </div>
                 </Container>
@@ -152,7 +270,7 @@ export function FeaturesClient() {
             {/* ══════════════════════════════════════════════════════
                 1. WORKSTATION CAPTURE
             ══════════════════════════════════════════════════════ */}
-            <section id="capture" className="py-28 relative">
+            <section id="capture" className="pt-28 pb-28 relative">
                 <div
                     className="absolute top-1/2 left-[-200px] -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
                     style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.07) 0%, transparent 65%)' }}

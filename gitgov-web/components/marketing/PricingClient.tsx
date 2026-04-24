@@ -42,51 +42,51 @@ export function PricingClient() {
             title: 'Planes y',
             titleAccent: 'Precios',
             description:
-                'Precios simples y transparentes para equipos que quieren trazabilidad operativa sin improvisar el rollout.',
+                'Precios realistas para el estado actual del producto: entrada mínima para evaluar, un plan de equipo pagable y enterprise cotizado por rollout.',
             footerNote:
-                'Precios en USD. Team requiere mínimo 10 seats. Enterprise se cotiza según despliegue, soporte y alcance organizacional.',
+                'Precios en USD. Starter es solo una evaluación limitada. Team cubre hasta 10 desarrolladores por workspace. Enterprise se cotiza según despliegue, soporte y alcance organizacional.',
         }
         : {
             badge: 'Pricing',
             title: 'Plans &',
             titleAccent: 'Pricing',
             description:
-                'Simple, transparent pricing for teams that need operational traceability without improvising the rollout.',
+                'Realistic pricing for the current product maturity: minimal entry for evaluation, an affordable team plan, and enterprise scoped around rollout.',
             footerNote:
-                'Prices shown in USD. Team requires a 10-seat minimum. Enterprise is scoped around deployment, support, and org-wide rollout.',
+                'Prices shown in USD. Starter is a limited evaluation tier. Team covers up to 10 developers per workspace. Enterprise is scoped around deployment, support, and org-wide rollout.',
         };
 
     const plans: Plan[] = isEs
         ? [
             {
                 name: 'Starter',
-                description: 'Empieza con gobernanza Git para equipos pequeños y evaluación inicial.',
+                description: 'Evaluación corta para validar la captura local y el flujo básico antes de hablar con ventas.',
                 price: 'Gratis',
-                priceNote: 'Hasta 5 desarrolladores',
-                ctaLabel: 'Empezar',
+                priceNote: '1 developer · 1 día de prueba',
+                ctaLabel: 'Probar',
                 ctaHref: '/download',
                 icon: <HiOutlineUser size={22} />,
                 features: [
+                    { label: '1 developer', included: true },
+                    { label: '1 día de evaluación', included: true },
                     { label: 'Captura de operaciones Git', included: true },
                     { label: 'Timeline local de evidencia', included: true },
-                    { label: 'Hasta 5 usuarios', included: true },
                     { label: 'Correlación Jenkins CI', included: false },
                     { label: 'Cobertura de tickets Jira', included: false },
-                    { label: 'Reportes exportables', included: false },
                 ],
             },
             {
                 name: 'Team',
-                description: 'Gobernanza completa para equipos de ingeniería en crecimiento.',
-                price: '$24',
-                priceNote: 'por desarrollador / mes',
+                description: 'El plan operativo para equipos que ya quieren usar GitGov en trabajo real y no solo en una demo.',
+                price: '$299',
+                priceNote: 'por workspace / mes',
                 ctaLabel: 'Contactar por Precios',
                 ctaHref: '/contact',
                 highlighted: true,
                 badge: 'Más popular',
                 icon: <HiOutlineLightningBolt size={22} />,
                 features: [
-                    { label: 'Todo en Starter', included: true },
+                    { label: 'Hasta 10 developers', included: true },
                     { label: 'Logs de auditoría inmutables', included: true },
                     { label: 'Correlación Jenkins CI', included: true },
                     { label: 'Cobertura de tickets Jira', included: true },
@@ -96,8 +96,8 @@ export function PricingClient() {
             },
             {
                 name: 'Enterprise',
-                description: 'Control total para despliegues regulados y rollout organizacional.',
-                price: 'Desde $2,500',
+                description: 'Para despliegues self-hosted, rollout por áreas, soporte prioritario y operación organizacional.',
+                price: 'Desde $1,200',
                 priceNote: 'por mes',
                 ctaLabel: 'Hablar con Ventas',
                 ctaHref: '/contact',
@@ -105,43 +105,43 @@ export function PricingClient() {
                 features: [
                     { label: 'Todo en Team', included: true },
                     { label: 'Usuarios ilimitados', included: true },
+                    { label: 'Arquitectura self-hosted o híbrida', included: true },
                     { label: 'Soporte prioritario', included: true },
                     { label: 'Onboarding dedicado', included: true },
-                    { label: 'Arquitectura híbrida o self-hosted', included: true },
-                    { label: 'Rollout de políticas a nivel organización', included: true },
+                    { label: 'Acompañamiento de rollout', included: true },
                 ],
             },
         ]
         : [
             {
                 name: 'Starter',
-                description: 'Start Git governance for small teams and early evaluation.',
+                description: 'Short evaluation tier to validate local capture and the basic workflow before talking to sales.',
                 price: 'Free',
-                priceNote: 'Up to 5 developers',
-                ctaLabel: 'Get Started',
+                priceNote: '1 developer · 1 day trial',
+                ctaLabel: 'Try It',
                 ctaHref: '/download',
                 icon: <HiOutlineUser size={22} />,
                 features: [
+                    { label: '1 developer', included: true },
+                    { label: '1 day evaluation', included: true },
                     { label: 'Git operation capture', included: true },
                     { label: 'Local evidence timeline', included: true },
-                    { label: 'Up to 5 users', included: true },
                     { label: 'Jenkins CI correlation', included: false },
                     { label: 'Jira ticket coverage', included: false },
-                    { label: 'Exportable reporting', included: false },
                 ],
             },
             {
                 name: 'Team',
-                description: 'Full governance coverage for growing engineering teams.',
-                price: '$24',
-                priceNote: 'per developer / month',
+                description: 'The operational plan for teams that want GitGov in real work, not just in a demo.',
+                price: '$299',
+                priceNote: 'per workspace / month',
                 ctaLabel: 'Contact for Pricing',
                 ctaHref: '/contact',
                 highlighted: true,
                 badge: 'Most Popular',
                 icon: <HiOutlineLightningBolt size={22} />,
                 features: [
-                    { label: 'Everything in Starter', included: true },
+                    { label: 'Up to 10 developers', included: true },
                     { label: 'Immutable audit logs', included: true },
                     { label: 'Jenkins CI correlation', included: true },
                     { label: 'Jira ticket coverage', included: true },
@@ -151,8 +151,8 @@ export function PricingClient() {
             },
             {
                 name: 'Enterprise',
-                description: 'Full control for regulated rollouts and org-wide deployment.',
-                price: 'From $2,500',
+                description: 'For self-hosted deployments, phased rollout, priority support, and org-wide operation.',
+                price: 'From $1,200',
                 priceNote: 'per month',
                 ctaLabel: 'Talk to Sales',
                 ctaHref: '/contact',
@@ -160,10 +160,10 @@ export function PricingClient() {
                 features: [
                     { label: 'Everything in Team', included: true },
                     { label: 'Unlimited users', included: true },
+                    { label: 'Self-hosted or hybrid architecture', included: true },
                     { label: 'Priority support', included: true },
                     { label: 'Dedicated onboarding', included: true },
-                    { label: 'Hybrid or self-hosted architecture', included: true },
-                    { label: 'Org-wide policy rollout', included: true },
+                    { label: 'Rollout advisory', included: true },
                 ],
             },
         ];
@@ -226,7 +226,7 @@ export function PricingClient() {
                                             <h2 className="text-3xl font-black text-white tracking-tight mb-3">
                                                 {plan.name}
                                             </h2>
-                                            <p className="text-sm text-gray-400 leading-relaxed min-h-[48px]">
+                                            <p className="text-sm text-gray-400 leading-relaxed min-h-[72px]">
                                                 {plan.description}
                                             </p>
                                         </div>

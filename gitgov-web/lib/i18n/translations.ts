@@ -208,12 +208,59 @@ export const translations = {
     'cta.secondary': { en: 'Read the Docs', es: 'Leer la Documentación' },
 
     // ═══ Features Page ═══
-    'features.badge': { en: 'Features', es: 'Características' },
-    'features.title': { en: 'Everything you need for', es: 'Todo lo que necesitas para' },
-    'features.titleAccent': { en: 'Git Governance', es: 'Gobernanza Git' },
+    'features.badge': { en: 'Product Overview', es: 'Producto' },
+    'features.title': { en: 'Operational capabilities of', es: 'Capacidades operativas de' },
+    'features.titleAccent': { en: 'GitGov', es: 'GitGov' },
     'features.description': {
-        en: 'From commit capture to compliance reporting — every feature built around operational evidence.',
-        es: 'Desde la captura de commits hasta reportes de compliance — cada funcionalidad construida alrededor de evidencia operativa.',
+        en: 'From workstation capture and governance checks to CI and ticket correlation, GitGov organizes operational evidence into a product surface built for audit, readiness, and reporting.',
+        es: 'Desde captura en la estación de trabajo y checks de gobernanza hasta correlación con CI y tickets, GitGov organiza la evidencia operativa en una superficie de producto preparada para auditoría, readiness y reporting.',
+    },
+    'features.proof.metadata': { en: 'Metadata-only capture', es: 'Captura solo de metadatos' },
+    'features.proof.offline': { en: 'Offline queue', es: 'Cola offline' },
+    'features.proof.gates': { en: 'Off / Warn / Block', es: 'Off / Warn / Block' },
+    'features.proof.integrations': { en: 'Jenkins · Jira · GitHub', es: 'Jenkins · Jira · GitHub' },
+    'features.proof.exports': { en: 'Exportable evidence', es: 'Evidencia exportable' },
+    'features.hero.mapLabel': { en: 'Product surfaces', es: 'Superficies del producto' },
+    'features.hero.mapDescription': {
+        en: 'A compact map of how GitGov moves from local capture into governance, correlation, and reporting.',
+        es: 'Un mapa compacto de cómo GitGov pasa de la captura local a gobernanza, correlación y reporting.',
+    },
+    'features.hero.mapSignal': { en: 'Source to reporting', es: 'Del origen al reporte' },
+    'features.hero.point.capture.title': { en: 'Capture at the source', es: 'Captura en el origen' },
+    'features.hero.point.capture.desc': {
+        en: 'Start with workstation-level Git events and resilient local queueing.',
+        es: 'Empieza con eventos Git a nivel de estación de trabajo y cola local resiliente.',
+    },
+    'features.hero.point.governance.title': { en: 'Apply governance early', es: 'Aplica gobernanza temprano' },
+    'features.hero.point.governance.desc': {
+        en: 'See where branch, ticket, and traceability checks intervene before push.',
+        es: 'Ve dónde intervienen los checks de ramas, tickets y trazabilidad antes del push.',
+    },
+    'features.hero.point.outcomes.title': { en: 'Connect evidence to outcomes', es: 'Conecta evidencia con resultados' },
+    'features.hero.point.outcomes.desc': {
+        en: 'Follow the path from CI and ticket correlation into reporting and audit outputs.',
+        es: 'Sigue el recorrido desde correlación con CI y tickets hasta reporting y salidas de auditoría.',
+    },
+    'features.hero.navLabel': { en: 'Explore by surface', es: 'Explorar por superficie' },
+    'features.hero.navDescription': {
+        en: 'Use this map to move from overview into the product details below.',
+        es: 'Usa este mapa para pasar del overview al detalle del producto más abajo.',
+    },
+    'features.hero.surface.capture': {
+        en: 'Local-first Git event capture with resilient queueing before anything reaches the network.',
+        es: 'Captura local-first de eventos Git con cola resiliente antes de que nada llegue a la red.',
+    },
+    'features.hero.surface.governance': {
+        en: 'Policy checks and configurable enforcement modes applied before push and traceability breaks.',
+        es: 'Checks de política y modos de enforcement configurables aplicados antes del push y ante quiebres de trazabilidad.',
+    },
+    'features.hero.surface.correlation': {
+        en: 'Evidence linked across CI pipelines, tickets, and repository activity in a single operational chain.',
+        es: 'Evidencia vinculada entre pipelines CI, tickets y actividad del repositorio en una sola cadena operativa.',
+    },
+    'features.hero.surface.reporting': {
+        en: 'Readiness, export history, and audit-facing reporting derived from correlated operational signals.',
+        es: 'Readiness, historial de exportación y reporting orientado a auditoría derivados de señales operativas correlacionadas.',
     },
     'features.nav.capture': { en: 'Workstation Capture', es: 'Captura en la Estación' },
     'features.nav.governance': { en: 'Governance Engine', es: 'Motor de Gobernanza' },

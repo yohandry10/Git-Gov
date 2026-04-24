@@ -153,6 +153,18 @@ export function ServerDashboard() {
       : '100.0'
     : '0'
   const githubPushesToday = serverStats?.github_events.pushes_today ?? 0
+  const githubByType = serverStats?.github_events.by_type ?? {}
+  const githubPrEvents = githubByType.pull_request ?? 0
+  const githubPrReviewEvents = githubByType.pull_request_review ?? 0
+  const githubStatusCheckEvents =
+    (githubByType.check_run ?? 0) +
+    (githubByType.check_suite ?? 0) +
+    (githubByType.status ?? 0)
+  const githubEvidenceSignals = [
+    githubPrEvents > 0,
+    githubPrReviewEvents > 0,
+    githubStatusCheckEvents > 0,
+  ].filter(Boolean).length
   const desktopPushesToday = serverStats?.client_events.desktop_pushes_today ?? 0
   const totalTrackedPushesToday = githubPushesToday + desktopPushesToday
   const pipeline = serverStats?.pipeline
@@ -258,6 +270,10 @@ export function ServerDashboard() {
               releaseReadinessBand={readiness.band}
               readinessTierLabel={repoTierProfile.label}
               readinessTargetScore={repoTierProfile.risk.sla.minReadinessScore}
+              githubPrEvents={githubPrEvents}
+              githubPrReviewEvents={githubPrReviewEvents}
+              githubStatusCheckEvents={githubStatusCheckEvents}
+              githubEvidenceSignals={githubEvidenceSignals}
             />
             <DailyActivityWidget points={dailyActivity} />
             <TicketCoverageWidget />
@@ -279,7 +295,7 @@ export function ServerDashboard() {
           />
 
           <EventBreakdownGrid
-            githubByType={serverStats.github_events.by_type}
+            githubByType={githubByType}
             clientByStatus={serverStats.client_events.by_status}
             commitsWithoutTicket={commitsWithoutTicket}
             ticketsWithoutCommits={(ticketCoverage?.tickets_without_commits ?? []).slice(0, 5)}

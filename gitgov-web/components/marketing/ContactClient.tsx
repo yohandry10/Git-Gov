@@ -17,9 +17,10 @@ import { useTranslation } from '@/lib/i18n';
 type FormState = 'idle' | 'loading' | 'success' | 'error';
 
 export function ContactClient() {
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const [formState, setFormState] = useState<FormState>('idle');
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const isEs = locale === 'es';
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -82,6 +83,18 @@ export function ContactClient() {
         },
     ];
 
+    const fitSummary = isEs
+        ? {
+            label: 'Encaja mejor si',
+            text: 'Necesitas decidir rápido si GitGov entra como piloto, rollout de equipo o despliegue enterprise.',
+            chips: ['Piloto guiado', 'Rollout de equipo', 'Evaluación enterprise'],
+        }
+        : {
+            label: 'Best fit when',
+            text: 'You need a fast decision on whether GitGov fits a pilot, a team rollout, or a broader enterprise deployment.',
+            chips: ['Guided pilot', 'Team rollout', 'Enterprise evaluation'],
+        };
+
     return (
         <>
             {/* Hero */}
@@ -113,7 +126,7 @@ export function ContactClient() {
 
                             {/* Left — Info panel */}
                             <div
-                                className="rounded-2xl p-8 md:p-10 border border-white/5 flex flex-col justify-between"
+                                className="h-full rounded-2xl p-8 md:p-10 border border-white/5 flex flex-col justify-between"
                                 style={{ background: 'linear-gradient(145deg, rgba(249,115,22,0.07), rgba(249,115,22,0.01)), #0d1117' }}
                             >
                                 {/* Top */}
@@ -146,21 +159,42 @@ export function ContactClient() {
                                             </div>
                                         ))}
                                     </div>
+
+                                    <div className="mt-8 pt-6 border-t border-white/5">
+                                        <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.18em] mb-3">
+                                            {fitSummary.label}
+                                        </p>
+                                        <p className="text-xs text-gray-500 leading-relaxed">
+                                            {fitSummary.text}
+                                        </p>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {fitSummary.chips.map((chip) => (
+                                                <span
+                                                    key={chip}
+                                                    className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-gray-300"
+                                                >
+                                                    {chip}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Bottom — response time badge */}
-                                <div className="mt-10 pt-6 border-t border-white/5 flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
-                                    <p className="text-xs text-gray-600">
-                                        {t('contact.side.responseTime') as string}
-                                    </p>
+                                <div className="mt-8 pt-6 border-t border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse flex-shrink-0" />
+                                        <p className="text-xs text-gray-600">
+                                            {t('contact.side.responseTime') as string}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Right — Form */}
-                            <div>
+                            <div className="h-full">
                                 <div
-                                    className="glass-card rounded-2xl p-8 md:p-10 border glow-border group relative overflow-hidden"
+                                    className="glass-card h-full rounded-2xl p-8 md:p-10 border glow-border group relative overflow-hidden"
                                 >
                                     <div className="absolute inset-0 bg-brand-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                                     <div className="relative z-10">
@@ -201,7 +235,7 @@ export function ContactClient() {
                                                         label={t('contact.form.email') as string}
                                                         name="email"
                                                         type="email"
-                                                        placeholder="you@company.com"
+                                                        placeholder={t('contact.form.emailPlaceholder') as string}
                                                         error={errors.email}
                                                         required
                                                     />
