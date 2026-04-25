@@ -317,6 +317,7 @@ Updated: 2026-04-25
   - Trend snapshots are stored in browser `localStorage` under `gitgov.dashboard.github_evidence_trend`; GitHub Actions artifact trend reporting remains the cloud evidence path.
   - `buildGitHubEvidenceSummary` has Vitest coverage for complete, partial, and empty signal sets.
   - Post-merge validation on `main` for commit `01d275c` passed: CI run `24938441269`, Quality Gate Policy Matrix run `24938441278`, and Release Readiness Gate run `24938441273`.
+  - Post-merge validation for the local trend widget on `main` commit `74a51a5` passed: CI run `24940280762`, Quality Gate Policy Matrix run `24940280775`, and Release Readiness Gate run `24940280751`.
   - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
   - Production validation after deploy observed real webhook delivery HTTP `200`, `processed=true`, at least `2` `pull_request_merges` records, and a Jira backfill run with `scanned_prs=2` and `correlations_created=2`.
   - Direct validation found `KAN-4` PR-title correlations across validated merge/head SHAs.
@@ -491,23 +492,28 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 - What is real:
   - Control Plane dashboard includes pipeline health, ticket coverage, risk outcomes, recent commits, policy editor, export panel, and chat panel.
   - Dashboard reporting surfaces GitHub PR lifecycle, review, PR comment, and status-check evidence counts.
+  - Dashboard reporting includes operator-captured local GitHub evidence trend snapshots for coverage delta/history.
   - Ticket coverage UI explains that commit-ticket coverage can come from commits, branches, PR titles, and PR comments when ticket IDs are present.
   - Release readiness scoring exists.
   - Tier-aware scoring and SLA profiles exist.
   - Export flow exists with content hash generation and export history.
   - Dashboard JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
   - Standalone Markdown report generation exists for GitHub executive evidence coverage.
+  - GitHub Actions artifact monitoring and trend reporting exist for executive GitHub evidence reports.
   - Risk outcomes widget is operational.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
   - `gitgov/src/components/control_plane/PipelineHealthWidget.tsx`
   - `gitgov/src/components/control_plane/EventBreakdownGrid.tsx`
+  - `gitgov/src/components/control_plane/GitHubEvidenceTrendWidget.tsx`
   - `gitgov/src/components/control_plane/TicketCoverageWidget.tsx`
   - `gitgov/src/components/control_plane/RiskOutcomesWidget.tsx`
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`
   - `gitgov/gitgov-server/src/handlers/violations_policy_export.rs`
   - `scripts/control-plane/generate_github_evidence_report.ps1`
+  - `scripts/control-plane/validate_github_evidence_report_artifact.ps1`
+  - `scripts/control-plane/generate_github_evidence_trend_report.ps1`
 - Safe website wording:
   - release readiness scoring
   - tier-aware governance visibility

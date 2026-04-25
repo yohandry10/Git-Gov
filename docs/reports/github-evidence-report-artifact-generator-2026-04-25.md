@@ -131,3 +131,4 @@ Dashboard trend productization:
 - Operators explicitly click `Capturar` to store a browser-local snapshot of the current GitHub evidence coverage.
 - Snapshots live in `localStorage` under `gitgov.dashboard.github_evidence_trend`.
 - This UI path intentionally does not read GitHub Actions artifacts because that would require exposing GitHub token access to the frontend.
+- Post-merge validation for the dashboard trend widget passed on `main` commit `74a51a5` with CI run `24940280762`, Quality Gate Policy Matrix run `24940280775`, and Release Readiness Gate run `24940280751`.
