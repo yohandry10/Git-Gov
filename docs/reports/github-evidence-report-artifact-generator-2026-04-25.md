@@ -66,6 +66,16 @@ Observed result:
 - Artifact expired: `false`
 - Freshness window: `192h`
 
+GitHub-hosted artifact monitor validation passed:
+
+- Run: `24939815276`
+- Event: `workflow_dispatch`
+- Job: `Validate GitHub evidence report artifact`
+- Artifact: `github-evidence-artifact-monitor`
+- Artifact ID: `6642391452`
+- Artifact expired: `false`
+- Artifact upload: successful
+
 ## Operational Note
 
 The live report path depends on `/stats.github_events.by_type` for the API key scope being queried. If `/stats` returns an empty `by_type`, the report correctly shows `Sin evidencia`; operators should then verify API-key scope and GitHub webhook ingestion visibility before treating it as a product data gap.
