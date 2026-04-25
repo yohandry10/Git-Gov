@@ -362,12 +362,17 @@ Updated: 2026-04-25
   - The export package reuses the dashboard `n/4` GitHub evidence model for PR lifecycle, reviews, PR comments, and checks/status.
   - Unit coverage validates the package shape and executive summary classification.
   - Post-merge validation on `main` for commit `458c048` passed: CI run `24938795096`, Quality Gate Policy Matrix run `24938795085`, and Release Readiness Gate run `24938795100`.
+- Executive GitHub evidence report artifact generation:
+  - Added `scripts/control-plane/generate_github_evidence_report.ps1`.
+  - The script generates a standalone Markdown report from live `/stats` or an offline stats JSON fixture.
+  - Reported signal model matches the dashboard/export package: PR lifecycle, reviews, PR comments, and checks/status.
+  - Offline fixture validation passed without requiring provider tokens.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard and exported audit JSON package.
-  - Remaining work is broader report artifact generation outside the dashboard download flow.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, and standalone Markdown report generator.
+  - Remaining work is scheduled/CI packaging if operators want this report uploaded automatically as an artifact.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
@@ -473,6 +478,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Tier-aware scoring and SLA profiles exist.
   - Export flow exists with content hash generation and export history.
   - Dashboard JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
+  - Standalone Markdown report generation exists for GitHub executive evidence coverage.
   - Risk outcomes widget is operational.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
@@ -483,6 +489,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`
   - `gitgov/gitgov-server/src/handlers/violations_policy_export.rs`
+  - `scripts/control-plane/generate_github_evidence_report.ps1`
 - Safe website wording:
   - release readiness scoring
   - tier-aware governance visibility
