@@ -195,6 +195,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitHub webhook extraction contract tests cover `check_run`, `check_suite`, `status`, and `pull_request_review_comment`; run `cargo test github_webhook_tests` from `gitgov/gitgov-server` after changing webhook evidence parsing.
 - Post-merge validation for GitHub webhook extraction contract tests passed on `main` commit `946fac3`: CI run `24927816238`, Quality Gate Policy Matrix run `24927816230`, and Release Readiness Gate run `24927816225`.
 - Admin dashboard GitHub reporting includes an executive evidence coverage summary in `EventBreakdownGrid`: PR lifecycle, reviews, PR comments, and checks/status are collapsed to `n/4` coverage with missing signal labels.
+- Post-merge validation for the executive GitHub evidence dashboard summary passed on `main` commit `01d275c`: CI run `24938441269`, Quality Gate Policy Matrix run `24938441278`, and Release Readiness Gate run `24938441273`.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 - Last production PR-title backfill validation for `KAN-4` observed:
