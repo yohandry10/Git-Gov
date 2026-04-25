@@ -393,7 +393,9 @@ Updated: 2026-04-25
 
 - Consolidating governance telemetry in dashboards and executive reporting.
   - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
-  - Remaining work is operational adoption: capture dashboard snapshots during reviews and keep scheduled artifact reports monitored.
+  - Operational adoption baseline completed on 2026-04-25: manual report, artifact monitor, and trend workflows passed; local monitor/trend scripts passed; evidence captured in `docs/reports/github-evidence-operational-adoption-2026-04-25.md`.
+  - No implementation gap remains for the GitHub evidence operating path; recurring work is weekly operation through `docs/runbooks/github-evidence-operations.md`.
+  - Current data-quality follow-up is `KAN-7`: report artifacts are fresh, but latest executive/trend content still reports `Sin evidencia` / `0/4 signals`.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
@@ -567,6 +569,7 @@ Before adding or keeping any `/features` claim:
    - Traceability guardrail is active in `Security Guard`; remaining work is operational data quality, not platform plumbing.
    - Latest production validation after the guardrail raised readiness to `79/100`; continue monitoring coverage as new PRs land.
    - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
+   - GitHub evidence operational adoption baseline completed on 2026-04-25; data-quality follow-up `KAN-7` tracks the remaining `0/4 signals` visibility issue in report artifacts.
 
 ## Operating Memory Rule
 

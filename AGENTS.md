@@ -213,6 +213,12 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - `.github/workflows/github-evidence-trend-report.yml` runs the trend report manually or weekly on Tuesday 14:17 UTC and uploads artifact `github-evidence-trend-report`.
 - Operational use of the GitHub evidence dashboard, Markdown report, artifact freshness monitor, and trend report is documented in `docs/runbooks/github-evidence-operations.md`.
 - Post-merge validation for the GitHub evidence operations runbook passed on `main` commit `7577f90`: CI run `24940874607`, Quality Gate Policy Matrix run `24940874602`, Release Readiness Gate run `24940874616`, Secret Scan run `24940874599`, SonarQube Governance run `24940874600`, Public Naming Guard run `24940874603`, Governance Correlation Smoke run `24940874611`, and Desktop Updater Readiness run `24940874597`.
+- GitHub evidence operational adoption baseline completed on 2026-04-25:
+  - Executive report workflow run `24941348198` succeeded on `main` commit `65613b0`; artifact `github-evidence-executive-report` ID `6642829154`.
+  - Artifact monitor workflow run `24941358185` succeeded; artifact `github-evidence-artifact-monitor` ID `6642831722`.
+  - Trend workflow run `24941363195` succeeded; artifact `github-evidence-trend-report` ID `6642833188`.
+  - Local artifact freshness monitor returned `PASS`; latest artifact was not expired and age was `0.02h`.
+  - Local trend parsed `2` reports and still observed `Sin evidencia` / `0/4 signals`; Jira follow-up `KAN-7` tracks the data-quality/scope investigation.
 - Local live validation of the trend generator parsed workflow run `24939329055` and produced a 1-report trend with latest coverage `0/4 signals`; this reflects the existing `/stats.github_events.by_type` visibility note, not a secret/config leak.
 - First GitHub-hosted validation of the trend workflow passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
 - Post-merge validation for the trend workflow rollout passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
