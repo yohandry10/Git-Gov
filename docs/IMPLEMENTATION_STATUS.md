@@ -406,8 +406,9 @@ Before adding or keeping any `/features` claim:
 
 1. Keep SonarQube local as the Sonar source of truth.
    - SonarCloud onboarding is not applicable for the current personal GitHub account.
-   - GitHub-hosted Sonar scan is optional and should skip unless `SONAR_HOST_URL`, `SONAR_TOKEN`, and `SONAR_PROJECT_KEY` point to a host reachable from the runner.
-   - Jenkins/local validation remains the practical Sonar path for this environment.
+   - GitHub-hosted Sonar scan is optional and should skip while `SONAR_HOST_URL=http://localhost:9000`; hosted runners cannot reach the workstation.
+   - Jenkins/local validation is the supported Sonar path for this environment.
+   - Last operational validation: local Sonar token valid, project `yohandry10_git-gov` quality gate `OK`, Jenkins job `gitgov-demo-pipeline` build `#30` `SUCCESS`, GitGov Render has Sonar/Jenkins evidence for `main`.
 2. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
    - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
@@ -435,3 +436,6 @@ Required GitHub Actions telemetry variables:
 
 - Secret: `GITGOV_API_KEY`
 - Variable: `GITGOV_URL=https://gitgov-api.onrender.com`
+- Variable: `SONAR_HOST_URL=http://localhost:9000`
+- Variable: `SONAR_PROJECT_KEY=yohandry10_git-gov`
+- Secret `SONAR_TOKEN` is not required for GitHub-hosted runners while SonarQube remains local; the non-blocking workflow skips that scan by design.

@@ -76,6 +76,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - SonarCloud is not used for this repository because the GitHub account is personal, not organizational.
 - Local SonarQube is the selected Sonar runtime. Repository variable `SONAR_HOST_URL=http://localhost:9000`; GitHub-hosted Sonar scan must skip unless a self-hosted runner can reach that host.
 - Sonar variable for local/runtime use: `SONAR_PROJECT_KEY=yohandry10_git-gov`.
+- GitHub Actions `SONAR_TOKEN` is optional while SonarQube remains local; do not force it for GitHub-hosted runners because the scan is expected to skip when `SONAR_HOST_URL` is localhost.
 - The quality gate policy matrix workflow is optional at workflow level but its job is required by branch protection.
 - The matrix workflow must run on both `pull_request` and `push` to `main`; otherwise PR merges can be blocked by a required check that never appears.
 - Release Readiness Gate is advisory by default on `push`; use manual `workflow_dispatch` with `enforce_gate=true` when a release must be blocked by readiness score.
@@ -93,10 +94,10 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 ## Verified State
 
 - Render backend health endpoint passed on `https://gitgov-api.onrender.com/health`.
-- GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`.
+- GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`; last observed correlation sample contained 12 Sonar/Jenkins evidence items for `main`.
 - GitHub-hosted matrix validation passed on run `24877293195`.
 - Job `Validate quality_gates warn/block matrix` passed on job `72836755674`.
-- Local SonarQube API token validation passed with `SONAR_TOKEN`.
+- Local SonarQube API token validation passed with `SONAR_TOKEN`; project `yohandry10_git-gov` quality gate was `OK`.
 - Local Jenkins API validation passed through `/whoAmI/api/json`; authenticated user is `admin`.
 - Local Jenkins job API validation passed for `gitgov-demo-pipeline`; last observed build was `#30`, result `SUCCESS`, not building.
 
