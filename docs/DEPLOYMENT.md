@@ -963,35 +963,36 @@ Get-AuthenticodeSignature .\GitGov_x.x.x_x64-setup.exe | Select-Object -Property
 - macOS: DMG + `.sha256`
 - Linux: AppImage + DEB + `.sha256`
 
-### Sonar Governance (opcional, no bloqueante)
+### SonarQube Governance (opcional, no bloqueante)
 
 Workflow agregado:
 - `.github/workflows/sonar-governance.yml`
 
 Comportamiento:
-- Ejecuta scan Sonar + quality gate en `push/main`, `pull_request/main` y `workflow_dispatch`.
+- Ejecuta scan SonarQube + quality gate en `push/main`, `pull_request/main` y `workflow_dispatch` solo si el runner puede alcanzar `SONAR_HOST_URL`.
 - Es **no bloqueante** (`continue-on-error: true`): no corta el flujo principal de CI.
 - Si hay `GITGOV_URL` + `GITGOV_API_KEY`, publica resultado de quality gate como evento en `/integrations/jenkins`.
+- En esta instalación, SonarCloud no se usa porque la cuenta GitHub es personal y no permite el onboarding requerido. La ruta oficial es SonarQube local.
 
 Configurar en GitHub (repo settings):
 
 | Tipo | Nombre | Uso |
 |------|--------|-----|
-| Secret | `SONAR_TOKEN` | Token de SonarQube/SonarCloud |
+| Secret | `SONAR_TOKEN` | Token de SonarQube local cuando el runner pueda alcanzar el host |
 | Secret | `GITGOV_API_KEY` | API key admin para publicar telemetría a GitGov |
 | Secret (opcional) | `GITGOV_JENKINS_SECRET` | Header `x-gitgov-jenkins-secret` si está habilitado |
 | Variable | `SONAR_PROJECT_KEY` | Project key en Sonar |
-| Variable (opcional) | `SONAR_HOST_URL` | Host Sonar (default `https://sonarcloud.io`) |
+| Variable | `SONAR_HOST_URL` | Host SonarQube alcanzable por el runner |
 | Variable (opcional) | `GITGOV_URL` | URL base del Control Plane (`https://...`) |
 
 Notas:
-- Si faltan `SONAR_TOKEN` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
+- Si faltan `SONAR_TOKEN`, `SONAR_HOST_URL` o `SONAR_PROJECT_KEY`, el job se omite automáticamente.
 - Si falta `GITGOV_URL` o `GITGOV_API_KEY`, se hace scan pero se omite publicación a GitGov.
-- Si SonarCloud no permite onboarding de organización (caso común en cuentas GitHub personales), usar SonarQube local:
+- SonarQube local:
   - levantar `docker compose --profile sonar up -d sonarqube-db sonarqube`
   - generar token local en SonarQube (`My Account > Security`)
   - setear `SONAR_HOST_URL` al host local alcanzable desde runner (`http://host.docker.internal:9000` en Jenkins Docker local)
-  - mantener workflow no bloqueante hasta completar onboarding SonarCloud enterprise.
+  - para GitHub-hosted runners, no usar `localhost`; esos runners no pueden alcanzar tu SonarQube local. Mantener el workflow no bloqueante o usar self-hosted runner.
 
 Jenkins (`Jenkinsfile`) también soporta Sonar en modo opcional/no bloqueante:
 - stage `Sonar Scan (Optional)` bootstrappea `sonar-scanner` si no existe en el agente.
@@ -1013,7 +1014,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
 
 ### Cierre cloud CI (strict mode)
 
-Para cerrar Sonar + telemetría en GitHub-hosted CI sin `UNKNOWN`, el PAT debe tener visibilidad de:
+Para validar configuracion GitHub Actions en modo estricto, el PAT debe tener visibilidad de:
 
 - `secrets=read`
 - `actions_variables=read`
@@ -1039,17 +1040,18 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_ci_repo_config.ps1
   -RequireGitGovTelemetry
 ```
 
-Resultado esperado para considerar cierre cloud:
+Resultado esperado para considerar cierre GitHub Actions:
 
 - `PASS` en `check_token_permissions.ps1` (sin `FORBIDDEN`).
 - `PASS` en `check_ci_repo_config.ps1` (sin `UNKNOWN`).
-- Un run exitoso de `.github/workflows/sonar-governance.yml` con scan activo.
+- Un run de `.github/workflows/sonar-governance.yml` con skip explicito cuando el runner no pueda alcanzar SonarQube local, o scan activo solo si hay runner alcanzable.
 
 Estado GitHub Actions actual (2026-04-24):
 
 - `GITGOV_API_KEY` esta configurado como secret de repositorio.
 - `GITGOV_URL=https://gitgov-api.onrender.com` esta configurado como variable de repositorio.
-- `SONAR_HOST_URL` y `SONAR_PROJECT_KEY` estan configurados como variables.
+- `SONAR_HOST_URL=http://localhost:9000` esta configurado como variable de repositorio para señalar SonarQube local.
+- SonarCloud no es objetivo. SonarQube local es la ruta soportada para esta cuenta; GitHub-hosted scan se salta cuando el host es local.
 - La matriz `quality_gates=warn/block` ya paso en GitHub-hosted CI y el check requerido esta protegido en `main`.
 
 Nota:
@@ -1094,7 +1096,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/check_token_permissions.
 Resultado esperado:
 - `PASS` si secrets/variables requeridos para el modo elegido están presentes.
 - `PASS (best-effort)` si usas `-NoFailOnForbidden` y el token no puede leer secrets/variables (se muestra `UNKNOWN` en lugar de cortar flujo).
-- Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_PROJECT_KEY`.
+- Modo base (scan Sonar): requiere `SONAR_TOKEN` + `SONAR_HOST_URL` + `SONAR_PROJECT_KEY`.
 - `-AllowMissingSonar`: permite operar sin Sonar (marca Sonar como opcional).
 - `-RequireGitGovTelemetry`: exige `GITGOV_API_KEY` + `GITGOV_URL` para publicación de telemetría.
 - Los scripts aceptan token por `-GitHubToken` o por entorno (`GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `GITHUB_PERSONAL_ACCESS_TOKEN`).
@@ -1115,7 +1117,7 @@ powershell -ExecutionPolicy Bypass -File scripts/github/bootstrap_ci_variables.p
 ```
 
 Opcional:
-- `-SonarHostUrl "https://sonarcloud.io"`
+- `-SonarHostUrl "http://host.docker.internal:9000"` cuando Jenkins corre en Docker y SonarQube en host/local compose.
 - `-GitGovUrl "https://<tu-control-plane>"`
 - `FAIL` con lista concreta de faltantes si aún falta configuración.
 

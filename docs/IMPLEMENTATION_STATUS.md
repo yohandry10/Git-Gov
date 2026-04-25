@@ -226,15 +226,9 @@ Updated: 2026-04-24
   - `docs/reports/quality-gate-policy-matrix-auto-local-2026-04-23.md`
   - `docs/reports/quality-gate-matrix-commit-resolution-auto-local-2026-04-23.json`
   - Result: `PASS` (`warn` allows with violation; `block` denies non-green and allows green).
-- GitHub-hosted matrix dispatch attempt evidence captured:
-  - `docs/reports/quality-gate-policy-matrix-github-attempt-2026-04-23.md` (current PAT receives `403`, required `actions=write`).
-- GitHub Actions config bootstrap attempt (repo variables) remains blocked with current PAT:
-  - `scripts/github/bootstrap_ci_variables.ps1 -GitGovUrl "<url>"` returns `403` (`accepted_permissions=actions_variables=read`), so automation cannot write/verify required repo vars with this token.
-- GitHub-hosted matrix execution evidence captured:
-  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934` (branch `ci/quality-gate-matrix-main`).
-  - Workflow completed but matrix validation steps were skipped by precheck (`missing_gitgov_url_or_api_key`).
-  - Re-run after fallback-name mapping update: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`.
-  - Result unchanged: precheck skip (`missing_gitgov_url_or_api_key`).
+- Historical GitHub-hosted matrix attempts captured:
+  - Earlier runs skipped while repo Actions config was incomplete.
+  - This is superseded by the 2026-04-24 completed matrix validation on `main`.
 - Public infra preflight automation added:
   - `scripts/deploy/validate_public_infra.ps1` validates domain DNS, TLS certificate, health endpoint, authenticated stats, and webhook/integration route reachability.
   - Local dry-run evidence generated at `docs/reports/public-infra-validation-local-2026-04-20.md` (expected `WARN` on non-HTTPS localhost).
@@ -273,7 +267,8 @@ Updated: 2026-04-24
 - GitHub Actions repository configuration completed for GitGov telemetry:
   - `GITGOV_API_KEY` configured as a repository secret.
   - `GITGOV_URL=https://gitgov-api.onrender.com` configured as a repository variable.
-  - Sonar variables present: `SONAR_HOST_URL`, `SONAR_PROJECT_KEY`.
+  - SonarCloud is intentionally not the target because the current GitHub account is personal, not organizational.
+  - SonarQube local is the selected Sonar runtime; GitHub-hosted Sonar scan remains optional/non-blocking unless a runner can reach the configured SonarQube host.
 - Render backend deployment completed:
   - Backend service `gitgov-api` is deployed from `main`.
   - Public URL: `https://gitgov-api.onrender.com`.
@@ -286,9 +281,8 @@ Updated: 2026-04-24
 
 ## In Progress
 
-- SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
-- Sonar token rotation and SonarCloud/SonarQube environment selection for long-lived CI remain operational decisions.
+- Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
 
 ## Website Feature Claims Alignment
@@ -410,39 +404,34 @@ Before adding or keeping any `/features` claim:
 
 ## Next Technical Steps
 
-1. Configure repository-level CI secrets/variables per rollout mode (Sonar scan vs telemetry publish).
-   - Current live status in GitHub-hosted CI: **UNKNOWN** with current PAT (limited token cannot read Actions secrets/variables).
-   - Token preflight evidence (`scripts/github/check_token_permissions.ps1`): `403` on Actions secrets, Actions variables, and branch protection.
-   - Pending for Sonar scan mode: `SONAR_TOKEN` (+ strict visibility check with PAT that has `secrets=read` / `actions_variables=read`).
-   - Pending for telemetry mode (`-RequireGitGovTelemetry`): `GITGOV_API_KEY` + `GITGOV_URL`.
-   - Note: local app `.env` commonly uses `GITGOV_SERVER_URL`; GitHub Actions workflows require repo variable `GITGOV_URL`.
-2. Validate the same `quality_gates=warn/block` matrix on GitHub-hosted CI (local/Jenkins validation is complete; runbook: `docs/QUALITY_GATE_POLICY_VALIDATION.md`).
-   - Publish/merge `.github/workflows/quality-gate-policy-matrix.yml` to `main`.
-   - Configure repo variable/secret used by precheck: `GITGOV_URL` + `GITGOV_API_KEY`.
-   - Run cloud matrix (`workflow_dispatch` or push on `main`) with token/app permissions that include `actions=write` when dispatching via API.
-   - Collect and archive cloud artifact report under `docs/reports/`.
-3. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
+1. Keep SonarQube local as the Sonar source of truth.
+   - SonarCloud onboarding is not applicable for the current personal GitHub account.
+   - GitHub-hosted Sonar scan is optional and should skip unless `SONAR_HOST_URL`, `SONAR_TOKEN`, and `SONAR_PROJECT_KEY` point to a host reachable from the runner.
+   - Jenkins/local validation remains the practical Sonar path for this environment.
+2. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
    - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
-4. Expand GitHub evidence ingestion beyond current scope:
+3. Expand GitHub evidence ingestion beyond current scope:
    - ingest PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`)
    - definir mapeo de métricas para los nuevos eventos GitHub en dashboard/reporting (tendencias y score)
    - publicar en `/features` el wording actualizado para lifecycle/reviews/status-checks (sin sobreprometer comments)
 
-## Required GitHub Configuration (for Sonar workflow)
+## Sonar Runtime Configuration
 
-Base Sonar scan mode:
+Selected runtime:
 
-- Secret: `SONAR_TOKEN`
-- Variable: `SONAR_PROJECT_KEY`
+- Local SonarQube (`http://localhost:9000` for local API access).
+- Jenkins/local pipelines are the supported route for Sonar telemetry in this account.
+- GitHub-hosted Sonar workflow is intentionally non-blocking and skips unless explicitly configured with a reachable SonarQube endpoint.
 
-Telemetry publish mode (`-RequireGitGovTelemetry`):
+Required local variables:
+
+- `SONAR_HOST_URL=http://localhost:9000`
+- `SONAR_TOKEN`
+- `SONAR_PROJECT_KEY=yohandry10_git-gov`
+
+Required GitHub Actions telemetry variables:
 
 - Secret: `GITGOV_API_KEY`
-- Variable: `GITGOV_URL`
-- Secret opcional: `GITGOV_JENKINS_SECRET`
-
-Always optional:
-
-- Variable: `SONAR_HOST_URL` (default `https://sonarcloud.io`)
+- Variable: `GITGOV_URL=https://gitgov-api.onrender.com`
