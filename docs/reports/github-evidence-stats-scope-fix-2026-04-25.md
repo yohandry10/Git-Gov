@@ -91,3 +91,23 @@ GitHub-hosted artifact validation:
 - Trend artifact latest status: `Parcial`, latest coverage: `3/4 signals`, reports analyzed: `3`, coverage delta vs oldest report: `3` signals.
 
 The previous `0/4 signals` implementation gap is closed. The remaining missing `Reviews` signal reflects the current event sample lacking `pull_request_review` events, not a stats ingestion failure.
+
+## Review Signal Completion
+
+PR `#71` was used to submit a real GitHub PR review event.
+
+Post-review `/stats.github_events.by_type` included:
+
+```json
+{
+  "pull_request_review": 1
+}
+```
+
+Live report validation generated `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md`:
+
+- Status: `Completo`
+- Coverage: `4/4 signals`
+- Missing signals: `none`
+
+This closes the GitHub executive evidence signal model for the observed production sample.

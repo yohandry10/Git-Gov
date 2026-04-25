@@ -406,6 +406,8 @@ Updated: 2026-04-25
   - No implementation gap remains for the GitHub evidence operating path; recurring work is weekly operation through `docs/runbooks/github-evidence-operations.md`.
   - `KAN-7` stats visibility gap is closed: `supabase_schema_v22.sql` was applied in production, live report/trend artifacts now show `3/4 signals`, and the remaining missing signal is real `pull_request_review` event volume.
   - Review signal validation procedure is documented in `docs/runbooks/github-evidence-operations.md`.
+  - `pull_request_review` evidence was validated through PR `#71`; `/stats.github_events.by_type.pull_request_review` reached `1`.
+  - Live report `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md` now shows `Completo` / `4/4 signals`.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.

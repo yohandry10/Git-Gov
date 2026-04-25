@@ -22,7 +22,9 @@ Latest operational baseline:
 - 2026-04-25: `docs/reports/github-evidence-stats-scope-fix-2026-04-25.md`
 - `KAN-7` stats visibility gap was fixed by database migration `supabase_schema_v22.sql`.
 - Latest post-fix report/trend artifacts show `Parcial` / `3/4 signals`.
-- Remaining missing signal is `Reviews`, which requires at least one real `pull_request_review` event in the observed GitHub webhook sample.
+- Review signal was validated through PR `#71`, producing a real `pull_request_review` event.
+- Latest live report after review validation: `Completo` / `4/4 signals`.
+- Evidence file: `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md`.
 
 ## Evidence Model
 
