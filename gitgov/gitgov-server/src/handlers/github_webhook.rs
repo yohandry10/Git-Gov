@@ -733,7 +733,7 @@ fn merged_pr_ticket_targets<'a>(
     let mut targets = Vec::new();
 
     if let Some(sha) = merge_commit_sha.map(str::trim).filter(|s| !s.is_empty()) {
-        targets.push(("github_pr_merge_title", sha));
+        targets.push(("pr_title", sha));
     }
 
     if let Some(sha) = head_sha.map(str::trim).filter(|s| !s.is_empty()) {
@@ -741,7 +741,7 @@ fn merged_pr_ticket_targets<'a>(
             .iter()
             .any(|(_, existing_sha)| existing_sha.eq_ignore_ascii_case(sha));
         if !already_included {
-            targets.push(("github_pr_title", sha));
+            targets.push(("pr_title", sha));
         }
     }
 
@@ -1507,8 +1507,8 @@ mod github_webhook_tests {
         assert_eq!(
             targets,
             vec![
-                ("github_pr_merge_title", "merge-sha"),
-                ("github_pr_title", "head-sha")
+                ("pr_title", "merge-sha"),
+                ("pr_title", "head-sha")
             ]
         );
     }
@@ -1517,7 +1517,7 @@ mod github_webhook_tests {
     fn merged_pr_ticket_targets_deduplicates_same_head_and_merge_commit() {
         let targets = merged_pr_ticket_targets(Some("ABCDEF"), Some("abcdef"));
 
-        assert_eq!(targets, vec![("github_pr_merge_title", "abcdef")]);
+        assert_eq!(targets, vec![("pr_title", "abcdef")]);
     }
 }
 
