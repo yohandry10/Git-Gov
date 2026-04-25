@@ -1,5 +1,6 @@
 import { ShieldAlert } from 'lucide-react'
 import { Bar } from './Bar'
+import { formatOperationalMetricDuration } from './dashboard-helpers'
 import { clampPercent, computeCompositeRisk, getRepoTierProfile, type RepoTier } from './risk-scoring'
 
 interface RiskOutcomesWidgetProps {
@@ -14,6 +15,10 @@ interface RiskOutcomesWidgetProps {
   totalViolations: number
   criticalViolations: number
   releaseReadinessScore: number
+  timeToEvidenceMs: number | null
+  timeToEvidenceSamples: number
+  mttrMs: number | null
+  mttrSamples: number
   repoTier: RepoTier
 }
 
@@ -29,6 +34,10 @@ export function RiskOutcomesWidget({
   totalViolations,
   criticalViolations,
   releaseReadinessScore,
+  timeToEvidenceMs,
+  timeToEvidenceSamples,
+  mttrMs,
+  mttrSamples,
   repoTier,
 }: RiskOutcomesWidgetProps) {
   const tierProfile = getRepoTierProfile(repoTier)
@@ -151,10 +160,22 @@ export function RiskOutcomesWidget({
               {releaseReadinessScore}/100
             </span>
           </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-surface-400">Time-to-Evidence</span>
+            <span className="mono-data font-medium text-surface-200">
+              {formatOperationalMetricDuration(timeToEvidenceMs, timeToEvidenceSamples)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-surface-400">MTTR pipeline</span>
+            <span className="mono-data font-medium text-surface-200">
+              {formatOperationalMetricDuration(mttrMs, mttrSamples)}
+            </span>
+          </div>
         </div>
 
         <div className="pt-1 text-[10px] text-surface-500">
-          Tier {tierProfile.label}. Señales activas para score: {composite.available}/{composite.total}. MTTR y Time-to-Evidence quedan para fase siguiente.
+          Tier {tierProfile.label}. Señales activas para score: {composite.available}/{composite.total}. MTTR y Time-to-Evidence son informativos hasta fijar SLO.
         </div>
       </div>
     </div>
