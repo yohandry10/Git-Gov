@@ -111,6 +111,7 @@ Updated: 2026-04-25
 - Domain SLO lock/validation automation added:
   - `ops/slo/domain-slo-targets.json` defines per-domain tier + explicit SLO targets.
   - Production targets are scoped to `org_name=yohandry10`; unscoped validation overstates traceability gap because it reads broader telemetry.
+  - `scripts/control-plane/validate_domain_slo_target_config.ps1` statically validates the lock file and requires org/repo/branch scope in CI.
   - `scripts/control-plane/validate_domain_slo_targets.ps1` validates each domain against locked targets using live Control Plane telemetry.
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/domain-slo-validation.yml` (weekly Monday 12:45 UTC + manual dispatch).
   - Local evidence generated at `docs/reports/domain-slo-validation-local-2026-04-20/domain-slo-summary.md`.
@@ -344,6 +345,9 @@ Updated: 2026-04-25
   - Internal profile: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
   - Domain SLO evidence generated under `docs/reports/domain-slo-validation-prod-2026-04-25/`.
   - `core-platform`, `standard-services`, and `internal-tools` passed SLO validation after targets were scoped to `org_name=yohandry10`.
+- Domain SLO target config guardrail:
+  - Added static validation script `scripts/control-plane/validate_domain_slo_target_config.ps1`.
+  - CI `Workflow Lint` and `.github/workflows/domain-slo-validation.yml` now fail early if `ops/slo/domain-slo-targets.json` is malformed or lacks required `org_name`, `repo_full_name`, or `branch` scope.
 
 ## In Progress
 
@@ -490,7 +494,8 @@ Before adding or keeping any `/features` claim:
    - Local multi-tier baseline completed (critical/standard/internal).
    - Production 720h calibration completed on 2026-04-25 with all tier profiles and domain SLOs passing after org-scoped targets were aligned.
    - Repo/branch-scoped calibration is implemented for `calibrate_risk_tier_baseline.ps1`, `validate_domain_slo_targets.ps1`, `risk-tier-baseline-calibration.yml`, and `domain-slo-validation.yml`.
-   - Last live validation for `yohandry10/Git-Gov` on `main`: readiness `69/100` vs standard target `75`, composite risk `29/100`, Sonar pass rate `92.31%`, pipeline success rate `92.31%`, Jira ticket coverage `0%`.
+   - Static target-scope validation is enforced by `validate_domain_slo_target_config.ps1` in CI and the domain SLO workflow.
+   - Last post-merge live readiness validation for `yohandry10/Git-Gov` on `main`: Release Readiness Gate run `24927475688` passed with readiness `83/100`, target `75`, and signal coverage `3/3`.
    - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
