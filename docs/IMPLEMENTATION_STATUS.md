@@ -1,4 +1,4 @@
-﻿# GitGov Implementation Status
+# GitGov Implementation Status
 
 Updated: 2026-04-24
 
