@@ -61,6 +61,7 @@ GitHub Actions repository configuration:
 - Variable: `GITGOV_URL=https://gitgov-api.onrender.com`
 - Variable: `SONAR_HOST_URL=http://localhost:9000`
 - Variable: `SONAR_PROJECT_KEY=yohandry10_git-gov`
+- Secret `SONAR_TOKEN` is intentionally optional in GitHub Actions while SonarQube is local; GitHub-hosted runners cannot reach `localhost:9000`.
 - SonarCloud is not used for this repository because the connected GitHub account is personal, not organizational.
 - GitHub-hosted Sonar scan remains non-blocking/skipped when `SONAR_HOST_URL` points to local SonarQube, because hosted runners cannot reach the workstation.
 
@@ -117,6 +118,13 @@ Validated capabilities:
 - Query projects, quality gates, measures, issues, hotspots, and analysis status.
 - Use UI navigation through `@browser-use` when needed for UI-only flows.
 
+Last validated state:
+
+- Token validation: passed.
+- Project: `yohandry10_git-gov`.
+- Quality gate: `OK`.
+- Measures queried: `bugs`, `vulnerabilities`, `code_smells`, `coverage`, `duplicated_lines_density`.
+
 Operational decision:
 
 - SonarQube local is the supported Sonar runtime for this repo.
@@ -162,6 +170,13 @@ Last validated job state:
 - Last observed build: `#30`
 - Last observed result: `SUCCESS`
 - Last observed building state: `false`
+
+GitGov telemetry validation:
+
+- Backend: `https://gitgov-api.onrender.com`
+- Health: passed.
+- Jenkins/Sonar correlations observed for `yohandry10/Git-Gov` on `main`.
+- Sonar-style evidence count observed in last validation: `12`.
 
 Trigger-only URL flow:
 
