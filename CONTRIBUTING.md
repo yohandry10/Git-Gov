@@ -114,13 +114,25 @@ If your change touches auth, tokens, API handlers, or the dashboard, you must ve
 
 ### Commit Messages
 
-Use conventional commits:
+Use conventional commits and include a Jira ticket ID:
 ```
-feat: add pipeline health widget
-fix: resolve 401 on dashboard refresh
-refactor: extract SSE reconnect logic
-docs: update API endpoint table
-test: add useAuthStore unit tests
+feat(KAN-4): add pipeline health widget
+fix(KAN-5): resolve 401 on dashboard refresh
+refactor(KAN-6): extract SSE reconnect logic
+docs(KAN-4): update API endpoint table
+test(KAN-5): add useAuthStore unit tests
+```
+
+Branch names and PR titles must also include a Jira-style ticket ID, for example:
+
+```bash
+git switch -c fix/KAN-4-short-summary
+```
+
+This is enforced by `Security Guard` in GitHub Actions and locally by:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/security/publication_guard.ps1
 ```
 
 ### Acceptance Criteria
@@ -132,6 +144,7 @@ Before opening a PR, ensure:
 - [ ] `npm run typecheck` passes in `gitgov/`
 - [ ] Zero new ESLint errors in files you touched
 - [ ] No secrets committed (check `.env` files are in `.gitignore`)
+- [ ] Branch name, PR title, and commits include a Jira ticket ID
 - [ ] Golden Path still works (if touching auth/handlers/dashboard)
 
 ## Security

@@ -91,16 +91,20 @@ git config --local user.name  "$Name"
 git config --local user.email "$Email"
 git config --local core.hooksPath ".githooks"
 
-# Hacer el hook ejecutable (via Git Bash si esta disponible en Windows)
-$hookPath = ".githooks\pre-commit"
-if (Test-Path $hookPath) {
+# Hacer hooks ejecutables (via Git Bash si esta disponible en Windows)
+$hookPaths = @(".githooks/pre-commit", ".githooks/commit-msg")
+if ($hookPaths | Where-Object { Test-Path $_ }) {
     $gitBashCandidates = @(
         "C:\Program Files\Git\bin\bash.exe",
         "C:\Program Files (x86)\Git\bin\bash.exe"
     )
     foreach ($bash in $gitBashCandidates) {
         if (Test-Path $bash) {
-            & $bash -c "chmod +x .githooks/pre-commit" 2>$null
+            foreach ($hookPath in $hookPaths) {
+                if (Test-Path $hookPath) {
+                    & $bash -c "chmod +x $hookPath" 2>$null
+                }
+            }
             break
         }
     }
@@ -126,6 +130,7 @@ if ($globalEmail -and $globalEmail -ne $Email) {
 
 Write-Host ""
 Write-Host "El pre-commit hook validara tu identidad antes de cada commit CLI." -ForegroundColor Cyan
+Write-Host "El commit-msg hook exigira un Jira ID en cada mensaje de commit." -ForegroundColor Cyan
 Write-Host "La Desktop App siempre usa tu cuenta GitHub autenticada." -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Para mas informacion: docs/QUICKSTART.md" -ForegroundColor DarkGray

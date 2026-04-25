@@ -2,6 +2,8 @@
 
 <!-- Brief description of what this PR does (1-3 sentences) -->
 
+<!-- Required: keep a Jira ticket ID in the PR title, for example: fix(KAN-4): ... -->
+
 ## Changes
 
 <!-- Bullet list of specific changes -->
@@ -28,6 +30,9 @@
 
 ## Checklist
 
+- [ ] PR title includes a Jira ticket ID (example: `KAN-4`)
+- [ ] Branch name includes a Jira ticket ID (example: `fix/KAN-4-short-summary`)
+- [ ] Commit messages include a Jira ticket ID
 - [ ] `cargo test` passes (server)
 - [ ] `cargo clippy -- -D warnings` passes (server + desktop)
 - [ ] `npm run typecheck` passes (frontend)

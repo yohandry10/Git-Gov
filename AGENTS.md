@@ -73,6 +73,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - New commit messages in PRs/pushes must include a Jira-style ticket ID.
   - Local equivalent: `scripts/github/check_traceability_policy.ps1`.
   - Local preflight equivalent: `scripts/security/publication_guard.ps1`.
+  - Local commit hook: `.githooks/commit-msg` when `core.hooksPath=.githooks`.
 
 ## GitHub Webhooks
 

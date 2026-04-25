@@ -1,0 +1,27 @@
+#!/bin/sh
+# GitGov commit-msg hook - enforce Jira ticket traceability locally.
+
+MSG_FILE="$1"
+TICKET_RE='[A-Z][A-Z0-9]+-[0-9]+'
+
+if [ -z "$MSG_FILE" ] || [ ! -f "$MSG_FILE" ]; then
+    echo "[GitGov] ERROR: commit message file not found."
+    exit 1
+fi
+
+if grep -Eq "$TICKET_RE" "$MSG_FILE"; then
+    echo "[GitGov] Commit traceability verified."
+    exit 0
+fi
+
+echo ""
+echo "[GitGov] ERROR: commit message must include a Jira ticket ID such as KAN-4."
+echo ""
+echo "Examples:"
+echo "  fix(KAN-4): handle PR title coverage"
+echo "  docs(KAN-6): record release evidence"
+echo ""
+echo "Current message:"
+sed 's/^/  /' "$MSG_FILE"
+echo ""
+exit 1
