@@ -13,12 +13,14 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-7` | GitHub evidence reporting | Closed the report visibility gap from `0/4` to `4/4` signals. Applied `supabase_schema_v22.sql`, validated `pull_request_review` ingestion, and confirmed GitHub-hosted report/monitor/trend artifacts. | PR `#71`, PR `#72`, report run `24942351831`, monitor run `24942357291`, trend run `24942362269`, `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md` |
 | `KAN-8` | API contract documentation | Reconciled route-table drift. `docs/ARCHITECTURE.md` documents `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and only `/violations/{violation_id}/decisions`; migration chain now includes `v22`. | PR `#73`, main commit `7e0cc4b`, `docs/reports/api-contract-drift-reconciliation-2026-04-25.md` |
 | `KAN-9` | Publication security | Hardened `.env.example` policy. Real `.env` files remain blocked; `.env.example` stays trackable; local and GitHub guards reject non-placeholder values for sensitive keys. | PR `#74`, main commit `83240bb`, `docs/reports/env-example-placeholder-policy-2026-04-25.md` |
+| `KAN-11` | GitGov API key diagnosis | Corrected the manual Jira ingest diagnosis. The ignored local `GITGOV_API_KEY` authenticates successfully against production; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`; `docs/reports/gitgov-api-key-diagnosis-2026-04-25.md` |
 
 ### Current Remaining Work
 
-1. `GITGOV_API_KEY` production admin access is not currently usable from local env for manual ingest/admin calls.
-   - Last observed manual `/integrations/jira` ingest attempt returned `401`.
-   - Fix: rotate/sync the local ignored `GITGOV_API_KEY` with the active Render backend key, then revalidate without printing the value.
+1. `GITGOV_API_KEY` production admin access is usable from ignored local env files.
+   - `https://gitgov-api.onrender.com/stats` returned HTTP `200` with the local key.
+   - The previous manual `/integrations/jira` `401` was caused by missing Jira shared-secret handling, not by a bad GitGov API key.
+   - Manual Jira ingest requires `Authorization: Bearer <GITGOV_API_KEY>`, `x-gitgov-jira-secret: <JIRA_WEBHOOK_SECRET>`, and an `org_name` payload hint such as `yohandry10`.
 2. Sonar remains intentionally local.
    - SonarCloud is not applicable for the current personal GitHub account.
    - GitHub-hosted runners cannot reach `localhost:9000`; keep GitHub Sonar scan optional/non-blocking unless a self-hosted runner is added.
@@ -455,7 +457,7 @@ This section consolidates the latest completed implementation/documentation poin
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
-- Local `GITGOV_API_KEY` should be rotated/synced before relying on manual production admin ingest calls; the last manual Jira ingest attempt returned `401`.
+- Local `GITGOV_API_KEY` is valid for production admin auth. Manual `/integrations/jira` calls must include `x-gitgov-jira-secret` and `org_name`; the previous `401` was not a key rotation/sync issue.
 
 ## Website Feature Claims Alignment
 
@@ -636,9 +638,10 @@ Before adding or keeping any `/features` claim:
    - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
    - GitHub evidence operational adoption baseline completed on 2026-04-25; `KAN-7` closed the report artifact visibility issue from `0/4` to `4/4` by applying `supabase_schema_v22.sql` and validating a real `pull_request_review` event.
    - Remaining work here is operational monitoring, not new ingestion plumbing.
-4. Re-sync local production admin API credentials if manual GitGov admin operations are needed.
+4. Use the full manual Jira ingest header contract for future GitGov admin operations.
    - Render backend is healthy and webhooks are active.
-   - Local manual `/integrations/jira` ingest failed with `401`, so the ignored local `GITGOV_API_KEY` should be rotated/synced with production before future manual admin calls.
+   - Local ignored `GITGOV_API_KEY` authenticates against production.
+   - Manual `/integrations/jira` calls must include both Bearer admin auth and `x-gitgov-jira-secret` when `JIRA_WEBHOOK_SECRET` is configured, plus `org_name` for global admin scope.
 5. Decide whether OpenAPI completeness is worth implementing.
    - Current `/api-docs` claim is intentionally partial and safe.
    - Full path annotation is only needed if Swagger becomes a generated SDK or contract-testing source.
