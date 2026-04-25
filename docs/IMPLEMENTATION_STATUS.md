@@ -501,6 +501,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Standalone Markdown report generation exists for GitHub executive evidence coverage.
   - GitHub Actions artifact monitoring and trend reporting exist for executive GitHub evidence reports.
   - GitHub evidence operational cadence is documented in `docs/runbooks/github-evidence-operations.md`.
+  - Post-merge validation for the runbook rollout passed on `main` commit `7577f90`: CI `24940874607`, Quality Gate Policy Matrix `24940874602`, Release Readiness Gate `24940874616`, Secret Scan `24940874599`, SonarQube Governance `24940874600`, Public Naming Guard `24940874603`, Governance Correlation Smoke `24940874611`, and Desktop Updater Readiness `24940874597`.
   - Risk outcomes widget is operational.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
