@@ -389,9 +389,7 @@ docker compose logs -f jira
 
 Al crear el volumen de Postgres por primera vez, Docker ejecuta:
 1. `gitgov/gitgov-server/supabase_schema.sql`
-2. `gitgov/gitgov-server/supabase/supabase_schema_v4.sql`
-3. `gitgov/gitgov-server/supabase/supabase_schema_v5.sql`
-4. `gitgov/gitgov-server/supabase/supabase_schema_v6.sql`
+2. todas las migraciones `gitgov/gitgov-server/supabase/supabase_schema_v*.sql` en orden numérico
 
 Si ya existe el volumen, los scripts **no** se vuelven a ejecutar.
 
@@ -434,12 +432,12 @@ curl -H "Authorization: Bearer <YOUR_API_KEY>" http://127.0.0.1:3001/stats
 
 ### Migraciones adicionales recomendadas (governance/drift v2)
 
-El bootstrap Docker ejecuta automáticamente `supabase_schema.sql` + `v4..v6`.
+El bootstrap Docker ejecuta automáticamente `supabase_schema.sql` + todas las migraciones `supabase_schema_v*.sql` cuando el volumen se crea desde cero.
 Para usar toda la superficie reciente (drift audit + policy requests + timeline compliance), aplicar también migraciones adicionales disponibles en repo:
 
 ```bash
 # Desde la raíz del repo
-for v in 7 8 9 10 11 12 13 18 19 20 21; do
+for v in 7 8 9 10 11 12 13 18 19 20 21 22; do
   cat "gitgov/gitgov-server/supabase/supabase_schema_v${v}.sql" \
     | docker exec -i gitgov-db psql -U gitgov -d gitgov
 done

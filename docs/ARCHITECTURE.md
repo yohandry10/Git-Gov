@@ -556,6 +556,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v19.sql` | Strict append-only de violations + policy drift runtime |
 | `supabase_schema_v20.sql` | Policy change requests + decisions (persistencia versionada) |
 | `supabase_schema_v21.sql` | Trazabilidad auditable del bot (chat_query_events + tool_calls) |
+| `supabase_schema_v22.sql` | Restaura conteos reales de `github_events` en `get_audit_stats` |
 
 ### Relaciones entre Entidades
 

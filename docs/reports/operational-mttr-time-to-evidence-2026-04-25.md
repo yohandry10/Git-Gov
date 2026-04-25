@@ -49,6 +49,17 @@ Results:
 - Whitespace diff check passed.
 - Publication guard passed.
 
+Post-merge GitHub-hosted validation on `main` commit `adb5399` passed:
+
+- CI run `24941724773`
+- Quality Gate Policy Matrix run `24941724754`
+- Release Readiness Gate run `24941724756`
+- Secret Scan run `24941724779`
+- SonarQube Governance run `24941724778`
+- Public Naming Guard run `24941724766`
+- Governance Correlation Smoke run `24941724751`
+- Desktop Updater Readiness run `24941724750`
+
 ## Scope Limits
 
 - Metrics are based on the current Jenkins correlation sample loaded into the dashboard.
