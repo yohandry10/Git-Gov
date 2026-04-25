@@ -1029,7 +1029,7 @@ fn build_guided_help_answer(question: &str) -> String {
     }
 
     if q.contains("jira") {
-        return "Pasos para conectar Jira con GitGov: 1) Configura `JIRA_WEBHOOK_SECRET` en el server. 2) Crea webhook de Jira a `POST /integrations/jira`. 3) Envía `Authorization: Bearer <admin_key>` y, si aplica, `x-gitgov-jira-secret`. 4) Verifica estado con `GET /integrations/jira/status`. 5) Ejecuta `POST /integrations/jira/correlate` y valida cobertura en `GET /integrations/jira/ticket-coverage`.".to_string();
+        return "Pasos para conectar Jira con GitGov: 1) Configura `JIRA_WEBHOOK_SECRET` en el server. 2) Crea un webhook nativo de Jira a `/webhooks/jira?org_name=<org>`. 3) Usa el mismo secret en Jira para que envíe `X-Hub-Signature`. 4) Verifica estado con `GET /integrations/jira/status`. 5) Ejecuta `POST /integrations/jira/correlate` y valida cobertura en `GET /integrations/jira/ticket-coverage`. Para ingesta manual/admin usa `/integrations/jira` con Bearer auth.".to_string();
     }
     if q.contains("jenkins") {
         return "Pasos para conectar Jenkins con GitGov: 1) Configura `JENKINS_WEBHOOK_SECRET` (opcional). 2) Desde pipeline envía POST a `/integrations/jenkins` con `Authorization: Bearer <admin_key>`. 3) Si usas secreto, añade `x-gitgov-jenkins-secret`. 4) Revisa `GET /integrations/jenkins/status`. 5) Valida correlaciones en `GET /integrations/jenkins/correlations`.".to_string();
