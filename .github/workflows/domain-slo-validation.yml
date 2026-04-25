@@ -47,6 +47,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Validate domain SLO target config
+        shell: pwsh
+        run: |
+          ./scripts/control-plane/validate_domain_slo_target_config.ps1 `
+            -TargetsPath ops/slo/domain-slo-targets.json `
+            -RequireOrgName `
+            -RequireRepoFullName `
+            -RequireBranch
+
       - name: Precheck required configuration
         id: precheck
         shell: bash
