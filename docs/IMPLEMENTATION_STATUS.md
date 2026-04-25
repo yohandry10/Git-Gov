@@ -314,6 +314,7 @@ Updated: 2026-04-25
 - Executive GitHub evidence dashboard summary added:
   - `EventBreakdownGrid` now shows executive evidence coverage (`n/4`), status (`Completo`, `Parcial`, `Sin evidencia`), and missing signal families for PR lifecycle, reviews, PR comments, and checks/status.
   - `buildGitHubEvidenceSummary` has Vitest coverage for complete, partial, and empty signal sets.
+  - Post-merge validation on `main` for commit `01d275c` passed: CI run `24938441269`, Quality Gate Policy Matrix run `24938441278`, and Release Readiness Gate run `24938441273`.
   - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
   - Production validation after deploy observed real webhook delivery HTTP `200`, `processed=true`, at least `2` `pull_request_merges` records, and a Jira backfill run with `scanned_prs=2` and `correlations_created=2`.
   - Direct validation found `KAN-4` PR-title correlations across validated merge/head SHAs.
@@ -361,6 +362,7 @@ Updated: 2026-04-25
 
 - Consolidating governance telemetry in dashboards and executive reporting.
   - GitHub evidence now has an executive coverage summary in the admin dashboard; remaining work is broader export/report packaging.
+  - Last GitHub-hosted validation for the executive GitHub evidence summary passed on `main` commit `01d275c` in CI run `24938441269`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
 
