@@ -375,6 +375,7 @@ Updated: 2026-04-25
   - The script queries GitHub Actions for the latest successful `github-evidence-report.yml` run and validates artifact freshness without reading provider secrets.
   - Added `.github/workflows/github-evidence-artifact-monitor.yml` for manual and Tuesday 14:07 UTC freshness checks.
   - Local live validation passed against report workflow run `24939329055`; artifact `6642253304` existed, was not expired, and was within the 192h freshness window.
+  - First GitHub-hosted validation passed on run `24939815276`; artifact `github-evidence-artifact-monitor` ID `6642391452` uploaded successfully and was not expired.
 
 ## In Progress
 
