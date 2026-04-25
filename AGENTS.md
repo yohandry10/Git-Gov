@@ -93,6 +93,13 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitGov native Jira webhook endpoint after deployment: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 - GitGov admin/manual Jira ingest endpoint remains `https://gitgov-api.onrender.com/integrations/jira` and requires Bearer admin auth.
 - Native Jira webhook setup should use Jira's webhook secret field with the same value as Render `JIRA_WEBHOOK_SECRET`.
+- Native Jira webhook is configured in Jira Cloud:
+  - Webhook name: `GitGov signed issue sync`
+  - Webhook ID: `1`
+  - Events: `jira:issue_created`, `jira:issue_updated`, `jira:issue_deleted`
+  - JQL filter: `project = KAN`
+  - Status: enabled and signed.
+- Render has `JIRA_WEBHOOK_SECRET` configured for `gitgov-api`; do not print or commit the value.
 - Traceability validation tickets created by API:
   - `KAN-4` - Validate GitGov traceability through PR titles
   - `KAN-5` - Validate GitGov traceability through PR comments
@@ -121,6 +128,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 - Jira Cloud API access is configured through ignored env files with `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY`.
 - Native Jira webhooks require `JIRA_WEBHOOK_SECRET` on Render and the same webhook secret in Jira Cloud.
+- Current native Jira webhook name is `GitGov signed issue sync`; it is signed with `JIRA_WEBHOOK_SECRET` and targets `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 
 ## Verified State
 
@@ -135,8 +143,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jira project `KAN` is reachable and accepts issue type `Tarea`.
 - Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were created for GitGov traceability validation.
 - Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were ingested into GitGov through `POST /integrations/jira`.
+- Native signed Jira webhook delivery was validated against Render through `POST /webhooks/jira?org_name=yohandry10`.
 - GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
-- Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window reached `1/3` commits with tickets (`33.33%`) after the `KAN-6` client event was ingested.
+- Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
 - GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
 

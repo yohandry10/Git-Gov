@@ -183,12 +183,12 @@ const PROJECT_KNOWLEDGE_BASE: &[(&str, &[&str], &str)] = &[
     (
         "Integración Jira",
         &["jira", "ticket jira", "issue jira", "jira webhook", "jira status", "jira correlate"],
-        "Jira ingesta por POST /integrations/jira con Bearer auth. Si JIRA_WEBHOOK_SECRET está configurado, se exige header x-gitgov-jira-secret. Estado: GET /integrations/jira/status. Correlación batch: POST /integrations/jira/correlate. Cobertura: GET /integrations/jira/ticket-coverage. Detalle de ticket: GET /integrations/jira/tickets/{id}.",
+        "Jira tiene dos rutas: POST /webhooks/jira?org_name=<org> para webhooks nativos firmados con X-Hub-Signature y JIRA_WEBHOOK_SECRET, y POST /integrations/jira para ingesta admin/manual con Bearer auth. Estado: GET /integrations/jira/status. Correlación batch: POST /integrations/jira/correlate. Cobertura: GET /integrations/jira/ticket-coverage. Detalle de ticket: GET /integrations/jira/tickets/{id}.",
     ),
     (
         "Configurar Jira",
         &["configurar jira", "setup jira", "jira setup", "como integrar jira", "jira gitgov"],
-        "Para integrar Jira con GitGov: (1) En Jira: Project Settings > Webhooks > Create webhook, (2) URL: https://tu-servidor/integrations/jira, (3) Eventos: issue updated, issue created, comment created, (4) Header adicional (si se configura JIRA_WEBHOOK_SECRET): x-gitgov-jira-secret: <secreto>. GitGov también puede recibir eventos de Jira via Automation rules que hacen HTTP POST.",
+        "Para integrar Jira con GitGov: (1) Configura JIRA_WEBHOOK_SECRET en el server, (2) En Jira Administration > Webhooks crea un webhook nativo, (3) URL: https://tu-servidor/webhooks/jira?org_name=<org>, (4) Eventos: issue created, issue updated, issue deleted, (5) En el campo secret usa el mismo JIRA_WEBHOOK_SECRET para que Jira envíe X-Hub-Signature. Para pruebas/admin manual usa POST /integrations/jira con Bearer auth.",
     ),
     (
         "Cobertura de tickets Jira",
