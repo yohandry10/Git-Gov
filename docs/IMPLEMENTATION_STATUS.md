@@ -347,9 +347,10 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins pipeline ingestion exists.
   - Commit-to-pipeline correlation exists.
   - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
-  - GitHub webhook ingestion exists for `push`, `create`, all `pull_request` actions, all `pull_request_review` actions, `check_run`, `check_suite`, and `status` events.
+  - GitHub webhook ingestion exists for `push`, `create`, all `pull_request` actions, all `pull_request_review` actions, `pull_request_review_comment`, PR-linked `issue_comment`, `check_run`, `check_suite`, and `status` events.
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
-  - PR lifecycle, review activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|check_run|check_suite|status`) with contextual metadata.
+  - PR lifecycle, review activity, PR comment activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|pull_request_review_comment|issue_comment|check_run|check_suite|status`) with contextual metadata.
+  - PR comment bodies/titles that contain ticket IDs can create commit-ticket correlations against the PR/comment SHA, improving traceability evidence without synthetic data.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -360,13 +361,12 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jira ticket coverage
   - pull request lifecycle evidence
   - pull request review evidence
+  - pull request discussion/comment evidence when comments are linked to PRs
   - GitHub status-check evidence (check runs/suites + commit status)
   - GitHub webhook context
-- Not implemented yet:
-  - PR discussion-comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) as first-class stored events
 - Website consequence:
-  - `/features` can claim PR lifecycle + reviews + status-check evidence ingestion.
-  - Avoid claiming PR discussion-thread/comment ingestion until that scope exists.
+  - `/features` can claim PR lifecycle + reviews + PR-linked comments + status-check evidence ingestion.
+  - Keep wording scoped: comment evidence correlates tickets only when the comment/title includes a ticket ID and a PR/comment SHA is available.
 
 ### 4. Risk, Readiness, and Reporting
 
@@ -417,9 +417,9 @@ Before adding or keeping any `/features` claim:
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
 3. Expand GitHub evidence ingestion beyond current scope:
-   - ingest PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`)
-   - definir mapeo de métricas para los nuevos eventos GitHub en dashboard/reporting (tendencias y score)
-   - publicar en `/features` el wording actualizado para lifecycle/reviews/status-checks (sin sobreprometer comments)
+   - PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) is now ingested and can create ticket correlations from comment/title ticket IDs.
+   - Remaining work: map the new comment event types into dashboard/reporting trends and public `/features` wording without overstating comment coverage.
+   - Next readiness blocker remains data quality: current live Jira ticket coverage is `0%` until actual ticket IDs appear in commits, branches, PR titles, or PR comments.
 
 ## Sonar Runtime Configuration
 
