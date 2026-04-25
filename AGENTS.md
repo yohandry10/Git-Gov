@@ -201,6 +201,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - `scripts/control-plane/generate_github_evidence_report.ps1` generates a standalone Markdown executive report from `/stats.github_events.by_type` or an offline stats JSON fixture. Use `-StatsJsonPath` for token-free validation and `-GitGovUrl`/`-ApiKey` for live Control Plane reporting.
 - `.github/workflows/github-evidence-report.yml` runs the GitHub evidence executive report generator manually or weekly on Monday 13:23 UTC, uploads the Markdown artifact, and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
 - Manual GitHub evidence report workflow validation passed on run `24939329055` for `main` commit `3935c21`; artifact `github-evidence-executive-report` was uploaded successfully.
+- `scripts/control-plane/validate_github_evidence_report_artifact.ps1` validates operational freshness of the GitHub evidence report artifact by querying GitHub Actions for the latest successful `github-evidence-report.yml` run, confirming artifact `github-evidence-executive-report` exists, is not expired, and is within the configured max age.
+- `.github/workflows/github-evidence-artifact-monitor.yml` runs the artifact freshness monitor manually or weekly on Tuesday 14:07 UTC and uploads `github-evidence-artifact-monitor` JSON evidence.
+- Local validation of the artifact monitor passed against workflow run `24939329055`; artifact `6642253304` was fresh and not expired.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 - Last production PR-title backfill validation for `KAN-4` observed:

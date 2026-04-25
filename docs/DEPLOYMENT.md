@@ -845,6 +845,23 @@ Workflow opcional:
 - sube artifact `github-evidence-executive-report`
 - salta sin fallar si falta configuración
 
+Monitor operativo del artifact:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/validate_github_evidence_report_artifact.ps1 `
+  -Repository "owner/repo" `
+  -WorkflowFile "github-evidence-report.yml" `
+  -ArtifactName "github-evidence-executive-report" `
+  -MaxAgeHours 192 `
+  -OutputPath "out/github-evidence-artifact-monitor.json"
+```
+
+- requiere `GITHUB_TOKEN` con lectura de Actions
+- valida el último run exitoso del workflow de reporte
+- falla si el artifact no existe, está expirado o supera la edad máxima
+- `.github/workflows/github-evidence-artifact-monitor.yml` corre martes 14:07 UTC + `workflow_dispatch`
+- sube artifact `github-evidence-artifact-monitor` con el resumen JSON del monitoreo
+
 Workflow cloud (manual + semanal):
 - `.github/workflows/enterprise-readiness-bundle.yml`
 - corre lunes 12:30 UTC + `workflow_dispatch`
