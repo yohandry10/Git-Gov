@@ -235,6 +235,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Domain SLO validation reports were generated under `docs/reports/domain-slo-validation-prod-2026-04-25/`.
   - Domains `core-platform`, `standard-services`, and `internal-tools` all passed after scoping targets to `org_name=yohandry10`.
 - Domain SLO target config validation is enforced by `scripts/control-plane/validate_domain_slo_target_config.ps1` in CI and `.github/workflows/domain-slo-validation.yml`, requiring explicit `org_name`, `repo_full_name`, and `branch` scope.
+- Post-merge validation for SLO target config guardrail passed on `main` commit `f0a3470`: CI run `24927603357`, Quality Gate Policy Matrix run `24927603365`, and Release Readiness Gate run `24927603352`.
 
 ## Safety Rules
 
