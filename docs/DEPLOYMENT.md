@@ -845,6 +845,8 @@ Workflow opcional:
 - sube artifact `github-evidence-executive-report`
 - salta sin fallar si falta configuración
 
+Runbook operativo completo: `docs/runbooks/github-evidence-operations.md`.
+
 Monitor operativo del artifact:
 
 ```powershell
@@ -880,6 +882,7 @@ powershell -ExecutionPolicy Bypass -File scripts/control-plane/generate_github_e
 - genera Markdown + JSON para comparar cobertura entre runs
 - `.github/workflows/github-evidence-trend-report.yml` corre martes 14:17 UTC + `workflow_dispatch`
 - sube artifact `github-evidence-trend-report`
+- La cadencia semanal recomendada y criterios de escalamiento están en `docs/runbooks/github-evidence-operations.md`.
 
 Workflow cloud (manual + semanal):
 - `.github/workflows/enterprise-readiness-bundle.yml`
