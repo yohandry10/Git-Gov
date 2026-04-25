@@ -143,7 +143,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jira project `KAN` is reachable and accepts issue type `Tarea`.
 - Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were created for GitGov traceability validation.
 - Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were ingested into GitGov through `POST /integrations/jira`.
-- Native signed Jira webhook delivery was validated against Render through `POST /webhooks/jira?org_name=yohandry10`.
+- Native signed Jira webhook delivery was validated end-to-end by updating `KAN-6` in Jira Cloud and observing `last_ingest_at` advance in GitGov.
 - GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
 - Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
