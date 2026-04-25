@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Precheck required configuration
         id: precheck
@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload calibration artifact
         if: ${{ steps.precheck.outputs.enabled == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: risk-tier-baseline-${{ github.run_id }}
           path: ${{ steps.calibration.outputs.report_path }}
