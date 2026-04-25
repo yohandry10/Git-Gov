@@ -194,6 +194,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Jira correlation backfill scanned `4` PRs and created `0` new rows because existing correlations were already present.
   - `/integrations/jira/ticket-coverage?repo_full_name=yohandry10%2FGit-Gov&branch=main&hours=720` returned `total_commits=30`, `commits_with_ticket=5`, `coverage_percentage=16.67`.
   - `validate_release_readiness_gate.ps1` passed for `yohandry10/Git-Gov` on `main`: readiness `77/100` vs target `75`, signal coverage `3/3`, pipeline success `96.77%`, Sonar pass `96.77%`, Jira coverage `16.67%`.
+- Production validation after traceability guard rollout completed:
+  - Jira correlation backfill scanned `8` PRs and created `0` new rows because relevant rows already existed.
+  - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `total_commits=34`, `commits_with_ticket=9`, `coverage_percentage=26.47`.
+  - Release readiness passed with readiness `79/100` vs target `75`, signal coverage `3/3`, pipeline success `97.14%`, Sonar pass `97.14%`, Jira coverage `26.47%`.
+  - This confirms the branch/PR/commit Jira-ID guardrail is improving coverage through the PR-title merge evidence path.
 
 ## Safety Rules
 
