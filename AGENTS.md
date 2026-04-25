@@ -119,7 +119,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `JIRA_API_TOKEN`
   - `JIRA_PROJECT_KEY`
 - GitGov native Jira webhook endpoint after deployment: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
-- GitGov admin/manual Jira ingest endpoint remains `https://gitgov-api.onrender.com/integrations/jira` and requires Bearer admin auth.
+- GitGov admin/manual Jira ingest endpoint remains `https://gitgov-api.onrender.com/integrations/jira` and requires Bearer admin auth plus `x-gitgov-jira-secret` when `JIRA_WEBHOOK_SECRET` is configured. Global admin keys also require an `org_name` payload hint such as `yohandry10`.
 - Native Jira webhook setup should use Jira's webhook secret field with the same value as Render `JIRA_WEBHOOK_SECRET`.
 - Native Jira webhook is configured in Jira Cloud:
   - Webhook name: `GitGov signed issue sync`
@@ -172,11 +172,14 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - API contract drift reconciliation ticket `KAN-8` records that `docs/ARCHITECTURE.md` is aligned with the real backend routes for `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and `/violations/{violation_id}/decisions`; the remaining contract debt is optional OpenAPI path completeness, not route-table drift. `docs/ENTERPRISE_READINESS_DECISION.md` is ignored internal audit memory and must not be force-added.
 - `.env.example` placeholder policy ticket `KAN-9` hardens publication safety: real `.env` files remain blocked, `.env.example` remains trackable, and both local `publication_guard.ps1` plus GitHub `Security Guard` validate that sensitive keys in `.env.example` contain placeholder-only values.
 - Implementation summary ticket `KAN-10` consolidates the latest closed points and remaining backlog in `docs/IMPLEMENTATION_STATUS.md` and `docs/reports/implementation-progress-summary-2026-04-25.md`.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`: local `GITGOV_API_KEY` needs rotation/sync before manual production admin ingest calls; Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required.
+- API key diagnosis ticket `KAN-11` corrected the manual ingest finding: local ignored `GITGOV_API_KEY` is present and validates against production `/stats` with HTTP `200`. Manual `/integrations/jira` calls also require `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 
 - Render backend health endpoint passed on `https://gitgov-api.onrender.com/health`.
+- Local ignored `GITGOV_API_KEY` was validated against production `https://gitgov-api.onrender.com/stats` with HTTP `200`; Render does not need a `GITGOV_API_KEY` env var for current DB-backed admin auth, though setting it there can be used as bootstrap consistency.
+- Manual Jira ingest to production was validated with Bearer `GITGOV_API_KEY`, `x-gitgov-jira-secret`, and `org_name=yohandry10`; the previous `401` diagnosis was a missing Jira secret header, not a bad GitGov API key.
 - Deployment documentation drift was cleaned so Render is documented as current production, GitHub/Jira webhooks are documented as already configured, and domain/`certbot` work is marked as optional for self-hosted/custom-domain migrations.
 - GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`; last observed correlation sample contained 12 Sonar/Jenkins evidence items for `main`.
 - GitHub-hosted matrix validation passed on run `24877293195`.
