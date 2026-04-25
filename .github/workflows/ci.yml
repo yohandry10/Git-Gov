@@ -15,7 +15,7 @@ jobs:
     name: Workflow Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
       - name: Install actionlint
@@ -30,7 +30,7 @@ jobs:
       run:
         working-directory: gitgov/gitgov-server
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
       - uses: dtolnay/rust-toolchain@stable
@@ -45,7 +45,7 @@ jobs:
         run: cargo test 2>&1 | tee /tmp/cargo-test-output.txt
       - name: Upload test output on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cargo-test-output
           path: /tmp/cargo-test-output.txt
@@ -58,7 +58,7 @@ jobs:
       run:
         working-directory: gitgov/src-tauri
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
       - uses: dtolnay/rust-toolchain@stable
@@ -80,10 +80,10 @@ jobs:
       run:
         working-directory: gitgov
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -100,7 +100,7 @@ jobs:
       run:
         working-directory: gitgov-web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
       - name: Setup pnpm
@@ -108,7 +108,7 @@ jobs:
         with:
           version: 9
           run_install: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm

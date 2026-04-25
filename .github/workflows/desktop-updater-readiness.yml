@@ -24,7 +24,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run updater readiness validator
         shell: pwsh
@@ -50,7 +50,7 @@ jobs:
 
       - name: Upload updater readiness report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-updater-readiness-${{ github.run_id }}
           path: docs/reports/desktop-updater-readiness-${{ github.run_id }}.md

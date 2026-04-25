@@ -47,7 +47,7 @@ jobs:
       GITGOV_URL: ${{ vars.GITGOV_URL || vars.GITGOV_SERVER_URL || vars.GIT_GOV_URL || '' }}
       GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY || secrets.GITGOV_TOKEN || secrets.GITGOV_APIKEY || secrets.GIT_GOV_API_KEY || secrets['GITGOV-API-KEY'] || secrets['gitgov-api-key'] || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Matrix precheck (GitGov URL + API key)
         id: precheck
@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload matrix artifacts
         if: ${{ always() && steps.precheck.outputs.enabled == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quality-gate-policy-matrix-${{ github.run_id }}
           path: |

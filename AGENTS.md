@@ -146,6 +146,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Release Readiness Gate also runs daily by schedule at `10:17 UTC`; scheduled runs refresh Jira/PR correlations before scoring and enforce the standard readiness target.
 - Push/manual Release Readiness Gate runs remain advisory unless `enforce_gate=true`; a failed pre-score Jira correlation refresh is only blocking when the gate is enforced.
 - Manual Release Readiness Gate runs default to a 720h lookback window and can disable the pre-score Jira correlation refresh with `refresh_jira_correlations=false` if an operator needs a pure read-only check.
+- First-party GitHub Actions were upgraded for Node 24 action-runtime compatibility:
+  - `actions/checkout@v6`
+  - `actions/setup-node@v6`
+  - `actions/upload-artifact@v7`
+  - `node-version: 20` remains the project build runtime where configured; it is not the internal runtime of `actions/*`.
 
 ## External Service Credentials
 
@@ -212,6 +217,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Jira correlation refresh artifact was generated.
   - Readiness was `81/100` against target `75`.
   - Signal coverage was `3/3`.
+- GitHub Actions Node 24 compatibility upgrade is documented at `docs/reports/github-actions-node24-upgrade-2026-04-25.md`.
 
 ## Safety Rules
 

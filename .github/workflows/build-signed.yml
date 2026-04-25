@@ -17,7 +17,7 @@ jobs:
       run:
         working-directory: gitgov
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         shell: pwsh
         run: |
@@ -36,7 +36,7 @@ jobs:
         with:
           workspaces: gitgov/src-tauri
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -120,7 +120,7 @@ jobs:
           if ($nsis) { (Get-FileHash $nsis.FullName -Algorithm SHA256).Hash | Out-File -FilePath "$($nsis.FullName).sha256" }
 
       - name: Upload MSI installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitgov-windows-msi-${{ github.ref_name }}
           path: |
@@ -129,7 +129,7 @@ jobs:
           retention-days: 90
 
       - name: Upload NSIS installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitgov-windows-nsis-${{ github.ref_name }}
           path: |
@@ -144,7 +144,7 @@ jobs:
       run:
         working-directory: gitgov
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
 
@@ -156,7 +156,7 @@ jobs:
         with:
           workspaces: gitgov/src-tauri
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -181,7 +181,7 @@ jobs:
           done
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitgov-macos-dmg-${{ github.ref_name }}
           path: |
@@ -196,7 +196,7 @@ jobs:
       run:
         working-directory: gitgov
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert explicit runtime env
         run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
 
@@ -206,7 +206,7 @@ jobs:
         with:
           workspaces: gitgov/src-tauri
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -253,7 +253,7 @@ jobs:
           done
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitgov-linux-appimage-${{ github.ref_name }}
           path: |
@@ -262,7 +262,7 @@ jobs:
           retention-days: 90
 
       - name: Upload Linux DEB
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitgov-linux-deb-${{ github.ref_name }}
           path: |
