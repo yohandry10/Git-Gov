@@ -199,6 +199,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Admin dashboard audit exports package the same GitHub executive evidence summary into downloaded JSON under `executive_summary.github_evidence`; raw export records remain under `data`.
 - Post-merge validation for GitHub evidence export packaging passed on `main` commit `458c048`: CI run `24938795096`, Quality Gate Policy Matrix run `24938795085`, and Release Readiness Gate run `24938795100`.
 - `scripts/control-plane/generate_github_evidence_report.ps1` generates a standalone Markdown executive report from `/stats.github_events.by_type` or an offline stats JSON fixture. Use `-StatsJsonPath` for token-free validation and `-GitGovUrl`/`-ApiKey` for live Control Plane reporting.
+- `.github/workflows/github-evidence-report.yml` runs the GitHub evidence executive report generator manually or weekly on Monday 13:23 UTC, uploads the Markdown artifact, and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 - Last production PR-title backfill validation for `KAN-4` observed:

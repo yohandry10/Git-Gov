@@ -367,12 +367,14 @@ Updated: 2026-04-25
   - The script generates a standalone Markdown report from live `/stats` or an offline stats JSON fixture.
   - Reported signal model matches the dashboard/export package: PR lifecycle, reviews, PR comments, and checks/status.
   - Offline fixture validation passed without requiring provider tokens.
+  - Added `.github/workflows/github-evidence-report.yml` for manual and weekly artifact generation.
+  - The workflow uploads the generated Markdown report as `github-evidence-executive-report` and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, and standalone Markdown report generator.
-  - Remaining work is scheduled/CI packaging if operators want this report uploaded automatically as an artifact.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, and optional GitHub Actions artifact workflow.
+  - Remaining work is operational monitoring of generated artifacts and any future productization of trend history.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.

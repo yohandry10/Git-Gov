@@ -1,0 +1,62 @@
+name: GitHub Evidence Executive Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      org_name:
+        description: "GitGov organization name for report labeling"
+        required: false
+        default: "yohandry10"
+  schedule:
+    - cron: "23 13 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate GitHub evidence report
+    runs-on: ubuntu-latest
+    env:
+      GITGOV_URL: ${{ vars.GITGOV_URL }}
+      GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check report configuration
+        id: config
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GITGOV_URL) -or [string]::IsNullOrWhiteSpace($env:GITGOV_API_KEY)) {
+            Write-Warning "Skipping report generation because GITGOV_URL or GITGOV_API_KEY is missing."
+            "enabled=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          "enabled=true" >> $env:GITHUB_OUTPUT
+
+      - name: Generate report
+        id: report
+        if: steps.config.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $orgName = "${{ inputs.org_name }}"
+          if ([string]::IsNullOrWhiteSpace($orgName)) {
+            $orgName = "yohandry10"
+          }
+          $stamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHHmmssZ")
+          $outputPath = "out/github-evidence-executive-report-$stamp.md"
+          .\scripts\control-plane\generate_github_evidence_report.ps1 `
+            -GitGovUrl $env:GITGOV_URL `
+            -ApiKey $env:GITGOV_API_KEY `
+            -OrgName $orgName `
+            -OutputPath $outputPath
+          "report_path=$outputPath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload report artifact
+        if: steps.config.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: github-evidence-executive-report
+          path: ${{ steps.report.outputs.report_path }}
+          if-no-files-found: error
