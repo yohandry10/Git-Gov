@@ -67,6 +67,10 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `Validate quality_gates warn/block matrix`
 - Admin enforcement is enabled.
 - Required status checks are strict.
+- `Security Guard` also enforces traceability hygiene:
+  - Pull request titles must include a Jira-style ticket ID such as `KAN-4`.
+  - New commit messages in PRs/pushes must include a Jira-style ticket ID.
+  - Local equivalent: `scripts/github/check_traceability_policy.ps1`.
 
 ## GitHub Webhooks
 
@@ -200,3 +204,4 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Prefer SonarQube API for Sonar checks when `SONAR_TOKEN` is present.
 - Prefer Jira API for Jira checks when `JIRA_API_TOKEN` is present.
 - After any major access/configuration/deployment/validation change, update `AGENTS.md` and the relevant document under `docs/` before finalizing the PR. This repository relies on docs as persistent agent memory.
+- Future branches, commits, and PR titles should include Jira ticket IDs to preserve GitGov ticket coverage and release readiness.
