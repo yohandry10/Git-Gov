@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-24
+Updated: 2026-04-25
 
 ## Completed
 
@@ -278,6 +278,27 @@ Updated: 2026-04-24
   - Jenkins local API token created and validated as `admin`.
   - Jenkins job `gitgov-demo-pipeline` API metadata validated.
   - Runbook added: `docs/OPERATIONS_ACCESS.md`.
+- Jira Cloud operational access configured:
+  - Jira API credentials are stored in ignored local env files.
+  - Project `KAN` (`GitGov`, project ID `10000`) was validated by API.
+  - Traceability validation tickets `KAN-4`, `KAN-5`, and `KAN-6` were created by API.
+  - Native signed Jira webhook `GitGov signed issue sync` was configured for `jira:issue_created`, `jira:issue_updated`, and `jira:issue_deleted` with JQL `project = KAN`.
+  - End-to-end Jira webhook delivery was validated by updating `KAN-6` and observing GitGov ingest advance.
+- GitHub webhook operational access configured:
+  - Repository webhook ID `610772988` targets `https://gitgov-api.onrender.com/webhooks/github`.
+  - Events include push/create, PR lifecycle, PR reviews, PR review comments, PR-linked issue comments, check runs/suites, and commit statuses.
+  - Webhook authentication is HMAC-based through `GITHUB_WEBHOOK_SECRET` configured on Render and in the GitHub webhook.
+- GitHub PR-title traceability validation completed:
+  - PR titles containing `KAN-4` are ingested from real GitHub webhook deliveries and can create `commit_ticket_correlations` rows with `source=pr_title`.
+  - PR merge materialization is idempotent, so duplicate or redelivered `pull_request` events can repair missing `pull_request_merges` records.
+  - GitHub org upsert now resolves existing organizations by `login` before inserting/updating by `github_id`, preventing production webhook failures on existing org rows.
+  - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
+  - Production validation after deploy observed real webhook delivery HTTP `200`, `processed=true`, at least `2` `pull_request_merges` records, and a Jira backfill run with `scanned_prs=2` and `correlations_created=2`.
+  - Direct validation found `KAN-4` PR-title correlations across validated merge/head SHAs.
+- Render production deployment context documented:
+  - Service `gitgov-api` deploys from `main` with root directory `gitgov/gitgov-server`.
+  - Render API access is available through ignored env key `RENDER_API_KEY`.
+  - Production deploys were validated after the GitHub webhook and PR-title correlation fixes.
 
 ## In Progress
 
@@ -433,7 +454,17 @@ Before adding or keeping any `/features` claim:
    - Batch Jira correlation now scans recent merged PR titles as a backfill path, so operators can improve historical coverage without synthetic commit events.
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
-   - Next readiness blocker remains data quality: current live Jira ticket coverage improves only when actual ticket IDs appear in commits, branches, PR titles, or PR comments.
+   - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
+   - Next readiness blocker is coverage/readiness query semantics: ticket correlations exist, but the live ticket coverage endpoint still reported `3` covered-universe commits, `1` with ticket, and `33.33%` after PR-title correlations were created. Update the denominator/query if merged PR evidence should count directly toward readiness.
+
+## Operating Memory Rule
+
+After each major change that affects access, external services, deployment, CI, webhooks, evidence ingestion, validation status, or next-step blockers:
+
+1. Update `AGENTS.md` with the operational fact needed by the next agent.
+2. Update this implementation status file or add a dated report under `docs/reports/`.
+3. Do not include secrets, token values, private API keys, or raw provider credentials.
+4. Prefer concrete IDs, URLs, PR numbers, run IDs, and validation results when they are non-sensitive.
 
 ## Sonar Runtime Configuration
 

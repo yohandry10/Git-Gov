@@ -76,6 +76,12 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Configured events: `push`, `create`, `pull_request`, `pull_request_review`, `pull_request_review_comment`, `issue_comment`, `check_run`, `check_suite`, and `status`.
 - GitHub webhook delivery has been validated with real repository events returning HTTP `200`.
 - PR merge materialization is idempotent: duplicate `pull_request` deliveries for merged PRs should still repair `pull_request_merges` and ticket correlations.
+- Production PR-title validation completed with Jira ticket `KAN-4`:
+  - GitHub merged PR titles containing `KAN-4` were ingested through real webhook deliveries.
+  - Webhook redelivery for a merged PR returned `processed=true`.
+  - `pull_request_merges` reached at least `2` records in production validation.
+  - Jira backfill scanned `2` merged PRs and created `2` PR-title correlations.
+  - `commit_ticket_correlations.source` must remain `pr_title`; production DB constraints allow `branch_name`, `commit_message`, `pr_title`, and `manual`.
 
 ## Render
 
@@ -159,10 +165,18 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
 - GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
-- Fresh GitHub PR merge delivery validation should use a PR title with `KAN-*` so `pull_request_merges` and Jira ticket coverage can be checked immediately after merge.
+- GitHub PR merge delivery validation with `KAN-4` titles was completed in production:
+  - PR merge evidence was materialized in `pull_request_merges`.
+  - PR-title correlations were created for merge/head SHAs using `source=pr_title`.
+  - Latest validated GitHub redelivery returned HTTP `200` and `processed=true`.
 - GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
+- Last production PR-title backfill validation for `KAN-4` observed:
+  - `scanned_prs=2`
+  - `correlations_created=2`
+  - four `KAN-4` correlation rows across validated merge/head SHAs
+- Current remaining readiness blocker is not missing GitHub webhook ingestion. The remaining gap is coverage/readiness query semantics: the ticket coverage endpoint still reported `3` covered-universe commits, `1` with ticket, and `33.33%` coverage after PR-title correlations existed. Update ticket coverage/readiness logic if PR merge evidence should count directly in that denominator.
 
 ## Safety Rules
 
@@ -175,3 +189,4 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Prefer Jenkins API for Jenkins checks when `JENKINS_API_TOKEN` is present.
 - Prefer SonarQube API for Sonar checks when `SONAR_TOKEN` is present.
 - Prefer Jira API for Jira checks when `JIRA_API_TOKEN` is present.
+- After any major access/configuration/deployment/validation change, update `AGENTS.md` and the relevant document under `docs/` before finalizing the PR. This repository relies on docs as persistent agent memory.
