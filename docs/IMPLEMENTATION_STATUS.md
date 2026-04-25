@@ -388,6 +388,15 @@ Updated: 2026-04-25
   - Local live validation parsed workflow run `24939329055` and produced Markdown/JSON trend outputs with one report point.
   - First GitHub-hosted validation passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
   - Post-merge validation passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
+- GitHub evidence stats scope fix:
+  - Added migration `gitgov/gitgov-server/supabase/supabase_schema_v22.sql`.
+  - Restores real `github_events` totals, daily counts, `by_type`, and `active_repos` in `get_audit_stats`.
+  - Keeps v19 violation decision semantics.
+  - Added postcheck `gitgov/gitgov-server/supabase/checks/v22_postcheck.sql`.
+  - Production DB migration was applied and `v22_postcheck.sql` passed.
+  - Live report validation now returns `Parcial` / `3/4 signals`; the previous `0/4 signals` stats visibility gap is closed.
+  - GitHub-hosted validation passed: report run `24942000355`, artifact monitor run `24942008460`, trend run `24942016196`.
+  - Report evidence: `docs/reports/github-evidence-stats-scope-fix-2026-04-25.md`.
 
 ## In Progress
 
@@ -395,7 +404,7 @@ Updated: 2026-04-25
   - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
   - Operational adoption baseline completed on 2026-04-25: manual report, artifact monitor, and trend workflows passed; local monitor/trend scripts passed; evidence captured in `docs/reports/github-evidence-operational-adoption-2026-04-25.md`.
   - No implementation gap remains for the GitHub evidence operating path; recurring work is weekly operation through `docs/runbooks/github-evidence-operations.md`.
-  - Current data-quality follow-up is `KAN-7`: report artifacts are fresh, but latest executive/trend content still reports `Sin evidencia` / `0/4 signals`.
+  - `KAN-7` stats visibility gap is closed: `supabase_schema_v22.sql` was applied in production, live report/trend artifacts now show `3/4 signals`, and the remaining missing signal is real `pull_request_review` event volume.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.

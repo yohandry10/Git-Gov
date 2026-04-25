@@ -219,12 +219,22 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Trend workflow run `24941363195` succeeded; artifact `github-evidence-trend-report` ID `6642833188`.
   - Local artifact freshness monitor returned `PASS`; latest artifact was not expired and age was `0.02h`.
   - Local trend parsed `2` reports and still observed `Sin evidencia` / `0/4 signals`; Jira follow-up `KAN-7` tracks the data-quality/scope investigation.
+- `KAN-7` GitHub evidence stats root cause:
+  - `github-evidence-report.yml` reads `GET /stats.github_events.by_type`.
+  - Existing `supabase_schema_v18.sql` and `supabase_schema_v19.sql` optimized `get_audit_stats` but returned zeroed GitHub stats.
+  - Migration `supabase_schema_v22.sql` restores real `github_events` totals, daily counts, `by_type`, and `active_repos` while preserving v19 violation decision semantics.
+  - Postcheck file: `gitgov/gitgov-server/supabase/checks/v22_postcheck.sql`.
+  - Production DB migration v22 was applied with `psql`; `v22_postcheck.sql` passed.
+  - Post-migration `/stats.github_events.by_type` showed real evidence counts, including `pull_request=75`, `issue_comment=93`, `check_run=1937`, `check_suite=599`, and `status=148`.
+  - Local live executive report generated `Parcial` / `3/4 signals`; remaining missing signal is `Reviews` because the current sample lacks `pull_request_review` events.
+  - GitHub-hosted validation passed: report run `24942000355` artifact `6643010178`, artifact monitor run `24942008460` artifact `6643012934`, trend run `24942016196` artifact `6643015713`.
 - Admin dashboard Risk Outcomes now includes informational `Time-to-Evidence` and `MTTR pipeline` metrics from Jenkins commit-pipeline correlations:
   - `Time-to-Evidence` is commit timestamp to correlated pipeline ingestion timestamp.
   - `MTTR pipeline` is recoverable non-green Jenkins pipeline event to next successful run for the same job.
   - Duplicate pipeline evidence is ignored before calculating samples.
   - These metrics render `N/A` with insufficient evidence and are not part of composite risk/readiness scoring until tier-specific SLOs are calibrated.
   - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run typecheck`, `npm run lint`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
+  - Post-merge GitHub-hosted validation passed on `main` commit `adb5399`: CI `24941724773`, Quality Gate Policy Matrix `24941724754`, Release Readiness Gate `24941724756`, Secret Scan `24941724779`, SonarQube Governance `24941724778`, Public Naming Guard `24941724766`, Governance Correlation Smoke `24941724751`, and Desktop Updater Readiness `24941724750`.
 - Local live validation of the trend generator parsed workflow run `24939329055` and produced a 1-report trend with latest coverage `0/4 signals`; this reflects the existing `/stats.github_events.by_type` visibility note, not a secret/config leak.
 - First GitHub-hosted validation of the trend workflow passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
 - Post-merge validation for the trend workflow rollout passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
