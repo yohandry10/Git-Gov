@@ -906,14 +906,14 @@ pub async fn correlate_jira_tickets(
 
                 let mut targets: Vec<(&str, &str)> = Vec::new();
                 if let Some(sha) = merge_commit_sha.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
-                    targets.push(("github_pr_merge_title_backfill", sha));
+                    targets.push(("pr_title", sha));
                 }
                 if let Some(sha) = head_sha.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
                     let already_included = targets
                         .iter()
                         .any(|(_, existing_sha)| existing_sha.eq_ignore_ascii_case(sha));
                     if !already_included {
-                        targets.push(("github_pr_title_backfill", sha));
+                        targets.push(("pr_title", sha));
                     }
                 }
 

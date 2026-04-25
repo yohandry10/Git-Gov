@@ -357,6 +357,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - GitHub repository webhook delivery is configured for PR, review, comment, status, and push events against the Render backend.
   - Duplicate GitHub `pull_request` deliveries for merged PRs now continue through PR merge materialization and title-ticket correlation, allowing webhook redelivery to repair missing `pull_request_merges` evidence.
   - GitHub organization upsert now resolves existing org rows by `login` before inserting by `github_id`, preventing webhook ingestion failures when an org was previously created without a GitHub ID.
+  - PR-title ticket correlations now use the existing `pr_title` correlation source, matching the production `commit_ticket_correlations` constraint.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
