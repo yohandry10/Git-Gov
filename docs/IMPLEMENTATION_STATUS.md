@@ -312,8 +312,9 @@ Updated: 2026-04-25
   - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `30` total commits, `5` with tickets, and `16.67%` coverage.
   - Release readiness gate passed with readiness `77/100` against standard target `75`, signal coverage `3/3`, pipeline success `96.77%`, and Sonar pass `96.77%`.
 - Traceability guardrail added:
-  - `Security Guard` now requires Jira-style ticket IDs in PR titles and new commit messages.
+  - `Security Guard` now requires Jira-style ticket IDs in branch names, PR titles, and new commit messages.
   - Local helper added at `scripts/github/check_traceability_policy.ps1`.
+  - `scripts/security/publication_guard.ps1` now invokes the traceability helper for branch + HEAD commit preflight.
   - This protects the `pull_request_merges` + PR-title coverage path from regressing as new work lands.
 
 ## In Progress
