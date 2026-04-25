@@ -137,3 +137,4 @@ Operational adoption:
 
 - `docs/runbooks/github-evidence-operations.md` defines the dashboard capture procedure, manual Markdown report generation, artifact freshness monitor, multi-run trend report, weekly cadence, and escalation criteria.
 - This runbook is the source of truth for operating the GitHub evidence reporting path without exposing GitHub, GitGov, Render, Jenkins, Sonar, or Jira secrets.
+- Post-merge validation for the runbook rollout passed on `main` commit `7577f90`: CI `24940874607`, Quality Gate Policy Matrix `24940874602`, Release Readiness Gate `24940874616`, Secret Scan `24940874599`, SonarQube Governance `24940874600`, Public Naming Guard `24940874603`, Governance Correlation Smoke `24940874611`, and Desktop Updater Readiness `24940874597`.
