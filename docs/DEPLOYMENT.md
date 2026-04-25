@@ -862,6 +862,25 @@ powershell -ExecutionPolicy Bypass -File scripts/control-plane/validate_github_e
 - `.github/workflows/github-evidence-artifact-monitor.yml` corre martes 14:07 UTC + `workflow_dispatch`
 - sube artifact `github-evidence-artifact-monitor` con el resumen JSON del monitoreo
 
+Trend histórico de artifacts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/generate_github_evidence_trend_report.ps1 `
+  -Repository "owner/repo" `
+  -WorkflowFile "github-evidence-report.yml" `
+  -ArtifactName "github-evidence-executive-report" `
+  -MaxReports 12 `
+  -OutputMarkdownPath "out/github-evidence-trend-report.md" `
+  -OutputJsonPath "out/github-evidence-trend-report.json"
+```
+
+- requiere `GITHUB_TOKEN` con lectura de Actions
+- descarga artifacts recientes del workflow de reporte
+- parsea `Status`, `Coverage` y `Missing signals` de cada Markdown
+- genera Markdown + JSON para comparar cobertura entre runs
+- `.github/workflows/github-evidence-trend-report.yml` corre martes 14:17 UTC + `workflow_dispatch`
+- sube artifact `github-evidence-trend-report`
+
 Workflow cloud (manual + semanal):
 - `.github/workflows/enterprise-readiness-bundle.yml`
 - corre lunes 12:30 UTC + `workflow_dispatch`

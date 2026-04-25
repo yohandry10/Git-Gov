@@ -50,6 +50,7 @@ coverage/
 # Local ops artifacts
 backups/
 .tmp/
+out/
 
 # Local private workspace artifacts (must never be published)
 .*/

@@ -376,12 +376,17 @@ Updated: 2026-04-25
   - Added `.github/workflows/github-evidence-artifact-monitor.yml` for manual and Tuesday 14:07 UTC freshness checks.
   - Local live validation passed against report workflow run `24939329055`; artifact `6642253304` existed, was not expired, and was within the 192h freshness window.
   - First GitHub-hosted validation passed on run `24939815276`; artifact `github-evidence-artifact-monitor` ID `6642391452` uploaded successfully and was not expired.
+- Executive GitHub evidence trend reporting:
+  - Added `scripts/control-plane/generate_github_evidence_trend_report.ps1`.
+  - The script downloads recent non-expired `github-evidence-executive-report` artifacts from successful `github-evidence-report.yml` runs and parses status, coverage, and missing signal fields.
+  - Added `.github/workflows/github-evidence-trend-report.yml` for manual and Tuesday 14:17 UTC trend generation.
+  - Local live validation parsed workflow run `24939329055` and produced Markdown/JSON trend outputs with one report point.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, and artifact freshness monitor.
-  - Remaining work is future productization of trend history if the report needs multi-run comparisons inside the product UI.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
+  - Remaining work is optional UI productization if trend history should be shown directly in the dashboard rather than as workflow artifacts.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
