@@ -1,7 +1,7 @@
 # GitGov — Deployment Guide
 
-> Guía unificada: Docker local, AWS EC2, Enterprise (instaladores/GPO) y Desktop Updates.
-> Última actualización: 2026-04-24
+> Guía unificada: Docker local, Render, AWS EC2 self-hosted, Enterprise (instaladores/GPO) y Desktop Updates.
+> Última actualización: 2026-04-25
 
 ---
 
@@ -449,9 +449,23 @@ done
 
 ---
 
-## 2. AWS EC2 + Supabase (producción actual)
+## 2. Producción actual: Render + Supabase
 
-### Arquitectura
+### Estado productivo actual (validado)
+
+- Backend primario: Render service `gitgov-api`.
+- URL pública: `https://gitgov-api.onrender.com`.
+- Render service ID: `srv-d7lgtc77f7vs73b38uqg`.
+- Runtime: Docker web service.
+- Región: Oregon.
+- Rama de deploy: `main`.
+- Root directory: `gitgov/gitgov-server`.
+- GitHub webhook activo: `https://gitgov-api.onrender.com/webhooks/github` (ID `610772988`).
+- Jira webhook nativo activo: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
+- HTTPS ya lo provee Render para la producción actual.
+- Dominio propio y `certbot` solo aplican si se migra a una ruta self-hosted o dominio custom.
+
+### Arquitectura legacy/self-hosted (AWS EC2)
 
 - EC2 Ubuntu 22.04
 - Nginx como reverse proxy
@@ -586,10 +600,11 @@ Resultados certificados con esa configuración:
 
 - **No usar RDS por ahora**: DB en Supabase.
 - **No subir Desktop a AWS**: Tauri se distribuye como instalador.
-- **EC2 + Nginx + systemd**: ruta actual para el backend.
-- **Webhooks**: se activan cuando exista URL pública con HTTPS (dominio + certbot).
+- **Render**: ruta actual para el backend productivo.
+- **EC2 + Nginx + systemd**: ruta legacy/self-hosted documentada para migraciones o instalaciones propias.
+- **Webhooks**: ya están activos en Render; si se migra a self-hosted, mover targets a la nueva URL pública HTTPS.
 
-### Estado actual (validado)
+### Estado legacy/self-hosted validado (2026-03-15)
 
 - EC2 creada y accesible por SSH
 - Elastic IP asignada
@@ -600,10 +615,10 @@ Resultados certificados con esa configuración:
 - Fuente de despliegue activa en EC2: `/home/ubuntu/GitGov-deploy` (alineada a `origin/main`)
 - Repo legacy archivado para evitar drift operativo: `/home/ubuntu/GitGov-legacy-20260315-074028`
 
-### URLs actuales (sin dominio)
+### URLs legacy de ejemplo (self-hosted)
 
-- Público (HTTP): `http://example.com`
-- Health: `http://example.com/health`
+- Público (HTTP): `http://<ec2-public-host>`
+- Health: `http://<ec2-public-host>/health`
 
 ### Estructura en EC2
 
@@ -655,8 +670,8 @@ curl http://127.0.0.1:3000/health
 curl http://127.0.0.1/health
 
 # Desde equipo local
-curl http://example.com/health
-curl -H "Authorization: Bearer <API_KEY>" http://example.com/stats
+curl http://<ec2-public-host>/health
+curl -H "Authorization: Bearer <API_KEY>" http://<ec2-public-host>/stats
 ```
 
 ### Orden de validación post-deploy
@@ -664,7 +679,7 @@ curl -H "Authorization: Bearer <API_KEY>" http://example.com/stats
 1. Smoke tests: `/health`, `/stats` (Bearer), logs del servicio
 2. Golden Path Desktop: stage → commit → push → logs/commits
 3. Jenkins: `/integrations/jenkins` + Pipeline Health
-4. Jira/GitHub webhooks: después de dominio + HTTPS
+4. GitHub/Jira webhooks: validar deliveries contra Render o contra la URL pública HTTPS self-hosted configurada
 
 ### Gate de capacidad 250 simultáneos (runtime)
 
@@ -761,11 +776,13 @@ Resultado esperado:
 - Paso 4: `{"accepted":true,...}`
 - Paso 5: CSV con filas `policy_drift` y `policy_change_request` cuando existen datos.
 
-### Pendiente
+### Estado de dominio/HTTPS/webhooks
 
-1. Dominio (A record a `example.com`)
-2. HTTPS con `certbot` + Nginx
-3. Configurar webhooks GitHub/Jira
+- Producción actual en Render no tiene pendiente dominio/HTTPS para operar: `https://gitgov-api.onrender.com` está activo.
+- GitHub webhook ya está configurado contra `https://gitgov-api.onrender.com/webhooks/github`.
+- Jira webhook nativo ya está configurado contra `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
+- Dominio custom, A record, Nginx y `certbot` solo son necesarios si se decide mover producción a self-hosted o exponer un dominio propio.
+- Si se cambia la URL pública, actualizar los targets de GitHub/Jira, alinear secretos HMAC y ejecutar la validación pública de esta sección.
 
 ### Validación automática de dominio/HTTPS/webhooks
 

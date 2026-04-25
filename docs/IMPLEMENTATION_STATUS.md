@@ -288,6 +288,8 @@ Updated: 2026-04-25
   - Backend service `gitgov-api` is deployed from `main`.
   - Public URL: `https://gitgov-api.onrender.com`.
   - Root directory: `gitgov/gitgov-server`.
+  - Deployment guide drift was cleaned so Render is the documented production route; EC2/Nginx/systemd remains only as legacy/self-hosted guidance.
+  - The old domain/`certbot`/webhook pending list was replaced with the actual state: Render HTTPS active, GitHub webhook configured, and native Jira webhook configured.
 - Local operational access configured:
   - SonarQube local API token created and validated.
   - Jenkins local API token created and validated as `admin`.
