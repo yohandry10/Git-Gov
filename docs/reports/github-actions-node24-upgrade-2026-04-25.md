@@ -41,6 +41,23 @@ GitHub-hosted runs warned that Node.js 20 action runtimes are deprecated and wil
 - GitHub `Workflow Lint` must pass on the PR.
 - Required CI checks must pass before merge.
 
+## Production Validation
+
+Validated after merge to `main`:
+
+- Commit: `3f4c601`
+- CI run: `24927274092`
+- Result: `PASS`
+- Observed Actions in run output:
+  - `actions/checkout@v6`
+  - `actions/setup-node@v6`
+  - `pnpm/action-setup@v5`
+- The previous Node.js 20 action-runtime annotation was not present in the CI run output after the `pnpm/action-setup@v5` update.
+- Release Readiness Gate run `24927274091` also passed:
+  - readiness `82/100`
+  - target `75`
+  - signal coverage `3/3`
+
 ## Operational Note
 
 If future GitHub warnings mention other third-party actions, update them separately after checking their current maintained major versions and migration notes.
