@@ -15,6 +15,7 @@ Latest official versions were checked through the GitHub API before the change:
 - `actions/checkout`: `v6.0.2`
 - `actions/setup-node`: `v6.4.0`
 - `actions/upload-artifact`: `v7.0.1`
+- `pnpm/action-setup`: `v5.0.0`
 
 ## Changes Applied
 
@@ -23,6 +24,7 @@ All workflow references were upgraded by major version:
 - `actions/checkout@v4` -> `actions/checkout@v6`
 - `actions/setup-node@v4` -> `actions/setup-node@v6`
 - `actions/upload-artifact@v4` -> `actions/upload-artifact@v7`
+- `pnpm/action-setup@v4` -> `pnpm/action-setup@v5`
 
 No job logic, permissions, scripts, cache keys, or build commands were changed.
 

@@ -174,11 +174,12 @@ Updated: 2026-04-25
   - Uses `pnpm` lockfile with Node 20 and build validation to catch docs/web regressions before merge.
   - Job order hardened for clean runners (`build` before standalone `typecheck`) to ensure `.next/types` is present.
   - Job now explicitly clears `.next` cache before validation to avoid stale route-type artifacts.
-  - Added explicit `pnpm/action-setup@v4` bootstrap before `actions/setup-node` cache resolution (prevents `pnpm` missing executable failures on hosted runners).
+  - Added explicit `pnpm/action-setup` bootstrap before `actions/setup-node` cache resolution (prevents `pnpm` missing executable failures on hosted runners).
   - First-party GitHub Actions are upgraded for Node 24 action-runtime compatibility:
     - `actions/checkout@v6`
     - `actions/setup-node@v6`
     - `actions/upload-artifact@v7`
+    - `pnpm/action-setup@v5`
   - `node-version: 20` remains the application build runtime where configured.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
