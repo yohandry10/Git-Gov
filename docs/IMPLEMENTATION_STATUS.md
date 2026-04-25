@@ -361,13 +361,14 @@ Updated: 2026-04-25
   - Dashboard audit exports now download a JSON package with `executive_summary.github_evidence` plus raw export records under `data`.
   - The export package reuses the dashboard `n/4` GitHub evidence model for PR lifecycle, reviews, PR comments, and checks/status.
   - Unit coverage validates the package shape and executive summary classification.
+  - Post-merge validation on `main` for commit `458c048` passed: CI run `24938795096`, Quality Gate Policy Matrix run `24938795085`, and Release Readiness Gate run `24938795100`.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
   - GitHub evidence now has an executive coverage summary in the admin dashboard and exported audit JSON package.
   - Remaining work is broader report artifact generation outside the dashboard download flow.
-  - Last GitHub-hosted validation for the executive GitHub evidence summary passed on `main` commit `01d275c` in CI run `24938441269`.
+  - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
 
