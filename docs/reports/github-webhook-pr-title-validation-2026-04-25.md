@@ -77,11 +77,11 @@ Production DB constraints allow these source values:
 - `pr_title`
 - `manual`
 
-## Remaining Gap
+## Original Remaining Gap
 
 GitHub webhook ingestion is not the current blocker.
 
-The remaining readiness blocker is ticket coverage/readiness query semantics. After PR-title correlations existed, the live ticket coverage endpoint still reported:
+The remaining readiness blocker observed during the original validation was ticket coverage/readiness query semantics. After PR-title correlations existed, the live ticket coverage endpoint still reported:
 
 - covered-universe commits: `3`
 - commits with ticket: `1`
@@ -89,6 +89,15 @@ The remaining readiness blocker is ticket coverage/readiness query semantics. Af
 
 If merged PR evidence should count directly toward release readiness, update the ticket coverage/readiness aggregation so correlated PR merge evidence is included in the denominator used by that endpoint.
 
+## Follow-up Fix
+
+Implemented on 2026-04-25:
+
+- `GET /integrations/jira/ticket-coverage` now builds its commit universe from both `client_events(event_type='commit')` and `pull_request_merges`.
+- For PR merge evidence, the endpoint uses `merge_commit_sha` from webhook payload first and falls back to `head_sha`.
+- Missing-commit output now includes a `source` field so operators can distinguish `client_event` from `pull_request_merge` evidence.
+- Regression test: `ticket_coverage_counts_pr_merge_commit_without_client_event`.
+
 ## Next Step
 
-Implement and validate the ticket coverage/readiness aggregation change so production PR-title correlations increase the readiness score without requiring synthetic commit events.
+After this change is deployed to Render, re-run Jira correlation and validate production ticket coverage for `yohandry10/Git-Gov` on `main`.

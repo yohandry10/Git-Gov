@@ -277,6 +277,21 @@ mod integration_tests {
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS pull_request_merges (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                org_id UUID REFERENCES orgs(id),
+                repo_id UUID REFERENCES repos(id),
+                delivery_id TEXT NOT NULL UNIQUE,
+                pr_number INT NOT NULL,
+                pr_title TEXT,
+                author_login TEXT,
+                merged_by_login TEXT,
+                head_sha TEXT,
+                base_branch TEXT,
+                payload JSONB NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS admin_audit_log (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 actor TEXT NOT NULL,
@@ -807,6 +822,79 @@ mod integration_tests {
         let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed["client_id"], "test-admin");
         assert_eq!(parsed["role"], "Admin");
+
+        teardown(&admin_pool, &schema).await;
+    }
+
+    #[tokio::test]
+    async fn ticket_coverage_counts_pr_merge_commit_without_client_event() {
+        let (pool, schema, admin_pool) = setup_or_skip!();
+        let db = Database::from_pool(pool.clone());
+
+        let org_id = uuid::Uuid::new_v4().to_string();
+        let repo_id = uuid::Uuid::new_v4().to_string();
+
+        sqlx::query("INSERT INTO orgs (id, login, name) VALUES ($1::uuid, $2, $3)")
+            .bind(&org_id)
+            .bind("acme")
+            .bind("Acme Inc")
+            .execute(&pool)
+            .await
+            .expect("insert org for ticket coverage test");
+
+        sqlx::query(
+            "INSERT INTO repos (id, org_id, full_name, name) VALUES ($1::uuid, $2::uuid, $3, $4)",
+        )
+        .bind(&repo_id)
+        .bind(&org_id)
+        .bind("acme/repo")
+        .bind("repo")
+        .execute(&pool)
+        .await
+        .expect("insert repo for ticket coverage test");
+
+        sqlx::query(
+            r#"
+            INSERT INTO pull_request_merges (
+                org_id, repo_id, delivery_id, pr_number, pr_title,
+                author_login, merged_by_login, head_sha, base_branch, payload, created_at
+            ) VALUES (
+                $1::uuid, $2::uuid, 'delivery-pr-1', 34, 'docs(KAN-4): validate traceability',
+                'alice', 'bob', 'head123', 'main',
+                '{"pull_request":{"merge_commit_sha":"merge123"}}'::jsonb,
+                NOW() - INTERVAL '1 hour'
+            )
+            "#,
+        )
+        .bind(&org_id)
+        .bind(&repo_id)
+        .execute(&pool)
+        .await
+        .expect("insert PR merge evidence");
+
+        sqlx::query(
+            r#"
+            INSERT INTO commit_ticket_correlations (
+                org_id, commit_sha, ticket_id, source, created_at
+            ) VALUES (
+                $1::uuid, 'merge123', 'KAN-4', 'pr_title', NOW() - INTERVAL '1 hour'
+            )
+            "#,
+        )
+        .bind(&org_id)
+        .execute(&pool)
+        .await
+        .expect("insert PR-title correlation");
+
+        let coverage = db
+            .get_ticket_coverage(Some("acme"), Some("acme/repo"), Some("main"), 72)
+            .await
+            .expect("ticket coverage should include PR merge commits");
+
+        assert_eq!(coverage.total_commits, 1);
+        assert_eq!(coverage.commits_with_ticket, 1);
+        assert_eq!(coverage.coverage_percentage, 100.0);
+        assert!(coverage.commits_without_ticket.is_empty());
 
         teardown(&admin_pool, &schema).await;
     }

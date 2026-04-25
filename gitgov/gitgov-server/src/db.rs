@@ -2508,14 +2508,48 @@ impl Database {
 
         let total_commits_row = sqlx::query(
             r#"
-            SELECT COUNT(*)::bigint AS total
-            FROM client_events c
-            WHERE c.event_type = 'commit'
-              AND c.commit_sha IS NOT NULL
-              AND c.created_at >= NOW() - make_interval(hours => $1::int)
-              AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
-              AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
-              AND ($4::text IS NULL OR c.branch = $4)
+            WITH commit_universe AS (
+                SELECT
+                    c.org_id,
+                    c.repo_id,
+                    c.commit_sha,
+                    c.user_login,
+                    c.branch,
+                    c.created_at
+                FROM client_events c
+                WHERE c.event_type = 'commit'
+                  AND c.commit_sha IS NOT NULL
+                  AND c.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR c.branch = $4)
+
+                UNION ALL
+
+                SELECT
+                    prm.org_id,
+                    prm.repo_id,
+                    COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                    ) AS commit_sha,
+                    COALESCE(prm.merged_by_login, prm.author_login) AS user_login,
+                    prm.base_branch AS branch,
+                    prm.created_at
+                FROM pull_request_merges prm
+                WHERE prm.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR prm.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR prm.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR prm.base_branch = $4)
+                  AND COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                  ) IS NOT NULL
+            )
+            SELECT COUNT(DISTINCT commit_sha)::bigint AS total
+            FROM commit_universe
             "#,
         )
         .bind(hours)
@@ -2528,15 +2562,49 @@ impl Database {
 
         let with_ticket_row = sqlx::query(
             r#"
-            SELECT COUNT(DISTINCT c.commit_sha)::bigint AS covered
-            FROM client_events c
-            JOIN commit_ticket_correlations ct ON ct.commit_sha = c.commit_sha
-            WHERE c.event_type = 'commit'
-              AND c.commit_sha IS NOT NULL
-              AND c.created_at >= NOW() - make_interval(hours => $1::int)
-              AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
-              AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
-              AND ($4::text IS NULL OR c.branch = $4)
+            WITH commit_universe AS (
+                SELECT
+                    c.org_id,
+                    c.repo_id,
+                    c.commit_sha,
+                    c.branch,
+                    c.created_at
+                FROM client_events c
+                WHERE c.event_type = 'commit'
+                  AND c.commit_sha IS NOT NULL
+                  AND c.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR c.branch = $4)
+
+                UNION ALL
+
+                SELECT
+                    prm.org_id,
+                    prm.repo_id,
+                    COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                    ) AS commit_sha,
+                    prm.base_branch AS branch,
+                    prm.created_at
+                FROM pull_request_merges prm
+                WHERE prm.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR prm.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR prm.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR prm.base_branch = $4)
+                  AND COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                  ) IS NOT NULL
+            )
+            SELECT COUNT(DISTINCT u.commit_sha)::bigint AS covered
+            FROM commit_universe u
+            JOIN commit_ticket_correlations ct
+              ON ct.commit_sha = u.commit_sha
+             AND (u.org_id IS NULL OR ct.org_id IS NULL OR ct.org_id = u.org_id)
             "#,
         )
         .bind(hours)
@@ -2549,17 +2617,67 @@ impl Database {
 
         let missing_rows = sqlx::query(
             r#"
-            SELECT c.commit_sha, c.user_login, c.branch, c.created_at
-            FROM client_events c
-            LEFT JOIN commit_ticket_correlations ct ON ct.commit_sha = c.commit_sha
-            WHERE c.event_type = 'commit'
-              AND c.commit_sha IS NOT NULL
-              AND c.created_at >= NOW() - make_interval(hours => $1::int)
-              AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
-              AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
-              AND ($4::text IS NULL OR c.branch = $4)
+            WITH commit_universe AS (
+                SELECT
+                    c.org_id,
+                    c.repo_id,
+                    c.commit_sha,
+                    c.user_login,
+                    c.branch,
+                    c.created_at,
+                    'client_event'::text AS source
+                FROM client_events c
+                WHERE c.event_type = 'commit'
+                  AND c.commit_sha IS NOT NULL
+                  AND c.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR c.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR c.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR c.branch = $4)
+
+                UNION ALL
+
+                SELECT
+                    prm.org_id,
+                    prm.repo_id,
+                    COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                    ) AS commit_sha,
+                    COALESCE(prm.merged_by_login, prm.author_login) AS user_login,
+                    prm.base_branch AS branch,
+                    prm.created_at,
+                    'pull_request_merge'::text AS source
+                FROM pull_request_merges prm
+                WHERE prm.created_at >= NOW() - make_interval(hours => $1::int)
+                  AND ($2::uuid IS NULL OR prm.org_id = $2::uuid)
+                  AND ($3::uuid IS NULL OR prm.repo_id = $3::uuid)
+                  AND ($4::text IS NULL OR prm.base_branch = $4)
+                  AND COALESCE(
+                        NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                        NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                        NULLIF(prm.head_sha, '')
+                  ) IS NOT NULL
+            ),
+            distinct_commits AS (
+                SELECT DISTINCT ON (commit_sha)
+                    org_id,
+                    commit_sha,
+                    user_login,
+                    branch,
+                    created_at,
+                    source
+                FROM commit_universe
+                ORDER BY commit_sha, created_at DESC
+            )
+            SELECT u.commit_sha, u.user_login, u.branch, u.created_at, u.source
+            FROM distinct_commits u
+            LEFT JOIN commit_ticket_correlations ct
+              ON ct.commit_sha = u.commit_sha
+             AND (u.org_id IS NULL OR ct.org_id IS NULL OR ct.org_id = u.org_id)
+            WHERE u.commit_sha IS NOT NULL
               AND ct.id IS NULL
-            ORDER BY c.created_at DESC
+            ORDER BY u.created_at DESC
             LIMIT 20
             "#,
         )
@@ -2612,6 +2730,7 @@ impl Database {
                         "commit_sha": row.get::<String, _>("commit_sha"),
                         "user_login": row.get::<Option<String>, _>("user_login"),
                         "branch": row.get::<Option<String>, _>("branch"),
+                        "source": row.get::<String, _>("source"),
                         "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp_millis(),
                     })
                 })
