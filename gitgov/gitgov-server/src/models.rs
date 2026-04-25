@@ -1316,6 +1316,8 @@ pub struct JiraCorrelateRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct JiraCorrelateResponse {
     pub scanned_commits: i64,
+    #[serde(default)]
+    pub scanned_prs: i64,
     pub correlations_created: i64,
     #[serde(default)]
     pub correlated_tickets: Vec<String>,

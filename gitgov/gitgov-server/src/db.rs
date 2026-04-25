@@ -2293,6 +2293,87 @@ impl Database {
             .collect())
     }
 
+    pub async fn get_recent_pr_merges_for_ticket_correlation(
+        &self,
+        org_name: Option<&str>,
+        repo_full_name: Option<&str>,
+        hours: i64,
+        limit: i64,
+    ) -> Result<
+        Vec<(
+            Option<String>,
+            i32,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        )>,
+        DbError,
+    > {
+        let org_id = if let Some(name) = org_name {
+            self.get_org_by_login(name).await?.map(|o| o.id)
+        } else {
+            None
+        };
+        let repo_id = if let Some(name) = repo_full_name {
+            self.get_repo_by_full_name(name).await?.map(|r| r.id)
+        } else {
+            None
+        };
+        if org_name.is_some() && org_id.is_none() {
+            return Ok(vec![]);
+        }
+        if repo_full_name.is_some() && repo_id.is_none() {
+            return Ok(vec![]);
+        }
+
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                prm.org_id::text AS org_id,
+                prm.pr_number,
+                prm.pr_title,
+                prm.head_sha,
+                COALESCE(
+                    prm.payload #>> '{pull_request,merge_commit_sha}',
+                    prm.payload #>> '{gitgov,merge_commit_sha}'
+                ) AS merge_commit_sha,
+                prm.base_branch,
+                r.full_name AS repo_full_name
+            FROM pull_request_merges prm
+            LEFT JOIN repos r ON r.id = prm.repo_id
+            WHERE prm.created_at >= NOW() - make_interval(hours => $1::int)
+              AND ($2::uuid IS NULL OR prm.org_id = $2::uuid)
+              AND ($3::uuid IS NULL OR prm.repo_id = $3::uuid)
+            ORDER BY prm.created_at DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(hours as i32)
+        .bind(&org_id)
+        .bind(&repo_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(|row| {
+                (
+                    row.get::<Option<String>, _>("org_id"),
+                    row.get::<i32, _>("pr_number"),
+                    row.get::<Option<String>, _>("pr_title"),
+                    row.get::<Option<String>, _>("head_sha"),
+                    row.get::<Option<String>, _>("merge_commit_sha"),
+                    row.get::<Option<String>, _>("base_branch"),
+                    row.get::<Option<String>, _>("repo_full_name"),
+                )
+            })
+            .collect())
+    }
+
     pub async fn get_recent_commit_events_for_ticket_correlation(
         &self,
         org_name: Option<&str>,

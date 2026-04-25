@@ -807,6 +807,7 @@ pub async fn correlate_jira_tickets(
     };
 
     let mut created = 0i64;
+    let mut scanned_prs = 0i64;
     let mut correlated_tickets: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut phase1_tickets: HashSet<String> = HashSet::new();
     let mut tickets_by_commit_sha: HashMap<String, HashSet<String>> = HashMap::new();
@@ -866,6 +867,111 @@ pub async fn correlate_jira_tickets(
                     }
                 }
             }
+        }
+    }
+
+    // --- Phase 1b: PR title -> merge commit backfill ---
+    // Merged PRs are often the commits that land on main. If the PR title has a
+    // ticket ID, correlate both merge_commit_sha and head_sha so ticket coverage
+    // reflects the governed merge path rather than only workstation commits.
+    match state
+        .db
+        .get_recent_pr_merges_for_ticket_correlation(
+            payload.org_name.as_deref(),
+            payload.repo_full_name.as_deref(),
+            hours,
+            limit,
+        )
+        .await
+    {
+        Ok(prs) => {
+            scanned_prs = prs.len() as i64;
+            for (
+                pr_org_id,
+                pr_number,
+                pr_title,
+                head_sha,
+                merge_commit_sha,
+                base_branch,
+                repo_full_name,
+            ) in prs
+            {
+                let Some(title) = pr_title.as_deref() else {
+                    continue;
+                };
+                let ticket_ids = extract_ticket_ids(&[title]);
+                if ticket_ids.is_empty() {
+                    continue;
+                }
+
+                let mut targets: Vec<(&str, &str)> = Vec::new();
+                if let Some(sha) = merge_commit_sha.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+                    targets.push(("github_pr_merge_title_backfill", sha));
+                }
+                if let Some(sha) = head_sha.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+                    let already_included = targets
+                        .iter()
+                        .any(|(_, existing_sha)| existing_sha.eq_ignore_ascii_case(sha));
+                    if !already_included {
+                        targets.push(("github_pr_title_backfill", sha));
+                    }
+                }
+
+                let pr_ref = repo_full_name
+                    .as_deref()
+                    .map(|repo| format!("{}#{}", repo, pr_number))
+                    .unwrap_or_else(|| format!("#{}", pr_number));
+
+                for ticket_id in ticket_ids {
+                    for (source, commit_sha) in &targets {
+                        let correlation = CommitTicketCorrelation {
+                            id: Uuid::new_v4().to_string(),
+                            org_id: pr_org_id.clone(),
+                            commit_sha: (*commit_sha).to_string(),
+                            ticket_id: ticket_id.clone(),
+                            correlation_source: (*source).to_string(),
+                            confidence: 0.9,
+                            created_at: chrono::Utc::now().timestamp_millis(),
+                        };
+                        if let Ok(was_created) =
+                            state.db.insert_commit_ticket_correlation(&correlation).await
+                        {
+                            tickets_by_commit_sha
+                                .entry(correlation.commit_sha.clone())
+                                .or_default()
+                                .insert(ticket_id.clone());
+                            phase1_tickets.insert(ticket_id.clone());
+
+                            if was_created {
+                                created += 1;
+                                correlated_tickets.insert(ticket_id.clone());
+                            }
+
+                            if let Err(e) = state
+                                .db
+                                .append_project_ticket_relations_full(
+                                    &ticket_id,
+                                    Some(commit_sha),
+                                    base_branch.as_deref(),
+                                    Some(&pr_ref),
+                                )
+                                .await
+                            {
+                                tracing::warn!(
+                                    ticket_id = %ticket_id,
+                                    commit_sha = %commit_sha,
+                                    pr_ref = %pr_ref,
+                                    error = %e,
+                                    "Failed to append Jira ticket relations after PR title backfill"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to scan merged PRs for ticket backfill");
         }
     }
 
@@ -929,6 +1035,7 @@ pub async fn correlate_jira_tickets(
         StatusCode::OK,
         Json(JiraCorrelateResponse {
             scanned_commits: commits.len() as i64,
+            scanned_prs,
             correlations_created: created,
             correlated_tickets,
         }),

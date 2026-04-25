@@ -353,6 +353,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - PR lifecycle, review activity, PR comment activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|pull_request_review_comment|issue_comment|check_run|check_suite|status`) with contextual metadata.
   - PR comment bodies/titles that contain ticket IDs can create commit-ticket correlations against the PR/comment SHA, improving traceability evidence without synthetic data.
   - Merged PR titles that contain ticket IDs can create commit-ticket correlations for the GitHub merge commit SHA, so ticket coverage can apply to `main` merge commits when PR titles include `KAN-*` or equivalent ticket IDs.
+  - `POST /integrations/jira/correlate` includes a PR-title backfill pass for recent merged PRs, allowing existing `main` merge commits to be correlated when PR titles contain ticket IDs.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -425,6 +426,7 @@ Before adding or keeping any `/features` claim:
 3. Expand GitHub evidence ingestion beyond current scope:
    - PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) is now ingested and can create ticket correlations from comment/title ticket IDs.
    - Merged PR title evidence now also correlates the merge commit SHA, closing the gap where `main` merge commits were counted as commits without tickets even when the PR title contained a ticket ID.
+   - Batch Jira correlation now scans recent merged PR titles as a backfill path, so operators can improve historical coverage without synthetic commit events.
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
    - Next readiness blocker remains data quality: current live Jira ticket coverage improves only when actual ticket IDs appear in commits, branches, PR titles, or PR comments.
