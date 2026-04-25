@@ -27,9 +27,7 @@ Admin Control Plane audit export packaging for GitHub executive evidence.
 - `gitgov/src/components/control_plane/dashboard-helpers.ts`
 - `gitgov/src/test/components/EventBreakdownGrid.test.tsx`
 
-## Validation
-
-Pending in this branch:
+## Local Validation
 
 ```powershell
 npm test -- EventBreakdownGrid
@@ -38,6 +36,16 @@ npm run lint
 git diff --check
 .\scripts\security\publication_guard.ps1
 ```
+
+All local checks passed before merge.
+
+## GitHub-Hosted Validation
+
+Post-merge validation passed on `main` commit `458c048`:
+
+- CI run: `24938795096`
+- Quality Gate Policy Matrix run: `24938795085`
+- Release Readiness Gate run: `24938795100`
 
 ## Notes
 
