@@ -117,6 +117,26 @@ Validated after Render deployed commit `0494648`:
   - Sonar pass `96.77%`
   - result `PASS`
 
+## Production Validation After Traceability Guardrail
+
+Validated after PRs `#37`, `#38`, and `#39` established and documented the branch/PR/commit Jira-ID guardrail:
+
+- Jira correlation backfill: `scanned_prs=8`, `correlations_created=0`
+- Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h:
+  - `total_commits=34`
+  - `commits_with_ticket=9`
+  - `coverage_percentage=26.47`
+- Release readiness gate:
+  - readiness `79/100`
+  - target `75`
+  - signal coverage `3/3`
+  - pipeline success `97.14%`
+  - Sonar pass `97.14%`
+  - Jira coverage `26.47%`
+  - result `PASS`
+
+This confirms the guardrail is improving coverage through the PR-title merge evidence path.
+
 ## Next Step
 
 Keep Jira IDs in branch names, commit messages, PR titles, and PR comments so future `main` activity preserves ticket coverage and release readiness.
