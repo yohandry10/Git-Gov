@@ -17,6 +17,16 @@ on:
         required: false
         default: ""
         type: string
+      repo_full_name:
+        description: "Optional owner/repo filter for Jira and pipeline evidence"
+        required: false
+        default: "yohandry10/Git-Gov"
+        type: string
+      branch:
+        description: "Branch filter for Jira and pipeline evidence"
+        required: false
+        default: "main"
+        type: string
       hours:
         description: "Lookback window in hours"
         required: false
@@ -70,6 +80,11 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($tier)) { $tier = "standard" }
 
           $orgName = "${{ github.event.inputs.org_name }}"
+          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "yohandry10/Git-Gov" }
+
+          $branch = "${{ github.event.inputs.branch }}"
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
 
           $hours = "${{ github.event.inputs.hours }}"
           if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
@@ -82,6 +97,8 @@ jobs:
           $args = @(
             "-GitGovUrl", $env:GITGOV_URL,
             "-ApiKey", $env:GITGOV_API_KEY,
+            "-RepoFullName", $repoFullName,
+            "-Branch", $branch,
             "-Tier", $tier,
             "-Hours", $hours,
             "-CorrelationLimit", $correlationLimit,

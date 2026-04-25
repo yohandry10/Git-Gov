@@ -142,6 +142,8 @@ if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
     & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 `
       -GitGovUrl $GitGovUrl `
       -ApiKey $ApiKey `
+      -RepoFullName $RepoFullName `
+      -Branch $Branch `
       -Tier "standard" `
       -Hours $Hours `
       -OutputPath "$outDir/risk-tier-baseline-standard.md"

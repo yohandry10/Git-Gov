@@ -1,6 +1,8 @@
 param(
   [string]$GitGovUrl = "http://127.0.0.1:3001",
   [string]$ApiKey,
+  [string]$RepoFullName = "",
+  [string]$Branch = "main",
   [ValidateSet("critical", "standard", "internal")][string]$Tier = "standard",
   [string]$OrgName = "",
   [int]$Hours = 168,
@@ -23,6 +25,11 @@ if ($Hours -lt 1) {
 
 if ($CorrelationLimit -lt 1) {
   Write-Error "-CorrelationLimit must be >= 1."
+  exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($Branch)) {
+  Write-Error "-Branch cannot be empty."
   exit 1
 }
 
@@ -157,17 +164,34 @@ $profile = $profiles[$Tier]
 $warnings = New-Object System.Collections.Generic.List[string]
 $stats = Invoke-GitGovJson -Path "/stats"
 
-$ticketCoveragePath = "/integrations/jira/ticket-coverage?hours=$Hours"
-if (-not [string]::IsNullOrWhiteSpace($OrgName)) {
-  $ticketCoveragePath += "&org_name=$([Uri]::EscapeDataString($OrgName))"
+$ticketCoverageParams = [System.Collections.Generic.List[string]]::new()
+$ticketCoverageParams.Add("hours=$Hours")
+if (-not [string]::IsNullOrWhiteSpace($RepoFullName)) {
+  $ticketCoverageParams.Add("repo_full_name=$([Uri]::EscapeDataString($RepoFullName))")
 }
+if (-not [string]::IsNullOrWhiteSpace($Branch)) {
+  $ticketCoverageParams.Add("branch=$([Uri]::EscapeDataString($Branch))")
+}
+if (-not [string]::IsNullOrWhiteSpace($OrgName)) {
+  $ticketCoverageParams.Add("org_name=$([Uri]::EscapeDataString($OrgName))")
+}
+$ticketCoveragePath = "/integrations/jira/ticket-coverage?$($ticketCoverageParams -join '&')"
 $ticketCoverageResponse = Try-Invoke-GitGovJson -Path $ticketCoveragePath -Label "Jira ticket coverage"
 if (-not $ticketCoverageResponse.ok) {
   $warnings.Add([string]$ticketCoverageResponse.warning)
 }
 $ticketCoverage = $ticketCoverageResponse.value
 
-$correlationsPath = "/integrations/jenkins/correlations?limit=$CorrelationLimit&offset=0"
+$correlationsParams = [System.Collections.Generic.List[string]]::new()
+$correlationsParams.Add("limit=$CorrelationLimit")
+$correlationsParams.Add("offset=0")
+if (-not [string]::IsNullOrWhiteSpace($RepoFullName)) {
+  $correlationsParams.Add("repo_full_name=$([Uri]::EscapeDataString($RepoFullName))")
+}
+if (-not [string]::IsNullOrWhiteSpace($Branch)) {
+  $correlationsParams.Add("branch=$([Uri]::EscapeDataString($Branch))")
+}
+$correlationsPath = "/integrations/jenkins/correlations?$($correlationsParams -join '&')"
 $correlationsResponse = Try-Invoke-GitGovJson -Path $correlationsPath -Label "Jenkins correlations"
 if (-not $correlationsResponse.ok) {
   $warnings.Add([string]$correlationsResponse.warning)
@@ -287,6 +311,8 @@ Generated (UTC): $($timestamp.ToString("yyyy-MM-dd HH:mm:ss"))
 
 - Tier profile: $($profile.label) ($Tier)
 - GitGov URL: $GitGovUrl
+- Repo: $(if ([string]::IsNullOrWhiteSpace($RepoFullName)) { "all" } else { $RepoFullName })
+- Branch: $(if ([string]::IsNullOrWhiteSpace($Branch)) { "all" } else { $Branch })
 - Window hours: $Hours
 - Org filter: $(if ([string]::IsNullOrWhiteSpace($OrgName)) { "none" } else { $OrgName })
 
@@ -327,6 +353,8 @@ Set-Content -Path $OutputPath -Value $report -NoNewline
 
 Write-Host "PASS: risk tier baseline report generated"
 Write-Host "  tier:                 $($profile.label)"
+Write-Host "  repo:                 $(if ([string]::IsNullOrWhiteSpace($RepoFullName)) { "all" } else { $RepoFullName })"
+Write-Host "  branch:               $(if ([string]::IsNullOrWhiteSpace($Branch)) { "all" } else { $Branch })"
 Write-Host "  release readiness:    $($readiness.score)/100 ($readinessBand)"
 Write-Host "  composite risk:       $($risk.score)/100 ($riskBand)"
 Write-Host "  sla breaches:         $($slaBreaches.Count)"

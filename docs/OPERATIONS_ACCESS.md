@@ -178,6 +178,14 @@ GitGov telemetry validation:
 - Jenkins/Sonar correlations observed for `yohandry10/Git-Gov` on `main`.
 - Sonar-style evidence count observed in last validation: `12`.
 
+Readiness/risk validation:
+
+- Repo/branch scope: `yohandry10/Git-Gov` on `main`.
+- Standard readiness: `69/100` against target `75`.
+- Composite risk: `29/100`.
+- Signal coverage: `3/3`.
+- Primary blocker: Jira ticket coverage `0%` causing `traceability_gap`; Sonar and Jenkins evidence are present.
+
 Trigger-only URL flow:
 
 ```text

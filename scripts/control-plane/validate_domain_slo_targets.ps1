@@ -2,6 +2,8 @@ param(
   [string]$GitGovUrl = "http://127.0.0.1:3001",
   [string]$ApiKey,
   [string]$TargetsPath = "ops/slo/domain-slo-targets.json",
+  [string]$RepoFullName = "",
+  [string]$Branch = "main",
   [string]$DomainName = "",
   [int]$Hours = 168,
   [int]$CorrelationLimit = 500,
@@ -29,6 +31,11 @@ if ($Hours -lt 1) {
 
 if ($CorrelationLimit -lt 1) {
   Write-Error "-CorrelationLimit must be >= 1."
+  exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($Branch)) {
+  Write-Error "-Branch cannot be empty."
   exit 1
 }
 
@@ -143,6 +150,14 @@ foreach ($domain in $domains) {
   $domainName = [string]$domain.name
   $tier = [string]$domain.tier
   $orgName = [string]$domain.org_name
+  $domainRepo = $RepoFullName
+  if ($domain.PSObject.Properties.Name -contains "repo_full_name" -and -not [string]::IsNullOrWhiteSpace([string]$domain.repo_full_name)) {
+    $domainRepo = [string]$domain.repo_full_name
+  }
+  $domainBranch = $Branch
+  if ($domain.PSObject.Properties.Name -contains "branch" -and -not [string]::IsNullOrWhiteSpace([string]$domain.branch)) {
+    $domainBranch = [string]$domain.branch
+  }
   $slo = $domain.slo
 
   if ([string]::IsNullOrWhiteSpace($domainName) -or [string]::IsNullOrWhiteSpace($tier) -or $null -eq $slo) {
@@ -158,6 +173,12 @@ foreach ($domain in $domains) {
     Hours = $Hours
     CorrelationLimit = $CorrelationLimit
     OutputPath = $baselinePath
+  }
+  if (-not [string]::IsNullOrWhiteSpace($domainRepo)) {
+    $calibrationArgs.RepoFullName = $domainRepo
+  }
+  if (-not [string]::IsNullOrWhiteSpace($domainBranch)) {
+    $calibrationArgs.Branch = $domainBranch
   }
   if (-not [string]::IsNullOrWhiteSpace($orgName)) {
     $calibrationArgs.OrgName = $orgName
@@ -201,6 +222,8 @@ foreach ($domain in $domains) {
     domain = $domainName
     tier = $tier
     org_name = $orgName
+    repo_full_name = $domainRepo
+    branch = $domainBranch
     status = $status
     baseline_report = $baselinePath
     checks = $checks
@@ -223,6 +246,8 @@ $detailBlocks = $results | ForEach-Object {
 
 - Tier: $($domain.tier)
 - Org filter: $(if ([string]::IsNullOrWhiteSpace([string]$domain.org_name)) { "none" } else { $domain.org_name })
+- Repo: $(if ([string]::IsNullOrWhiteSpace([string]$domain.repo_full_name)) { "all" } else { $domain.repo_full_name })
+- Branch: $(if ([string]::IsNullOrWhiteSpace([string]$domain.branch)) { "all" } else { $domain.branch })
 - Status: **$($domain.status)**
 - Baseline report: $($domain.baseline_report)
 
