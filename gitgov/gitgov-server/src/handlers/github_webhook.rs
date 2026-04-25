@@ -1324,21 +1324,26 @@ async fn process_pull_request_event(
         created_at: chrono::Utc::now().timestamp_millis(),
     };
 
-    match state.db.insert_github_event(&pr_event).await {
-        Ok(()) => {}
+    let inserted_github_event = match state.db.insert_github_event(&pr_event).await {
+        Ok(()) => true,
         Err(DbError::Duplicate(_)) => {
-            tracing::debug!("Duplicate pull_request event ignored: delivery_id={}", delivery_id);
-            return Ok(());
+            tracing::debug!(
+                "Duplicate pull_request github event observed: delivery_id={}",
+                delivery_id
+            );
+            false
         }
         Err(e) => {
             tracing::error!("Failed to insert pull_request github event: {}", e);
             return Err("Internal database error".to_string());
         }
-    }
+    };
 
-    if let Some(ref org_id) = pr_event.org_id {
-        if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
-            tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+    if inserted_github_event {
+        if let Some(ref org_id) = pr_event.org_id {
+            if let Err(e) = state.db.enqueue_job(org_id, "detect_signals", None).await {
+                tracing::warn!("Failed to enqueue detection job for org {}: {}", org_id, e);
+            }
         }
     }
 
@@ -1414,56 +1419,58 @@ async fn process_pull_request_event(
         created_at: chrono::Utc::now().timestamp_millis(),
     };
 
-    match state.db.insert_pr_merge(&record).await {
-        Ok(()) => {
-            tracing::info!(
-                "Processed PR merge: #{} '{}' by {} merged by {} (approvals={}), delivery_id={}",
-                pr_number,
-                pr_title.as_deref().unwrap_or(""),
-                author_login.as_deref().unwrap_or("unknown"),
-                merged_by_login.as_deref().unwrap_or("unknown"),
-                approvals_count,
-                delivery_id,
-            );
-
-            // Auto-correlate: PR titles with ticket IDs cover both the merge commit
-            // that lands on the base branch and the original head commit.
-            let title_sources = [pr_title.as_deref().unwrap_or_default()];
-            let mut correlated_ticket_ids = std::collections::BTreeSet::new();
-            for (source, commit_sha) in merged_pr_ticket_targets(
-                head_sha_clone.as_deref(),
-                merge_commit_sha_clone.as_deref(),
-            ) {
-                let correlated = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
-                    state,
-                    org_id: record.org_id.as_deref(),
-                    repo_full_name: &repo.full_name,
-                    pr_number,
-                    commit_sha: Some(commit_sha),
-                    branch: base_branch_clone.as_deref(),
-                    source,
-                    text_sources: &title_sources,
-                })
-                .await?;
-                correlated_ticket_ids.extend(correlated);
-            }
-
-            if !correlated_ticket_ids.is_empty() {
-                tracing::info!(
-                    pr_ref = format!("{}#{}", repo.full_name, pr_number),
-                    tickets = ?correlated_ticket_ids,
-                    "Auto-correlated merged PR commits with tickets from title"
-                );
-            }
-
-            Ok(())
-        }
+    let inserted_pr_merge = match state.db.insert_pr_merge(&record).await {
+        Ok(()) => true,
         Err(DbError::Duplicate(_)) => {
-            tracing::debug!("Duplicate PR merge event ignored: delivery_id={}", delivery_id);
-            Ok(())
+            tracing::debug!("Duplicate PR merge event observed: delivery_id={}", delivery_id);
+            false
         }
-        Err(e) => Err(format!("Failed to insert PR merge: {}", e)),
+        Err(e) => return Err(format!("Failed to insert PR merge: {}", e)),
+    };
+
+    if inserted_pr_merge {
+        tracing::info!(
+            "Processed PR merge: #{} '{}' by {} merged by {} (approvals={}), delivery_id={}",
+            pr_number,
+            pr_title.as_deref().unwrap_or(""),
+            author_login.as_deref().unwrap_or("unknown"),
+            merged_by_login.as_deref().unwrap_or("unknown"),
+            approvals_count,
+            delivery_id,
+        );
     }
+
+    // Auto-correlate on both fresh and duplicate PR merge deliveries. This keeps
+    // webhook processing idempotent and lets redelivery repair missing coverage.
+    let title_sources = [pr_title.as_deref().unwrap_or_default()];
+    let mut correlated_ticket_ids = std::collections::BTreeSet::new();
+    for (source, commit_sha) in merged_pr_ticket_targets(
+        head_sha_clone.as_deref(),
+        merge_commit_sha_clone.as_deref(),
+    ) {
+        let correlated = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
+            state,
+            org_id: record.org_id.as_deref(),
+            repo_full_name: &repo.full_name,
+            pr_number,
+            commit_sha: Some(commit_sha),
+            branch: base_branch_clone.as_deref(),
+            source,
+            text_sources: &title_sources,
+        })
+        .await?;
+        correlated_ticket_ids.extend(correlated);
+    }
+
+    if !correlated_ticket_ids.is_empty() {
+        tracing::info!(
+            pr_ref = format!("{}#{}", repo.full_name, pr_number),
+            tickets = ?correlated_ticket_ids,
+            "Auto-correlated merged PR commits with tickets from title"
+        );
+    }
+
+    Ok(())
 }
 
 async fn get_or_create_org_repo(db: &Database, repo: &GitHubRepository) -> Result<(String, String), String> {

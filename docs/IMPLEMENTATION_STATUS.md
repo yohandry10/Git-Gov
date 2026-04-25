@@ -355,6 +355,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Merged PR titles that contain ticket IDs can create commit-ticket correlations for the GitHub merge commit SHA, so ticket coverage can apply to `main` merge commits when PR titles include `KAN-*` or equivalent ticket IDs.
   - `POST /integrations/jira/correlate` includes a PR-title backfill pass for recent merged PRs, allowing existing `main` merge commits to be correlated when PR titles contain ticket IDs.
   - GitHub repository webhook delivery is configured for PR, review, comment, status, and push events against the Render backend.
+  - Duplicate GitHub `pull_request` deliveries for merged PRs now continue through PR merge materialization and title-ticket correlation, allowing webhook redelivery to repair missing `pull_request_merges` evidence.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`

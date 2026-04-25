@@ -6,7 +6,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - GitHub CLI is installed at `C:\Users\PC\Tools\gh\bin\gh.exe`.
 - `gh` is authenticated as `yohandry10` with admin access to `yohandry10/Git-Gov`.
-- GitHub token scopes observed: `repo`, `workflow`, `read:org`, `gist`.
+- GitHub token scopes observed: `repo`, `workflow`, `read:org`, `gist`, `admin:repo_hook`.
 - Render API access is available via local ignored env files only. Do not commit or print token values.
 - Local Render env key name: `RENDER_API_KEY`.
 - Local GitGov API env key name: `GITGOV_API_KEY`.
@@ -25,6 +25,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Create branches, push commits, open PRs, merge PRs when checks pass and user intent is clear.
   - Read GitHub Actions logs and rerun workflows when needed.
   - Manage repository Actions variables and secrets when explicitly requested; secret creation or updates are sensitive operations.
+  - Manage repository webhooks through `gh` when explicitly requested; webhook secrets must come from ignored local env files only.
 - Render:
   - Query service metadata, deployments, logs, and health through the Render API.
   - Verify the deployed backend at `https://gitgov-api.onrender.com`.
@@ -66,6 +67,15 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `Validate quality_gates warn/block matrix`
 - Admin enforcement is enabled.
 - Required status checks are strict.
+
+## GitHub Webhooks
+
+- Primary GitHub webhook ID: `610772988`.
+- Primary GitHub webhook URL: `https://gitgov-api.onrender.com/webhooks/github`.
+- Render has `GITHUB_WEBHOOK_SECRET` configured for `gitgov-api`; do not print or commit the value.
+- Configured events: `push`, `create`, `pull_request`, `pull_request_review`, `pull_request_review_comment`, `issue_comment`, `check_run`, `check_suite`, and `status`.
+- GitHub webhook delivery has been validated with real repository events returning HTTP `200`.
+- PR merge materialization is idempotent: duplicate `pull_request` deliveries for merged PRs should still repair `pull_request_merges` and ticket correlations.
 
 ## Render
 
@@ -127,6 +137,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 - Jira Cloud API access is configured through ignored env files with `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY`.
+- GitHub webhook authentication is configured through ignored env files with `GITHUB_WEBHOOK_SECRET`; keep it aligned with Render and the GitHub repository webhook.
 - Native Jira webhooks require `JIRA_WEBHOOK_SECRET` on Render and the same webhook secret in Jira Cloud.
 - Current native Jira webhook name is `GitGov signed issue sync`; it is signed with `JIRA_WEBHOOK_SECRET` and targets `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 
@@ -147,6 +158,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
 - Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
+- GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
 - GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
