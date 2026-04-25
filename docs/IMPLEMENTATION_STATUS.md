@@ -311,6 +311,10 @@ Updated: 2026-04-25
   - Jira backfill scanned `4` merged PRs and created `0` new correlations because relevant rows already existed.
   - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `30` total commits, `5` with tickets, and `16.67%` coverage.
   - Release readiness gate passed with readiness `77/100` against standard target `75`, signal coverage `3/3`, pipeline success `96.77%`, and Sonar pass `96.77%`.
+- Traceability guardrail added:
+  - `Security Guard` now requires Jira-style ticket IDs in PR titles and new commit messages.
+  - Local helper added at `scripts/github/check_traceability_policy.ps1`.
+  - This protects the `pull_request_merges` + PR-title coverage path from regressing as new work lands.
 
 ## In Progress
 
@@ -469,7 +473,7 @@ Before adding or keeping any `/features` claim:
    - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
    - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe.
    - Production validation passed after Render deploy: readiness is currently above target (`77/100` vs `75`) for `yohandry10/Git-Gov` on `main`.
-   - Remaining work is data quality, not platform plumbing: continue using Jira IDs in branch names, commit messages, PR titles, and PR comments to keep ticket coverage from regressing as new commits land.
+   - Traceability guardrail is active in `Security Guard`; remaining work is operational data quality, not platform plumbing.
 
 ## Operating Memory Rule
 
