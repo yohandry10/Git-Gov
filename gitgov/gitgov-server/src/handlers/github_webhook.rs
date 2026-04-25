@@ -101,6 +101,10 @@ pub async fn handle_github_webhook(
         "pull_request_review" => {
             process_pull_request_review_event(&state, &delivery_id, &payload).await
         }
+        "pull_request_review_comment" => {
+            process_pull_request_review_comment_event(&state, &delivery_id, &payload).await
+        }
+        "issue_comment" => process_issue_comment_event(&state, &delivery_id, &payload).await,
         "check_run" => process_check_run_event(&state, &delivery_id, &payload).await,
         "check_suite" => process_check_suite_event(&state, &delivery_id, &payload).await,
         "status" => process_status_event(&state, &delivery_id, &payload).await,
@@ -700,6 +704,390 @@ async fn process_status_event(
         }),
     })
     .await
+}
+
+fn json_string_at<'a>(value: &'a serde_json::Value, path: &[&str]) -> Option<&'a str> {
+    let mut cursor = value;
+    for key in path {
+        cursor = cursor.get(*key)?;
+    }
+    cursor.as_str().map(str::trim).filter(|s| !s.is_empty())
+}
+
+fn json_i64_at(value: &serde_json::Value, path: &[&str]) -> Option<i64> {
+    let mut cursor = value;
+    for key in path {
+        cursor = cursor.get(*key)?;
+    }
+    cursor.as_i64()
+}
+
+fn pr_ref(repo_full_name: &str, pr_number: i32) -> Option<String> {
+    (pr_number > 0).then(|| format!("{}#{}", repo_full_name, pr_number))
+}
+
+async fn correlate_ticket_evidence_to_commit(
+    state: &Arc<AppState>,
+    org_id: Option<&str>,
+    repo_full_name: &str,
+    pr_number: i32,
+    commit_sha: Option<&str>,
+    branch: Option<&str>,
+    source: &str,
+    text_sources: &[&str],
+) -> Result<Vec<String>, String> {
+    let Some(commit_sha) = commit_sha.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(vec![]);
+    };
+
+    let ticket_ids = extract_ticket_ids(text_sources);
+    if ticket_ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let pr_ref = pr_ref(repo_full_name, pr_number);
+    let mut correlated = Vec::new();
+    for ticket_id in ticket_ids {
+        let correlation = CommitTicketCorrelation {
+            id: Uuid::new_v4().to_string(),
+            org_id: org_id.map(str::to_string),
+            commit_sha: commit_sha.to_string(),
+            ticket_id: ticket_id.clone(),
+            correlation_source: source.to_string(),
+            confidence: 0.9,
+            created_at: chrono::Utc::now().timestamp_millis(),
+        };
+
+        match state.db.insert_commit_ticket_correlation(&correlation).await {
+            Ok(created) => {
+                if created {
+                    correlated.push(ticket_id.clone());
+                }
+                if let Err(e) = state
+                    .db
+                    .append_project_ticket_relations_full(
+                        &ticket_id,
+                        Some(commit_sha),
+                        branch,
+                        pr_ref.as_deref(),
+                    )
+                    .await
+                {
+                    tracing::debug!(
+                        ticket_id = %ticket_id,
+                        commit_sha = %commit_sha,
+                        source = %source,
+                        error = %e,
+                        "Could not append ticket relations after GitHub comment evidence"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    ticket_id = %ticket_id,
+                    commit_sha = %commit_sha,
+                    source = %source,
+                    error = %e,
+                    "Failed to store ticket correlation from GitHub comment evidence"
+                );
+            }
+        }
+    }
+
+    correlated.sort();
+    Ok(correlated)
+}
+
+async fn process_pull_request_review_comment_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let action = json_string_at(payload, &["action"]).unwrap_or("unknown").to_string();
+    let repo_val = match payload.get("repository") {
+        Some(r) => r,
+        None => {
+            tracing::warn!(
+                "pull_request_review_comment event missing 'repository' field, delivery_id={}",
+                delivery_id
+            );
+            return Ok(());
+        }
+    };
+    let repo: GitHubRepository = serde_json::from_value(repo_val.clone()).map_err(|e| {
+        format!(
+            "Failed to parse repository in pull_request_review_comment event: {}",
+            e
+        )
+    })?;
+    let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    let pr_number = json_i64_at(payload, &["pull_request", "number"]).unwrap_or(0) as i32;
+    let pr_title = json_string_at(payload, &["pull_request", "title"]);
+    let base_branch = json_string_at(payload, &["pull_request", "base", "ref"]).map(str::to_string);
+    let head_sha = json_string_at(payload, &["pull_request", "head", "sha"]);
+    let comment_commit_sha = json_string_at(payload, &["comment", "commit_id"]);
+    let comment_body = json_string_at(payload, &["comment", "body"]);
+    let commit_sha = comment_commit_sha.or(head_sha).map(str::to_string);
+
+    let correlated_tickets = correlate_ticket_evidence_to_commit(
+        state,
+        Some(&org_id),
+        &repo.full_name,
+        pr_number,
+        commit_sha.as_deref(),
+        base_branch.as_deref(),
+        "github_pr_review_comment",
+        &[comment_body.unwrap_or_default(), pr_title.unwrap_or_default()],
+    )
+    .await?;
+
+    let mut enriched_payload = payload.clone();
+    if let Some(obj) = enriched_payload.as_object_mut() {
+        obj.insert(
+            "gitgov".to_string(),
+            serde_json::json!({
+                "action": action,
+                "pr_number": pr_number,
+                "comment_kind": "pull_request_review_comment",
+                "ticket_correlations": correlated_tickets
+            }),
+        );
+    }
+
+    let commit_shas = commit_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id),
+        repo_id: Some(repo_id),
+        delivery_id: delivery_id.to_string(),
+        event_type: "pull_request_review_comment".to_string(),
+        actor_login,
+        actor_id,
+        ref_name: base_branch.or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
+        ref_type: Some("pull_request".to_string()),
+        before_sha: None,
+        after_sha: commit_sha,
+        commit_shas: commit_shas.clone(),
+        commits_count: commit_shas.len() as i32,
+        payload: enriched_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    match state.db.insert_github_event(&event).await {
+        Ok(()) => {}
+        Err(DbError::Duplicate(_)) => {
+            tracing::debug!(
+                "Duplicate pull_request_review_comment event ignored: delivery_id={}",
+                delivery_id
+            );
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to insert pull_request_review_comment github event: {}",
+                e
+            );
+            return Err("Internal database error".to_string());
+        }
+    }
+
+    tracing::info!(
+        repo = %repo.full_name,
+        pr_number,
+        correlated_tickets = ?correlated_tickets,
+        "Processed pull_request_review_comment event"
+    );
+
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubPullRequestLookupHead {
+    sha: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "ref")]
+    ref_field: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubPullRequestLookupBase {
+    #[serde(default)]
+    #[serde(rename = "ref")]
+    ref_field: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubPullRequestLookup {
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    head: Option<GitHubPullRequestLookupHead>,
+    #[serde(default)]
+    base: Option<GitHubPullRequestLookupBase>,
+}
+
+async fn fetch_pr_lookup(
+    http_client: &reqwest::Client,
+    github_token: &str,
+    repo_full_name: &str,
+    pr_number: i32,
+) -> Result<GitHubPullRequestLookup, String> {
+    let url = format!(
+        "https://api.github.com/repos/{}/pulls/{}",
+        repo_full_name, pr_number
+    );
+    let response = http_client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", github_token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "gitgov-server")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|e| format!("GitHub PR lookup request failed: {}", e))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("GitHub PR lookup API returned {}", status));
+    }
+
+    response
+        .json()
+        .await
+        .map_err(|e| format!("GitHub PR lookup decode failed: {}", e))
+}
+
+async fn process_issue_comment_event(
+    state: &Arc<AppState>,
+    delivery_id: &str,
+    payload: &serde_json::Value,
+) -> Result<(), String> {
+    let issue_is_pr = payload
+        .get("issue")
+        .and_then(|issue| issue.get("pull_request"))
+        .is_some();
+    if !issue_is_pr {
+        tracing::debug!(
+            "Ignoring issue_comment not linked to PR, delivery_id={}",
+            delivery_id
+        );
+        return Ok(());
+    }
+
+    let action = json_string_at(payload, &["action"]).unwrap_or("unknown").to_string();
+    let repo_val = match payload.get("repository") {
+        Some(r) => r,
+        None => {
+            tracing::warn!("issue_comment event missing 'repository' field, delivery_id={}", delivery_id);
+            return Ok(());
+        }
+    };
+    let repo: GitHubRepository = serde_json::from_value(repo_val.clone())
+        .map_err(|e| format!("Failed to parse repository in issue_comment event: {}", e))?;
+    let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
+    let (actor_login, actor_id) = extract_sender_actor(payload);
+
+    let pr_number = json_i64_at(payload, &["issue", "number"]).unwrap_or(0) as i32;
+    let comment_body = json_string_at(payload, &["comment", "body"]);
+    let issue_title = json_string_at(payload, &["issue", "title"]);
+
+    let mut lookup_title = None;
+    let mut head_sha = None;
+    let mut base_branch = None;
+    if pr_number > 0 {
+        if let Some(token) = state.github_personal_access_token.as_deref() {
+            match fetch_pr_lookup(&state.http_client, token, &repo.full_name, pr_number).await {
+                Ok(lookup) => {
+                    lookup_title = lookup.title;
+                    head_sha = lookup.head.as_ref().and_then(|head| head.sha.clone());
+                    base_branch = lookup.base.as_ref().and_then(|base| base.ref_field.clone());
+                    if base_branch.is_none() {
+                        base_branch = lookup.head.as_ref().and_then(|head| head.ref_field.clone());
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        delivery_id = %delivery_id,
+                        repo = %repo.full_name,
+                        pr_number,
+                        error = %e,
+                        "Failed to fetch PR metadata for issue_comment evidence"
+                    );
+                }
+            }
+        }
+    }
+
+    let correlated_tickets = correlate_ticket_evidence_to_commit(
+        state,
+        Some(&org_id),
+        &repo.full_name,
+        pr_number,
+        head_sha.as_deref(),
+        base_branch.as_deref(),
+        "github_pr_issue_comment",
+        &[
+            comment_body.unwrap_or_default(),
+            issue_title.unwrap_or_default(),
+            lookup_title.as_deref().unwrap_or_default(),
+        ],
+    )
+    .await?;
+
+    let mut enriched_payload = payload.clone();
+    if let Some(obj) = enriched_payload.as_object_mut() {
+        obj.insert(
+            "gitgov".to_string(),
+            serde_json::json!({
+                "action": action,
+                "pr_number": pr_number,
+                "comment_kind": "issue_comment_on_pull_request",
+                "ticket_correlations": correlated_tickets
+            }),
+        );
+    }
+
+    let commit_shas = head_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let event = GitHubEvent {
+        id: Uuid::new_v4().to_string(),
+        org_id: Some(org_id),
+        repo_id: Some(repo_id),
+        delivery_id: delivery_id.to_string(),
+        event_type: "issue_comment".to_string(),
+        actor_login,
+        actor_id,
+        ref_name: base_branch.or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
+        ref_type: Some("pull_request".to_string()),
+        before_sha: None,
+        after_sha: head_sha,
+        commit_shas: commit_shas.clone(),
+        commits_count: commit_shas.len() as i32,
+        payload: enriched_payload,
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+
+    match state.db.insert_github_event(&event).await {
+        Ok(()) => {}
+        Err(DbError::Duplicate(_)) => {
+            tracing::debug!("Duplicate issue_comment event ignored: delivery_id={}", delivery_id);
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::error!("Failed to insert issue_comment github event: {}", e);
+            return Err("Internal database error".to_string());
+        }
+    }
+
+    tracing::info!(
+        repo = %repo.full_name,
+        pr_number,
+        correlated_tickets = ?correlated_tickets,
+        "Processed issue_comment event linked to PR"
+    );
+
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]

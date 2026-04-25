@@ -185,6 +185,7 @@ Readiness/risk validation:
 - Composite risk: `29/100`.
 - Signal coverage: `3/3`.
 - Primary blocker: Jira ticket coverage `0%` causing `traceability_gap`; Sonar and Jenkins evidence are present.
+- GitHub PR comment evidence is now supported for future data: `pull_request_review_comment` and PR-linked `issue_comment` are stored as `github_events` and can create commit-ticket correlations when the text contains ticket IDs.
 
 Trigger-only URL flow:
 
