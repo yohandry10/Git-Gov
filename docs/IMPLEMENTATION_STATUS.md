@@ -2,6 +2,38 @@
 
 Updated: 2026-04-25
 
+## Current Execution Summary - 2026-04-25
+
+This section consolidates the latest completed implementation/documentation points so the remaining backlog is explicit.
+
+### Closed Points
+
+| Ticket | Area | Result | Evidence |
+|---|---|---|---|
+| `KAN-7` | GitHub evidence reporting | Closed the report visibility gap from `0/4` to `4/4` signals. Applied `supabase_schema_v22.sql`, validated `pull_request_review` ingestion, and confirmed GitHub-hosted report/monitor/trend artifacts. | PR `#71`, PR `#72`, report run `24942351831`, monitor run `24942357291`, trend run `24942362269`, `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md` |
+| `KAN-8` | API contract documentation | Reconciled route-table drift. `docs/ARCHITECTURE.md` documents `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and only `/violations/{violation_id}/decisions`; migration chain now includes `v22`. | PR `#73`, main commit `7e0cc4b`, `docs/reports/api-contract-drift-reconciliation-2026-04-25.md` |
+| `KAN-9` | Publication security | Hardened `.env.example` policy. Real `.env` files remain blocked; `.env.example` stays trackable; local and GitHub guards reject non-placeholder values for sensitive keys. | PR `#74`, main commit `83240bb`, `docs/reports/env-example-placeholder-policy-2026-04-25.md` |
+
+### Current Remaining Work
+
+1. `GITGOV_API_KEY` production admin access is not currently usable from local env for manual ingest/admin calls.
+   - Last observed manual `/integrations/jira` ingest attempt returned `401`.
+   - Fix: rotate/sync the local ignored `GITGOV_API_KEY` with the active Render backend key, then revalidate without printing the value.
+2. Sonar remains intentionally local.
+   - SonarCloud is not applicable for the current personal GitHub account.
+   - GitHub-hosted runners cannot reach `localhost:9000`; keep GitHub Sonar scan optional/non-blocking unless a self-hosted runner is added.
+3. Jenkins trigger-only URL flow is still optional and separate from Jenkins API access.
+   - API inspection/build access works through `JENKINS_API_TOKEN`.
+   - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed.
+4. OpenAPI is still partial by design.
+   - `/api-docs` is a schema explorer, not the full operational route contract.
+   - Implement `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a requirement.
+5. Traceability coverage remains an operating discipline.
+   - Platform guardrails are active.
+   - Continue using Jira IDs in branch names, PR titles, commit messages, and PR comments to keep readiness/ticket coverage healthy.
+6. Documentation governance still has lower-priority cleanup.
+   - Remaining internal backlog: replace any remaining hardcoded repo URLs with placeholders where found, keep restricted/internal docs untracked, and avoid publishing forensic strategy docs.
+
 ## Completed
 
 - Repository migration completed to `<owner>/<repo>`.
@@ -409,7 +441,7 @@ Updated: 2026-04-25
   - Post-review GitHub-hosted validation passed after PR `#71` merged on `main` commit `0a7a230`: report run `24942351831` generated `Completo` / `4/4 signals`, monitor run `24942357291` returned `PASS`, and trend run `24942362269` reported latest coverage `4/4 signals`.
   - Report evidence: `docs/reports/github-evidence-stats-scope-fix-2026-04-25.md`.
 
-## In Progress
+## Current Operating State
 
 - Consolidating governance telemetry in dashboards and executive reporting.
   - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
@@ -423,6 +455,7 @@ Updated: 2026-04-25
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
+- Local `GITGOV_API_KEY` should be rotated/synced before relying on manual production admin ingest calls; the last manual Jira ingest attempt returned `401`.
 
 ## Website Feature Claims Alignment
 
@@ -587,7 +620,7 @@ Before adding or keeping any `/features` claim:
    - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
-3. Expand GitHub evidence ingestion beyond current scope:
+3. Keep GitHub evidence operation on its weekly cadence:
    - PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) is now ingested and can create ticket correlations from comment/title ticket IDs.
    - Merged PR title evidence now also correlates the merge commit SHA, closing the gap where `main` merge commits were counted as commits without tickets even when the PR title contained a ticket ID.
    - Batch Jira correlation now scans recent merged PR titles as a backfill path, so operators can improve historical coverage without synthetic commit events.
@@ -602,6 +635,13 @@ Before adding or keeping any `/features` claim:
    - Latest production validation after the guardrail raised readiness to `79/100`; continue monitoring coverage as new PRs land.
    - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
    - GitHub evidence operational adoption baseline completed on 2026-04-25; `KAN-7` closed the report artifact visibility issue from `0/4` to `4/4` by applying `supabase_schema_v22.sql` and validating a real `pull_request_review` event.
+   - Remaining work here is operational monitoring, not new ingestion plumbing.
+4. Re-sync local production admin API credentials if manual GitGov admin operations are needed.
+   - Render backend is healthy and webhooks are active.
+   - Local manual `/integrations/jira` ingest failed with `401`, so the ignored local `GITGOV_API_KEY` should be rotated/synced with production before future manual admin calls.
+5. Decide whether OpenAPI completeness is worth implementing.
+   - Current `/api-docs` claim is intentionally partial and safe.
+   - Full path annotation is only needed if Swagger becomes a generated SDK or contract-testing source.
 
 ## Operating Memory Rule
 

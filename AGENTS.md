@@ -171,6 +171,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Current native Jira webhook name is `GitGov signed issue sync`; it is signed with `JIRA_WEBHOOK_SECRET` and targets `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 - API contract drift reconciliation ticket `KAN-8` records that `docs/ARCHITECTURE.md` is aligned with the real backend routes for `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and `/violations/{violation_id}/decisions`; the remaining contract debt is optional OpenAPI path completeness, not route-table drift. `docs/ENTERPRISE_READINESS_DECISION.md` is ignored internal audit memory and must not be force-added.
 - `.env.example` placeholder policy ticket `KAN-9` hardens publication safety: real `.env` files remain blocked, `.env.example` remains trackable, and both local `publication_guard.ps1` plus GitHub `Security Guard` validate that sensitive keys in `.env.example` contain placeholder-only values.
+- Implementation summary ticket `KAN-10` consolidates the latest closed points and remaining backlog in `docs/IMPLEMENTATION_STATUS.md` and `docs/reports/implementation-progress-summary-2026-04-25.md`.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`: local `GITGOV_API_KEY` needs rotation/sync before manual production admin ingest calls; Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required.
 
 ## Verified State
 
