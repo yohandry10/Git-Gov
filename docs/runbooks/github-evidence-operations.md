@@ -19,7 +19,10 @@ Latest operational baseline:
 
 - 2026-04-25: `docs/reports/github-evidence-operational-adoption-2026-04-25.md`
 - Workflows and local monitor/trend scripts passed.
-- Data-quality follow-up `KAN-7` tracks the remaining `Sin evidencia` / `0/4 signals` report-content issue.
+- 2026-04-25: `docs/reports/github-evidence-stats-scope-fix-2026-04-25.md`
+- `KAN-7` stats visibility gap was fixed by database migration `supabase_schema_v22.sql`.
+- Latest post-fix report/trend artifacts show `Parcial` / `3/4 signals`.
+- Remaining missing signal is `Reviews`, which requires at least one real `pull_request_review` event in the observed GitHub webhook sample.
 
 ## Evidence Model
 
@@ -89,6 +92,16 @@ If the report returns `Sin evidencia` while GitHub webhooks are known to be acti
 1. Check API key scope/tenant visibility.
 2. Confirm `/stats.github_events.by_type` is populated for the queried scope.
 3. Confirm GitHub webhook deliveries are returning HTTP `200`.
+
+Review signal validation:
+
+1. Open a small Jira-traceable PR.
+2. Have a reviewer submit a GitHub PR review (`Comment`, `Approve`, or `Request changes`).
+3. Confirm the GitHub webhook delivery for `pull_request_review` returns HTTP `200`.
+4. Regenerate the executive report.
+5. Expected result after the webhook is ingested: `Reviews` count is greater than zero and coverage can reach `4/4 signals`.
+
+Note: PR review comments (`pull_request_review_comment`) are counted under `PR comments`, not under `Reviews`.
 
 ## Artifact Freshness Monitor
 
