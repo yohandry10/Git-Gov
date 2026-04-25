@@ -56,6 +56,56 @@ export function readDetailFiles(log: CombinedEvent): string[] {
 
 export interface DashboardRow { log: CombinedEvent; attachedFiles: string[] }
 
+export interface GitHubEvidenceSummary {
+  prLifecycleCount: number
+  prReviewCount: number
+  prCommentCount: number
+  statusCheckCount: number
+  activeSignals: number
+  totalSignals: number
+  executiveStatus: 'Completo' | 'Parcial' | 'Sin evidencia'
+  missingSignals: string[]
+}
+
+export function buildGitHubEvidenceSummary(githubByType: Record<string, number>): GitHubEvidenceSummary {
+  const prLifecycleCount = githubByType.pull_request ?? 0
+  const prReviewCount = githubByType.pull_request_review ?? 0
+  const prCommentCount =
+    (githubByType.pull_request_review_comment ?? 0) +
+    (githubByType.issue_comment ?? 0)
+  const statusCheckCount =
+    (githubByType.check_run ?? 0) +
+    (githubByType.check_suite ?? 0) +
+    (githubByType.status ?? 0)
+
+  const signals = [
+    ['PR lifecycle', prLifecycleCount],
+    ['Reviews', prReviewCount],
+    ['Comentarios PR', prCommentCount],
+    ['Checks/status', statusCheckCount],
+  ] as const
+  const activeSignals = signals.filter(([, count]) => count > 0).length
+  const executiveStatus =
+    activeSignals === signals.length
+      ? 'Completo'
+      : activeSignals > 0
+        ? 'Parcial'
+        : 'Sin evidencia'
+
+  return {
+    prLifecycleCount,
+    prReviewCount,
+    prCommentCount,
+    statusCheckCount,
+    activeSignals,
+    totalSignals: signals.length,
+    executiveStatus,
+    missingSignals: signals
+      .filter(([, count]) => count === 0)
+      .map(([label]) => label),
+  }
+}
+
 export function buildDashboardRows(logs: CombinedEvent[]): DashboardRow[] {
   const WINDOW_MS = 10 * 60 * 1000
   const rowsAscending: DashboardRow[] = []
