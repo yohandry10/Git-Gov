@@ -3,13 +3,18 @@ import { Download, RefreshCw, FileJson } from 'lucide-react'
 import { useControlPlaneStore, type ExportLogEntry } from '@/store/useControlPlaneStore'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
+import { buildAuditExportPackage, buildGitHubEvidenceSummary } from './dashboard-helpers'
 
 function fromDateInputValue(s: string): number | undefined {
   if (!s) return undefined
   return new Date(s).getTime()
 }
 
-export function ExportPanel() {
+interface ExportPanelProps {
+  githubByType?: Record<string, number>
+}
+
+export function ExportPanel({ githubByType = {} }: ExportPanelProps) {
   const exportLogs = useControlPlaneStore((s) => s.exportLogs)
   const exportAuditData = useControlPlaneStore((s) => s.exportAuditData)
   const loadExportLogs = useControlPlaneStore((s) => s.loadExportLogs)
@@ -17,6 +22,7 @@ export function ExportPanel() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [isExporting, setIsExporting] = useState(false)
+  const githubEvidenceSummary = buildGitHubEvidenceSummary(githubByType)
 
   useEffect(() => {
     void loadExportLogs()
@@ -35,7 +41,7 @@ export function ExportPanel() {
         return
       }
 
-      const content = JSON.stringify(result.data, null, 2)
+      const content = JSON.stringify(buildAuditExportPackage(result, githubByType), null, 2)
       const blob = new Blob([content], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -58,6 +64,10 @@ export function ExportPanel() {
         <FileJson size={14} className="text-surface-400" />
         <span className="card-header">Exportar Historial de Auditoría</span>
       </div>
+      <p className="mb-3 text-[11px] text-surface-500">
+        El JSON incluye resumen ejecutivo GitHub ({githubEvidenceSummary.activeSignals}/{githubEvidenceSummary.totalSignals} señales)
+        y los registros crudos del export para auditoría.
+      </p>
 
       <div className="flex flex-wrap gap-3 items-end mb-4">
         <div className="flex flex-col gap-1">

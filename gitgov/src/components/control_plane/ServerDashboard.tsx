@@ -312,7 +312,7 @@ export function ServerDashboard() {
 
           <PolicyEditorPanel />
 
-          <ExportPanel />
+          <ExportPanel githubByType={githubByType} />
 
           <ConversationalChatPanel />
 

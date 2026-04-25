@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { EventBreakdownGrid } from '@/components/control_plane/EventBreakdownGrid'
-import { buildGitHubEvidenceSummary } from '@/components/control_plane/dashboard-helpers'
+import { buildAuditExportPackage, buildGitHubEvidenceSummary } from '@/components/control_plane/dashboard-helpers'
 
 const baseProps = {
   clientByStatus: {},
@@ -47,6 +47,35 @@ describe('buildGitHubEvidenceSummary', () => {
       'Comentarios PR',
       'Checks/status',
     ])
+  })
+})
+
+describe('buildAuditExportPackage', () => {
+  it('packages raw export data with executive GitHub evidence context', () => {
+    const pkg = buildAuditExportPackage(
+      {
+        id: 'export-1',
+        export_type: 'events',
+        record_count: 2,
+        content_hash: 'sha256:abc',
+        created_at: 123,
+        data: { events: [{ event_type: 'commit' }] },
+      },
+      {
+        pull_request: 1,
+        pull_request_review: 1,
+        issue_comment: 1,
+        status: 1,
+      },
+      '2026-04-25T00:00:00.000Z',
+    )
+
+    expect(pkg.export_id).toBe('export-1')
+    expect(pkg.source_content_hash).toBe('sha256:abc')
+    expect(pkg.packaged_at).toBe('2026-04-25T00:00:00.000Z')
+    expect(pkg.executive_summary.github_evidence.executiveStatus).toBe('Completo')
+    expect(pkg.executive_summary.github_evidence.activeSignals).toBe(4)
+    expect(pkg.data).toEqual({ events: [{ event_type: 'commit' }] })
   })
 })
 
