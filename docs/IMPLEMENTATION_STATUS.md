@@ -79,6 +79,7 @@ Updated: 2026-04-25
   - Manual runs default to a 720h lookback window and expose `refresh_jira_correlations` to control whether `/integrations/jira/correlate` runs before scoring.
   - Produces JSON artifact with score, signal coverage, and fail reasons per run.
   - Produces an additional Jira correlation refresh JSON artifact when pre-score refresh is enabled.
+  - First GitHub-hosted validation after scheduling passed on run `24927045053` for commit `a94114c`: Jira refresh artifact generated, readiness `81/100`, target `75`, signal coverage `3/3`.
   - Jenkins pipeline integration added in `Jenkinsfile` as `Release Readiness Gate (Optional)`:
     - Controlled by env flags (`GITGOV_RELEASE_GATE_*`).
     - Emits `release_readiness` stage telemetry with score/target/coverage/reasons.
