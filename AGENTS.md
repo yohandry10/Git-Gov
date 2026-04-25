@@ -228,6 +228,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Post-migration `/stats.github_events.by_type` showed real evidence counts, including `pull_request=75`, `issue_comment=93`, `check_run=1937`, `check_suite=599`, and `status=148`.
   - Local live executive report generated `Parcial` / `3/4 signals`; remaining missing signal is `Reviews` because the current sample lacks `pull_request_review` events.
   - GitHub-hosted validation passed: report run `24942000355` artifact `6643010178`, artifact monitor run `24942008460` artifact `6643012934`, trend run `24942016196` artifact `6643015713`.
+  - To close the remaining `Reviews` signal, create/use a Jira-traceable PR and have a reviewer submit a GitHub PR review event; review comments alone count under `PR comments`, not `Reviews`.
+  - PR `#71` created a real `pull_request_review` event; `/stats.github_events.by_type.pull_request_review` reached `1`.
+  - Local live report after PR `#71` review validation generated `Completo` / `4/4 signals` with evidence file `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md`.
 - Admin dashboard Risk Outcomes now includes informational `Time-to-Evidence` and `MTTR pipeline` metrics from Jenkins commit-pipeline correlations:
   - `Time-to-Evidence` is commit timestamp to correlated pipeline ingestion timestamp.
   - `MTTR pipeline` is recoverable non-green Jenkins pipeline event to next successful run for the same job.
