@@ -1,6 +1,6 @@
 # Quality Gate Policy Validation Runbook
 
-Updated: 2026-04-23
+Updated: 2026-04-24
 
 ## Objective
 
@@ -14,16 +14,13 @@ This runbook is for real environments (GitHub Actions/Jenkins + Control Plane).
 
 ## Preconditions
 
-1. Sonar workflow is configured (GitHub-hosted or Jenkins local):
+1. SonarQube is configured. For this repo the supported runtime is local SonarQube, not SonarCloud:
    - `SONAR_TOKEN`
+   - `SONAR_HOST_URL`
    - `SONAR_PROJECT_KEY`
    - `GITGOV_URL`
    - `GITGOV_API_KEY`
-   - For GitHub-hosted strict validation, PAT/API visibility must allow:
-     - `secrets=read`
-     - `actions_variables=read`
-   - For API-driven `workflow_dispatch` automation, PAT/API visibility must allow:
-     - `actions=write`
+   - GitHub-hosted runners cannot reach `localhost:9000`; use Jenkins/local validation or a self-hosted runner when SonarQube local must run in CI.
 2. Sonar telemetry is reaching GitGov via `/integrations/jenkins`.
 3. Jenkins uses the current `Jenkinsfile`:
    - `Sonar Scan (Optional)` enabled when `SONAR_TOKEN` + `SONAR_PROJECT_KEY` exist.
@@ -229,34 +226,21 @@ GitHub Actions (cloud, no bloqueante):
 - Precheck: auto-skip si faltan `GITGOV_URL` / `GITGOV_API_KEY`
 - Artefactos: reporte de matrix + resolución de SHAs por run
 
-## GitHub-hosted Matrix Status (2026-04-23)
+## GitHub-hosted Matrix Status (2026-04-24)
 
-Attempted cloud execution against `yohandry10/Git-Gov` from local automation:
+The quality gate policy matrix is validated in GitHub-hosted CI against GitGov telemetry. It does not require GitHub-hosted runners to reach local SonarQube directly.
 
-- Workflow file exists on remote branch `tier-risk-sla-tuning`:
+- Workflow file is published on `main`:
   - `.github/workflows/quality-gate-policy-matrix.yml`
-- Workflow file is not present on `origin/main` yet, so it is not part of the active default-branch workflow inventory.
-- API dispatch attempt returned `403 FORBIDDEN` with header:
-  - `x-accepted-github-permissions: actions=write`
-- Strict CI-config visibility remains best-effort with current PAT:
-  - `403` on Actions secrets and Actions variables read endpoints.
-- GitHub-hosted run executed via temporary push trigger on branch `ci/quality-gate-matrix-main`:
-  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826230934`
-  - Outcome: workflow completed, matrix steps skipped by precheck.
-  - Logged reason: `missing_gitgov_url_or_api_key`
-- Second GitHub-hosted run executed after fallback-name mapping update:
-  - Run: `https://github.com/yohandry10/Git-Gov/actions/runs/24826556179`
-  - Outcome: workflow completed, matrix steps skipped by precheck.
-  - Logged reason remains: `missing_gitgov_url_or_api_key`
-
-Blocking gaps to close for cloud matrix validation:
-
-1. Publish/merge `.github/workflows/quality-gate-policy-matrix.yml` to `main`.
-2. Configure repo-level cloud matrix inputs for GitHub-hosted runs:
-   - variable `GITGOV_URL`
-   - secret `GITGOV_API_KEY`
-3. Use PAT (or GitHub App token) with `actions=write` to trigger `workflow_dispatch` from scripts.
-4. For strict CI-config auditing scripts, also grant `secrets=read` and `actions_variables=read`.
+- Repository Actions config is present:
+  - variable `GITGOV_URL`
+  - secret `GITGOV_API_KEY`
+- Required check is protected on `main`:
+  - `Validate quality_gates warn/block matrix`
+- Latest PR validation passed after the runbook update:
+  - PR `#14`
+  - workflow run `24918516902`
+  - job `72975366893`
 
 ## Validated Local Evidence
 

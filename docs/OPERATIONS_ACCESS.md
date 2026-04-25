@@ -59,9 +59,10 @@ GitHub Actions repository configuration:
 
 - Secret: `GITGOV_API_KEY`
 - Variable: `GITGOV_URL=https://gitgov-api.onrender.com`
-- Variable: `SONAR_HOST_URL=https://sonarcloud.io`
+- Variable: `SONAR_HOST_URL=http://localhost:9000`
 - Variable: `SONAR_PROJECT_KEY=yohandry10_git-gov`
-- Secret expected when Sonar cloud/local scan is enabled from GitHub-hosted CI: `SONAR_TOKEN`
+- SonarCloud is not used for this repository because the connected GitHub account is personal, not organizational.
+- GitHub-hosted Sonar scan remains non-blocking/skipped when `SONAR_HOST_URL` points to local SonarQube, because hosted runners cannot reach the workstation.
 
 ## Render
 
@@ -115,6 +116,12 @@ Validated capabilities:
 - Query authentication status.
 - Query projects, quality gates, measures, issues, hotspots, and analysis status.
 - Use UI navigation through `@browser-use` when needed for UI-only flows.
+
+Operational decision:
+
+- SonarQube local is the supported Sonar runtime for this repo.
+- Do not default workflows or docs to `https://sonarcloud.io`.
+- `SONAR_HOST_URL=http://localhost:9000` is valid for local tooling and as an explicit signal that GitHub-hosted scan must skip unless a self-hosted runner is used.
 
 ## Local Jenkins
 

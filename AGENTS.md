@@ -73,10 +73,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - Repository secret required by GitGov workflows: `GITGOV_API_KEY`.
 - Repository variable required by GitGov workflows: `GITGOV_URL=https://gitgov-api.onrender.com`.
-- Repository secret used by Sonar workflows when present: `SONAR_TOKEN`.
-- Sonar variables:
-  - `SONAR_HOST_URL=https://sonarcloud.io`
-  - `SONAR_PROJECT_KEY=yohandry10_git-gov`
+- SonarCloud is not used for this repository because the GitHub account is personal, not organizational.
+- Local SonarQube is the selected Sonar runtime. Repository variable `SONAR_HOST_URL=http://localhost:9000`; GitHub-hosted Sonar scan must skip unless a self-hosted runner can reach that host.
+- Sonar variable for local/runtime use: `SONAR_PROJECT_KEY=yohandry10_git-gov`.
 - The quality gate policy matrix workflow is optional at workflow level but its job is required by branch protection.
 - The matrix workflow must run on both `pull_request` and `push` to `main`; otherwise PR merges can be blocked by a required check that never appears.
 - Release Readiness Gate is advisory by default on `push`; use manual `workflow_dispatch` with `enforce_gate=true` when a release must be blocked by readiness score.
