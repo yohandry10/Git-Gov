@@ -373,6 +373,8 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 - `Implemented with scope limits`
 - What is real:
   - Control Plane dashboard includes pipeline health, ticket coverage, risk outcomes, recent commits, policy editor, export panel, and chat panel.
+  - Dashboard reporting surfaces GitHub PR lifecycle, review, PR comment, and status-check evidence counts.
+  - Ticket coverage UI explains that commit-ticket coverage can come from commits, branches, PR titles, and PR comments when ticket IDs are present.
   - Release readiness scoring exists.
   - Tier-aware scoring and SLA profiles exist.
   - Export flow exists with content hash generation and export history.
@@ -380,6 +382,8 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
   - `gitgov/src/components/control_plane/PipelineHealthWidget.tsx`
+  - `gitgov/src/components/control_plane/EventBreakdownGrid.tsx`
+  - `gitgov/src/components/control_plane/TicketCoverageWidget.tsx`
   - `gitgov/src/components/control_plane/RiskOutcomesWidget.tsx`
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`
@@ -418,7 +422,8 @@ Before adding or keeping any `/features` claim:
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
 3. Expand GitHub evidence ingestion beyond current scope:
    - PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) is now ingested and can create ticket correlations from comment/title ticket IDs.
-   - Remaining work: map the new comment event types into dashboard/reporting trends and public `/features` wording without overstating comment coverage.
+   - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
+   - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
    - Next readiness blocker remains data quality: current live Jira ticket coverage is `0%` until actual ticket IDs appear in commits, branches, PR titles, or PR comments.
 
 ## Sonar Runtime Configuration
