@@ -348,6 +348,7 @@ Updated: 2026-04-25
 - Domain SLO target config guardrail:
   - Added static validation script `scripts/control-plane/validate_domain_slo_target_config.ps1`.
   - CI `Workflow Lint` and `.github/workflows/domain-slo-validation.yml` now fail early if `ops/slo/domain-slo-targets.json` is malformed or lacks required `org_name`, `repo_full_name`, or `branch` scope.
+  - Post-merge validation on `main` for commit `f0a3470` passed: CI run `24927603357`, Quality Gate Policy Matrix run `24927603365`, and Release Readiness Gate run `24927603352`.
 
 ## In Progress
 
@@ -495,7 +496,7 @@ Before adding or keeping any `/features` claim:
    - Production 720h calibration completed on 2026-04-25 with all tier profiles and domain SLOs passing after org-scoped targets were aligned.
    - Repo/branch-scoped calibration is implemented for `calibrate_risk_tier_baseline.ps1`, `validate_domain_slo_targets.ps1`, `risk-tier-baseline-calibration.yml`, and `domain-slo-validation.yml`.
    - Static target-scope validation is enforced by `validate_domain_slo_target_config.ps1` in CI and the domain SLO workflow.
-   - Last post-merge live readiness validation for `yohandry10/Git-Gov` on `main`: Release Readiness Gate run `24927475688` passed with readiness `83/100`, target `75`, and signal coverage `3/3`.
+   - Last post-merge live readiness validation for `yohandry10/Git-Gov` on `main`: Release Readiness Gate run `24927603352` passed for commit `f0a3470`.
    - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
