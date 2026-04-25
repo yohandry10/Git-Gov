@@ -3,6 +3,8 @@ name: Release Readiness Gate
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 10 * * *"
   workflow_dispatch:
     inputs:
       tier:
@@ -39,10 +41,15 @@ on:
         required: false
         default: false
         type: boolean
+      refresh_jira_correlations:
+        description: "Refresh Jira/PR correlations before calculating readiness"
+        required: false
+        default: true
+        type: boolean
       hours:
         description: "Lookback window in hours"
         required: false
-        default: "168"
+        default: "720"
         type: string
       correlation_limit:
         description: "Max Jenkins correlations to analyze"
@@ -104,7 +111,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($targetReadiness)) { $targetReadiness = "0" }
 
           $hours = "${{ github.event.inputs.hours }}"
-          if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
+          if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "720" }
 
           $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
           if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
@@ -112,6 +119,44 @@ jobs:
           $orgName = "${{ github.event.inputs.org_name }}"
           $strictSignals = "${{ github.event.inputs.strict_signals }}"
           $enforceGate = "${{ github.event.inputs.enforce_gate }}"
+          $refreshJiraCorrelations = "${{ github.event.inputs.refresh_jira_correlations }}"
+          if ([string]::IsNullOrWhiteSpace($refreshJiraCorrelations)) { $refreshJiraCorrelations = "true" }
+          $eventName = "${{ github.event_name }}"
+          if ($eventName -eq "schedule") { $enforceGate = "true" }
+
+          if ($refreshJiraCorrelations -eq "true") {
+            try {
+              $baseUrl = $env:GITGOV_URL.TrimEnd("/")
+              $headers = @{
+                Authorization = "Bearer $env:GITGOV_API_KEY"
+                "Content-Type" = "application/json"
+              }
+              $payload = @{
+                repo_full_name = $repoFullName
+                hours = [int]$hours
+                limit = [int]$correlationLimit
+              }
+              if (-not [string]::IsNullOrWhiteSpace($orgName)) {
+                $payload["org_name"] = $orgName
+              }
+
+              $correlationPath = "docs/reports/jira-correlation-refresh-${{ github.run_id }}.json"
+              $correlationResponse = Invoke-RestMethod `
+                -Method POST `
+                -Uri "$baseUrl/integrations/jira/correlate" `
+                -Headers $headers `
+                -Body ($payload | ConvertTo-Json -Depth 10)
+              New-Item -ItemType Directory -Force -Path "docs/reports" | Out-Null
+              $correlationResponse | ConvertTo-Json -Depth 10 | Out-File -FilePath $correlationPath -Encoding UTF8
+              Write-Host "Jira correlation refresh complete: $correlationPath"
+            } catch {
+              if ($enforceGate -eq "true") {
+                throw
+              }
+              Write-Warning "Jira correlation refresh failed, but enforce_gate is false; continuing advisory readiness check. $($_.Exception.Message)"
+            }
+          }
+
           $outputPath = "docs/reports/release-readiness-gate-${{ github.run_id }}.json"
 
           $readinessArgs = @{
@@ -148,7 +193,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-readiness-gate-${{ github.run_id }}
-          path: docs/reports/release-readiness-gate-${{ github.run_id }}.json
+          path: |
+            docs/reports/release-readiness-gate-${{ github.run_id }}.json
+            docs/reports/jira-correlation-refresh-${{ github.run_id }}.json
           if-no-files-found: warn
           retention-days: 30
 

@@ -143,6 +143,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - The quality gate policy matrix workflow is optional at workflow level but its job is required by branch protection.
 - The matrix workflow must run on both `pull_request` and `push` to `main`; otherwise PR merges can be blocked by a required check that never appears.
 - Release Readiness Gate is advisory by default on `push`; use manual `workflow_dispatch` with `enforce_gate=true` when a release must be blocked by readiness score.
+- Release Readiness Gate also runs daily by schedule at `10:17 UTC`; scheduled runs refresh Jira/PR correlations before scoring and enforce the standard readiness target.
+- Push/manual Release Readiness Gate runs remain advisory unless `enforce_gate=true`; a failed pre-score Jira correlation refresh is only blocking when the gate is enforced.
+- Manual Release Readiness Gate runs default to a 720h lookback window and can disable the pre-score Jira correlation refresh with `refresh_jira_correlations=false` if an operator needs a pure read-only check.
 
 ## External Service Credentials
 
@@ -199,6 +202,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `total_commits=34`, `commits_with_ticket=9`, `coverage_percentage=26.47`.
   - Release readiness passed with readiness `79/100` vs target `75`, signal coverage `3/3`, pipeline success `97.14%`, Sonar pass `97.14%`, Jira coverage `26.47%`.
   - This confirms the branch/PR/commit Jira-ID guardrail is improving coverage through the PR-title merge evidence path.
+- Scheduled release readiness monitoring is configured in `.github/workflows/release-readiness-gate.yml`:
+  - Runs daily at `10:17 UTC`.
+  - Refreshes Jira correlations through `POST /integrations/jira/correlate` before scoring.
+  - Uploads both `release-readiness-gate-<run_id>.json` and `jira-correlation-refresh-<run_id>.json`.
+  - Fails scheduled runs when readiness is below the configured standard target.
 
 ## Safety Rules
 

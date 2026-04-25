@@ -137,6 +137,19 @@ Validated after PRs `#37`, `#38`, and `#39` established and documented the branc
 
 This confirms the guardrail is improving coverage through the PR-title merge evidence path.
 
+## Scheduled Readiness Monitor
+
+Configured after the traceability guardrail validation:
+
+- `.github/workflows/release-readiness-gate.yml` runs daily at `10:17 UTC`.
+- Scheduled runs refresh Jira/PR correlations through `POST /integrations/jira/correlate` before readiness scoring.
+- Scheduled runs enforce the standard readiness target, so coverage/readiness regression fails the workflow instead of remaining advisory.
+- Push/manual runs remain advisory unless `enforce_gate=true`; failed Jira refresh only blocks enforced runs.
+- Manual runs keep the same workflow and expose `refresh_jira_correlations` for operators that need to skip the pre-score refresh.
+- Artifacts now include:
+  - `release-readiness-gate-<run_id>.json`
+  - `jira-correlation-refresh-<run_id>.json`
+
 ## Next Step
 
 Keep Jira IDs in branch names, commit messages, PR titles, and PR comments so future `main` activity preserves ticket coverage and release readiness.
