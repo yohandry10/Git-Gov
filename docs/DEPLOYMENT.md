@@ -810,6 +810,33 @@ Salida:
 - carpeta `docs/reports/readiness-bundle-<timestamp>/`
 - reporte principal `readiness-bundle-summary.md`
 
+### Reporte ejecutivo de evidencia GitHub
+
+Genera un artefacto Markdown independiente con la misma cobertura ejecutiva GitHub usada por el dashboard y el paquete de export:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/generate_github_evidence_report.ps1 `
+  -GitGovUrl "https://<gitgov-api-host>" `
+  -ApiKey "<GITGOV_API_KEY_ADMIN>" `
+  -OrgName "<org>" `
+  -OutputPath "docs/reports/github-evidence-executive-report-<fecha>.md"
+```
+
+Para validar el render del reporte sin tokens:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/control-plane/generate_github_evidence_report.ps1 `
+  -StatsJsonPath "path/to/stats-fixture.json" `
+  -OutputPath "docs/reports/github-evidence-executive-report-fixture.md"
+```
+
+El reporte calcula `Completo`, `Parcial` o `Sin evidencia` sobre cuatro familias:
+
+- PR lifecycle: `pull_request`
+- Reviews: `pull_request_review`
+- Comentarios PR: `pull_request_review_comment` + `issue_comment`
+- Checks/status: `check_run` + `check_suite` + `status`
+
 Workflow cloud (manual + semanal):
 - `.github/workflows/enterprise-readiness-bundle.yml`
 - corre lunes 12:30 UTC + `workflow_dispatch`
