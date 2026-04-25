@@ -127,6 +127,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - JQL filter: `project = KAN`
   - Status: enabled and signed.
 - Render has `JIRA_WEBHOOK_SECRET` configured for `gitgov-api`; do not print or commit the value.
+- Domain SLO targets in `ops/slo/domain-slo-targets.json` must include `org_name=yohandry10`; leaving it blank causes SLO validation to read unscoped telemetry and overstate traceability gap.
 - Traceability validation tickets created by API:
   - `KAN-4` - Validate GitGov traceability through PR titles
   - `KAN-5` - Validate GitGov traceability through PR comments
@@ -224,6 +225,14 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - CI run `24927274092` passed with `actions/checkout@v6`, `actions/setup-node@v6`, and `pnpm/action-setup@v5`.
   - The previous Node.js 20 action-runtime annotation was not present in the CI run output.
   - Release Readiness Gate run `24927274091` passed with readiness `82/100`, target `75`, and signal coverage `3/3`.
+- Production tier/SLO calibration completed on 2026-04-25 after refreshing Jira PR correlations:
+  - Jira backfill scanned `14` merged PRs and created `0` new correlations.
+  - Tier baseline reports were generated under `docs/reports/risk-tier-baseline-prod-2026-04-25/`.
+  - Critical: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Standard: readiness `95/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Internal: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Domain SLO validation reports were generated under `docs/reports/domain-slo-validation-prod-2026-04-25/`.
+  - Domains `core-platform`, `standard-services`, and `internal-tools` all passed after scoping targets to `org_name=yohandry10`.
 
 ## Safety Rules
 

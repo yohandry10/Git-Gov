@@ -2,7 +2,7 @@
   "domains": [
     {
       "name": "core-platform",
-      "org_name": "",
+      "org_name": "yohandry10",
       "repo_full_name": "yohandry10/Git-Gov",
       "branch": "main",
       "tier": "critical",
@@ -17,7 +17,7 @@
     },
     {
       "name": "standard-services",
-      "org_name": "",
+      "org_name": "yohandry10",
       "repo_full_name": "yohandry10/Git-Gov",
       "branch": "main",
       "tier": "standard",
@@ -32,7 +32,7 @@
     },
     {
       "name": "internal-tools",
-      "org_name": "",
+      "org_name": "yohandry10",
       "repo_full_name": "yohandry10/Git-Gov",
       "branch": "main",
       "tier": "internal",
