@@ -466,6 +466,138 @@ struct GenericRepoEvidenceEvent<'a> {
     metadata: serde_json::Value,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct CheckRunEvidence {
+    action: String,
+    status: String,
+    conclusion: Option<String>,
+    after_sha: Option<String>,
+    ref_name: Option<String>,
+    details_url: Option<String>,
+}
+
+fn extract_check_run_evidence(payload: &serde_json::Value) -> CheckRunEvidence {
+    let check_run = payload.get("check_run");
+    let ref_name = check_run
+        .and_then(|v| v.get("check_suite"))
+        .and_then(|v| v.get("head_branch"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .or_else(|| {
+            check_run
+                .and_then(|v| v.get("head_branch"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        });
+
+    CheckRunEvidence {
+        action: payload
+            .get("action")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        status: check_run
+            .and_then(|v| v.get("status"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        conclusion: check_run
+            .and_then(|v| v.get("conclusion"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        after_sha: check_run
+            .and_then(|v| v.get("head_sha"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        ref_name,
+        details_url: check_run
+            .and_then(|v| v.get("details_url"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct CheckSuiteEvidence {
+    action: String,
+    status: String,
+    conclusion: Option<String>,
+    after_sha: Option<String>,
+    ref_name: Option<String>,
+}
+
+fn extract_check_suite_evidence(payload: &serde_json::Value) -> CheckSuiteEvidence {
+    let check_suite = payload.get("check_suite");
+
+    CheckSuiteEvidence {
+        action: payload
+            .get("action")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        status: check_suite
+            .and_then(|v| v.get("status"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        conclusion: check_suite
+            .and_then(|v| v.get("conclusion"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        after_sha: check_suite
+            .and_then(|v| v.get("head_sha"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        ref_name: check_suite
+            .and_then(|v| v.get("head_branch"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct CommitStatusEvidence {
+    state_name: String,
+    context: Option<String>,
+    description: Option<String>,
+    target_url: Option<String>,
+    after_sha: Option<String>,
+    ref_name: Option<String>,
+}
+
+fn extract_commit_status_evidence(payload: &serde_json::Value) -> CommitStatusEvidence {
+    CommitStatusEvidence {
+        state_name: payload
+            .get("state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        context: payload
+            .get("context")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        description: payload
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        target_url: payload
+            .get("target_url")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        after_sha: payload
+            .get("sha")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        ref_name: payload
+            .get("branches")
+            .and_then(|v| v.as_array())
+            .and_then(|branches| branches.first())
+            .and_then(|entry| entry.get("name"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+    }
+}
+
 async fn store_generic_repo_evidence_event(
     input: GenericRepoEvidenceEvent<'_>,
 ) -> Result<(), String> {
@@ -546,40 +678,7 @@ async fn process_check_run_event(
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let action = payload
-        .get("action")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let check_run = payload.get("check_run");
-    let status = check_run
-        .and_then(|v| v.get("status"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let conclusion = check_run
-        .and_then(|v| v.get("conclusion"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let after_sha = check_run
-        .and_then(|v| v.get("head_sha"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let ref_name = check_run
-        .and_then(|v| v.get("check_suite"))
-        .and_then(|v| v.get("head_branch"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string)
-        .or_else(|| {
-            check_run
-                .and_then(|v| v.get("head_branch"))
-                .and_then(|v| v.as_str())
-                .map(str::to_string)
-        });
-    let details_url = check_run
-        .and_then(|v| v.get("details_url"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
+    let evidence = extract_check_run_evidence(payload);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
     store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
@@ -589,14 +688,14 @@ async fn process_check_run_event(
         event_type: "check_run",
         actor_login,
         actor_id,
-        ref_name,
+        ref_name: evidence.ref_name,
         ref_type: Some("branch".to_string()),
-        after_sha,
+        after_sha: evidence.after_sha,
         metadata: serde_json::json!({
-            "action": action,
-            "status": status,
-            "conclusion": conclusion,
-            "details_url": details_url
+            "action": evidence.action,
+            "status": evidence.status,
+            "conclusion": evidence.conclusion,
+            "details_url": evidence.details_url
         }),
     })
     .await
@@ -607,29 +706,7 @@ async fn process_check_suite_event(
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let action = payload
-        .get("action")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let check_suite = payload.get("check_suite");
-    let status = check_suite
-        .and_then(|v| v.get("status"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let conclusion = check_suite
-        .and_then(|v| v.get("conclusion"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let after_sha = check_suite
-        .and_then(|v| v.get("head_sha"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let ref_name = check_suite
-        .and_then(|v| v.get("head_branch"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
+    let evidence = extract_check_suite_evidence(payload);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
     store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
@@ -639,13 +716,13 @@ async fn process_check_suite_event(
         event_type: "check_suite",
         actor_login,
         actor_id,
-        ref_name,
+        ref_name: evidence.ref_name,
         ref_type: Some("branch".to_string()),
-        after_sha,
+        after_sha: evidence.after_sha,
         metadata: serde_json::json!({
-            "action": action,
-            "status": status,
-            "conclusion": conclusion
+            "action": evidence.action,
+            "status": evidence.status,
+            "conclusion": evidence.conclusion
         }),
     })
     .await
@@ -656,34 +733,7 @@ async fn process_status_event(
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let state_name = payload
-        .get("state")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let context = payload
-        .get("context")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let description = payload
-        .get("description")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let target_url = payload
-        .get("target_url")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let after_sha = payload
-        .get("sha")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
-    let ref_name = payload
-        .get("branches")
-        .and_then(|v| v.as_array())
-        .and_then(|branches| branches.first())
-        .and_then(|entry| entry.get("name"))
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
+    let evidence = extract_commit_status_evidence(payload);
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
     store_generic_repo_evidence_event(GenericRepoEvidenceEvent {
@@ -693,14 +743,14 @@ async fn process_status_event(
         event_type: "status",
         actor_login,
         actor_id,
-        ref_name,
+        ref_name: evidence.ref_name,
         ref_type: Some("branch".to_string()),
-        after_sha,
+        after_sha: evidence.after_sha,
         metadata: serde_json::json!({
-            "state": state_name,
-            "context": context,
-            "description": description,
-            "target_url": target_url
+            "state": evidence.state_name,
+            "context": evidence.context,
+            "description": evidence.description,
+            "target_url": evidence.target_url
         }),
     })
     .await
@@ -746,6 +796,39 @@ fn merged_pr_ticket_targets<'a>(
     }
 
     targets
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct PullRequestReviewCommentEvidence {
+    action: String,
+    pr_number: i32,
+    pr_title: Option<String>,
+    base_branch: Option<String>,
+    head_sha: Option<String>,
+    comment_commit_sha: Option<String>,
+    comment_body: Option<String>,
+    commit_sha: Option<String>,
+}
+
+fn extract_pull_request_review_comment_evidence(
+    payload: &serde_json::Value,
+) -> PullRequestReviewCommentEvidence {
+    let head_sha = json_string_at(payload, &["pull_request", "head", "sha"]).map(str::to_string);
+    let comment_commit_sha = json_string_at(payload, &["comment", "commit_id"]).map(str::to_string);
+    let commit_sha = comment_commit_sha.clone().or_else(|| head_sha.clone());
+
+    PullRequestReviewCommentEvidence {
+        action: json_string_at(payload, &["action"])
+            .unwrap_or("unknown")
+            .to_string(),
+        pr_number: json_i64_at(payload, &["pull_request", "number"]).unwrap_or(0) as i32,
+        pr_title: json_string_at(payload, &["pull_request", "title"]).map(str::to_string),
+        base_branch: json_string_at(payload, &["pull_request", "base", "ref"]).map(str::to_string),
+        head_sha,
+        comment_commit_sha,
+        comment_body: json_string_at(payload, &["comment", "body"]).map(str::to_string),
+        commit_sha,
+    }
 }
 
 struct TicketEvidenceCorrelation<'a> {
@@ -839,7 +922,7 @@ async fn process_pull_request_review_comment_event(
     delivery_id: &str,
     payload: &serde_json::Value,
 ) -> Result<(), String> {
-    let action = json_string_at(payload, &["action"]).unwrap_or("unknown").to_string();
+    let evidence = extract_pull_request_review_comment_evidence(payload);
     let repo_val = match payload.get("repository") {
         Some(r) => r,
         None => {
@@ -859,22 +942,17 @@ async fn process_pull_request_review_comment_event(
     let (org_id, repo_id) = get_or_create_org_repo(&state.db, &repo).await?;
     let (actor_login, actor_id) = extract_sender_actor(payload);
 
-    let pr_number = json_i64_at(payload, &["pull_request", "number"]).unwrap_or(0) as i32;
-    let pr_title = json_string_at(payload, &["pull_request", "title"]);
-    let base_branch = json_string_at(payload, &["pull_request", "base", "ref"]).map(str::to_string);
-    let head_sha = json_string_at(payload, &["pull_request", "head", "sha"]);
-    let comment_commit_sha = json_string_at(payload, &["comment", "commit_id"]);
-    let comment_body = json_string_at(payload, &["comment", "body"]);
-    let commit_sha = comment_commit_sha.or(head_sha).map(str::to_string);
-
-    let review_comment_text_sources = [comment_body.unwrap_or_default(), pr_title.unwrap_or_default()];
+    let review_comment_text_sources = [
+        evidence.comment_body.as_deref().unwrap_or_default(),
+        evidence.pr_title.as_deref().unwrap_or_default(),
+    ];
     let correlated_tickets = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
         state,
         org_id: Some(&org_id),
         repo_full_name: &repo.full_name,
-        pr_number,
-        commit_sha: commit_sha.as_deref(),
-        branch: base_branch.as_deref(),
+        pr_number: evidence.pr_number,
+        commit_sha: evidence.commit_sha.as_deref(),
+        branch: evidence.base_branch.as_deref(),
         source: "github_pr_review_comment",
         text_sources: &review_comment_text_sources,
     })
@@ -885,15 +963,15 @@ async fn process_pull_request_review_comment_event(
         obj.insert(
             "gitgov".to_string(),
             serde_json::json!({
-                "action": action,
-                "pr_number": pr_number,
+                "action": evidence.action,
+                "pr_number": evidence.pr_number,
                 "comment_kind": "pull_request_review_comment",
                 "ticket_correlations": correlated_tickets
             }),
         );
     }
 
-    let commit_shas = commit_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
+    let commit_shas = evidence.commit_sha.clone().map(|sha| vec![sha]).unwrap_or_default();
     let event = GitHubEvent {
         id: Uuid::new_v4().to_string(),
         org_id: Some(org_id),
@@ -902,10 +980,12 @@ async fn process_pull_request_review_comment_event(
         event_type: "pull_request_review_comment".to_string(),
         actor_login,
         actor_id,
-        ref_name: base_branch.or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
+        ref_name: evidence
+            .base_branch
+            .or_else(|| (evidence.pr_number > 0).then_some(format!("pr/{}", evidence.pr_number))),
         ref_type: Some("pull_request".to_string()),
         before_sha: None,
-        after_sha: commit_sha,
+        after_sha: evidence.commit_sha,
         commit_shas: commit_shas.clone(),
         commits_count: commit_shas.len() as i32,
         payload: enriched_payload,
@@ -932,7 +1012,7 @@ async fn process_pull_request_review_comment_event(
 
     tracing::info!(
         repo = %repo.full_name,
-        pr_number,
+        pr_number = evidence.pr_number,
         correlated_tickets = ?correlated_tickets,
         "Processed pull_request_review_comment event"
     );
@@ -1498,7 +1578,11 @@ async fn get_or_create_org_repo(db: &Database, repo: &GitHubRepository) -> Resul
 
 #[cfg(test)]
 mod github_webhook_tests {
-    use super::merged_pr_ticket_targets;
+    use super::{
+        extract_check_run_evidence, extract_check_suite_evidence, extract_commit_status_evidence,
+        extract_pull_request_review_comment_evidence, merged_pr_ticket_targets,
+    };
+    use serde_json::json;
 
     #[test]
     fn merged_pr_ticket_targets_prefers_merge_commit_then_head() {
@@ -1518,6 +1602,148 @@ mod github_webhook_tests {
         let targets = merged_pr_ticket_targets(Some("ABCDEF"), Some("abcdef"));
 
         assert_eq!(targets, vec![("pr_title", "abcdef")]);
+    }
+
+    #[test]
+    fn check_run_evidence_prefers_nested_suite_branch() {
+        let payload = json!({
+            "action": "completed",
+            "check_run": {
+                "status": "completed",
+                "conclusion": "success",
+                "head_sha": "abc123",
+                "head_branch": "fallback-branch",
+                "details_url": "https://github.com/example/actions/runs/1",
+                "check_suite": {
+                    "head_branch": "main"
+                }
+            }
+        });
+
+        let evidence = extract_check_run_evidence(&payload);
+
+        assert_eq!(evidence.action, "completed");
+        assert_eq!(evidence.status, "completed");
+        assert_eq!(evidence.conclusion.as_deref(), Some("success"));
+        assert_eq!(evidence.after_sha.as_deref(), Some("abc123"));
+        assert_eq!(evidence.ref_name.as_deref(), Some("main"));
+        assert_eq!(
+            evidence.details_url.as_deref(),
+            Some("https://github.com/example/actions/runs/1")
+        );
+    }
+
+    #[test]
+    fn check_run_evidence_falls_back_to_run_branch() {
+        let payload = json!({
+            "action": "rerequested",
+            "check_run": {
+                "status": "queued",
+                "head_sha": "def456",
+                "head_branch": "feature/KAN-4"
+            }
+        });
+
+        let evidence = extract_check_run_evidence(&payload);
+
+        assert_eq!(evidence.action, "rerequested");
+        assert_eq!(evidence.status, "queued");
+        assert_eq!(evidence.conclusion, None);
+        assert_eq!(evidence.after_sha.as_deref(), Some("def456"));
+        assert_eq!(evidence.ref_name.as_deref(), Some("feature/KAN-4"));
+    }
+
+    #[test]
+    fn check_suite_evidence_extracts_branch_and_sha() {
+        let payload = json!({
+            "action": "completed",
+            "check_suite": {
+                "status": "completed",
+                "conclusion": "failure",
+                "head_sha": "suite-sha",
+                "head_branch": "main"
+            }
+        });
+
+        let evidence = extract_check_suite_evidence(&payload);
+
+        assert_eq!(evidence.action, "completed");
+        assert_eq!(evidence.status, "completed");
+        assert_eq!(evidence.conclusion.as_deref(), Some("failure"));
+        assert_eq!(evidence.after_sha.as_deref(), Some("suite-sha"));
+        assert_eq!(evidence.ref_name.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn commit_status_evidence_uses_first_branch() {
+        let payload = json!({
+            "state": "success",
+            "context": "ci/build",
+            "description": "Build passed",
+            "target_url": "https://ci.example/run/42",
+            "sha": "status-sha",
+            "branches": [
+                { "name": "main" },
+                { "name": "release" }
+            ]
+        });
+
+        let evidence = extract_commit_status_evidence(&payload);
+
+        assert_eq!(evidence.state_name, "success");
+        assert_eq!(evidence.context.as_deref(), Some("ci/build"));
+        assert_eq!(evidence.description.as_deref(), Some("Build passed"));
+        assert_eq!(evidence.target_url.as_deref(), Some("https://ci.example/run/42"));
+        assert_eq!(evidence.after_sha.as_deref(), Some("status-sha"));
+        assert_eq!(evidence.ref_name.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn review_comment_evidence_prefers_comment_commit_sha() {
+        let payload = json!({
+            "action": "created",
+            "pull_request": {
+                "number": 47,
+                "title": "KAN-4 harden traceability",
+                "base": { "ref": "main" },
+                "head": { "sha": "head-sha" }
+            },
+            "comment": {
+                "commit_id": "comment-sha",
+                "body": "Follow-up for KAN-4"
+            }
+        });
+
+        let evidence = extract_pull_request_review_comment_evidence(&payload);
+
+        assert_eq!(evidence.action, "created");
+        assert_eq!(evidence.pr_number, 47);
+        assert_eq!(evidence.pr_title.as_deref(), Some("KAN-4 harden traceability"));
+        assert_eq!(evidence.base_branch.as_deref(), Some("main"));
+        assert_eq!(evidence.head_sha.as_deref(), Some("head-sha"));
+        assert_eq!(evidence.comment_commit_sha.as_deref(), Some("comment-sha"));
+        assert_eq!(evidence.comment_body.as_deref(), Some("Follow-up for KAN-4"));
+        assert_eq!(evidence.commit_sha.as_deref(), Some("comment-sha"));
+    }
+
+    #[test]
+    fn review_comment_evidence_falls_back_to_head_sha() {
+        let payload = json!({
+            "pull_request": {
+                "number": 6,
+                "head": { "sha": "head-only-sha" }
+            },
+            "comment": {
+                "body": "KAN-6 release evidence"
+            }
+        });
+
+        let evidence = extract_pull_request_review_comment_evidence(&payload);
+
+        assert_eq!(evidence.action, "unknown");
+        assert_eq!(evidence.pr_number, 6);
+        assert_eq!(evidence.comment_commit_sha, None);
+        assert_eq!(evidence.commit_sha.as_deref(), Some("head-only-sha"));
     }
 }
 
