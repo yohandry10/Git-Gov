@@ -181,6 +181,12 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `correlations_created=2`
   - four `KAN-4` correlation rows across validated merge/head SHAs
 - Coverage/readiness query semantics were updated after the `33.33%` observation: ticket coverage now includes materialized PR merge commits in addition to desktop/client commit events. After deploying this change, re-run `/integrations/jira/correlate` and `/integrations/jira/ticket-coverage` for `yohandry10/Git-Gov` on `main` to confirm production readiness movement.
+- Production validation after deploy `0494648` completed:
+  - Render deploy for `fix(KAN-4): count PR merges in ticket coverage (#35)` reached `live`.
+  - `/health` returned `ok`.
+  - Jira correlation backfill scanned `4` PRs and created `0` new rows because existing correlations were already present.
+  - `/integrations/jira/ticket-coverage?repo_full_name=yohandry10%2FGit-Gov&branch=main&hours=720` returned `total_commits=30`, `commits_with_ticket=5`, `coverage_percentage=16.67`.
+  - `validate_release_readiness_gate.ps1` passed for `yohandry10/Git-Gov` on `main`: readiness `77/100` vs target `75`, signal coverage `3/3`, pipeline success `96.77%`, Sonar pass `96.77%`, Jira coverage `16.67%`.
 
 ## Safety Rules
 

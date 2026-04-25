@@ -305,6 +305,12 @@ Updated: 2026-04-25
   - Service `gitgov-api` deploys from `main` with root directory `gitgov/gitgov-server`.
   - Render API access is available through ignored env key `RENDER_API_KEY`.
   - Production deploys were validated after the GitHub webhook and PR-title correlation fixes.
+- Production validation after ticket coverage deploy:
+  - Render deployed commit `0494648` for PR `#35`.
+  - Health check passed on `https://gitgov-api.onrender.com/health`.
+  - Jira backfill scanned `4` merged PRs and created `0` new correlations because relevant rows already existed.
+  - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `30` total commits, `5` with tickets, and `16.67%` coverage.
+  - Release readiness gate passed with readiness `77/100` against standard target `75`, signal coverage `3/3`, pipeline success `96.77%`, and Sonar pass `96.77%`.
 
 ## In Progress
 
@@ -461,7 +467,9 @@ Before adding or keeping any `/features` claim:
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
    - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
-   - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe. Next step is production validation after Render deploy: re-run Jira correlation and confirm `/integrations/jira/ticket-coverage` reflects PR-title evidence for `main`.
+   - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe.
+   - Production validation passed after Render deploy: readiness is currently above target (`77/100` vs `75`) for `yohandry10/Git-Gov` on `main`.
+   - Remaining work is data quality, not platform plumbing: continue using Jira IDs in branch names, commit messages, PR titles, and PR comments to keep ticket coverage from regressing as new commits land.
 
 ## Operating Memory Rule
 
