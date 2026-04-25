@@ -74,7 +74,11 @@ Updated: 2026-04-25
   - New script `scripts/jenkins/validate_release_readiness_gate.ps1` evaluates readiness by `repo+branch+tier` and exits non-zero when below target.
   - Supports strict signal coverage mode (`-FailOnMissingSignals`) and custom thresholds (`-MinReadiness`).
   - GitHub Actions workflow `.github/workflows/release-readiness-gate.yml` added (push `main` + manual dispatch), with explicit skip when `GITGOV_URL`/`GITGOV_API_KEY` are missing.
+  - The workflow also runs daily at `10:17 UTC`, refreshes Jira/PR correlations before scoring, and enforces the standard readiness target on scheduled runs.
+  - Push/manual runs remain advisory unless `enforce_gate=true`; failed Jira refresh only blocks enforced runs.
+  - Manual runs default to a 720h lookback window and expose `refresh_jira_correlations` to control whether `/integrations/jira/correlate` runs before scoring.
   - Produces JSON artifact with score, signal coverage, and fail reasons per run.
+  - Produces an additional Jira correlation refresh JSON artifact when pre-score refresh is enabled.
   - Jenkins pipeline integration added in `Jenkinsfile` as `Release Readiness Gate (Optional)`:
     - Controlled by env flags (`GITGOV_RELEASE_GATE_*`).
     - Emits `release_readiness` stage telemetry with score/target/coverage/reasons.
