@@ -357,11 +357,16 @@ Updated: 2026-04-25
   - Added static validation script `scripts/control-plane/validate_domain_slo_target_config.ps1`.
   - CI `Workflow Lint` and `.github/workflows/domain-slo-validation.yml` now fail early if `ops/slo/domain-slo-targets.json` is malformed or lacks required `org_name`, `repo_full_name`, or `branch` scope.
   - Post-merge validation on `main` for commit `f0a3470` passed: CI run `24927603357`, Quality Gate Policy Matrix run `24927603365`, and Release Readiness Gate run `24927603352`.
+- Executive GitHub evidence export packaging:
+  - Dashboard audit exports now download a JSON package with `executive_summary.github_evidence` plus raw export records under `data`.
+  - The export package reuses the dashboard `n/4` GitHub evidence model for PR lifecycle, reviews, PR comments, and checks/status.
+  - Unit coverage validates the package shape and executive summary classification.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard; remaining work is broader export/report packaging.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard and exported audit JSON package.
+  - Remaining work is broader report artifact generation outside the dashboard download flow.
   - Last GitHub-hosted validation for the executive GitHub evidence summary passed on `main` commit `01d275c` in CI run `24938441269`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
@@ -466,6 +471,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Release readiness scoring exists.
   - Tier-aware scoring and SLA profiles exist.
   - Export flow exists with content hash generation and export history.
+  - Dashboard JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
   - Risk outcomes widget is operational.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`

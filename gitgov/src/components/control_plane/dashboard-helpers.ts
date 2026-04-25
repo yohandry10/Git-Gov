@@ -67,6 +67,29 @@ export interface GitHubEvidenceSummary {
   missingSignals: string[]
 }
 
+interface AuditExportResponse {
+  id: string
+  export_type: string
+  record_count: number
+  content_hash: string
+  data?: unknown
+  created_at: number
+}
+
+export interface AuditExportPackage {
+  export_id: string
+  export_type: string
+  record_count: number
+  source_content_hash: string
+  created_at: number
+  packaged_at: string
+  executive_summary: {
+    github_evidence: GitHubEvidenceSummary
+    scope_note: string
+  }
+  data: unknown
+}
+
 export function buildGitHubEvidenceSummary(githubByType: Record<string, number>): GitHubEvidenceSummary {
   const prLifecycleCount = githubByType.pull_request ?? 0
   const prReviewCount = githubByType.pull_request_review ?? 0
@@ -103,6 +126,26 @@ export function buildGitHubEvidenceSummary(githubByType: Record<string, number>)
     missingSignals: signals
       .filter(([, count]) => count === 0)
       .map(([label]) => label),
+  }
+}
+
+export function buildAuditExportPackage(
+  exportResponse: AuditExportResponse,
+  githubByType: Record<string, number>,
+  packagedAt = new Date().toISOString(),
+): AuditExportPackage {
+  return {
+    export_id: exportResponse.id,
+    export_type: exportResponse.export_type,
+    record_count: exportResponse.record_count,
+    source_content_hash: exportResponse.content_hash,
+    created_at: exportResponse.created_at,
+    packaged_at: packagedAt,
+    executive_summary: {
+      github_evidence: buildGitHubEvidenceSummary(githubByType),
+      scope_note: 'Dashboard snapshot at export time; raw audit records remain in data.',
+    },
+    data: exportResponse.data ?? null,
   }
 }
 
