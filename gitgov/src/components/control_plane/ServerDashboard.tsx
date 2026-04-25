@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { Server } from 'lucide-react'
 import { formatTs } from '@/lib/timezone'
@@ -8,6 +8,7 @@ import { PipelineHealthWidget } from './PipelineHealthWidget'
 import { DailyActivityWidget } from './DailyActivityWidget'
 import { TicketCoverageWidget } from './TicketCoverageWidget'
 import { EventBreakdownGrid } from './EventBreakdownGrid'
+import { GitHubEvidenceTrendWidget } from './GitHubEvidenceTrendWidget'
 import { RiskOutcomesWidget } from './RiskOutcomesWidget'
 import { RecentCommitsTable } from './RecentCommitsTable'
 import { DeveloperAccessPanel } from './DeveloperAccessPanel'
@@ -18,6 +19,12 @@ import { MaintenanceOverlay } from './MaintenanceOverlay'
 import { Modal } from '@/components/shared/Modal'
 import { Badge } from '@/components/shared/Badge'
 import {
+  appendGitHubEvidenceTrendPoint,
+  buildGitHubEvidenceSummary,
+  buildGitHubEvidenceTrendPoint,
+  type GitHubEvidenceTrendPoint,
+} from './dashboard-helpers'
+import {
   REPO_TIER_PROFILES,
   computeReleaseReadiness,
   getRepoTierProfile,
@@ -26,6 +33,7 @@ import {
 
 const DASHBOARD_LOG_LIMIT = 500
 const REPO_TIER_STORAGE_KEY = 'gitgov.dashboard.repo_tier'
+const GITHUB_EVIDENCE_TREND_STORAGE_KEY = 'gitgov.dashboard.github_evidence_trend'
 
 function readStoredRepoTier(): RepoTier {
   if (typeof window === 'undefined') return 'standard'
@@ -39,6 +47,30 @@ function readStoredRepoTier(): RepoTier {
 function persistRepoTier(tier: RepoTier) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(REPO_TIER_STORAGE_KEY, tier)
+}
+
+function readStoredGitHubEvidenceTrend(): GitHubEvidenceTrendPoint[] {
+  if (typeof window === 'undefined') return []
+  const raw = window.localStorage.getItem(GITHUB_EVIDENCE_TREND_STORAGE_KEY)
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw) as GitHubEvidenceTrendPoint[]
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((point) =>
+      typeof point.capturedAt === 'string' &&
+      typeof point.activeSignals === 'number' &&
+      typeof point.totalSignals === 'number' &&
+      typeof point.executiveStatus === 'string' &&
+      Array.isArray(point.missingSignals),
+    )
+  } catch {
+    return []
+  }
+}
+
+function persistGitHubEvidenceTrend(points: GitHubEvidenceTrendPoint[]) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(GITHUB_EVIDENCE_TREND_STORAGE_KEY, JSON.stringify(points))
 }
 
 export function ServerDashboard() {
@@ -69,6 +101,9 @@ export function ServerDashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [showActiveDevsModal, setShowActiveDevsModal] = useState(false)
   const [repoTier, setRepoTier] = useState<RepoTier>(() => readStoredRepoTier())
+  const [githubEvidenceTrend, setGitHubEvidenceTrend] = useState<GitHubEvidenceTrendPoint[]>(() =>
+    readStoredGitHubEvidenceTrend(),
+  )
   const [isWindowVisible, setIsWindowVisible] = useState(
     typeof document === 'undefined' ? true : document.visibilityState === 'visible',
   )
@@ -130,6 +165,36 @@ export function ServerDashboard() {
     return () => clearInterval(interval)
   }, [isConnected, autoRefresh, userRole, refreshForCurrentRole, isWindowVisible])
 
+  const githubByType = serverStats?.github_events.by_type ?? {}
+  const githubPrEvents = githubByType.pull_request ?? 0
+  const githubPrReviewEvents = githubByType.pull_request_review ?? 0
+  const githubPrCommentEvents =
+    (githubByType.pull_request_review_comment ?? 0) +
+    (githubByType.issue_comment ?? 0)
+  const githubStatusCheckEvents =
+    (githubByType.check_run ?? 0) +
+    (githubByType.check_suite ?? 0) +
+    (githubByType.status ?? 0)
+  const githubEvidenceSummary = useMemo(
+    () => buildGitHubEvidenceSummary({
+      pull_request: githubPrEvents,
+      pull_request_review: githubPrReviewEvents,
+      pull_request_review_comment: githubPrCommentEvents,
+      check_run: githubStatusCheckEvents,
+    }),
+    [githubPrEvents, githubPrReviewEvents, githubPrCommentEvents, githubStatusCheckEvents],
+  )
+
+  const captureGitHubEvidenceSnapshot = () => {
+    if (!serverStats) return
+    const nextPoint = buildGitHubEvidenceTrendPoint(githubEvidenceSummary)
+    setGitHubEvidenceTrend((previous) => {
+      const next = appendGitHubEvidenceTrendPoint(previous, nextPoint)
+      persistGitHubEvidenceTrend(next)
+      return next
+    })
+  }
+
   /* ── maintenance mode ── */
   if (connectionStatus === 'maintenance') {
     return <MaintenanceOverlay />
@@ -153,16 +218,6 @@ export function ServerDashboard() {
       : '100.0'
     : '0'
   const githubPushesToday = serverStats?.github_events.pushes_today ?? 0
-  const githubByType = serverStats?.github_events.by_type ?? {}
-  const githubPrEvents = githubByType.pull_request ?? 0
-  const githubPrReviewEvents = githubByType.pull_request_review ?? 0
-  const githubPrCommentEvents =
-    (githubByType.pull_request_review_comment ?? 0) +
-    (githubByType.issue_comment ?? 0)
-  const githubStatusCheckEvents =
-    (githubByType.check_run ?? 0) +
-    (githubByType.check_suite ?? 0) +
-    (githubByType.status ?? 0)
   const githubEvidenceSignals = [
     githubPrEvents > 0,
     githubPrReviewEvents > 0,
@@ -306,6 +361,11 @@ export function ServerDashboard() {
             ticketsWithoutCommits={(ticketCoverage?.tickets_without_commits ?? []).slice(0, 5)}
             totalCommitsWithoutTicket={ticketCoverage?.commits_without_ticket.length ?? 0}
             totalTicketsWithoutCommits={ticketCoverage?.tickets_without_commits.length ?? 0}
+          />
+
+          <GitHubEvidenceTrendWidget
+            points={githubEvidenceTrend}
+            onCapture={captureGitHubEvidenceSnapshot}
           />
 
           <RecentCommitsTable />

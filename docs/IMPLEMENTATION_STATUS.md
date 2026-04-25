@@ -313,6 +313,8 @@ Updated: 2026-04-25
   - Post-merge validation on `main` for commit `946fac3` passed: CI run `24927816238`, Quality Gate Policy Matrix run `24927816230`, and Release Readiness Gate run `24927816225`.
 - Executive GitHub evidence dashboard summary added:
   - `EventBreakdownGrid` now shows executive evidence coverage (`n/4`), status (`Completo`, `Parcial`, `Sin evidencia`), and missing signal families for PR lifecycle, reviews, PR comments, and checks/status.
+  - `GitHubEvidenceTrendWidget` lets operators capture local dashboard snapshots and view coverage delta/history without requiring GitHub Actions token access from the frontend.
+  - Trend snapshots are stored in browser `localStorage` under `gitgov.dashboard.github_evidence_trend`; GitHub Actions artifact trend reporting remains the cloud evidence path.
   - `buildGitHubEvidenceSummary` has Vitest coverage for complete, partial, and empty signal sets.
   - Post-merge validation on `main` for commit `01d275c` passed: CI run `24938441269`, Quality Gate Policy Matrix run `24938441278`, and Release Readiness Gate run `24938441273`.
   - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
@@ -387,8 +389,8 @@ Updated: 2026-04-25
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
-  - Remaining work is optional UI productization if trend history should be shown directly in the dashboard rather than as workflow artifacts.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
+  - Remaining work is operational adoption: capture dashboard snapshots during reviews and keep scheduled artifact reports monitored.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.

@@ -124,3 +124,10 @@ The GitHub Actions workflow is intentionally optional. It skips without failing 
 The artifact monitor uses GitHub Actions metadata, not GitGov provider credentials. It requires only a GitHub token with Actions read access and fails when the latest successful report run has no fresh `github-evidence-executive-report` artifact.
 
 The trend report also uses GitHub Actions artifact metadata and artifact contents only. It does not query GitGov directly and does not expose provider secrets. If the latest report says `Sin evidencia`, use the existing `/stats.github_events.by_type` visibility note to investigate API key scope or webhook visibility.
+
+Dashboard trend productization:
+
+- `GitHubEvidenceTrendWidget` provides an in-dashboard local trend view.
+- Operators explicitly click `Capturar` to store a browser-local snapshot of the current GitHub evidence coverage.
+- Snapshots live in `localStorage` under `gitgov.dashboard.github_evidence_trend`.
+- This UI path intentionally does not read GitHub Actions artifacts because that would require exposing GitHub token access to the frontend.
