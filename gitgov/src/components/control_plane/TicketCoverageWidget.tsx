@@ -72,6 +72,9 @@ export function TicketCoverageWidget() {
             <div className="flex justify-between"><span className="text-surface-400">Sin ticket</span><span className="text-warning-400 mono-data">{ticketCoverage.commits_without_ticket.length}</span></div>
             <div className="flex justify-between"><span className="text-surface-400">Huérfanos</span><span className="text-surface-200 mono-data">{ticketCoverage.tickets_without_commits.length}</span></div>
           </div>
+          <p className="text-[10px] leading-relaxed text-surface-500">
+            Incluye correlaciones por commits, ramas, títulos de PR y comentarios PR cuando contienen IDs de ticket.
+          </p>
         </div>
       ) : (
         <div className="py-8 text-center mt-auto">

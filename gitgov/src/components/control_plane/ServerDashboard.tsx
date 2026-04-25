@@ -156,6 +156,9 @@ export function ServerDashboard() {
   const githubByType = serverStats?.github_events.by_type ?? {}
   const githubPrEvents = githubByType.pull_request ?? 0
   const githubPrReviewEvents = githubByType.pull_request_review ?? 0
+  const githubPrCommentEvents =
+    (githubByType.pull_request_review_comment ?? 0) +
+    (githubByType.issue_comment ?? 0)
   const githubStatusCheckEvents =
     (githubByType.check_run ?? 0) +
     (githubByType.check_suite ?? 0) +
@@ -163,6 +166,7 @@ export function ServerDashboard() {
   const githubEvidenceSignals = [
     githubPrEvents > 0,
     githubPrReviewEvents > 0,
+    githubPrCommentEvents > 0,
     githubStatusCheckEvents > 0,
   ].filter(Boolean).length
   const desktopPushesToday = serverStats?.client_events.desktop_pushes_today ?? 0
@@ -272,6 +276,7 @@ export function ServerDashboard() {
               readinessTargetScore={repoTierProfile.risk.sla.minReadinessScore}
               githubPrEvents={githubPrEvents}
               githubPrReviewEvents={githubPrReviewEvents}
+              githubPrCommentEvents={githubPrCommentEvents}
               githubStatusCheckEvents={githubStatusCheckEvents}
               githubEvidenceSignals={githubEvidenceSignals}
             />

@@ -21,6 +21,7 @@ interface PipelineHealthWidgetProps {
   readinessTargetScore: number
   githubPrEvents: number
   githubPrReviewEvents: number
+  githubPrCommentEvents: number
   githubStatusCheckEvents: number
   githubEvidenceSignals: number
 }
@@ -43,6 +44,7 @@ export function PipelineHealthWidget({
   readinessTargetScore,
   githubPrEvents,
   githubPrReviewEvents,
+  githubPrCommentEvents,
   githubStatusCheckEvents,
   githubEvidenceSignals,
 }: PipelineHealthWidgetProps) {
@@ -85,8 +87,9 @@ export function PipelineHealthWidget({
               ['Sonar passed', sonarPassed, sonarPassed > 0 ? 'text-emerald-300' : ''],
               ['GitHub PR events', githubPrEvents, githubPrEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
               ['GitHub review events', githubPrReviewEvents, githubPrReviewEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
+              ['GitHub PR comment events', githubPrCommentEvents, githubPrCommentEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
               ['GitHub status-check events', githubStatusCheckEvents, githubStatusCheckEvents > 0 ? 'text-emerald-300' : 'text-surface-500'],
-              ['GitHub evidence signals', `${githubEvidenceSignals}/3`, githubEvidenceSignals < 3 ? 'text-amber-300' : 'text-emerald-300'],
+              ['GitHub evidence signals', `${githubEvidenceSignals}/4`, githubEvidenceSignals < 4 ? 'text-amber-300' : 'text-emerald-300'],
             ] as const).map(([label, val, cls]) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <span className="text-surface-400">{label}</span>

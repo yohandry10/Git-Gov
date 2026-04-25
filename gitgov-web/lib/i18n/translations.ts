@@ -329,8 +329,8 @@ export const translations = {
     },
     'features.jira.title': { en: 'Jira Ticket Coverage', es: 'Cobertura de Tickets Jira' },
     'features.jira.desc': {
-        en: "Map commits and correlated CI runs to Jira tickets. Surface coverage gaps and changes that aren't linked to a ticket.",
-        es: 'Mapea commits y ejecuciones CI correlacionadas a tickets de Jira. Expone brechas de cobertura y cambios que no están vinculados a un ticket.',
+        en: "Map commits, correlated CI runs, PR titles, and PR-linked comments to Jira-style ticket IDs. Surface coverage gaps when changes aren't linked to a ticket.",
+        es: 'Mapea commits, ejecuciones CI correlacionadas, títulos de PR y comentarios vinculados a PRs a IDs estilo Jira. Expone brechas cuando los cambios no están vinculados a un ticket.',
     },
 
     'features.dashboard.title': { en: 'Admin Dashboard', es: 'Panel de Administración' },
@@ -340,14 +340,14 @@ export const translations = {
     },
     'features.github.title': { en: 'GitHub Webhooks', es: 'Webhooks de GitHub' },
     'features.github.desc': {
-        en: 'Receive GitHub webhook context for push, branch creation, and merged pull requests. Approver enrichment is available for merged PRs when a token is configured.',
-        es: 'Recibe contexto vía webhooks de GitHub para push, creación de ramas y pull requests mergeados. El enriquecimiento de aprobadores está disponible para PRs mergeados cuando hay token configurado.',
+        en: 'Receive webhook evidence for pushes, branches, PR lifecycle, reviews, PR-linked comments, and status checks. Comment text improves ticket traceability only when it contains ticket IDs.',
+        es: 'Recibe evidencia vía webhooks para pushes, ramas, ciclo de PR, reviews, comentarios vinculados a PRs y status checks. El texto de comentarios mejora trazabilidad solo cuando contiene IDs de ticket.',
     },
     'features.dashboard.surface.title': { en: 'Operational Reporting Surface', es: 'Superficie de Reporte Operativa' },
     'features.dashboard.surface.pipeline': { en: 'Pipeline Health (7d)', es: 'Pipeline Health (7d)' },
     'features.dashboard.surface.pipelineDesc': { en: 'Jenkins execution health and failure visibility.', es: 'Salud de ejecución Jenkins y visibilidad de fallos.' },
     'features.dashboard.surface.coverage': { en: 'Ticket Coverage', es: 'Cobertura de Tickets' },
-    'features.dashboard.surface.coverageDesc': { en: 'Commits with ticket linkage and orphan-change detection.', es: 'Commits con vinculación a tickets y detección de cambios huérfanos.' },
+    'features.dashboard.surface.coverageDesc': { en: 'Commit-to-ticket coverage, including PR title/comment evidence when ticket IDs are present.', es: 'Cobertura commit-ticket, incluyendo evidencia de títulos/comentarios PR cuando hay IDs de ticket.' },
     'features.dashboard.surface.risk': { en: 'Risk Outcomes', es: 'Risk Outcomes' },
     'features.dashboard.surface.riskDesc': { en: 'Tier-aware readiness and operational risk signals.', es: 'Señales tier-aware de readiness y riesgo operativo.' },
     'features.dashboard.surface.export': { en: 'Export History', es: 'Historial de Exportación' },

@@ -14,11 +14,34 @@ export function EventBreakdownGrid({
   commitsWithoutTicket, ticketsWithoutCommits,
   totalCommitsWithoutTicket, totalTicketsWithoutCommits,
 }: EventBreakdownGridProps) {
+  const prLifecycleCount = githubByType.pull_request ?? 0
+  const prReviewCount = githubByType.pull_request_review ?? 0
+  const prCommentCount =
+    (githubByType.pull_request_review_comment ?? 0) +
+    (githubByType.issue_comment ?? 0)
+  const statusCheckCount =
+    (githubByType.check_run ?? 0) +
+    (githubByType.check_suite ?? 0) +
+    (githubByType.status ?? 0)
+
   return (
     <div className="grid grid-cols-4 gap-3">
       {/* GitHub events by type */}
       <div className="glass-panel p-4">
         <div className="card-header mb-3">GitHub por Tipo</div>
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          {([
+            ['PRs', prLifecycleCount],
+            ['Reviews', prReviewCount],
+            ['Comentarios PR', prCommentCount],
+            ['Checks', statusCheckCount],
+          ] as const).map(([label, count]) => (
+            <div key={label} className="rounded-lg border border-white/[0.05] bg-white/[0.025] px-2 py-1.5">
+              <div className="text-[9px] uppercase tracking-wide text-surface-500">{label}</div>
+              <div className="text-xs text-surface-200 mono-data font-semibold">{count}</div>
+            </div>
+          ))}
+        </div>
         <div className="divide-y divide-white/[0.04]">
           {Object.entries(githubByType).sort(([, a], [, b]) => b - a).slice(0, 5).map(([eventType, count]) => (
             <div key={eventType} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
