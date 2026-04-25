@@ -394,8 +394,9 @@ Updated: 2026-04-25
     - Keeps v19 violation decision semantics.
   - Added postcheck `gitgov/gitgov-server/supabase/checks/v22_postcheck.sql`.
   - Production DB migration was applied and `v22_postcheck.sql` passed.
-  - Live report validation now returns `Parcial` / `3/4 signals`; the previous `0/4 signals` stats visibility gap is closed.
-  - GitHub-hosted validation passed: report run `24942000355`, artifact monitor run `24942008460`, trend run `24942016196`.
+  - Initial live report validation returned `Parcial` / `3/4 signals`; the previous `0/4 signals` stats visibility gap is closed.
+  - Initial GitHub-hosted validation passed: report run `24942000355`, artifact monitor run `24942008460`, trend run `24942016196`.
+  - Post-review GitHub-hosted validation passed after PR `#71` merged on `main` commit `0a7a230`: report run `24942351831` generated `Completo` / `4/4 signals`, monitor run `24942357291` returned `PASS`, and trend run `24942362269` reported latest coverage `4/4 signals`.
   - Report evidence: `docs/reports/github-evidence-stats-scope-fix-2026-04-25.md`.
 
 ## In Progress
@@ -404,10 +405,11 @@ Updated: 2026-04-25
   - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
   - Operational adoption baseline completed on 2026-04-25: manual report, artifact monitor, and trend workflows passed; local monitor/trend scripts passed; evidence captured in `docs/reports/github-evidence-operational-adoption-2026-04-25.md`.
   - No implementation gap remains for the GitHub evidence operating path; recurring work is weekly operation through `docs/runbooks/github-evidence-operations.md`.
-  - `KAN-7` stats visibility gap is closed: `supabase_schema_v22.sql` was applied in production, live report/trend artifacts now show `3/4 signals`, and the remaining missing signal is real `pull_request_review` event volume.
+  - `KAN-7` stats visibility gap is closed: `supabase_schema_v22.sql` was applied in production and report/trend artifacts no longer show `0/4`.
   - Review signal validation procedure is documented in `docs/runbooks/github-evidence-operations.md`.
   - `pull_request_review` evidence was validated through PR `#71`; `/stats.github_events.by_type.pull_request_review` reached `1`.
   - Live report `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md` now shows `Completo` / `4/4 signals`.
+  - GitHub-hosted report/monitor/trend validation now shows `Completo` / `4/4 signals`: report run `24942351831`, monitor run `24942357291`, trend run `24942362269`.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
@@ -589,7 +591,7 @@ Before adding or keeping any `/features` claim:
    - Traceability guardrail is active in `Security Guard`; remaining work is operational data quality, not platform plumbing.
    - Latest production validation after the guardrail raised readiness to `79/100`; continue monitoring coverage as new PRs land.
    - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
-   - GitHub evidence operational adoption baseline completed on 2026-04-25; data-quality follow-up `KAN-7` tracks the remaining `0/4 signals` visibility issue in report artifacts.
+   - GitHub evidence operational adoption baseline completed on 2026-04-25; `KAN-7` closed the report artifact visibility issue from `0/4` to `4/4` by applying `supabase_schema_v22.sql` and validating a real `pull_request_review` event.
 
 ## Operating Memory Rule
 

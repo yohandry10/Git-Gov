@@ -25,6 +25,7 @@ Latest operational baseline:
 - Review signal was validated through PR `#71`, producing a real `pull_request_review` event.
 - Latest live report after review validation: `Completo` / `4/4 signals`.
 - Evidence file: `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md`.
+- Latest GitHub-hosted validation after PR `#71` merge: report run `24942351831` (`Completo` / `4/4 signals`), monitor run `24942357291` (`PASS`), trend run `24942362269` (`4/4 signals`).
 
 ## Evidence Model
 
