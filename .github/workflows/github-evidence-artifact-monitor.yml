@@ -1,0 +1,48 @@
+name: GitHub Evidence Artifact Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Maximum accepted age for the latest evidence report artifact"
+        required: false
+        default: "192"
+        type: string
+  schedule:
+    - cron: "7 14 * * 2"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  validate-artifact:
+    name: Validate GitHub evidence report artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate latest report artifact
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $maxAgeHours = "${{ inputs.max_age_hours }}"
+          if ([string]::IsNullOrWhiteSpace($maxAgeHours)) {
+            $maxAgeHours = "192"
+          }
+
+          .\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+            -Repository "${{ github.repository }}" `
+            -WorkflowFile "github-evidence-report.yml" `
+            -ArtifactName "github-evidence-executive-report" `
+            -MaxAgeHours ([int]$maxAgeHours) `
+            -OutputPath "out/github-evidence-artifact-monitor.json"
+
+      - name: Upload monitor summary
+        uses: actions/upload-artifact@v7
+        with:
+          name: github-evidence-artifact-monitor
+          path: out/github-evidence-artifact-monitor.json
+          if-no-files-found: error

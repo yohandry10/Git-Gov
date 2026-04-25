@@ -370,12 +370,17 @@ Updated: 2026-04-25
   - Added `.github/workflows/github-evidence-report.yml` for manual and weekly artifact generation.
   - The workflow uploads the generated Markdown report as `github-evidence-executive-report` and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
   - Manual workflow validation passed on run `24939329055` for `main` commit `3935c21`; artifact `github-evidence-executive-report` was uploaded successfully.
+- Executive GitHub evidence report artifact monitoring:
+  - Added `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+  - The script queries GitHub Actions for the latest successful `github-evidence-report.yml` run and validates artifact freshness without reading provider secrets.
+  - Added `.github/workflows/github-evidence-artifact-monitor.yml` for manual and Tuesday 14:07 UTC freshness checks.
+  - Local live validation passed against report workflow run `24939329055`; artifact `6642253304` existed, was not expired, and was within the 192h freshness window.
 
 ## In Progress
 
 - Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, and optional GitHub Actions artifact workflow.
-  - Remaining work is operational monitoring of generated artifacts and any future productization of trend history.
+  - GitHub evidence now has an executive coverage summary in the admin dashboard, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, and artifact freshness monitor.
+  - Remaining work is future productization of trend history if the report needs multi-run comparisons inside the product UI.
   - Last GitHub-hosted validation for the export-packaged executive GitHub evidence summary passed on `main` commit `458c048` in CI run `24938795096`.
 - Sonar token rotation remains an operational decision. The selected Sonar runtime is local SonarQube, not SonarCloud.
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
