@@ -726,49 +726,63 @@ fn pr_ref(repo_full_name: &str, pr_number: i32) -> Option<String> {
     (pr_number > 0).then(|| format!("{}#{}", repo_full_name, pr_number))
 }
 
-async fn correlate_ticket_evidence_to_commit(
-    state: &Arc<AppState>,
-    org_id: Option<&str>,
-    repo_full_name: &str,
+struct TicketEvidenceCorrelation<'a> {
+    state: &'a Arc<AppState>,
+    org_id: Option<&'a str>,
+    repo_full_name: &'a str,
     pr_number: i32,
-    commit_sha: Option<&str>,
-    branch: Option<&str>,
-    source: &str,
-    text_sources: &[&str],
+    commit_sha: Option<&'a str>,
+    branch: Option<&'a str>,
+    source: &'a str,
+    text_sources: &'a [&'a str],
+}
+
+async fn correlate_ticket_evidence_to_commit(
+    input: TicketEvidenceCorrelation<'_>,
 ) -> Result<Vec<String>, String> {
-    let Some(commit_sha) = commit_sha.map(str::trim).filter(|s| !s.is_empty()) else {
+    let Some(commit_sha) = input
+        .commit_sha
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    else {
         return Ok(vec![]);
     };
 
-    let ticket_ids = extract_ticket_ids(text_sources);
+    let ticket_ids = extract_ticket_ids(input.text_sources);
     if ticket_ids.is_empty() {
         return Ok(vec![]);
     }
 
-    let pr_ref = pr_ref(repo_full_name, pr_number);
+    let pr_ref = pr_ref(input.repo_full_name, input.pr_number);
     let mut correlated = Vec::new();
     for ticket_id in ticket_ids {
         let correlation = CommitTicketCorrelation {
             id: Uuid::new_v4().to_string(),
-            org_id: org_id.map(str::to_string),
+            org_id: input.org_id.map(str::to_string),
             commit_sha: commit_sha.to_string(),
             ticket_id: ticket_id.clone(),
-            correlation_source: source.to_string(),
+            correlation_source: input.source.to_string(),
             confidence: 0.9,
             created_at: chrono::Utc::now().timestamp_millis(),
         };
 
-        match state.db.insert_commit_ticket_correlation(&correlation).await {
+        match input
+            .state
+            .db
+            .insert_commit_ticket_correlation(&correlation)
+            .await
+        {
             Ok(created) => {
                 if created {
                     correlated.push(ticket_id.clone());
                 }
-                if let Err(e) = state
+                if let Err(e) = input
+                    .state
                     .db
                     .append_project_ticket_relations_full(
                         &ticket_id,
                         Some(commit_sha),
-                        branch,
+                        input.branch,
                         pr_ref.as_deref(),
                     )
                     .await
@@ -776,7 +790,7 @@ async fn correlate_ticket_evidence_to_commit(
                     tracing::debug!(
                         ticket_id = %ticket_id,
                         commit_sha = %commit_sha,
-                        source = %source,
+                        source = %input.source,
                         error = %e,
                         "Could not append ticket relations after GitHub comment evidence"
                     );
@@ -786,7 +800,7 @@ async fn correlate_ticket_evidence_to_commit(
                 tracing::warn!(
                     ticket_id = %ticket_id,
                     commit_sha = %commit_sha,
-                    source = %source,
+                    source = %input.source,
                     error = %e,
                     "Failed to store ticket correlation from GitHub comment evidence"
                 );
@@ -831,16 +845,17 @@ async fn process_pull_request_review_comment_event(
     let comment_body = json_string_at(payload, &["comment", "body"]);
     let commit_sha = comment_commit_sha.or(head_sha).map(str::to_string);
 
-    let correlated_tickets = correlate_ticket_evidence_to_commit(
+    let review_comment_text_sources = [comment_body.unwrap_or_default(), pr_title.unwrap_or_default()];
+    let correlated_tickets = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
         state,
-        Some(&org_id),
-        &repo.full_name,
+        org_id: Some(&org_id),
+        repo_full_name: &repo.full_name,
         pr_number,
-        commit_sha.as_deref(),
-        base_branch.as_deref(),
-        "github_pr_review_comment",
-        &[comment_body.unwrap_or_default(), pr_title.unwrap_or_default()],
-    )
+        commit_sha: commit_sha.as_deref(),
+        branch: base_branch.as_deref(),
+        source: "github_pr_review_comment",
+        text_sources: &review_comment_text_sources,
+    })
     .await?;
 
     let mut enriched_payload = payload.clone();
@@ -1020,20 +1035,21 @@ async fn process_issue_comment_event(
         }
     }
 
-    let correlated_tickets = correlate_ticket_evidence_to_commit(
+    let issue_comment_text_sources = [
+        comment_body.unwrap_or_default(),
+        issue_title.unwrap_or_default(),
+        lookup_title.as_deref().unwrap_or_default(),
+    ];
+    let correlated_tickets = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
         state,
-        Some(&org_id),
-        &repo.full_name,
+        org_id: Some(&org_id),
+        repo_full_name: &repo.full_name,
         pr_number,
-        head_sha.as_deref(),
-        base_branch.as_deref(),
-        "github_pr_issue_comment",
-        &[
-            comment_body.unwrap_or_default(),
-            issue_title.unwrap_or_default(),
-            lookup_title.as_deref().unwrap_or_default(),
-        ],
-    )
+        commit_sha: head_sha.as_deref(),
+        branch: base_branch.as_deref(),
+        source: "github_pr_issue_comment",
+        text_sources: &issue_comment_text_sources,
+    })
     .await?;
 
     let mut enriched_payload = payload.clone();
