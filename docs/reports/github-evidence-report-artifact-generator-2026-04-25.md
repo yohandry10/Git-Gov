@@ -36,6 +36,15 @@ Expected fixture result:
 - Coverage: `4/4 signals`
 - No missing signals
 
+GitHub-hosted workflow validation passed:
+
+- Run: `24939329055`
+- Event: `workflow_dispatch`
+- Commit: `3935c21`
+- Job: `Generate GitHub evidence report`
+- Artifact: `github-evidence-executive-report`
+- Artifact upload: successful
+
 ## Operational Note
 
 The live report path depends on `/stats.github_events.by_type` for the API key scope being queried. If `/stats` returns an empty `by_type`, the report correctly shows `Sin evidencia`; operators should then verify API-key scope and GitHub webhook ingestion visibility before treating it as a product data gap.
