@@ -453,4 +453,3 @@ Required GitHub Actions telemetry variables:
 - Variable: `SONAR_HOST_URL=http://localhost:9000`
 - Variable: `SONAR_PROJECT_KEY=yohandry10_git-gov`
 - Secret `SONAR_TOKEN` is not required for GitHub-hosted runners while SonarQube remains local; the non-blocking workflow skips that scan by design.
-
