@@ -149,6 +149,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
 - GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
+- `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 
 ## Safety Rules
 
