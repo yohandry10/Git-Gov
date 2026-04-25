@@ -219,6 +219,12 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Trend workflow run `24941363195` succeeded; artifact `github-evidence-trend-report` ID `6642833188`.
   - Local artifact freshness monitor returned `PASS`; latest artifact was not expired and age was `0.02h`.
   - Local trend parsed `2` reports and still observed `Sin evidencia` / `0/4 signals`; Jira follow-up `KAN-7` tracks the data-quality/scope investigation.
+- Admin dashboard Risk Outcomes now includes informational `Time-to-Evidence` and `MTTR pipeline` metrics from Jenkins commit-pipeline correlations:
+  - `Time-to-Evidence` is commit timestamp to correlated pipeline ingestion timestamp.
+  - `MTTR pipeline` is recoverable non-green Jenkins pipeline event to next successful run for the same job.
+  - Duplicate pipeline evidence is ignored before calculating samples.
+  - These metrics render `N/A` with insufficient evidence and are not part of composite risk/readiness scoring until tier-specific SLOs are calibrated.
+  - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run typecheck`, `npm run lint`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
 - Local live validation of the trend generator parsed workflow run `24939329055` and produced a 1-report trend with latest coverage `0/4 signals`; this reflects the existing `/stats.github_events.by_type` visibility note, not a secret/config leak.
 - First GitHub-hosted validation of the trend workflow passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
 - Post-merge validation for the trend workflow rollout passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.

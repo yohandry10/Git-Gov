@@ -22,6 +22,7 @@ import {
   appendGitHubEvidenceTrendPoint,
   buildGitHubEvidenceSummary,
   buildGitHubEvidenceTrendPoint,
+  buildOperationalEvidenceMetrics,
   type GitHubEvidenceTrendPoint,
 } from './dashboard-helpers'
 import {
@@ -183,6 +184,10 @@ export function ServerDashboard() {
       check_run: githubStatusCheckEvents,
     }),
     [githubPrEvents, githubPrReviewEvents, githubPrCommentEvents, githubStatusCheckEvents],
+  )
+  const operationalEvidenceMetrics = useMemo(
+    () => buildOperationalEvidenceMetrics(jenkinsCorrelations),
+    [jenkinsCorrelations],
   )
 
   const captureGitHubEvidenceSnapshot = () => {
@@ -351,6 +356,10 @@ export function ServerDashboard() {
             totalViolations={violationsTotal}
             criticalViolations={criticalViolations}
             releaseReadinessScore={releaseReadinessScore}
+            timeToEvidenceMs={operationalEvidenceMetrics.timeToEvidenceMs}
+            timeToEvidenceSamples={operationalEvidenceMetrics.timeToEvidenceSamples}
+            mttrMs={operationalEvidenceMetrics.mttrMs}
+            mttrSamples={operationalEvidenceMetrics.mttrSamples}
             repoTier={repoTier}
           />
 

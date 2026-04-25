@@ -507,6 +507,10 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - GitHub evidence operational cadence is documented in `docs/runbooks/github-evidence-operations.md`.
   - Post-merge validation for the runbook rollout passed on `main` commit `7577f90`: CI `24940874607`, Quality Gate Policy Matrix `24940874602`, Release Readiness Gate `24940874616`, Secret Scan `24940874599`, SonarQube Governance `24940874600`, Public Naming Guard `24940874603`, Governance Correlation Smoke `24940874611`, and Desktop Updater Readiness `24940874597`.
   - Risk outcomes widget is operational.
+  - Risk outcomes widget surfaces informational `MTTR pipeline` and `Time-to-Evidence` from Jenkins commit-pipeline correlations.
+  - `Time-to-Evidence` is calculated as commit timestamp to correlated pipeline ingestion timestamp, with duplicate pipeline evidence ignored.
+  - `MTTR pipeline` is calculated as recoverable non-green pipeline event to the next successful run for the same job.
+  - These operational metrics render `N/A` when the evidence sample is insufficient.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
   - `gitgov/src/components/control_plane/PipelineHealthWidget.tsx`
@@ -514,10 +518,13 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - `gitgov/src/components/control_plane/GitHubEvidenceTrendWidget.tsx`
   - `gitgov/src/components/control_plane/TicketCoverageWidget.tsx`
   - `gitgov/src/components/control_plane/RiskOutcomesWidget.tsx`
+  - `gitgov/src/components/control_plane/dashboard-helpers.ts`
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`
+  - `gitgov/src/test/components/dashboard-helpers.test.ts`
   - `gitgov/gitgov-server/src/handlers/violations_policy_export.rs`
   - `docs/runbooks/github-evidence-operations.md`
+  - `docs/reports/operational-mttr-time-to-evidence-2026-04-25.md`
   - `scripts/control-plane/generate_github_evidence_report.ps1`
   - `scripts/control-plane/validate_github_evidence_report_artifact.ps1`
   - `scripts/control-plane/generate_github_evidence_trend_report.ps1`
@@ -529,7 +536,8 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 - Avoid overstating:
   - do not use invented sample metrics as product facts
   - if the website shows numeric examples, label them clearly as illustrative or remove them
-  - `MTTR` and `Time-to-Evidence` are not complete yet and should not be presented as finished capabilities
+  - `MTTR pipeline` and `Time-to-Evidence` are sample-based operational metrics, not SLO-backed product guarantees
+  - do not include these metrics in composite risk/readiness scoring until tier-specific SLO thresholds are calibrated
 
 ### 5. Website Gating Rule
 
