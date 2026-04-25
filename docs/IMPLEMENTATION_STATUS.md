@@ -315,6 +315,8 @@ Updated: 2026-04-25
   - `Security Guard` now requires Jira-style ticket IDs in branch names, PR titles, and new commit messages.
   - Local helper added at `scripts/github/check_traceability_policy.ps1`.
   - `scripts/security/publication_guard.ps1` now invokes the traceability helper for branch + HEAD commit preflight.
+  - `.githooks/commit-msg` now enforces Jira ticket IDs before local CLI commits when hooks are enabled.
+  - PR template, contributing guide, and publication policy now document ticket-ID requirements.
   - This protects the `pull_request_merges` + PR-title coverage path from regressing as new work lands.
 
 ## In Progress

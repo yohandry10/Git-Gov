@@ -43,6 +43,7 @@ Never publish to public repo:
 5. Before publishing, run secret scan and review diff for sensitive context.
 6. Public docs must describe product behavior and operator workflows, not internal assistant/tooling traces.
 7. Branch names, PR titles, and commit messages must be neutral and product-oriented; internal assistant/vendor/tooling identifiers are forbidden.
+8. Branch names, PR titles, and commit messages must include a Jira-style ticket ID such as `KAN-4` to preserve traceability coverage.
 
 ## Pre-Publish Checklist
 
@@ -57,9 +58,11 @@ Never publish to public repo:
 - The guard enforces restricted-doc exclusions and blocks legacy repository markers.
 - The guard blocks tracked `.env` files (except `.env.example`).
 - The guard blocks non-neutral naming in branch/PR/commit metadata (internal tooling markers).
+- The guard blocks missing Jira ticket IDs in branch/PR/commit metadata.
 - `gitleaks` runs in the same workflow for secret detection on PR/push.
 - Local pre-push check available:
   - `powershell -ExecutionPolicy Bypass -File scripts/security/publication_guard.ps1`
+- Local commit-message hook available through `.githooks/commit-msg` when `core.hooksPath` is set to `.githooks`.
 
 ## Ownership
 
