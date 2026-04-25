@@ -726,6 +726,28 @@ fn pr_ref(repo_full_name: &str, pr_number: i32) -> Option<String> {
     (pr_number > 0).then(|| format!("{}#{}", repo_full_name, pr_number))
 }
 
+fn merged_pr_ticket_targets<'a>(
+    head_sha: Option<&'a str>,
+    merge_commit_sha: Option<&'a str>,
+) -> Vec<(&'static str, &'a str)> {
+    let mut targets = Vec::new();
+
+    if let Some(sha) = merge_commit_sha.map(str::trim).filter(|s| !s.is_empty()) {
+        targets.push(("github_pr_merge_title", sha));
+    }
+
+    if let Some(sha) = head_sha.map(str::trim).filter(|s| !s.is_empty()) {
+        let already_included = targets
+            .iter()
+            .any(|(_, existing_sha)| existing_sha.eq_ignore_ascii_case(sha));
+        if !already_included {
+            targets.push(("github_pr_title", sha));
+        }
+    }
+
+    targets
+}
+
 struct TicketEvidenceCorrelation<'a> {
     state: &'a Arc<AppState>,
     org_id: Option<&'a str>,
@@ -1240,6 +1262,12 @@ async fn process_pull_request_event(
     let author_login = pr.get("user").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let merged_by_login = pr.get("merged_by").and_then(|u| u.get("login")).and_then(|v| v.as_str()).map(String::from);
     let head_sha = pr.get("head").and_then(|h| h.get("sha")).and_then(|v| v.as_str()).map(String::from);
+    let merge_commit_sha = pr
+        .get("merge_commit_sha")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from);
     let base_branch = pr.get("base").and_then(|b| b.get("ref")).and_then(|v| v.as_str()).map(String::from);
     let sender_actor = payload
         .get("sender")
@@ -1261,10 +1289,20 @@ async fn process_pull_request_event(
                 "merged": merged,
                 "draft": draft,
                 "pr_number": pr_number,
-                "requested_reviewers_count": requested_reviewers_count
+                "requested_reviewers_count": requested_reviewers_count,
+                "merge_commit_sha": merge_commit_sha.clone()
             }),
         );
     }
+
+    let pr_commit_shas = if action == "closed" && merged {
+        merged_pr_ticket_targets(head_sha.as_deref(), merge_commit_sha.as_deref())
+            .into_iter()
+            .map(|(_, sha)| sha.to_string())
+            .collect::<Vec<_>>()
+    } else {
+        head_sha.clone().map(|sha| vec![sha]).unwrap_or_default()
+    };
 
     let pr_event = GitHubEvent {
         id: Uuid::new_v4().to_string(),
@@ -1279,9 +1317,9 @@ async fn process_pull_request_event(
             .or_else(|| (pr_number > 0).then_some(format!("pr/{}", pr_number))),
         ref_type: Some("pull_request".to_string()),
         before_sha: None,
-        after_sha: head_sha.clone(),
-        commit_shas: head_sha.clone().map(|sha| vec![sha]).unwrap_or_default(),
-        commits_count: head_sha.as_ref().map(|_| 1).unwrap_or(0),
+        after_sha: merge_commit_sha.clone().or_else(|| head_sha.clone()),
+        commits_count: pr_commit_shas.len() as i32,
+        commit_shas: pr_commit_shas,
         payload: pr_payload,
         created_at: chrono::Utc::now().timestamp_millis(),
     };
@@ -1359,6 +1397,8 @@ async fn process_pull_request_event(
     }
 
     let head_sha_clone = head_sha.clone();
+    let merge_commit_sha_clone = merge_commit_sha.clone();
+    let base_branch_clone = base_branch.clone();
     let record = PrMergeRecord {
         id: Uuid::new_v4().to_string(),
         org_id: Some(org_id),
@@ -1386,33 +1426,33 @@ async fn process_pull_request_event(
                 delivery_id,
             );
 
-            // Auto-correlate: if PR title contains ticket IDs, update related_prs
-            let mut sources: Vec<&str> = Vec::new();
-            if let Some(ref title) = pr_title {
-                sources.push(title.as_str());
+            // Auto-correlate: PR titles with ticket IDs cover both the merge commit
+            // that lands on the base branch and the original head commit.
+            let title_sources = [pr_title.as_deref().unwrap_or_default()];
+            let mut correlated_ticket_ids = std::collections::BTreeSet::new();
+            for (source, commit_sha) in merged_pr_ticket_targets(
+                head_sha_clone.as_deref(),
+                merge_commit_sha_clone.as_deref(),
+            ) {
+                let correlated = correlate_ticket_evidence_to_commit(TicketEvidenceCorrelation {
+                    state,
+                    org_id: record.org_id.as_deref(),
+                    repo_full_name: &repo.full_name,
+                    pr_number,
+                    commit_sha: Some(commit_sha),
+                    branch: base_branch_clone.as_deref(),
+                    source,
+                    text_sources: &title_sources,
+                })
+                .await?;
+                correlated_ticket_ids.extend(correlated);
             }
-            let ticket_ids = extract_ticket_ids(&sources);
-            if !ticket_ids.is_empty() {
-                let repo_full_name = &repo.full_name;
-                let pr_ref = format!("{}#{}", repo_full_name, pr_number);
-                for ticket_id in &ticket_ids {
-                    if let Err(e) = state
-                        .db
-                        .append_project_ticket_relations_full(ticket_id, head_sha_clone.as_deref(), None, Some(&pr_ref))
-                        .await
-                    {
-                        tracing::debug!(
-                            ticket_id = %ticket_id,
-                            pr_ref = %pr_ref,
-                            error = %e,
-                            "Could not append PR relation to ticket (ticket may not exist yet)"
-                        );
-                    }
-                }
+
+            if !correlated_ticket_ids.is_empty() {
                 tracing::info!(
-                    pr_ref = format!("{}#{}", repo_full_name, pr_number),
-                    tickets = ?ticket_ids,
-                    "Auto-correlated PR with tickets from title"
+                    pr_ref = format!("{}#{}", repo.full_name, pr_number),
+                    tickets = ?correlated_ticket_ids,
+                    "Auto-correlated merged PR commits with tickets from title"
                 );
             }
 
@@ -1447,5 +1487,30 @@ async fn get_or_create_org_repo(db: &Database, repo: &GitHubRepository) -> Resul
     ).await.map_err(|e| e.to_string())?;
 
     Ok((org_id, repo_id))
+}
+
+#[cfg(test)]
+mod github_webhook_tests {
+    use super::merged_pr_ticket_targets;
+
+    #[test]
+    fn merged_pr_ticket_targets_prefers_merge_commit_then_head() {
+        let targets = merged_pr_ticket_targets(Some("head-sha"), Some("merge-sha"));
+
+        assert_eq!(
+            targets,
+            vec![
+                ("github_pr_merge_title", "merge-sha"),
+                ("github_pr_title", "head-sha")
+            ]
+        );
+    }
+
+    #[test]
+    fn merged_pr_ticket_targets_deduplicates_same_head_and_merge_commit() {
+        let targets = merged_pr_ticket_targets(Some("ABCDEF"), Some("abcdef"));
+
+        assert_eq!(targets, vec![("github_pr_merge_title", "abcdef")]);
+    }
 }
 

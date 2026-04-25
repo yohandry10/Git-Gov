@@ -352,6 +352,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
   - PR lifecycle, review activity, PR comment activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|pull_request_review_comment|issue_comment|check_run|check_suite|status`) with contextual metadata.
   - PR comment bodies/titles that contain ticket IDs can create commit-ticket correlations against the PR/comment SHA, improving traceability evidence without synthetic data.
+  - Merged PR titles that contain ticket IDs can create commit-ticket correlations for the GitHub merge commit SHA, so ticket coverage can apply to `main` merge commits when PR titles include `KAN-*` or equivalent ticket IDs.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -423,9 +424,10 @@ Before adding or keeping any `/features` claim:
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
 3. Expand GitHub evidence ingestion beyond current scope:
    - PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`) is now ingested and can create ticket correlations from comment/title ticket IDs.
+   - Merged PR title evidence now also correlates the merge commit SHA, closing the gap where `main` merge commits were counted as commits without tickets even when the PR title contained a ticket ID.
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
-   - Next readiness blocker remains data quality: current live Jira ticket coverage is `0%` until actual ticket IDs appear in commits, branches, PR titles, or PR comments.
+   - Next readiness blocker remains data quality: current live Jira ticket coverage improves only when actual ticket IDs appear in commits, branches, PR titles, or PR comments.
 
 ## Sonar Runtime Configuration
 
