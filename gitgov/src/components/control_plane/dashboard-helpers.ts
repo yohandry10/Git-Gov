@@ -67,6 +67,14 @@ export interface GitHubEvidenceSummary {
   missingSignals: string[]
 }
 
+export interface GitHubEvidenceTrendPoint {
+  capturedAt: string
+  activeSignals: number
+  totalSignals: number
+  executiveStatus: GitHubEvidenceSummary['executiveStatus']
+  missingSignals: string[]
+}
+
 interface AuditExportResponse {
   id: string
   export_type: string
@@ -127,6 +135,39 @@ export function buildGitHubEvidenceSummary(githubByType: Record<string, number>)
       .filter(([, count]) => count === 0)
       .map(([label]) => label),
   }
+}
+
+export function buildGitHubEvidenceTrendPoint(
+  summary: GitHubEvidenceSummary,
+  capturedAt = new Date().toISOString(),
+): GitHubEvidenceTrendPoint {
+  return {
+    capturedAt,
+    activeSignals: summary.activeSignals,
+    totalSignals: summary.totalSignals,
+    executiveStatus: summary.executiveStatus,
+    missingSignals: summary.missingSignals,
+  }
+}
+
+export function appendGitHubEvidenceTrendPoint(
+  previous: GitHubEvidenceTrendPoint[],
+  next: GitHubEvidenceTrendPoint,
+  maxPoints = 12,
+): GitHubEvidenceTrendPoint[] {
+  const latest = previous[previous.length - 1]
+  const shouldReplaceLatest =
+    latest &&
+    latest.activeSignals === next.activeSignals &&
+    latest.totalSignals === next.totalSignals &&
+    latest.executiveStatus === next.executiveStatus &&
+    latest.missingSignals.join('|') === next.missingSignals.join('|')
+
+  const merged = shouldReplaceLatest
+    ? [...previous.slice(0, -1), next]
+    : [...previous, next]
+
+  return merged.slice(Math.max(0, merged.length - maxPoints))
 }
 
 export function buildAuditExportPackage(

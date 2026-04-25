@@ -1,6 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import { EventBreakdownGrid } from '@/components/control_plane/EventBreakdownGrid'
-import { buildAuditExportPackage, buildGitHubEvidenceSummary } from '@/components/control_plane/dashboard-helpers'
+import { GitHubEvidenceTrendWidget } from '@/components/control_plane/GitHubEvidenceTrendWidget'
+import {
+  appendGitHubEvidenceTrendPoint,
+  buildAuditExportPackage,
+  buildGitHubEvidenceSummary,
+  buildGitHubEvidenceTrendPoint,
+} from '@/components/control_plane/dashboard-helpers'
 
 const baseProps = {
   clientByStatus: {},
@@ -79,6 +85,38 @@ describe('buildAuditExportPackage', () => {
   })
 })
 
+describe('GitHub evidence trend helpers', () => {
+  it('builds and appends trend points without duplicating unchanged adjacent status', () => {
+    const partial = buildGitHubEvidenceTrendPoint(
+      buildGitHubEvidenceSummary({ pull_request: 1, check_run: 1 }),
+      '2026-04-25T20:00:00.000Z',
+    )
+    const repeatedPartial = buildGitHubEvidenceTrendPoint(
+      buildGitHubEvidenceSummary({ pull_request: 2, check_suite: 1 }),
+      '2026-04-25T20:05:00.000Z',
+    )
+    const complete = buildGitHubEvidenceTrendPoint(
+      buildGitHubEvidenceSummary({
+        pull_request: 2,
+        pull_request_review: 1,
+        issue_comment: 1,
+        status: 1,
+      }),
+      '2026-04-25T20:10:00.000Z',
+    )
+
+    const trend = appendGitHubEvidenceTrendPoint(
+      appendGitHubEvidenceTrendPoint([partial], repeatedPartial),
+      complete,
+    )
+
+    expect(trend).toHaveLength(2)
+    expect(trend[0].capturedAt).toBe('2026-04-25T20:05:00.000Z')
+    expect(trend[1].executiveStatus).toBe('Completo')
+    expect(trend[1].activeSignals).toBe(4)
+  })
+})
+
 describe('EventBreakdownGrid', () => {
   it('renders executive GitHub evidence coverage', () => {
     render(
@@ -113,5 +151,36 @@ describe('EventBreakdownGrid', () => {
     expect(screen.getByText('Parcial')).toBeInTheDocument()
     expect(screen.getByText('2/4 señales')).toBeInTheDocument()
     expect(screen.getByText('Falta: Reviews, Comentarios PR')).toBeInTheDocument()
+  })
+})
+
+describe('GitHubEvidenceTrendWidget', () => {
+  it('renders local trend summary and missing signals', () => {
+    render(
+      <GitHubEvidenceTrendWidget
+        onCapture={() => undefined}
+        points={[
+          {
+            capturedAt: '2026-04-25T20:00:00.000Z',
+            activeSignals: 1,
+            totalSignals: 4,
+            executiveStatus: 'Parcial',
+            missingSignals: ['Reviews', 'Comentarios PR', 'Checks/status'],
+          },
+          {
+            capturedAt: '2026-04-25T20:10:00.000Z',
+            activeSignals: 2,
+            totalSignals: 4,
+            executiveStatus: 'Parcial',
+            missingSignals: ['Reviews', 'Comentarios PR'],
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Trend evidencia GitHub')).toBeInTheDocument()
+    expect(screen.getByText('2/4')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+    expect(screen.getByText('Faltan: Reviews, Comentarios PR')).toBeInTheDocument()
   })
 })
