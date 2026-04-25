@@ -15,6 +15,12 @@ Operate the GitHub evidence reporting path after implementation:
 
 This runbook is operational memory. It must not contain API keys, webhook secrets, or raw provider tokens.
 
+Latest operational baseline:
+
+- 2026-04-25: `docs/reports/github-evidence-operational-adoption-2026-04-25.md`
+- Workflows and local monitor/trend scripts passed.
+- Data-quality follow-up `KAN-7` tracks the remaining `Sin evidencia` / `0/4 signals` report-content issue.
+
 ## Evidence Model
 
 GitHub evidence is considered complete when all four families are present:
