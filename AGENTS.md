@@ -193,6 +193,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Latest validated GitHub redelivery returned HTTP `200` and `processed=true`.
 - GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
 - GitHub webhook extraction contract tests cover `check_run`, `check_suite`, `status`, and `pull_request_review_comment`; run `cargo test github_webhook_tests` from `gitgov/gitgov-server` after changing webhook evidence parsing.
+- Post-merge validation for GitHub webhook extraction contract tests passed on `main` commit `946fac3`: CI run `24927816238`, Quality Gate Policy Matrix run `24927816230`, and Release Readiness Gate run `24927816225`.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 - Last production PR-title backfill validation for `KAN-4` observed:
