@@ -10,7 +10,37 @@ Set-Location $repoRoot
 
 $failed = $false
 
-Write-Host "[1/5] Checking restricted tracked files..."
+function Test-EnvExamplePlaceholderValue {
+  param(
+    [AllowEmptyString()][string]$Value
+  )
+
+  $normalized = $Value.Trim().Trim('"').Trim("'")
+  if ([string]::IsNullOrWhiteSpace($normalized)) {
+    return $true
+  }
+
+  $placeholderPattern = @(
+    '<[^>]+>',
+    '\$\{[^}]+\}',
+    '(?i)your[-_]',
+    '(?i)example',
+    '(?i)sample',
+    '(?i)placeholder',
+    '(?i)change[-_]?me',
+    '(?i)replace',
+    '(?i)dummy',
+    '(?i)fake',
+    '(?i)localhost',
+    '(?i)127\.0\.0\.1',
+    '(?i)user:password@host',
+    '(?i)host:5432'
+  ) -join "|"
+
+  return ($normalized -match $placeholderPattern)
+}
+
+Write-Host "[1/6] Checking restricted tracked files..."
 $tracked = @(git ls-files)
 $restrictedPattern = '^docs/ENTERPRISE_READINESS\.md$|^docs/ENTERPRISE_READINESS_DECISION\.md$|^docs/AUDIT_.*\.md$|^docs/INTEGRATIONS_AUDIT_.*\.md$|^skills/|^skills-lock\.json$|^gitgov-video/'
 $restrictedHits = @($tracked | Where-Object { $_ -match $restrictedPattern })
@@ -32,7 +62,7 @@ if ($restrictedHits.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "[2/5] Checking tracked .env files..."
+Write-Host "[2/6] Checking tracked .env files..."
 $trackedEnv = @($tracked | Where-Object {
   ($_ -match '(^|/)\.env($|[.][^/]+$)') -and ($_ -notmatch '\.env\.example$')
 })
@@ -44,9 +74,39 @@ if ($trackedEnv.Count -gt 0) {
   Write-Host "[PASS] No tracked .env files (except .env.example)."
 }
 
+Write-Host ""
+Write-Host "[3/6] Checking .env.example placeholder values..."
+$envExamples = @($tracked | Where-Object { $_ -match '(^|/)\.env\.example$' })
+$sensitiveEnvNameRegex = '(?i)(TOKEN|SECRET|PASSWORD|API_KEY|PRIVATE_KEY|DATABASE_URL|SUPABASE|JIRA|JENKINS|SONAR|RENDER|WEBHOOK|JWT)'
+$envExampleViolations = @()
+foreach ($envExample in $envExamples) {
+  $lines = @(Get-Content -LiteralPath $envExample)
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    $line = $lines[$i].Trim()
+    if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#")) {
+      continue
+    }
+    if ($line -notmatch '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+      continue
+    }
+    $name = $Matches[1]
+    $value = $Matches[2]
+    if ($name -match $sensitiveEnvNameRegex -and -not (Test-EnvExamplePlaceholderValue -Value $value)) {
+      $envExampleViolations += ("{0}:{1} {2}=<non-placeholder>" -f $envExample, ($i + 1), $name)
+    }
+  }
+}
+if ($envExampleViolations.Count -gt 0) {
+  Write-Host "[FAIL] .env.example contains non-placeholder values for sensitive keys:"
+  $envExampleViolations | ForEach-Object { Write-Host "  - $_" }
+  $failed = $true
+} else {
+  Write-Host "[PASS] .env.example sensitive values are placeholder-only."
+}
+
 if (-not $SkipLegacyScan) {
   Write-Host ""
-  Write-Host "[3/5] Checking legacy repository markers..."
+  Write-Host "[4/6] Checking legacy repository markers..."
   # Build the regex dynamically to avoid self-matching the literal marker text in this file.
   $legacyRegex = @(
     ("ma" + "pfrepe"),
@@ -64,11 +124,11 @@ if (-not $SkipLegacyScan) {
   }
 } else {
   Write-Host ""
-  Write-Host "[3/5] Skipped legacy marker scan."
+  Write-Host "[4/6] Skipped legacy marker scan."
 }
 
 Write-Host ""
-Write-Host "[4/5] Checking neutral naming policy (branch + recent commits)..."
+Write-Host "[5/6] Checking neutral naming policy (branch + recent commits)..."
 $namingPolicyRegex = @(
   ("co" + "dex"),
   ("cl" + "aude"),
@@ -105,7 +165,7 @@ if ($messageViolations.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "[5/5] Checking Jira traceability policy (branch + HEAD commit)..."
+Write-Host "[6/6] Checking Jira traceability policy (branch + HEAD commit)..."
 try {
   & (Join-Path $repoRoot "scripts\github\check_traceability_policy.ps1") `
     -BranchName $currentBranch `
