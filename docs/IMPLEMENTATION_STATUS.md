@@ -310,6 +310,7 @@ Updated: 2026-04-25
 - GitHub webhook evidence extraction contract tests added:
   - `github_webhook_tests` now cover `check_run`, `check_suite`, `status`, and `pull_request_review_comment` extraction without requiring database or provider credentials.
   - Validates branch/SHA/status metadata extraction and PR review comment SHA fallback behavior.
+  - Post-merge validation on `main` for commit `946fac3` passed: CI run `24927816238`, Quality Gate Policy Matrix run `24927816230`, and Release Readiness Gate run `24927816225`.
   - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
   - Production validation after deploy observed real webhook delivery HTTP `200`, `processed=true`, at least `2` `pull_request_merges` records, and a Jira backfill run with `scanned_prs=2` and `correlations_created=2`.
   - Direct validation found `KAN-4` PR-title correlations across validated merge/head SHAs.
@@ -510,6 +511,7 @@ Before adding or keeping any `/features` claim:
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
    - Extraction contract tests now protect `check_run`, `check_suite`, `status`, and `pull_request_review_comment` evidence fields before storage.
+   - Last GitHub-hosted validation for the extraction contract passed on `main` commit `946fac3` in CI run `24927816238`.
    - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
    - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe.
    - Production validation passed after Render deploy: readiness is currently above target (`77/100` vs `75`) for `yohandry10/Git-Gov` on `main`.
