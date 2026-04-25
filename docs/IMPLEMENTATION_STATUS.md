@@ -410,9 +410,12 @@ Before adding or keeping any `/features` claim:
    - Jenkins/local validation is the supported Sonar path for this environment.
    - Last operational validation: local Sonar token valid, project `yohandry10_git-gov` quality gate `OK`, Jenkins job `gitgov-demo-pipeline` build `#30` `SUCCESS`, GitGov Render has Sonar/Jenkins evidence for `main`.
 2. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
-   - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap` in all profiles.
+   - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap`.
+   - Repo/branch-scoped calibration is implemented for `calibrate_risk_tier_baseline.ps1`, `validate_domain_slo_targets.ps1`, `risk-tier-baseline-calibration.yml`, and `domain-slo-validation.yml`.
+   - Last live validation for `yohandry10/Git-Gov` on `main`: readiness `69/100` vs standard target `75`, composite risk `29/100`, Sonar pass rate `92.31%`, pipeline success rate `92.31%`, Jira ticket coverage `0%`.
+   - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
-   - `ops/slo/domain-slo-targets.json` is now the lock file; pending closure is tuning these targets with production telemetry per business domain.
+   - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
 3. Expand GitHub evidence ingestion beyond current scope:
    - ingest PR discussion/comment evidence (`pull_request_review_comment`, PR-linked `issue_comment`)
    - definir mapeo de métricas para los nuevos eventos GitHub en dashboard/reporting (tendencias y score)

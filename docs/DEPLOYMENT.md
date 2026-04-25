@@ -195,6 +195,8 @@ Para cerrar el tuning de score con evidencia operativa real, generar baseline se
 powershell -ExecutionPolicy Bypass -File scripts/control-plane/calibrate_risk_tier_baseline.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
   -Tier "standard" `
   -Hours 168
 ```
@@ -213,7 +215,7 @@ Automatización en GitHub Actions:
 - Workflow: `.github/workflows/risk-tier-baseline-calibration.yml`
 - Trigger:
   - `schedule` semanal: lunes 12:00 UTC
-  - `workflow_dispatch` manual (inputs: `tier`, `org_name`, `hours`, `correlation_limit`)
+  - `workflow_dispatch` manual (inputs: `tier`, `org_name`, `repo_full_name`, `branch`, `hours`, `correlation_limit`)
 - Requisitos:
   - Variable: `GITGOV_URL`
   - Secret: `GITGOV_API_KEY`
@@ -226,6 +228,8 @@ Lock y validación SLO por dominio:
 powershell -ExecutionPolicy Bypass -File scripts/control-plane/validate_domain_slo_targets.ps1 `
   -GitGovUrl "http://127.0.0.1:3001" `
   -ApiKey "<GITGOV_API_KEY>" `
+  -RepoFullName "<owner>/<repo>" `
+  -Branch "main" `
   -TargetsPath "ops/slo/domain-slo-targets.json" `
   -OutputDir "docs/reports/domain-slo-validation-local"
 ```
@@ -238,12 +242,12 @@ Workflow:
 - `.github/workflows/domain-slo-validation.yml`
 - Trigger:
   - `schedule` semanal: lunes 12:45 UTC
-  - `workflow_dispatch` manual (inputs: `domain_name`, `hours`, `correlation_limit`, `fail_on_breach`)
+  - `workflow_dispatch` manual (inputs: `domain_name`, `repo_full_name`, `branch`, `hours`, `correlation_limit`, `fail_on_breach`)
 - Requisitos:
   - Variable: `GITGOV_URL`
   - Secret: `GITGOV_API_KEY`
 - Fuente de lock:
-  - `ops/slo/domain-slo-targets.json` (targets por dominio/tier).
+  - `ops/slo/domain-slo-targets.json` (targets por dominio/tier, con `repo_full_name` y `branch` cuando el dominio debe filtrar evidencia por repo/rama).
 
 #### Gate de release readiness por rama (SQ-10 fase 2)
 

@@ -8,6 +8,16 @@ on:
         required: false
         default: ""
         type: string
+      repo_full_name:
+        description: "Optional owner/repo filter for domains without repo override"
+        required: false
+        default: "yohandry10/Git-Gov"
+        type: string
+      branch:
+        description: "Branch filter for domains without branch override"
+        required: false
+        default: "main"
+        type: string
       hours:
         description: "Lookback window in hours"
         required: false
@@ -73,12 +83,20 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
 
           $domainName = "${{ github.event.inputs.domain_name }}"
+          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "yohandry10/Git-Gov" }
+
+          $branch = "${{ github.event.inputs.branch }}"
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
+
           $outputDir = "docs/reports/domain-slo-validation-gh-${{ github.run_id }}"
 
           $params = @{
             GitGovUrl = $env:GITGOV_URL
             ApiKey = $env:GITGOV_API_KEY
             TargetsPath = "ops/slo/domain-slo-targets.json"
+            RepoFullName = $repoFullName
+            Branch = $branch
             Hours = [int]$hours
             CorrelationLimit = [int]$correlationLimit
             OutputDir = $outputDir

@@ -3,6 +3,8 @@
     {
       "name": "core-platform",
       "org_name": "",
+      "repo_full_name": "yohandry10/Git-Gov",
+      "branch": "main",
       "tier": "critical",
       "slo": {
         "readiness_min": 85,
@@ -16,6 +18,8 @@
     {
       "name": "standard-services",
       "org_name": "",
+      "repo_full_name": "yohandry10/Git-Gov",
+      "branch": "main",
       "tier": "standard",
       "slo": {
         "readiness_min": 75,
@@ -29,6 +33,8 @@
     {
       "name": "internal-tools",
       "org_name": "",
+      "repo_full_name": "yohandry10/Git-Gov",
+      "branch": "main",
       "tier": "internal",
       "slo": {
         "readiness_min": 65,
