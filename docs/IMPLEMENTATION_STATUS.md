@@ -369,6 +369,7 @@ Updated: 2026-04-25
   - Offline fixture validation passed without requiring provider tokens.
   - Added `.github/workflows/github-evidence-report.yml` for manual and weekly artifact generation.
   - The workflow uploads the generated Markdown report as `github-evidence-executive-report` and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
+  - Manual workflow validation passed on run `24939329055` for `main` commit `3935c21`; artifact `github-evidence-executive-report` was uploaded successfully.
 
 ## In Progress
 
