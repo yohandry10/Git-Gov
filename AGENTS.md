@@ -104,6 +104,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Render deploy branch: `main`.
 - Render root directory: `gitgov/gitgov-server`.
 - Render service is reachable through the Render API using `RENDER_API_KEY` from ignored local env files.
+- `docs/DEPLOYMENT.md` treats Render as the current production route; the former EC2/Nginx/systemd material is retained as legacy/self-hosted guidance only.
 
 ## Jira
 
@@ -172,6 +173,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 ## Verified State
 
 - Render backend health endpoint passed on `https://gitgov-api.onrender.com/health`.
+- Deployment documentation drift was cleaned so Render is documented as current production, GitHub/Jira webhooks are documented as already configured, and domain/`certbot` work is marked as optional for self-hosted/custom-domain migrations.
 - GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`; last observed correlation sample contained 12 Sonar/Jenkins evidence items for `main`.
 - GitHub-hosted matrix validation passed on run `24877293195`.
 - Job `Validate quality_gates warn/block matrix` passed on job `72836755674`.
