@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-23
+Updated: 2026-04-24
 
 ## Completed
 
@@ -265,16 +265,31 @@ Updated: 2026-04-23
 - CI lint stability hardening:
   - Refactored `gitgov-server` DB insert APIs to typed input structs to satisfy `clippy -D warnings` (removed `too_many_arguments` failures).
   - Local validation completed: `cargo clippy -- -D warnings` and `cargo test` (150 passed).
+- GitHub-hosted quality-gate matrix validation completed:
+  - `quality_gates=warn/block` matrix passed on GitHub-hosted CI after repository Actions config was aligned.
+  - Required branch protection check `Validate quality_gates warn/block matrix` is present on `main`.
+  - Follow-up output fix merged through PR `#6`.
+  - Matrix branch PR `#5` merged into `main`.
+- GitHub Actions repository configuration completed for GitGov telemetry:
+  - `GITGOV_API_KEY` configured as a repository secret.
+  - `GITGOV_URL=https://gitgov-api.onrender.com` configured as a repository variable.
+  - Sonar variables present: `SONAR_HOST_URL`, `SONAR_PROJECT_KEY`.
+- Render backend deployment completed:
+  - Backend service `gitgov-api` is deployed from `main`.
+  - Public URL: `https://gitgov-api.onrender.com`.
+  - Root directory: `gitgov/gitgov-server`.
+- Local operational access configured:
+  - SonarQube local API token created and validated.
+  - Jenkins local API token created and validated as `admin`.
+  - Jenkins job `gitgov-demo-pipeline` API metadata validated.
+  - Runbook added: `docs/OPERATIONS_ACCESS.md`.
 
 ## In Progress
 
 - SonarCloud rollout for GitHub-hosted CI in environments without org constraints.
 - Consolidating governance telemetry in dashboards and executive reporting.
-- GitHub Actions CI config visibility is currently blocked by PAT scope (`secrets=read`, `actions_variables=read`, `administration=read` missing on current token preflight).
-- GitHub-hosted quality-gate matrix cloud execution is pending publication of `.github/workflows/quality-gate-policy-matrix.yml` on `main` (currently present on `tier-risk-sla-tuning`).
-- API-driven cloud matrix dispatch is currently blocked by PAT scope (`actions=write` missing on current token).
-- Cloud matrix precheck still skips in GitHub-hosted runner until repo Actions config provides `GITGOV_URL` + `GITGOV_API_KEY`.
-- Cloud matrix precheck skip persists even with fallback-name mapping, confirming missing repo-level Actions config rather than name mismatch.
+- Sonar token rotation and SonarCloud/SonarQube environment selection for long-lived CI remain operational decisions.
+- Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
 
 ## Website Feature Claims Alignment
 

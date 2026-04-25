@@ -1,7 +1,7 @@
 # GitGov — Deployment Guide
 
 > Guía unificada: Docker local, AWS EC2, Enterprise (instaladores/GPO) y Desktop Updates.
-> Última actualización: 2026-04-17
+> Última actualización: 2026-04-24
 
 ---
 
@@ -45,6 +45,33 @@ docker compose logs -f jenkins
 docker exec -it gitgov-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
+Runbook operativo actual: ver `docs/OPERATIONS_ACCESS.md`.
+
+Estado validado local:
+
+- URL: `http://localhost:8096`
+- Usuario API local: `admin`
+- Job actual: `gitgov-demo-pipeline`
+- Acceso API validado con `JENKINS_API_TOKEN` desde `.env` local ignorado.
+- Ultimo build observado: `#30`, `SUCCESS`.
+
+Variables locales esperadas:
+
+```env
+JENKINS_SERVER_URL=http://localhost:8096
+JENKINS_USER=admin
+JENKINS_API_TOKEN=...
+JENKINS_JOB_NAME=gitgov-demo-pipeline
+```
+
+El trigger URL de Jenkins es independiente del API token:
+
+```text
+${JENKINS_SERVER_URL}/job/${JENKINS_JOB_NAME}/build?token=${JENKINS_BUILD_TRIGGER_TOKEN}
+```
+
+Usar `JENKINS_BUILD_TRIGGER_TOKEN` solo si el job fue configurado con trigger remoto.
+
 ### SonarQube local (opcional)
 
 ```bash
@@ -52,6 +79,22 @@ docker compose --profile sonar up -d sonarqube-db sonarqube
 docker compose logs -f sonarqube
 # URL: http://localhost:9000
 # Login inicial: admin / admin (cambiar password en primer ingreso)
+```
+
+Estado validado local:
+
+- URL: `http://localhost:9000`
+- Token local creado: `gitgov-local`
+- Expiracion: May 22, 2026
+- Project key local: `yohandry10_git-gov`
+- Acceso API validado con `SONAR_TOKEN` desde `.env` local ignorado.
+
+Variables locales esperadas:
+
+```env
+SONAR_HOST_URL=http://localhost:9000
+SONAR_TOKEN=...
+SONAR_PROJECT_KEY=yohandry10_git-gov
 ```
 
 Para usar SonarQube local con Jenkins en Docker:
@@ -1001,6 +1044,13 @@ Resultado esperado para considerar cierre cloud:
 - `PASS` en `check_token_permissions.ps1` (sin `FORBIDDEN`).
 - `PASS` en `check_ci_repo_config.ps1` (sin `UNKNOWN`).
 - Un run exitoso de `.github/workflows/sonar-governance.yml` con scan activo.
+
+Estado GitHub Actions actual (2026-04-24):
+
+- `GITGOV_API_KEY` esta configurado como secret de repositorio.
+- `GITGOV_URL=https://gitgov-api.onrender.com` esta configurado como variable de repositorio.
+- `SONAR_HOST_URL` y `SONAR_PROJECT_KEY` estan configurados como variables.
+- La matriz `quality_gates=warn/block` ya paso en GitHub-hosted CI y el check requerido esta protegido en `main`.
 
 Nota:
 - `-Owner` y `-Repo` ahora son opcionales en scripts de `scripts/github/*`; si no se pasan, se auto-resuelven desde `GITHUB_REPOSITORY` o `git remote origin`.

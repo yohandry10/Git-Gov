@@ -10,8 +10,38 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Render API access is available via local ignored env files only. Do not commit or print token values.
 - Local Render env key name: `RENDER_API_KEY`.
 - Local GitGov API env key name: `GITGOV_API_KEY`.
-- SonarCloud direct API access is not available unless `SONAR_TOKEN` is present locally.
-- Jenkins direct API access is not available unless `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN` are present locally.
+- Local SonarQube API access is available when `SONAR_HOST_URL`, `SONAR_TOKEN`, and `SONAR_PROJECT_KEY` are loaded from ignored local env files.
+- Jenkins direct API access is available when `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN` are loaded from ignored local env files.
+- Local ignored env files currently used by the agent:
+  - `C:\Users\PC\Desktop\GitGov\gitgov\.env`
+  - `C:\Users\PC\Desktop\GitGov\gitgov\gitgov-server\.env`
+- Treat these local env files as the source of truth for provider tokens. Never print token values from them.
+
+## Agent Capabilities
+
+- GitHub:
+  - Inspect repo state, branches, commits, PRs, checks, branch protection, and workflow runs through `gh`.
+  - Create branches, push commits, open PRs, merge PRs when checks pass and user intent is clear.
+  - Read GitHub Actions logs and rerun workflows when needed.
+  - Manage repository Actions variables and secrets when explicitly requested; secret creation or updates are sensitive operations.
+- Render:
+  - Query service metadata, deployments, logs, and health through the Render API.
+  - Verify the deployed backend at `https://gitgov-api.onrender.com`.
+  - Trigger deploys or inspect deploy failures when `RENDER_API_KEY` is present locally.
+- Local SonarQube:
+  - Access local SonarQube at `http://localhost:9000`.
+  - Authenticate by API using `SONAR_TOKEN` from ignored env files.
+  - Query project quality gate, measures, issues, hotspots, and analysis status for `SONAR_PROJECT_KEY=yohandry10_git-gov`.
+  - Use the browser session for UI-only operations when `@browser-use` is explicitly available.
+- Jenkins:
+  - Access local Jenkins at `http://localhost:8096`.
+  - Authenticate by API as `admin` using `JENKINS_API_TOKEN` from ignored env files.
+  - Inspect job metadata, build history, build logs, queue state, and build results.
+  - Current job name: `gitgov-demo-pipeline`.
+  - Trigger Jenkins builds by authenticated API when requested. Trigger-only `/build?token=...` needs `JENKINS_BUILD_TRIGGER_TOKEN` if that flow is required.
+- Local stack:
+  - Use Docker Compose profiles `jenkins` and `sonar` to start Jenkins and SonarQube.
+  - Validate local services before editing CI/CD configuration.
 
 ## GitHub Repository
 
@@ -32,8 +62,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - Primary backend service: `gitgov-api`
 - Primary backend URL: `https://gitgov-api.onrender.com`
+- Render service ID: `srv-d7lgtc77f7vs73b38uqg`
 - Render service type: Docker web service.
 - Render region: Oregon.
+- Render deploy branch: `main`.
+- Render root directory: `gitgov/gitgov-server`.
 - Render service is reachable through the Render API using `RENDER_API_KEY` from ignored local env files.
 
 ## GitHub Actions Configuration
@@ -50,8 +83,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 ## External Service Credentials
 
-- SonarCloud API access requires `SONAR_TOKEN` in local ignored env files. Keep `SONAR_HOST_URL=https://sonarcloud.io` and `SONAR_PROJECT_KEY=yohandry10_git-gov`.
-- Jenkins read/build access requires `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN`.
+- Local SonarQube API access is configured through ignored env files. Current local values use `SONAR_HOST_URL=http://localhost:9000` and `SONAR_PROJECT_KEY=yohandry10_git-gov`.
+- Current local SonarQube token name: `gitgov-local`.
+- Current local SonarQube token expires on May 22, 2026.
+- Jenkins read/build access is configured through ignored env files with `JENKINS_SERVER_URL=http://localhost:8096`, `JENKINS_USER=admin`, `JENKINS_API_TOKEN`, and `JENKINS_JOB_NAME=gitgov-demo-pipeline`.
+- Current Jenkins API token name: `codex-local`.
 - Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 
@@ -61,11 +97,17 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`.
 - GitHub-hosted matrix validation passed on run `24877293195`.
 - Job `Validate quality_gates warn/block matrix` passed on job `72836755674`.
+- Local SonarQube API token validation passed with `SONAR_TOKEN`.
+- Local Jenkins API validation passed through `/whoAmI/api/json`; authenticated user is `admin`.
+- Local Jenkins job API validation passed for `gitgov-demo-pipeline`; last observed build was `#30`, result `SUCCESS`, not building.
 
 ## Safety Rules
 
 - Never commit `.env`, `.env.local`, `.env.*.local`, `.mcp.json`, or files under `secrets/`.
 - Never print API keys, Render tokens, GitHub tokens, Jenkins tokens, or Sonar tokens.
+- Never paste provider tokens into GitHub Actions variables; use GitHub Actions secrets for sensitive values.
 - Do not revert unrelated dirty files in the user's main worktree.
 - Prefer `gh` for GitHub operations instead of browser steps.
 - Prefer Render API for Render checks when `RENDER_API_KEY` is present.
+- Prefer Jenkins API for Jenkins checks when `JENKINS_API_TOKEN` is present.
+- Prefer SonarQube API for Sonar checks when `SONAR_TOKEN` is present.
