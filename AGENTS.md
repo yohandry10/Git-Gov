@@ -169,6 +169,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitHub webhook authentication is configured through ignored env files with `GITHUB_WEBHOOK_SECRET`; keep it aligned with Render and the GitHub repository webhook.
 - Native Jira webhooks require `JIRA_WEBHOOK_SECRET` on Render and the same webhook secret in Jira Cloud.
 - Current native Jira webhook name is `GitGov signed issue sync`; it is signed with `JIRA_WEBHOOK_SECRET` and targets `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
+- API contract drift reconciliation ticket `KAN-8` records that `docs/ARCHITECTURE.md` is aligned with the real backend routes for `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and `/violations/{violation_id}/decisions`; the remaining contract debt is optional OpenAPI path completeness, not route-table drift. `docs/ENTERPRISE_READINESS_DECISION.md` is ignored internal audit memory and must not be force-added.
 
 ## Verified State
 

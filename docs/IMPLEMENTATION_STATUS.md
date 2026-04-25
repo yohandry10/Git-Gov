@@ -136,6 +136,11 @@ Updated: 2026-04-25
 - OpenAPI/Swagger claim adjusted to reflect real scope:
   - `/api-docs` is now described as a schema explorer (partial), preventing mismatch with full operational route coverage.
   - OpenAPI info description now points to `docs/ARCHITECTURE.md` + `main.rs` route table as source of truth until full path annotation rollout.
+- API contract drift reconciliation completed under `KAN-8`:
+  - `docs/ARCHITECTURE.md` already documents the real backend routes for job retry, compliance, and violation decisions.
+  - `docs/ARCHITECTURE.md` schema migration chain now includes `supabase_schema_v22.sql`.
+  - The local ignored internal audit memory (`docs/ENTERPRISE_READINESS_DECISION.md`) was reconciled but remains intentionally untracked by `.gitignore`.
+  - Evidence report: `docs/reports/api-contract-drift-reconciliation-2026-04-25.md`.
 - Conversational bot quality/risk deterministic queries added:
   - `detect_query` now classifies quality gate health questions and release-readiness gate health questions.
   - `detect_query` now also classifies repo-ranking questions (`top repos con quality gate no verde`).
