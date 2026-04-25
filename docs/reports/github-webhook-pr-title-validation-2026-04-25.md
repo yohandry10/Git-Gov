@@ -98,6 +98,25 @@ Implemented on 2026-04-25:
 - Missing-commit output now includes a `source` field so operators can distinguish `client_event` from `pull_request_merge` evidence.
 - Regression test: `ticket_coverage_counts_pr_merge_commit_without_client_event`.
 
+## Production Validation After Fix
+
+Validated after Render deployed commit `0494648`:
+
+- Render deploy status: `live`
+- Health endpoint: `ok`
+- Jira correlation backfill: `scanned_prs=4`, `correlations_created=0`
+- Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h:
+  - `total_commits=30`
+  - `commits_with_ticket=5`
+  - `coverage_percentage=16.67`
+- Release readiness gate:
+  - readiness `77/100`
+  - target `75`
+  - signal coverage `3/3`
+  - pipeline success `96.77%`
+  - Sonar pass `96.77%`
+  - result `PASS`
+
 ## Next Step
 
-After this change is deployed to Render, re-run Jira correlation and validate production ticket coverage for `yohandry10/Git-Gov` on `main`.
+Keep Jira IDs in branch names, commit messages, PR titles, and PR comments so future `main` activity preserves ticket coverage and release readiness.
