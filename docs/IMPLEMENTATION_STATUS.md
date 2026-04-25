@@ -295,6 +295,12 @@ Updated: 2026-04-25
   - PR-title correlation source names were aligned with the production DB constraint; valid sources remain `branch_name`, `commit_message`, `pr_title`, and `manual`.
   - Production validation after deploy observed real webhook delivery HTTP `200`, `processed=true`, at least `2` `pull_request_merges` records, and a Jira backfill run with `scanned_prs=2` and `correlations_created=2`.
   - Direct validation found `KAN-4` PR-title correlations across validated merge/head SHAs.
+- Ticket coverage now counts PR merge evidence:
+  - `/integrations/jira/ticket-coverage` no longer builds its denominator only from `client_events`.
+  - Coverage now unions client commit events with materialized `pull_request_merges`.
+  - For PR merges, it uses `merge_commit_sha` from payload first and falls back to `head_sha`.
+  - PR-title correlations can therefore affect Jira ticket coverage even when the merge commit arrived only from a GitHub webhook.
+  - Regression test added: `ticket_coverage_counts_pr_merge_commit_without_client_event`.
 - Render production deployment context documented:
   - Service `gitgov-api` deploys from `main` with root directory `gitgov/gitgov-server`.
   - Render API access is available through ignored env key `RENDER_API_KEY`.
@@ -455,7 +461,7 @@ Before adding or keeping any `/features` claim:
    - Dashboard/reporting now shows PR comment evidence as a distinct GitHub evidence signal and labels coverage scope explicitly.
    - Public `/features` wording is aligned to the real scope: comments improve ticket traceability only when they are PR-linked and contain ticket IDs.
    - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
-   - Next readiness blocker is coverage/readiness query semantics: ticket correlations exist, but the live ticket coverage endpoint still reported `3` covered-universe commits, `1` with ticket, and `33.33%` after PR-title correlations were created. Update the denominator/query if merged PR evidence should count directly toward readiness.
+   - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe. Next step is production validation after Render deploy: re-run Jira correlation and confirm `/integrations/jira/ticket-coverage` reflects PR-title evidence for `main`.
 
 ## Operating Memory Rule
 

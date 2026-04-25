@@ -82,6 +82,10 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `pull_request_merges` reached at least `2` records in production validation.
   - Jira backfill scanned `2` merged PRs and created `2` PR-title correlations.
   - `commit_ticket_correlations.source` must remain `pr_title`; production DB constraints allow `branch_name`, `commit_message`, `pr_title`, and `manual`.
+- Ticket coverage semantics include PR merge evidence:
+  - `GET /integrations/jira/ticket-coverage` builds its commit universe from both `client_events(event_type='commit')` and `pull_request_merges`.
+  - For PR merge evidence, coverage uses `merge_commit_sha` from payload first and falls back to `head_sha`.
+  - This lets PR-title correlations count toward Jira coverage even when the merge commit was only observed through GitHub webhook evidence.
 
 ## Render
 
@@ -176,7 +180,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `scanned_prs=2`
   - `correlations_created=2`
   - four `KAN-4` correlation rows across validated merge/head SHAs
-- Current remaining readiness blocker is not missing GitHub webhook ingestion. The remaining gap is coverage/readiness query semantics: the ticket coverage endpoint still reported `3` covered-universe commits, `1` with ticket, and `33.33%` coverage after PR-title correlations existed. Update ticket coverage/readiness logic if PR merge evidence should count directly in that denominator.
+- Coverage/readiness query semantics were updated after the `33.33%` observation: ticket coverage now includes materialized PR merge commits in addition to desktop/client commit events. After deploying this change, re-run `/integrations/jira/correlate` and `/integrations/jira/ticket-coverage` for `yohandry10/Git-Gov` on `main` to confirm production readiness movement.
 
 ## Safety Rules
 
