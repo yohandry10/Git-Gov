@@ -57,6 +57,7 @@ Never publish to public repo:
 - CI workflow: `.github/workflows/secret-scan.yml` (job `Security Guard`)
 - The guard enforces restricted-doc exclusions and blocks legacy repository markers.
 - The guard blocks tracked `.env` files (except `.env.example`).
+- The guard validates tracked `.env.example` files and fails if sensitive keys contain non-placeholder values.
 - The guard blocks non-neutral naming in branch/PR/commit metadata (internal tooling markers).
 - The guard blocks missing Jira ticket IDs in branch/PR/commit metadata.
 - `gitleaks` runs in the same workflow for secret detection on PR/push.

@@ -141,6 +141,11 @@ Updated: 2026-04-25
   - `docs/ARCHITECTURE.md` schema migration chain now includes `supabase_schema_v22.sql`.
   - The local ignored internal audit memory (`docs/ENTERPRISE_READINESS_DECISION.md`) was reconciled but remains intentionally untracked by `.gitignore`.
   - Evidence report: `docs/reports/api-contract-drift-reconciliation-2026-04-25.md`.
+- `.env.example` publication policy hardened under `KAN-9`:
+  - `.gitignore` already allows `.env.example` while blocking real `.env` files.
+  - Local publication guard and GitHub `Security Guard` now fail when sensitive keys in tracked `.env.example` files contain non-placeholder values.
+  - Existing `gitgov/.env.example` and `gitgov/gitgov-server/.env.example` passed the placeholder-only validation.
+  - Evidence report: `docs/reports/env-example-placeholder-policy-2026-04-25.md`.
 - Conversational bot quality/risk deterministic queries added:
   - `detect_query` now classifies quality gate health questions and release-readiness gate health questions.
   - `detect_query` now also classifies repo-ranking questions (`top repos con quality gate no verde`).
