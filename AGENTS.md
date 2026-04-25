@@ -208,6 +208,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - `scripts/control-plane/generate_github_evidence_trend_report.ps1` generates Markdown/JSON trend history by downloading recent `github-evidence-executive-report` artifacts from successful `github-evidence-report.yml` runs and parsing status, coverage, and missing signal fields.
 - `.github/workflows/github-evidence-trend-report.yml` runs the trend report manually or weekly on Tuesday 14:17 UTC and uploads artifact `github-evidence-trend-report`.
 - Local live validation of the trend generator parsed workflow run `24939329055` and produced a 1-report trend with latest coverage `0/4 signals`; this reflects the existing `/stats.github_events.by_type` visibility note, not a secret/config leak.
+- First GitHub-hosted validation of the trend workflow passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
+- Post-merge validation for the trend workflow rollout passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
 - GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
 - `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
 - Last production PR-title backfill validation for `KAN-4` observed:

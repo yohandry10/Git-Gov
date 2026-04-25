@@ -97,6 +97,24 @@ Observed result:
 - Latest coverage: `0/4 signals`
 - Output files: Markdown + JSON trend report
 
+GitHub-hosted trend workflow validation passed:
+
+- Run: `24940027811`
+- Event: `workflow_dispatch`
+- Commit: `a58ae81`
+- Job: `Generate GitHub evidence trend report`
+- Artifact: `github-evidence-trend-report`
+- Artifact ID: `6642453325`
+- Artifact expired: `false`
+- Artifact upload: successful
+
+Post-merge validation for the trend workflow rollout passed:
+
+- Commit: `a58ae81`
+- CI: `24940024455`
+- Quality Gate Policy Matrix: `24940024458`
+- Release Readiness Gate: `24940024457`
+
 ## Operational Note
 
 The live report path depends on `/stats.github_events.by_type` for the API key scope being queried. If `/stats` returns an empty `by_type`, the report correctly shows `Sin evidencia`; operators should then verify API-key scope and GitHub webhook ingestion visibility before treating it as a product data gap.

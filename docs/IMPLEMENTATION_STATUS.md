@@ -381,6 +381,8 @@ Updated: 2026-04-25
   - The script downloads recent non-expired `github-evidence-executive-report` artifacts from successful `github-evidence-report.yml` runs and parses status, coverage, and missing signal fields.
   - Added `.github/workflows/github-evidence-trend-report.yml` for manual and Tuesday 14:17 UTC trend generation.
   - Local live validation parsed workflow run `24939329055` and produced Markdown/JSON trend outputs with one report point.
+  - First GitHub-hosted validation passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
+  - Post-merge validation passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
 
 ## In Progress
 
