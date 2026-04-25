@@ -132,3 +132,8 @@ Dashboard trend productization:
 - Snapshots live in `localStorage` under `gitgov.dashboard.github_evidence_trend`.
 - This UI path intentionally does not read GitHub Actions artifacts because that would require exposing GitHub token access to the frontend.
 - Post-merge validation for the dashboard trend widget passed on `main` commit `74a51a5` with CI run `24940280762`, Quality Gate Policy Matrix run `24940280775`, and Release Readiness Gate run `24940280751`.
+
+Operational adoption:
+
+- `docs/runbooks/github-evidence-operations.md` defines the dashboard capture procedure, manual Markdown report generation, artifact freshness monitor, multi-run trend report, weekly cadence, and escalation criteria.
+- This runbook is the source of truth for operating the GitHub evidence reporting path without exposing GitHub, GitGov, Render, Jenkins, Sonar, or Jira secrets.

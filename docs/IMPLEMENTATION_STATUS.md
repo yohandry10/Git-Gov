@@ -500,6 +500,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Dashboard JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
   - Standalone Markdown report generation exists for GitHub executive evidence coverage.
   - GitHub Actions artifact monitoring and trend reporting exist for executive GitHub evidence reports.
+  - GitHub evidence operational cadence is documented in `docs/runbooks/github-evidence-operations.md`.
   - Risk outcomes widget is operational.
 - Source files:
   - `gitgov/src/components/control_plane/ServerDashboard.tsx`
@@ -511,6 +512,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`
   - `gitgov/gitgov-server/src/handlers/violations_policy_export.rs`
+  - `docs/runbooks/github-evidence-operations.md`
   - `scripts/control-plane/generate_github_evidence_report.ps1`
   - `scripts/control-plane/validate_github_evidence_report_artifact.ps1`
   - `scripts/control-plane/generate_github_evidence_trend_report.ps1`
@@ -561,6 +563,7 @@ Before adding or keeping any `/features` claim:
    - Production validation passed after Render deploy: readiness is currently above target (`77/100` vs `75`) for `yohandry10/Git-Gov` on `main`.
    - Traceability guardrail is active in `Security Guard`; remaining work is operational data quality, not platform plumbing.
    - Latest production validation after the guardrail raised readiness to `79/100`; continue monitoring coverage as new PRs land.
+   - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
 
 ## Operating Memory Rule
 
