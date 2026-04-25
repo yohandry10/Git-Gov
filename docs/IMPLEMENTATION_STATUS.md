@@ -1,4 +1,4 @@
-# GitGov Implementation Status
+﻿# GitGov Implementation Status
 
 Updated: 2026-04-24
 
@@ -354,6 +354,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - PR comment bodies/titles that contain ticket IDs can create commit-ticket correlations against the PR/comment SHA, improving traceability evidence without synthetic data.
   - Merged PR titles that contain ticket IDs can create commit-ticket correlations for the GitHub merge commit SHA, so ticket coverage can apply to `main` merge commits when PR titles include `KAN-*` or equivalent ticket IDs.
   - `POST /integrations/jira/correlate` includes a PR-title backfill pass for recent merged PRs, allowing existing `main` merge commits to be correlated when PR titles contain ticket IDs.
+  - GitHub repository webhook delivery is configured for PR, review, comment, status, and push events against the Render backend.
 - Source files:
   - `gitgov/gitgov-server/src/handlers/integrations.rs`
   - `gitgov/gitgov-server/src/db.rs`
@@ -452,3 +453,4 @@ Required GitHub Actions telemetry variables:
 - Variable: `SONAR_HOST_URL=http://localhost:9000`
 - Variable: `SONAR_PROJECT_KEY=yohandry10_git-gov`
 - Secret `SONAR_TOKEN` is not required for GitHub-hosted runners while SonarQube remains local; the non-blocking workflow skips that scan by design.
+
