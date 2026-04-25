@@ -150,6 +150,17 @@ Configured after the traceability guardrail validation:
   - `release-readiness-gate-<run_id>.json`
   - `jira-correlation-refresh-<run_id>.json`
 
+First GitHub-hosted validation after scheduling:
+
+- Run ID: `24927045053`
+- Event: `push` on `main`
+- Commit: `a94114c`
+- Jira correlation refresh artifact: generated
+- Readiness: `81/100`
+- Target: `75`
+- Signal coverage: `3/3`
+- Result: `PASS`
+
 ## Next Step
 
 Keep Jira IDs in branch names, commit messages, PR titles, and PR comments so future `main` activity preserves ticket coverage and release readiness.

@@ -207,6 +207,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Refreshes Jira correlations through `POST /integrations/jira/correlate` before scoring.
   - Uploads both `release-readiness-gate-<run_id>.json` and `jira-correlation-refresh-<run_id>.json`.
   - Fails scheduled runs when readiness is below the configured standard target.
+- First GitHub-hosted validation after scheduling passed on run `24927045053`:
+  - Event: `push` on `main` for commit `a94114c`.
+  - Jira correlation refresh artifact was generated.
+  - Readiness was `81/100` against target `75`.
+  - Signal coverage was `3/3`.
 
 ## Safety Rules
 
