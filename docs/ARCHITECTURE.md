@@ -166,6 +166,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/integrations/jenkins/correlations` | Bearer (admin) | Correlaciones commit↔pipeline |
 | `/integrations/correlations/v2` | Bearer (admin) | Vista integrada ticket↔commit↔pipeline |
 | `/integrations/jira` | Bearer (admin) | Ingesta de issues Jira |
+| `/webhooks/jira` | HMAC `X-Hub-Signature` | Ingesta de webhooks nativos Jira |
 | `/integrations/jira/status` | Bearer (admin) | Health check Jira |
 | `/integrations/jira/correlate` | Bearer (admin) | Correlación batch commit↔ticket |
 | `/integrations/jira/ticket-coverage` | Bearer (admin) | Cobertura de tickets |
@@ -178,7 +179,8 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 
 **Headers de integración:**
 - Jenkins: `x-gitgov-jenkins-secret` (si `JENKINS_WEBHOOK_SECRET` configurado)
-- Jira: `x-gitgov-jira-secret` (si `JIRA_WEBHOOK_SECRET` configurado)
+- Jira admin/manual: `x-gitgov-jira-secret` (si `JIRA_WEBHOOK_SECRET` configurado) en `/integrations/jira`
+- Jira webhook nativo: `X-Hub-Signature: sha256=...` en `/webhooks/jira`, firmado con `JIRA_WEBHOOK_SECRET`
 
 **Schema versionado:** La DB se inicializa con schema base y migraciones incrementales activas:
 `supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21`

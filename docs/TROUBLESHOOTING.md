@@ -476,13 +476,18 @@ curl -H "Authorization: Bearer $API_KEY" "http://127.0.0.1:3000/integrations/jen
 
 ### Jira: secret incorrecto o rechazado
 
-**Síntoma:** `POST /integrations/jira` devuelve 401.
+**Síntoma:** `POST /integrations/jira` o `POST /webhooks/jira` devuelve 401.
 
-**Causa:** Si `JIRA_WEBHOOK_SECRET` está configurado en el servidor, todos los requests deben incluir el header `x-gitgov-jira-secret` con el valor correcto.
+**Causa:** GitGov soporta dos rutas Jira con autenticación distinta:
+
+| Ruta | Uso | Autenticación |
+|------|-----|---------------|
+| `/integrations/jira` | Ingesta manual/admin o Automation con headers custom | `Authorization: Bearer $API_KEY`, y opcional `x-gitgov-jira-secret` |
+| `/webhooks/jira?org_name=<org>` | Webhook nativo de Jira | `X-Hub-Signature: sha256=...` firmado con `JIRA_WEBHOOK_SECRET` |
 
 **Solución:**
 ```bash
-# Enviar con el header correcto
+# Ingesta admin/manual
 curl -X POST http://127.0.0.1:3000/integrations/jira \
   -H "Authorization: Bearer $API_KEY" \
   -H "x-gitgov-jira-secret: $JIRA_WEBHOOK_SECRET" \
@@ -490,7 +495,13 @@ curl -X POST http://127.0.0.1:3000/integrations/jira \
   -d '{"ticket_id": "PROJ-1", ...}'
 ```
 
-Si no quieres usar secret, simplemente no configures `JIRA_WEBHOOK_SECRET` (ni `JENKINS_WEBHOOK_SECRET`).
+Para webhook nativo de Jira, configura la URL:
+
+```text
+https://<gitgov-host>/webhooks/jira?org_name=<org>
+```
+
+En Jira, define el mismo valor de `JIRA_WEBHOOK_SECRET` como secret del webhook. Jira enviará `X-Hub-Signature`; GitGov validará esa firma.
 
 ---
 
@@ -498,6 +509,7 @@ Si no quieres usar secret, simplemente no configures `JIRA_WEBHOOK_SECRET` (ni `
 
 **Síntoma:**
 - `POST /integrations/jira` devuelve `400` con mensaje `org_name is required for global admin keys`.
+- `POST /webhooks/jira` devuelve `400` con mensaje `org_name is required for public Jira webhooks`.
 - `POST /integrations/jira` o `POST /integrations/jenkins` devuelve `403` con mensaje de scope.
 
 **Causa:**
@@ -507,8 +519,9 @@ Si no quieres usar secret, simplemente no configures `JIRA_WEBHOOK_SECRET` (ni `
 
 **Solución:**
 1. En Jira payload, incluir `org_name` cuando uses key global.
-2. Verificar que `org_name` exista en GitGov y esté dentro del scope de la key.
-3. Mantener headers secretos correctos (`x-gitgov-jira-secret` / `x-gitgov-jenkins-secret`) si están habilitados.
+2. Para webhook nativo, usar query param `?org_name=<org>` porque Jira no agrega campos custom al body.
+3. Verificar que `org_name` exista en GitGov y esté dentro del scope esperado.
+4. Mantener headers/firmas correctas (`x-gitgov-jira-secret`, `X-Hub-Signature`, `x-gitgov-jenkins-secret`) según la ruta.
 
 ---
 

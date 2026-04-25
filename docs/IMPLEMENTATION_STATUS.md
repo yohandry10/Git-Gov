@@ -347,6 +347,7 @@ If a website claim is not reflected here, treat it as unverified and do not publ
   - Jenkins pipeline ingestion exists.
   - Commit-to-pipeline correlation exists.
   - Jira ingestion, correlation, ticket coverage, and ticket detail endpoints exist.
+  - Native Jira webhooks can use `POST /webhooks/jira?org_name=<org>` with `X-Hub-Signature` HMAC validation against `JIRA_WEBHOOK_SECRET`.
   - GitHub webhook ingestion exists for `push`, `create`, all `pull_request` actions, all `pull_request_review` actions, `pull_request_review_comment`, PR-linked `issue_comment`, `check_run`, `check_suite`, and `status` events.
   - Merged PR records can enrich approvers through GitHub reviews API when `GITHUB_PERSONAL_ACCESS_TOKEN` is configured.
   - PR lifecycle, review activity, PR comment activity, and CI status-check activity are stored as first-class evidence in `github_events` (`event_type=pull_request|pull_request_review|pull_request_review_comment|issue_comment|check_run|check_suite|status`) with contextual metadata.
