@@ -150,6 +150,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `actions/checkout@v6`
   - `actions/setup-node@v6`
   - `actions/upload-artifact@v7`
+  - `pnpm/action-setup@v5`
   - `node-version: 20` remains the project build runtime where configured; it is not the internal runtime of `actions/*`.
 
 ## External Service Credentials
