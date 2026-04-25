@@ -110,9 +110,11 @@ Updated: 2026-04-25
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/risk-tier-baseline-calibration.yml` (weekly Monday 12:00 UTC, skips cleanly when `GITGOV_URL`/`GITGOV_API_KEY` are missing).
 - Domain SLO lock/validation automation added:
   - `ops/slo/domain-slo-targets.json` defines per-domain tier + explicit SLO targets.
+  - Production targets are scoped to `org_name=yohandry10`; unscoped validation overstates traceability gap because it reads broader telemetry.
   - `scripts/control-plane/validate_domain_slo_targets.ps1` validates each domain against locked targets using live Control Plane telemetry.
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/domain-slo-validation.yml` (weekly Monday 12:45 UTC + manual dispatch).
   - Local evidence generated at `docs/reports/domain-slo-validation-local-2026-04-20/domain-slo-summary.md`.
+  - Production evidence generated on 2026-04-25 at `docs/reports/domain-slo-validation-prod-2026-04-25/domain-slo-summary.md`; all three domains passed with traceability gap `11.8%`.
 - Export surface (`UX-01`) enabled in Control Plane dashboard:
   - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
 - Role UX/API alignment improvement:
@@ -334,6 +336,14 @@ Updated: 2026-04-25
   - Jira backfill scanned `8` merged PRs and created `0` new correlations because existing rows were already present.
   - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h increased to `34` total commits, `9` with tickets, and `26.47%` coverage.
   - Release readiness gate passed with readiness `79/100` against standard target `75`, signal coverage `3/3`, pipeline success `97.14%`, and Sonar pass `97.14%`.
+- Production tier/SLO calibration after Node 24 workflow hardening:
+  - Jira PR-title backfill scanned `14` merged PRs and created `0` new correlations.
+  - Tier baseline evidence generated under `docs/reports/risk-tier-baseline-prod-2026-04-25/`.
+  - Critical profile: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Standard profile: readiness `95/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Internal profile: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Domain SLO evidence generated under `docs/reports/domain-slo-validation-prod-2026-04-25/`.
+  - `core-platform`, `standard-services`, and `internal-tools` passed SLO validation after targets were scoped to `org_name=yohandry10`.
 
 ## In Progress
 
@@ -476,8 +486,9 @@ Before adding or keeping any `/features` claim:
    - GitHub-hosted Sonar scan is optional and should skip while `SONAR_HOST_URL=http://localhost:9000`; hosted runners cannot reach the workstation.
    - Jenkins/local validation is the supported Sonar path for this environment.
    - Last operational validation: local Sonar token valid, project `yohandry10_git-gov` quality gate `OK`, Jenkins job `gitgov-demo-pipeline` build `#30` `SUCCESS`, GitGov Render has Sonar/Jenkins evidence for `main`.
-2. Calibrate tier profiles with production telemetry (weekly) and lock tier-specific SLO baselines per business domain.
-   - Local multi-tier baseline completed (critical/standard/internal); current main gap is high `traceability_gap`.
+2. Keep weekly tier/SLO calibration active and review drift in the generated artifacts.
+   - Local multi-tier baseline completed (critical/standard/internal).
+   - Production 720h calibration completed on 2026-04-25 with all tier profiles and domain SLOs passing after org-scoped targets were aligned.
    - Repo/branch-scoped calibration is implemented for `calibrate_risk_tier_baseline.ps1`, `validate_domain_slo_targets.ps1`, `risk-tier-baseline-calibration.yml`, and `domain-slo-validation.yml`.
    - Last live validation for `yohandry10/Git-Gov` on `main`: readiness `69/100` vs standard target `75`, composite risk `29/100`, Sonar pass rate `92.31%`, pipeline success rate `92.31%`, Jira ticket coverage `0%`.
    - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
