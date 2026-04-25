@@ -628,11 +628,36 @@ impl Database {
         name: Option<&str>,
         avatar_url: Option<&str>,
     ) -> Result<String, DbError> {
+        if let Some(existing) = self.get_org_by_login(login).await? {
+            let result = sqlx::query(
+                r#"
+                UPDATE orgs
+                SET
+                    github_id = COALESCE(orgs.github_id, $2),
+                    name = COALESCE($3, orgs.name),
+                    avatar_url = COALESCE($4, orgs.avatar_url),
+                    updated_at = NOW()
+                WHERE id = $1::uuid
+                RETURNING id::text
+                "#,
+            )
+            .bind(&existing.id)
+            .bind(github_id)
+            .bind(name)
+            .bind(avatar_url)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+            return Ok(result.get("id"));
+        }
+
         let result = sqlx::query(
             r#"
             INSERT INTO orgs (github_id, login, name, avatar_url)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (github_id) DO UPDATE SET
+                login = EXCLUDED.login,
                 name = COALESCE($3, orgs.name),
                 avatar_url = COALESCE($4, orgs.avatar_url),
                 updated_at = NOW()
