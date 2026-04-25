@@ -181,6 +181,7 @@ Updated: 2026-04-25
     - `actions/upload-artifact@v7`
     - `pnpm/action-setup@v5`
   - `node-version: 20` remains the application build runtime where configured.
+  - First GitHub-hosted validation after the full upgrade passed on `main` commit `3f4c601`: CI run `24927274092` passed without the previous Node.js 20 action-runtime annotation, and Release Readiness Gate run `24927274091` passed with readiness `82/100`, target `75`, signal coverage `3/3`.
 - Jenkins SCM migration runbook documented:
   - `docs/DEPLOYMENT.md` now includes a step-by-step checklist to force jobs to the new repository URL and verify console output.
   - `scripts/jenkins/check_job_repo.ps1` validates Jenkins job SCM URL via `config.xml` and fails on legacy repo markers.

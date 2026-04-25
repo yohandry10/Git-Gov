@@ -219,6 +219,11 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Readiness was `81/100` against target `75`.
   - Signal coverage was `3/3`.
 - GitHub Actions Node 24 compatibility upgrade is documented at `docs/reports/github-actions-node24-upgrade-2026-04-25.md`.
+- First GitHub-hosted validation after the full Node 24 action-runtime upgrade passed:
+  - `main` commit `3f4c601`.
+  - CI run `24927274092` passed with `actions/checkout@v6`, `actions/setup-node@v6`, and `pnpm/action-setup@v5`.
+  - The previous Node.js 20 action-runtime annotation was not present in the CI run output.
+  - Release Readiness Gate run `24927274091` passed with readiness `82/100`, target `75`, and signal coverage `3/3`.
 
 ## Safety Rules
 
