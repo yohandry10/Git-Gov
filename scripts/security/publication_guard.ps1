@@ -10,7 +10,7 @@ Set-Location $repoRoot
 
 $failed = $false
 
-Write-Host "[1/4] Checking restricted tracked files..."
+Write-Host "[1/5] Checking restricted tracked files..."
 $tracked = @(git ls-files)
 $restrictedPattern = '^docs/ENTERPRISE_READINESS\.md$|^docs/ENTERPRISE_READINESS_DECISION\.md$|^docs/AUDIT_.*\.md$|^docs/INTEGRATIONS_AUDIT_.*\.md$|^skills/|^skills-lock\.json$|^gitgov-video/'
 $restrictedHits = @($tracked | Where-Object { $_ -match $restrictedPattern })
@@ -32,7 +32,7 @@ if ($restrictedHits.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "[2/4] Checking tracked .env files..."
+Write-Host "[2/5] Checking tracked .env files..."
 $trackedEnv = @($tracked | Where-Object {
   ($_ -match '(^|/)\.env($|[.][^/]+$)') -and ($_ -notmatch '\.env\.example$')
 })
@@ -46,7 +46,7 @@ if ($trackedEnv.Count -gt 0) {
 
 if (-not $SkipLegacyScan) {
   Write-Host ""
-  Write-Host "[3/4] Checking legacy repository markers..."
+  Write-Host "[3/5] Checking legacy repository markers..."
   # Build the regex dynamically to avoid self-matching the literal marker text in this file.
   $legacyRegex = @(
     ("ma" + "pfrepe"),
@@ -64,11 +64,11 @@ if (-not $SkipLegacyScan) {
   }
 } else {
   Write-Host ""
-  Write-Host "[3/4] Skipped legacy marker scan."
+  Write-Host "[3/5] Skipped legacy marker scan."
 }
 
 Write-Host ""
-Write-Host "[4/4] Checking neutral naming policy (branch + recent commits)..."
+Write-Host "[4/5] Checking neutral naming policy (branch + recent commits)..."
 $namingPolicyRegex = @(
   ("co" + "dex"),
   ("cl" + "aude"),
@@ -102,6 +102,21 @@ if ($messageViolations.Count -gt 0) {
   $failed = $true
 } else {
   Write-Host "[PASS] Commit message naming policy."
+}
+
+Write-Host ""
+Write-Host "[5/5] Checking Jira traceability policy (branch + HEAD commit)..."
+try {
+  & (Join-Path $repoRoot "scripts\github\check_traceability_policy.ps1") `
+    -BranchName $currentBranch `
+    -CommitRange "HEAD" `
+    -SkipPullRequestTitleCheck
+  if ($LASTEXITCODE -ne 0) {
+    $failed = $true
+  }
+} catch {
+  Write-Host ("[FAIL] Jira traceability policy failed: {0}" -f $_.Exception.Message)
+  $failed = $true
 }
 
 Write-Host ""
