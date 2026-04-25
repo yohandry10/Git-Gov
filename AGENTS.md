@@ -45,6 +45,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Authenticate by API using `JIRA_EMAIL` and `JIRA_API_TOKEN` from ignored env files.
   - Query project metadata, issue types, issues, and comments for `JIRA_PROJECT_KEY=KAN`.
   - Create Jira issues and comments by API when explicitly requested.
+  - Native Jira webhook target is `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10` once deployed.
+  - Native Jira webhook authentication uses `X-Hub-Signature` HMAC with `JIRA_WEBHOOK_SECRET`; do not use `GITGOV_API_KEY` in the native Jira webhook URL.
   - Use Jira ticket IDs in branch names, commit messages, PR titles, and PR comments to generate GitGov traceability evidence.
 - Local stack:
   - Use Docker Compose profiles `jenkins` and `sonar` to start Jenkins and SonarQube.
@@ -88,6 +90,9 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - `JIRA_EMAIL`
   - `JIRA_API_TOKEN`
   - `JIRA_PROJECT_KEY`
+- GitGov native Jira webhook endpoint after deployment: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
+- GitGov admin/manual Jira ingest endpoint remains `https://gitgov-api.onrender.com/integrations/jira` and requires Bearer admin auth.
+- Native Jira webhook setup should use Jira's webhook secret field with the same value as Render `JIRA_WEBHOOK_SECRET`.
 - Traceability validation tickets created by API:
   - `KAN-4` - Validate GitGov traceability through PR titles
   - `KAN-5` - Validate GitGov traceability through PR comments
@@ -115,6 +120,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 - Jira Cloud API access is configured through ignored env files with `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY`.
+- Native Jira webhooks require `JIRA_WEBHOOK_SECRET` on Render and the same webhook secret in Jira Cloud.
 
 ## Verified State
 

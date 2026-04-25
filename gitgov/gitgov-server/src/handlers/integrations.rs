@@ -206,6 +206,49 @@ fn jira_org_name_hint(payload: &JiraWebhookEvent) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+#[derive(Debug, Deserialize, Default)]
+pub struct JiraSignedWebhookQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub organization: Option<String>,
+    #[serde(default)]
+    pub org: Option<String>,
+    #[serde(default)]
+    pub tenant: Option<String>,
+}
+
+fn jira_query_org_name(query: &JiraSignedWebhookQuery) -> Option<&str> {
+    [
+        query.org_name.as_deref(),
+        query.organization.as_deref(),
+        query.org.as_deref(),
+        query.tenant.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .map(str::trim)
+    .find(|value| !value.is_empty())
+}
+
+fn validate_jira_signature(secret: &str, payload_bytes: &[u8], signature: &str) -> bool {
+    let signature_hex = match signature.strip_prefix("sha256=") {
+        Some(hex) => hex,
+        None => return false,
+    };
+    let signature_bytes = match hex::decode(signature_hex) {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    };
+    let mut mac = match <hmac::Hmac<Sha256> as Mac>::new_from_slice(secret.as_bytes()) {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
+
+    mac.update(payload_bytes);
+    mac.verify_slice(&signature_bytes).is_ok()
+}
+
 fn build_project_ticket_from_jira_payload(
     org_id: Option<String>,
     payload: &JiraWebhookEvent,
@@ -266,6 +309,156 @@ fn build_project_ticket_from_jira_payload(
         updated_at,
         ingested_at: chrono::Utc::now().timestamp_millis(),
     })
+}
+
+pub async fn handle_jira_signed_webhook(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<JiraSignedWebhookQuery>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> impl IntoResponse {
+    metrics::counter!("gitgov_jira_events_total").increment(1);
+
+    let Some(expected_secret) = state.jira_webhook_secret.as_deref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(JiraWebhookIngestResponse {
+                accepted: false,
+                duplicate: false,
+                ticket_id: None,
+                error: Some("Jira webhook secret is not configured".to_string()),
+            }),
+        );
+    };
+
+    let signature = headers
+        .get("x-hub-signature")
+        .or_else(|| headers.get("x-hub-signature-256"))
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .unwrap_or_default();
+
+    if signature.is_empty() || !validate_jira_signature(expected_secret, &body, signature) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(JiraWebhookIngestResponse {
+                accepted: false,
+                duplicate: false,
+                ticket_id: None,
+                error: Some("Invalid Jira signature".to_string()),
+            }),
+        );
+    }
+
+    let mut payload_value: serde_json::Value = match serde_json::from_slice(&body) {
+        Ok(value) => value,
+        Err(e) => {
+            tracing::warn!(error = %e, "Invalid JSON Jira webhook payload");
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(JiraWebhookIngestResponse {
+                    accepted: false,
+                    duplicate: false,
+                    ticket_id: None,
+                    error: Some("Invalid JSON payload".to_string()),
+                }),
+            );
+        }
+    };
+
+    if let (Some(org_name), Some(payload_obj)) =
+        (jira_query_org_name(&query), payload_value.as_object_mut())
+    {
+        if !payload_obj.contains_key("org_name")
+            && !payload_obj.contains_key("organization")
+            && !payload_obj.contains_key("org")
+            && !payload_obj.contains_key("tenant")
+        {
+            payload_obj.insert("org_name".to_string(), serde_json::json!(org_name));
+        }
+    }
+
+    let payload: JiraWebhookEvent = match serde_json::from_value(payload_value) {
+        Ok(payload) => payload,
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse Jira webhook payload");
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(JiraWebhookIngestResponse {
+                    accepted: false,
+                    duplicate: false,
+                    ticket_id: None,
+                    error: Some("Invalid Jira payload".to_string()),
+                }),
+            );
+        }
+    };
+
+    let requested_org_name = jira_org_name_hint(&payload);
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        None,
+        requested_org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(err) => {
+            let error = match err {
+                OrgScopeError::BadRequest => "org_name is required for public Jira webhooks",
+                OrgScopeError::NotFound => "Organization not found for Jira org hint",
+                OrgScopeError::Forbidden => "Requested org is outside API key scope",
+                OrgScopeError::Internal => "Internal database error while resolving org scope",
+            };
+            return (
+                org_scope_status(err),
+                Json(JiraWebhookIngestResponse {
+                    accepted: false,
+                    duplicate: false,
+                    ticket_id: None,
+                    error: Some(error.to_string()),
+                }),
+            );
+        }
+    };
+
+    let ticket = match build_project_ticket_from_jira_payload(org_id, &payload) {
+        Ok(ticket) => ticket,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(JiraWebhookIngestResponse {
+                    accepted: false,
+                    duplicate: false,
+                    ticket_id: None,
+                    error: Some(error),
+                }),
+            )
+        }
+    };
+
+    let ticket_id = ticket.ticket_id.clone();
+    match state.db.upsert_project_ticket(&ticket).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(JiraWebhookIngestResponse {
+                accepted: true,
+                duplicate: false,
+                ticket_id: Some(ticket_id),
+                error: None,
+            }),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(JiraWebhookIngestResponse {
+                accepted: false,
+                duplicate: false,
+                ticket_id: Some(ticket_id),
+                error: Some(sanitize_db_error(&e)),
+            }),
+        ),
+    }
 }
 
 pub async fn ingest_jira_webhook(
@@ -494,6 +687,13 @@ fn collect_pr_ticket_matches(
 mod jira_pr_correlation_tests {
     use super::*;
 
+    fn sign_jira_payload(secret: &str, payload: &[u8]) -> String {
+        let mut mac = <hmac::Hmac<Sha256> as Mac>::new_from_slice(secret.as_bytes())
+            .expect("test HMAC key");
+        mac.update(payload);
+        format!("sha256={}", hex::encode(mac.finalize().into_bytes()))
+    }
+
     fn ticket_set(values: &[&str]) -> HashSet<String> {
         values.iter().map(|value| value.to_string()).collect()
     }
@@ -559,6 +759,16 @@ mod jira_pr_correlation_tests {
         };
 
         assert_eq!(jira_org_name_hint(&payload), None);
+    }
+
+    #[test]
+    fn validates_jira_hmac_signature() {
+        let payload = br#"{"issue":{"key":"KAN-6"}}"#;
+        let signature = sign_jira_payload("secret", payload);
+
+        assert!(validate_jira_signature("secret", payload, &signature));
+        assert!(!validate_jira_signature("other-secret", payload, &signature));
+        assert!(!validate_jira_signature("secret", br#"{"issue":{"key":"KAN-7"}}"#, &signature));
     }
 }
 

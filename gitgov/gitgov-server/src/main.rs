@@ -1725,6 +1725,15 @@ async fn main() {
                 rate_limit_middleware,
             )),
         )
+        .route(
+            "/webhooks/jira",
+            post(handlers::handle_jira_signed_webhook)
+                .layer(DefaultBodyLimit::max(jira_body_limit_bytes))
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&jira_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
         .route("/metrics", get(handlers::prometheus_metrics))
         .route(
             "/org-invitations/preview/{token}",
@@ -1793,6 +1802,7 @@ async fn main() {
     );
     tracing::info!("  GET  /integrations/correlations/v2 - Ticket->commit->pipeline view (admin)");
     tracing::info!("  POST /integrations/jira         - Jira webhook ingest (admin)");
+    tracing::info!("  POST /webhooks/jira             - Jira signed webhook ingest (public, HMAC)");
     tracing::info!("  GET  /integrations/jira/status  - Jira integration health (admin)");
     tracing::info!("  GET  /integrations/jira/tickets/:ticket_id - Jira ticket detail (admin)");
     tracing::info!(
@@ -1834,9 +1844,7 @@ async fn main() {
     tracing::info!(
         "  (opt) JENKINS_WEBHOOK_SECRET    - Extra shared secret header x-gitgov-jenkins-secret"
     );
-    tracing::info!(
-        "  (opt) JIRA_WEBHOOK_SECRET       - Extra shared secret header x-gitgov-jira-secret"
-    );
+    tracing::info!("  (opt) JIRA_WEBHOOK_SECRET       - HMAC secret for signed Jira webhooks");
     tracing::info!(
         "  (opt) GITGOV_ALERT_WEBHOOK_URL  - Generic alert webhook (Slack/Discord/Teams)"
     );
