@@ -837,6 +837,14 @@ El reporte calcula `Completo`, `Parcial` o `Sin evidencia` sobre cuatro familias
 - Comentarios PR: `pull_request_review_comment` + `issue_comment`
 - Checks/status: `check_run` + `check_suite` + `status`
 
+Workflow opcional:
+
+- `.github/workflows/github-evidence-report.yml`
+- corre lunes 13:23 UTC + `workflow_dispatch`
+- requiere `GITGOV_URL` como Actions variable y `GITGOV_API_KEY` como Actions secret
+- sube artifact `github-evidence-executive-report`
+- salta sin fallar si falta configuración
+
 Workflow cloud (manual + semanal):
 - `.github/workflows/enterprise-readiness-bundle.yml`
 - corre lunes 12:30 UTC + `workflow_dispatch`

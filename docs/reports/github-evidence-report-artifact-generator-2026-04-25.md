@@ -12,6 +12,7 @@ Standalone executive reporting for GitHub evidence outside the dashboard downloa
 - The script generates a Markdown report from either:
   - live Control Plane `/stats`
   - an offline stats JSON fixture
+- Added `.github/workflows/github-evidence-report.yml` to generate and upload the report as an optional artifact.
 - The signal model matches the dashboard/export package:
   - PR lifecycle
   - reviews
@@ -38,3 +39,5 @@ Expected fixture result:
 ## Operational Note
 
 The live report path depends on `/stats.github_events.by_type` for the API key scope being queried. If `/stats` returns an empty `by_type`, the report correctly shows `Sin evidencia`; operators should then verify API-key scope and GitHub webhook ingestion visibility before treating it as a product data gap.
+
+The GitHub Actions workflow is intentionally optional. It skips without failing when `GITGOV_URL` or `GITGOV_API_KEY` is not configured, matching the existing optional governance-report pattern.
