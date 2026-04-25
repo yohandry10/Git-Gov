@@ -183,7 +183,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 - Jira webhook nativo: `X-Hub-Signature: sha256=...` en `/webhooks/jira`, firmado con `JIRA_WEBHOOK_SECRET`
 
 **Schema versionado:** La DB se inicializa con schema base y migraciones incrementales activas:
-`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21`
+`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21` → `v22`
 
 ### 3. GitHub Integration
 
