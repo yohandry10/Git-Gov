@@ -1,0 +1,51 @@
+name: GitHub Evidence Trend Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_reports:
+        description: "Maximum report artifacts to include in the trend"
+        required: false
+        default: "12"
+        type: string
+  schedule:
+    - cron: "17 14 * * 2"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  generate-trend:
+    name: Generate GitHub evidence trend report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate trend report
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $maxReports = "${{ inputs.max_reports }}"
+          if ([string]::IsNullOrWhiteSpace($maxReports)) {
+            $maxReports = "12"
+          }
+
+          .\scripts\control-plane\generate_github_evidence_trend_report.ps1 `
+            -Repository "${{ github.repository }}" `
+            -WorkflowFile "github-evidence-report.yml" `
+            -ArtifactName "github-evidence-executive-report" `
+            -MaxReports ([int]$maxReports) `
+            -OutputMarkdownPath "out/github-evidence-trend-report.md" `
+            -OutputJsonPath "out/github-evidence-trend-report.json"
+
+      - name: Upload trend report
+        uses: actions/upload-artifact@v7
+        with:
+          name: github-evidence-trend-report
+          path: |
+            out/github-evidence-trend-report.md
+            out/github-evidence-trend-report.json
+          if-no-files-found: error
