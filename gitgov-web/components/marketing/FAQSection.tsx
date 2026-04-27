@@ -92,7 +92,7 @@ export function FAQSection({ maxItems }: { maxItems?: number } = {}) {
     const displayedEntries = maxItems ? faqEntries.slice(0, maxItems) : faqEntries;
 
     return (
-        <section className="py-20 md:py-32" id="faq">
+        <section className="py-20 md:py-32 bg-surface-100/30" id="faq">
             <Container>
                 <SectionReveal>
                     <div className="grid md:grid-cols-12 gap-12 lg:gap-20 items-start">
@@ -109,7 +109,7 @@ export function FAQSection({ maxItems }: { maxItems?: number } = {}) {
                                         : 'Answers to the most common questions about GitGov — especially what it does NOT do.'
                                 }
                             />
-                            
+
                             <div className="hidden md:block mt-8 translate-x-1">
                                 <Link
                                     href="/docs/faq"
@@ -125,7 +125,7 @@ export function FAQSection({ maxItems }: { maxItems?: number } = {}) {
                         <div className="md:col-span-7">
                             <div className="relative rounded-3xl bg-surface-200 border border-white/[0.05] p-[1px] overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-br from-brand-500/5 to-transparent relative z-0 opacity-50" />
-                                
+
                                 <div className="relative z-10 p-6 md:p-10 bg-[#090909]/80 backdrop-blur-xl rounded-[23px] h-full">
                                     {displayedEntries.map((entry, i) => (
                                         <AccordionItem

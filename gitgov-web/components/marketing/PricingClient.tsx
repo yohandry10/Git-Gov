@@ -170,7 +170,8 @@ export function PricingClient() {
 
     return (
         <>
-            <section className="pt-32 md:pt-40 pb-16 relative overflow-hidden">
+            {/* Massive Hero Section */}
+            <section className="pt-32 md:pt-40 pb-16 relative overflow-hidden text-center">
                 <div className="absolute inset-0">
                     <div
                         className="absolute inset-0 opacity-[0.03]"
@@ -181,13 +182,18 @@ export function PricingClient() {
                     />
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[340px] bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
                 </div>
-                <Container>
-                    <SectionHeader
-                        badge={copy.badge}
-                        title={copy.title}
-                        titleAccent={copy.titleAccent}
-                        description={copy.description}
-                    />
+                <Container className="relative z-10">
+                    <SectionReveal>
+                        <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-brand-500/10 text-brand-500 border border-brand-500/20 mb-8 shadow-inner">
+                            {copy.badge}
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white mb-6">
+                            {copy.title} <span className="text-brand-500">{copy.titleAccent}</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                            {copy.description}
+                        </p>
+                    </SectionReveal>
                 </Container>
             </section>
 
@@ -232,7 +238,7 @@ export function PricingClient() {
                                         </div>
 
                                         <div className="mb-8">
-                                            <div className="text-5xl md:text-6xl font-black tracking-tight text-white leading-none">
+                                            <div className="text-4xl md:text-5xl font-bold tracking-tighter text-white leading-none">
                                                 {plan.price}
                                             </div>
                                             <p className="mt-3 text-xs font-bold uppercase tracking-widest text-brand-400">

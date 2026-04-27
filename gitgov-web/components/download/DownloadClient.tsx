@@ -62,7 +62,7 @@ export function DownloadClient({ release }: DownloadClientProps) {
     return (
         <>
             {/* Hero */}
-            <section className="pt-32 md:pt-40 pb-16 relative overflow-hidden">
+            <section className="pt-32 md:pt-40 pb-8 relative overflow-hidden text-center">
                 <div className="absolute inset-0">
                     <div
                         className="absolute inset-0 opacity-[0.03]"
@@ -72,227 +72,177 @@ export function DownloadClient({ release }: DownloadClientProps) {
                         }}
                     />
                 </div>
-                <Container>
-                    <SectionHeader
-                        badge={t('download.badge') as string}
-                        title={t('download.title') as string}
-                        titleAccent={t('download.titleAccent') as string}
-                        description={t('download.description') as string}
-                    />
+                <Container className="relative z-10">
+                    <SectionReveal>
+                        <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-brand-500/10 text-brand-500 border border-brand-500/20 mb-8 shadow-inner">
+                            {t('download.badge') as string}
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white mb-6">
+                            {t('download.title') as string} <span className="text-brand-500">{t('download.titleAccent') as string}</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                            {t('download.description') as string}
+                        </p>
+                    </SectionReveal>
                 </Container>
             </section>
 
-            {/* Split Layout */}
-            <section className="pb-28">
+            {/* Centered Minimalist Layout */}
+            <section className="pb-32 relative z-10">
                 <Container>
                     <SectionReveal>
-                        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 items-stretch">
+                        <div className="max-w-3xl mx-auto">
+                            {/* Main Download Card */}
+                            <div className="rounded-[32px] p-px bg-gradient-to-b from-white/10 to-white/[0.02] shadow-[0_0_80px_rgba(249,115,22,0.1)] relative">
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-px bg-gradient-to-r from-transparent via-brand-500/50 to-transparent" />
 
-                            {/* Left — Info panel */}
-                            <div className="relative group rounded-3xl p-[1px] overflow-hidden bg-gradient-to-b from-white/10 to-transparent transition-all duration-500 hover:from-white/20">
-                                <div className="absolute inset-[1px] rounded-[23px] bg-gradient-to-br from-surface-400 to-surface-500 opacity-95 z-0" />
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.03),transparent_60%)] z-0" />
-                                <div className="relative h-full rounded-[23px] p-8 md:p-10 flex flex-col justify-between shadow-2xl z-10">
-                                    {/* Top */}
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-8">
-                                            <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-white shadow-inner">
-                                                <HiOutlineShieldCheck size={20} />
-                                            </div>
-                                            <span className="text-sm font-bold text-white tracking-widest uppercase">GitGov</span>
-                                        </div>
+                                <div className="rounded-[31px] bg-[#050505] p-8 md:p-14 flex flex-col items-center text-center relative overflow-hidden">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-brand-500/10 blur-[100px] pointer-events-none rounded-full" />
 
-                                        <h2 className="text-3xl font-bold font-sans text-white mb-4 tracking-tight">
-                                            {t('download.side.heading') as string}
-                                        </h2>
-                                        <p className="text-gray-400 text-sm leading-relaxed mb-10">
-                                            {t('download.side.intro') as string}
-                                        </p>
-
-                                        {/* Simplified Value Prop & Trust */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
-                                                    <HiOutlineShieldCheck size={20} />
-                                                </div>
-                                                <div className="pt-0.5">
-                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.security.title') as string}</p>
-                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.security.desc') as string}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
-                                                    <HiOutlineLightningBolt size={20} />
-                                                </div>
-                                                <div className="pt-0.5">
-                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.zeroOverhead.title') as string}</p>
-                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.zeroOverhead.desc') as string}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-start gap-4">
-                                                <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 flex-shrink-0">
-                                                    <HiOutlineClipboardCheck size={20} />
-                                                </div>
-                                                <div className="pt-0.5">
-                                                    <p className="text-sm font-bold text-white mb-1 tracking-wide">{t('download.value.offline.title') as string}</p>
-                                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">{t('download.value.offline.desc') as string}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8 pt-6 border-t border-white/5">
-                                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.18em] mb-4">
-                                                {t('download.side.detailTitle') as string}
-                                            </p>
-                                            <div className="grid sm:grid-cols-2 gap-3">
-                                                {desktopCoverage.map((item) => (
-                                                    <div
-                                                        key={item.title}
-                                                        className="rounded-2xl border border-white/6 bg-white/[0.02] px-4 py-4"
-                                                    >
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-7 h-7 rounded-lg bg-surface-300 border border-white/5 flex items-center justify-center text-brand-400 shrink-0">
-                                                                {item.icon}
-                                                            </div>
-                                                            <p className="text-xs font-bold text-white tracking-wide">
-                                                                {item.title}
-                                                            </p>
-                                                        </div>
-                                                        <p className="text-[11px] text-gray-400 leading-relaxed">
-                                                            {item.description}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
+                                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a] border border-white/10 flex items-center justify-center text-white mb-8 shadow-2xl relative z-10">
+                                        <FaWindows size={42} className="drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
                                     </div>
 
-                                    {/* Bottom — system requirements */}
-                                    <div className="mt-12 pt-6 border-t border-white/5 flex items-center gap-3">
-                                        <div className="relative flex items-center justify-center w-2 h-2">
-                                            <div className="absolute w-2 h-2 rounded-full bg-brand-500 animate-ping opacity-75" />
-                                            <div className="relative w-2 h-2 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-                                        </div>
-                                        <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">
-                                            {t('download.side.sysreq') as string}
-                                        </p>
+                                    <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-mono font-semibold bg-white/[0.03] text-gray-400 border border-white/10 mb-12 relative z-10 shadow-inner">
+                                        Windows x64 • Version {release.version}
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Right — Download + Install */}
-                            <div className="flex flex-col gap-6">
-                                {/* Download card */}
-                                <div className="relative rounded-3xl p-[1px] bg-gradient-to-b from-brand-500/30 via-white/5 to-transparent overflow-hidden shadow-[0_0_40px_rgba(249,115,22,0.05)] group">
-                                    <div className="absolute inset-[1px] rounded-[23px] bg-surface-400/90 backdrop-blur-xl z-0" />
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,0.08),transparent_60%)] opacity-50 group-hover:opacity-100 transition-opacity duration-500 z-0" />
-                                    <div className="relative h-full rounded-[23px] p-8 md:p-10 flex flex-col z-10">
-                                        {/* Platform header */}
-                                        <div className="flex flex-col items-center text-center mb-8">
-                                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-b from-surface-200 to-surface-400 border border-white/10 flex items-center justify-center text-white mb-5 shadow-xl relative overflow-hidden group/icon">
-                                                <div className="absolute inset-0 bg-brand-500/10 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-300" />
-                                                <FaWindows size={36} className="relative z-10" />
-                                            </div>
-                                            <h3 className="text-2xl font-bold font-sans text-white mb-2 tracking-tight">Windows</h3>
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold font-mono bg-surface-200 text-brand-400 border border-brand-500/20 shadow-inner">
-                                                v{release.version}
-                                            </span>
-                                        </div>
-
-                                        {/* Download button */}
+                                    {/* Download Buttons */}
+                                    <div className="w-full max-w-sm space-y-4 relative z-10 mb-12">
                                         {release.available ? (
-                                            <div className="space-y-3 mb-8">
+                                            <>
                                                 <a
                                                     href={release.downloadUrl}
-                                                    className="group/btn relative flex items-center justify-center gap-3 w-full py-4 px-6 rounded-xl font-bold text-white overflow-hidden transition-all duration-300 shadow-[0_0_20px_rgba(249,115,22,0.2)] hover:shadow-[0_0_30px_rgba(249,115,22,0.4)]"
+                                                    className="group relative flex items-center justify-center gap-3 w-full py-5 px-8 rounded-2xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(249,115,22,0.3)] hover:shadow-[0_0_50px_rgba(249,115,22,0.5)] transition-all duration-300"
                                                 >
-                                                    <div className="absolute inset-0 bg-brand-500 transition-transform duration-300 group-hover/btn:scale-105" />
+                                                    <div className="absolute inset-0 bg-brand-500 transition-transform duration-300 group-hover:scale-[1.02]" />
                                                     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50" />
-                                                    <HiOutlineDownload size={20} className="relative z-10" />
-                                                    <span className="relative z-10">{t('download.button') as string}</span>
+                                                    <HiOutlineDownload size={24} className="relative z-10" />
+                                                    <span className="relative z-10 text-xl tracking-wide">{t('download.button') as string}</span>
                                                 </a>
                                                 {release.msiUrl && (
                                                     <a
                                                         href={release.msiUrl}
-                                                        className="flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl text-xs font-bold bg-surface-300 text-white border border-white/5 hover:bg-surface-200 hover:border-white/10 transition-all duration-300"
+                                                        className="flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl text-sm font-semibold bg-[#111] text-gray-300 border border-white/5 hover:bg-[#1a1a1a] hover:text-white transition-all duration-300"
                                                     >
-                                                        <HiOutlineDownload size={16} />
+                                                        <HiOutlineDownload size={18} />
                                                         {t('download.buttonMsi') as string}
                                                     </a>
                                                 )}
-                                            </div>
+                                            </>
                                         ) : (
-                                            <div className="mb-8">
-                                                <div className="flex items-center justify-center gap-3 w-full py-4 px-6 rounded-xl font-bold bg-surface-300 text-gray-500 border border-white/5 cursor-not-allowed">
-                                                    <HiOutlineDownload size={20} />
-                                                    {t('download.button') as string}
-                                                </div>
+                                            <div className="flex items-center justify-center gap-3 w-full py-5 px-8 rounded-2xl font-bold bg-[#111] text-gray-500 border border-white/5 cursor-not-allowed">
+                                                <HiOutlineDownload size={24} />
+                                                <span className="text-xl tracking-wide">{t('download.button') as string}</span>
                                             </div>
                                         )}
+                                    </div>
 
-                                        {/* File info */}
-                                        <div className="space-y-4 text-xs border-t border-white/5 pt-6 mt-auto">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-gray-500 font-semibold uppercase tracking-wider">{t('download.file') as string}</span>
-                                                <span className="font-mono text-gray-300 truncate ml-4 max-w-[200px] bg-surface-300 px-2 py-1 rounded-md border border-white/5">{exeFileName}</span>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="text-gray-500 font-semibold shrink-0 uppercase tracking-wider">{t('download.checksum') as string}</span>
-                                                <div className="flex items-center gap-1.5 min-w-0 bg-surface-300 pl-2 pr-1 py-1 rounded-md border border-white/5">
-                                                    <span className="font-mono text-gray-300 truncate max-w-[140px]">{release.checksum}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleCopyChecksum}
-                                                        title={t('download.copyChecksum') as string}
-                                                        className="shrink-0 p-1.5 rounded bg-surface-200 text-gray-400 hover:text-white hover:bg-surface-100 transition-all shadow-sm"
-                                                        aria-label={t('download.copyChecksum') as string}
-                                                    >
-                                                        {copied
-                                                            ? <HiOutlineCheck size={14} className="text-brand-400" />
-                                                            : <HiOutlineClipboard size={14} />
-                                                        }
-                                                    </button>
-                                                </div>
+                                    {/* Metadata Grid */}
+                                    <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6 text-left border-t border-white/5 pt-10 relative z-10">
+                                        <div>
+                                            <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">{t('download.file') as string}</div>
+                                            <div className="text-sm font-mono text-gray-300 truncate pr-4">{exeFileName}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">{t('download.checksum') as string}</div>
+                                            <div className="flex items-center gap-2 group cursor-pointer" onClick={handleCopyChecksum}>
+                                                <div className="text-sm font-mono text-gray-300 truncate max-w-[120px] sm:max-w-[160px] group-hover:text-white transition-colors">{release.checksum}</div>
+                                                {copied ? <HiOutlineCheck size={16} className="text-brand-500 shrink-0" /> : <HiOutlineClipboard size={16} className="text-gray-500 group-hover:text-white transition-colors shrink-0" />}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-
-                                {/* Installation notes */}
-                                <div className="rounded-2xl p-8 bg-surface-400 border border-white/5 shadow-lg relative overflow-hidden group flex-1">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-brand-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none transition-all duration-700 group-hover:bg-brand-500/10" />
-                                    <div className="flex items-center gap-4 mb-6 relative z-10">
-                                        <div className="w-10 h-10 rounded-xl bg-surface-300 border border-white/5 flex items-center justify-center flex-shrink-0 shadow-inner">
-                                            <HiOutlineInformationCircle className="text-white" size={20} />
-                                        </div>
-                                        <h4 className="font-bold font-sans text-white text-base tracking-tight">{t('download.installNotes') as string}</h4>
-                                    </div>
-                                    <ol className="space-y-4 text-sm text-gray-400 relative z-10">
-                                        {[1, 2, 3, 4].map((step) => (
-                                            <li key={step} className="flex items-start gap-4">
-                                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-surface-300 border border-white/10 text-brand-400 font-bold text-[10px] shrink-0 mt-0.5 shadow-inner">{step}</span>
-                                                <span className="leading-relaxed pt-0.5" dangerouslySetInnerHTML={{ __html: t(`download.step${step}` as any) as string }} />
-                                            </li>
-                                        ))}
-                                    </ol>
-
-                                    {/* Hash verify */}
-                                    {!hasPendingChecksum && (
-                                        <div className="mt-6 pt-6 border-t border-white/5 relative z-10">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <HiOutlineShieldCheck size={16} className="text-brand-400 shrink-0" />
-                                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t('download.verifyHash.command') as string}</p>
-                                            </div>
-                                            <pre className="text-xs font-mono text-gray-300 bg-surface-300 shadow-inner border border-white/5 rounded-xl px-4 py-3 overflow-x-auto">
-                                                {`Get-FileHash .\\${exeFileName} -Algorithm SHA256`}
-                                            </pre>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
+                            {/* Requirements snippet */}
+                            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs font-mono text-gray-500 uppercase tracking-widest">
+                                <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-brand-500/50" /> Windows 10/11</span>
+                                <span className="hidden sm:block text-white/10">•</span>
+                                <span>x64 Architecture</span>
+                                <span className="hidden sm:block text-white/10">•</span>
+                                <span>~15 MB</span>
+                                <span className="hidden sm:block text-white/10">•</span>
+                                <span>No dependencies</span>
+                            </div>
                         </div>
+
+                        {/* Minimal Features 3-Column */}
+                        <div className="max-w-5xl mx-auto mt-28 grid md:grid-cols-3 gap-10 md:gap-16 pt-16 border-t border-white/5 relative">
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/4 h-px bg-gradient-to-r from-transparent via-brand-500/30 to-transparent" />
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/10 flex items-center justify-center text-brand-500 mb-6 shadow-inner">
+                                    <HiOutlineShieldCheck size={24} />
+                                </div>
+                                <h4 className="text-xl font-bold text-white mb-3">{t('download.value.security.title') as string}</h4>
+                                <p className="text-gray-400 leading-relaxed">{t('download.value.security.desc') as string}</p>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/10 flex items-center justify-center text-brand-500 mb-6 shadow-inner">
+                                    <HiOutlineLightningBolt size={24} />
+                                </div>
+                                <h4 className="text-xl font-bold text-white mb-3">{t('download.value.zeroOverhead.title') as string}</h4>
+                                <p className="text-gray-400 leading-relaxed">{t('download.value.zeroOverhead.desc') as string}</p>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/10 flex items-center justify-center text-brand-500 mb-6 shadow-inner">
+                                    <HiOutlineClipboardCheck size={24} />
+                                </div>
+                                <h4 className="text-xl font-bold text-white mb-3">{t('download.value.offline.title') as string}</h4>
+                                <p className="text-gray-400 leading-relaxed">{t('download.value.offline.desc') as string}</p>
+                            </div>
+                        </div>
+
+                        {/* Terminal Installation steps */}
+                        <div className="max-w-4xl mx-auto mt-32">
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="text-2xl font-bold text-white tracking-tight">{t('download.installNotes') as string}</h4>
+                                {!hasPendingChecksum && (
+                                    <div className="text-xs font-mono font-semibold text-brand-500 flex items-center gap-2 bg-brand-500/10 px-3 py-1.5 rounded-full border border-brand-500/20">
+                                        <HiOutlineShieldCheck size={16} /> SHA256 Verified
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="rounded-[24px] border border-white/10 bg-[#020202] shadow-2xl overflow-hidden">
+                                <div className="h-12 bg-[#0a0a0a] border-b border-white/5 flex items-center px-6 gap-2">
+                                    <div className="w-3 h-3 rounded-full bg-[#333]" />
+                                    <div className="w-3 h-3 rounded-full bg-[#333]" />
+                                    <div className="w-3 h-3 rounded-full bg-[#333]" />
+                                </div>
+                                <div className="p-8 md:p-12 font-mono text-sm md:text-base leading-relaxed text-gray-400 space-y-8">
+                                    <div className="flex gap-6">
+                                        <span className="text-brand-500 font-bold shrink-0">1.</span>
+                                        <span className="text-gray-300" dangerouslySetInnerHTML={{ __html: t('download.step1') as string }} />
+                                    </div>
+                                    <div className="flex gap-6">
+                                        <span className="text-brand-500 font-bold shrink-0">2.</span>
+                                        <span className="text-gray-300" dangerouslySetInnerHTML={{ __html: t('download.step2') as string }} />
+                                    </div>
+                                    {!hasPendingChecksum && (
+                                        <div className="pl-10 my-6">
+                                            <div className="text-xs text-gray-600 mb-3 uppercase tracking-widest font-bold"># Optional: Verify checksum before running</div>
+                                            <div className="p-4 bg-[#0a0a0a] border border-white/5 rounded-xl text-brand-400 break-all shadow-inner relative">
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-500/50 rounded-l-xl" />
+                                                Get-FileHash .\{exeFileName} -Algorithm SHA256
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-6">
+                                        <span className="text-brand-500 font-bold shrink-0">3.</span>
+                                        <span className="text-gray-300" dangerouslySetInnerHTML={{ __html: t('download.step3') as string }} />
+                                    </div>
+                                    <div className="flex gap-6">
+                                        <span className="text-brand-500 font-bold shrink-0">4.</span>
+                                        <span className="text-gray-300" dangerouslySetInnerHTML={{ __html: t('download.step4') as string }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </SectionReveal>
                 </Container>
             </section>

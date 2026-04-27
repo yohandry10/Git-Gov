@@ -41,7 +41,7 @@ export function CapabilitiesSection() {
     ];
 
     return (
-        <section className="section-gap bg-surface-100/30 relative overflow-hidden" id="capabilities">
+        <section className="section-gap relative overflow-hidden" id="capabilities">
             {/* Ambient Background */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[1200px] h-[500px] pointer-events-none">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.05),transparent_70%)]" />
@@ -56,12 +56,12 @@ export function CapabilitiesSection() {
                 />
 
                 <div className="mt-20 relative max-w-6xl mx-auto">
-                    
+
                     {/* SVG Connecting Line (Desktop) */}
                     <div className="hidden lg:block absolute top-[120px] left-[10%] w-[80%] h-px border-t-2 border-dashed border-white/[0.1] z-0">
                         <div className="absolute top-0 left-0 h-[2px] w-[20%] bg-gradient-to-r from-transparent via-brand-500 to-transparent -translate-y-[2px] animate-[slide-up_4s_linear_infinite] opacity-50" style={{ animationDirection: 'normal', animationName: 'slideRight' }} />
                     </div>
-                    
+
                     <style dangerouslySetInnerHTML={{__html: `
                         @keyframes slideRight {
                             0% { left: -20%; opacity: 0; }
@@ -75,7 +75,7 @@ export function CapabilitiesSection() {
                         {capabilities.map((cap, idx) => (
                             <SectionReveal key={cap.titleKey} delay={idx * 0.15}>
                                 <div className="group relative flex flex-col items-center lg:items-start text-center lg:text-left h-full">
-                                    
+
                                     {/* Abstract glowing connector drops */}
                                     <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-[120px] w-4 h-4 rounded-full bg-[#141414] border-2 border-white/[0.1] group-hover:border-brand-500 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.5)] transition-all duration-500 z-10" />
 
@@ -103,7 +103,7 @@ export function CapabilitiesSection() {
                                             {t(cap.descKey as any) as string}
                                         </p>
                                     </div>
-                                    
+
                                 </div>
                             </SectionReveal>
                         ))}
