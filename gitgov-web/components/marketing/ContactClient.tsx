@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Container } from '@/components/layout';
-import { SectionHeader } from '@/components/marketing';
+
 import { Input, Textarea, Button, SectionReveal } from '@/components/ui';
 import {
     HiOutlineMail,
@@ -109,12 +109,25 @@ export function ContactClient() {
                     />
                 </div>
                 <Container>
-                    <SectionHeader
-                        badge={t('contact.badge') as string}
-                        title={t('contact.title') as string}
-                        titleAccent={t('contact.titleAccent') as string}
-                        description={t('contact.description') as string}
-                    />
+                    <div className="relative z-10 text-center">
+                        <SectionReveal>
+                            <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-brand-500/10 text-brand-500 border border-brand-500/20 mb-8 shadow-inner">
+                                {t('contact.badge') as string}
+                            </div>
+                            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter text-white mb-6">
+                                {t('contact.title') as string} <span className="text-brand-500">{t('contact.titleAccent') as string}</span>
+                            </h1>
+                            <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                                {t('contact.description') as string}
+                            </p>
+                        </SectionReveal>
+                    </div>
+
+
+
+
+
+
                 </Container>
             </section>
 
@@ -263,17 +276,17 @@ export function ContactClient() {
                                                             `}
                                                             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
                                                         >
-                                                            <option value="" disabled>{t('contact.form.teamSizePlaceholder') as string}</option>
-                                                            <option value="1-10">{t('contact.form.teamSize.option1') as string}</option>
-                                                            <option value="11-50">{t('contact.form.teamSize.option2') as string}</option>
-                                                            <option value="51-200">{t('contact.form.teamSize.option3') as string}</option>
-                                                            <option value="201-1000">{t('contact.form.teamSize.option4') as string}</option>
-                                                            <option value="1000+">{t('contact.form.teamSize.option5') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="" disabled hidden>{t('contact.form.teamSizePlaceholder') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="1-10">{t('contact.form.teamSize.option1') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="11-50">{t('contact.form.teamSize.option2') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="51-200">{t('contact.form.teamSize.option3') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="201-1000">{t('contact.form.teamSize.option4') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="1000+">{t('contact.form.teamSize.option5') as string}</option>
                                                         </select>
                                                         {errors.teamSize && <span className="text-xs text-red-400 font-medium">{errors.teamSize}</span>}
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="grid sm:grid-cols-2 gap-5">
                                                     <div className="flex flex-col gap-1.5">
                                                         <label className="text-sm font-semibold text-gray-300">
@@ -290,12 +303,12 @@ export function ContactClient() {
                                                             `}
                                                             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
                                                         >
-                                                            <option value="" disabled>{t('contact.form.interestTypePlaceholder') as string}</option>
-                                                            <option value="demo">{t('contact.form.interestType.demo') as string}</option>
-                                                            <option value="pilot">{t('contact.form.interestType.pilot') as string}</option>
-                                                            <option value="pricing">{t('contact.form.interestType.pricing') as string}</option>
-                                                            <option value="partnership">{t('contact.form.interestType.partnership') as string}</option>
-                                                            <option value="other">{t('contact.form.interestType.other') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="" disabled hidden>{t('contact.form.interestTypePlaceholder') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="demo">{t('contact.form.interestType.demo') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="pilot">{t('contact.form.interestType.pilot') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="pricing">{t('contact.form.interestType.pricing') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="partnership">{t('contact.form.interestType.partnership') as string}</option>
+                                                            <option className="bg-[#0a0a0a]" value="other">{t('contact.form.interestType.other') as string}</option>
                                                         </select>
                                                         {errors.interestType && <span className="text-xs text-red-400 font-medium">{errors.interestType}</span>}
                                                     </div>
