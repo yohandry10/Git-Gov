@@ -4,7 +4,7 @@ Updated: 2026-04-28
 
 ## Current Execution Summary - 2026-04-25
 
-This section consolidates the latest completed implementation/documentation points so the remaining backlog is explicit.
+This section consolidates the latest completed implementation/documentation points and separates active implementation work from operational decisions.
 
 ### Closed Points
 
@@ -22,8 +22,11 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-17` | Local Sonar self-hosted runner runbook | Documented how to safely add a dedicated GitHub self-hosted runner for local SonarQube without breaking the current GitHub-hosted/non-blocking CI path. | `docs/runbooks/local-sonar-self-hosted-runner.md` |
 | `KAN-18` | Jenkins trigger-only token flow | Added a dry-run-first validator and runbook for the optional `/build?token=...` path while keeping authenticated Jenkins API access as the default verification path. | `scripts/jenkins/validate_trigger_token_flow.ps1`, `docs/runbooks/jenkins-trigger-token-flow.md`, `docs/reports/kan-18-jenkins-trigger-token-flow-2026-04-28.md` |
 | `KAN-19` | Jira traceability coverage validator | Added a dedicated validator and runbook for refreshing Jira/PR correlations and measuring ticket coverage independently from the release readiness gate. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest validation coverage `96.43%` (`54/56`) |
+| `KAN-20` | Implementation backlog closure | Reframed the last six "remaining" items as operational decisions or optional future enhancements. No required implementation blocker remains in this status list. | `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md` |
 
-### Current Remaining Work
+### Current Operational Decisions
+
+As of `KAN-20`, this list has no required implementation blocker. The items below are validated operating decisions, optional future enhancements, or ongoing evidence hygiene.
 
 1. `GITGOV_API_KEY` production admin access is usable from ignored local env files.
    - `https://gitgov-api.onrender.com/stats` returned HTTP `200` with the local key.
@@ -626,6 +629,8 @@ Before adding or keeping any `/features` claim:
 
 ## Next Technical Steps
 
+`KAN-20` closes the implementation-status backlog: the remaining work below is operational cadence or an explicit optional decision, not required platform plumbing.
+
 1. Keep SonarQube local as the Sonar source of truth.
    - SonarCloud onboarding is not applicable for the current personal GitHub account.
    - GitHub-hosted Sonar scan is optional and should skip while `SONAR_HOST_URL=http://localhost:9000`; hosted runners cannot reach the workstation.
@@ -637,7 +642,7 @@ Before adding or keeping any `/features` claim:
    - Repo/branch-scoped calibration is implemented for `calibrate_risk_tier_baseline.ps1`, `validate_domain_slo_targets.ps1`, `risk-tier-baseline-calibration.yml`, and `domain-slo-validation.yml`.
    - Static target-scope validation is enforced by `validate_domain_slo_target_config.ps1` in CI and the domain SLO workflow.
    - Last post-merge live readiness validation for `yohandry10/Git-Gov` on `main`: Release Readiness Gate run `24927603352` passed for commit `f0a3470`.
-   - `SQ-07` implementation gap is closed for repo/branch scoping; remaining product gap is improving traceability evidence so readiness can pass without lowering SLO targets.
+   - `SQ-07` implementation gap is closed for repo/branch scoping; the product focus is maintaining traceability evidence so readiness stays above target without lowering SLO targets.
    - Weekly automation is active (`risk-tier-baseline-calibration.yml` + `enterprise-readiness-bundle.yml` + `domain-slo-validation.yml`).
    - `ops/slo/domain-slo-targets.json` is now the lock file and includes repo/branch scope for the current GitGov repo.
 3. Keep GitHub evidence operation on its weekly cadence:
@@ -651,11 +656,11 @@ Before adding or keeping any `/features` claim:
    - GitHub webhook delivery, PR merge materialization, and PR-title correlations are now working in production for `KAN-4`.
    - Ticket coverage/readiness semantics now include `pull_request_merges` in the commit universe.
    - Production validation passed after Render deploy: readiness is currently above target (`77/100` vs `75`) for `yohandry10/Git-Gov` on `main`.
-   - Traceability guardrail is active in `Security Guard`; remaining work is operational data quality, not platform plumbing.
+   - Traceability guardrail is active in `Security Guard`; ongoing work is operational data quality, not platform plumbing.
    - Latest production validation after the guardrail raised readiness to `79/100`; continue monitoring coverage as new PRs land.
    - GitHub evidence dashboard/report/artifact/trend operation now has an executable runbook: `docs/runbooks/github-evidence-operations.md`.
    - GitHub evidence operational adoption baseline completed on 2026-04-25; `KAN-7` closed the report artifact visibility issue from `0/4` to `4/4` by applying `supabase_schema_v22.sql` and validating a real `pull_request_review` event.
-   - Remaining work here is operational monitoring, not new ingestion plumbing.
+   - Work here is operational monitoring, not new ingestion plumbing.
 4. Use the full manual Jira ingest header contract for future GitGov admin operations.
    - Render backend is healthy and webhooks are active.
    - Local ignored `GITGOV_API_KEY` authenticates against production.
