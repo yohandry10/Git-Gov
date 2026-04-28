@@ -178,7 +178,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Publication governance ticket `KAN-13` clarifies identifier handling: examples/templates must use placeholders, while agent operating memory and historical validation evidence may keep real repo/service identifiers when needed to preserve validation scope.
 - Operational validation refresh ticket `KAN-14` records the 2026-04-28 live/local check: Render `/health` was `ok`, production `/stats` returned HTTP `200`, local backend health responded on `http://127.0.0.1:3001/health`, local SonarQube was `UP` with project quality gate `OK`, Jenkins job `gitgov-demo-pipeline` last build `#30` was `SUCCESS`, and release readiness for `main` was `91/100`.
 - OpenAPI guard ticket `KAN-15` keeps `/api-docs` honest as a partial schema explorer: `openapi_description_declares_partial_schema_explorer_scope` fails if the OpenAPI description stops pointing operators to `docs/ARCHITECTURE.md` and the `main.rs` route table.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Provider validation ticket `KAN-16` added `scripts/control-plane/validate_provider_access.ps1`, a secret-safe local smoke check for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`/`KAN-16`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 
@@ -202,6 +203,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
 - Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` was refreshed on 2026-04-28: standard readiness `91/100` against target `75`, signal coverage `3/3`, pipeline success `98.67%`, Sonar pass `98.67%`, and Jira coverage `66.22%`.
+- Secret-safe provider access validation can be run with `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`; latest KAN-16 validation returned all checks `ok`, readiness `91/100`, pipeline success `98.7%`, Jira ticket coverage `67.11%`, and Sonar pass `98.7%`.
 - GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
 - GitHub PR merge delivery validation with `KAN-4` titles was completed in production:
   - PR merge evidence was materialized in `pull_request_merges`.
