@@ -174,7 +174,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Implementation summary ticket `KAN-10` consolidates the latest closed points and remaining backlog in `docs/IMPLEMENTATION_STATUS.md` and `docs/reports/implementation-progress-summary-2026-04-25.md`.
 - API key diagnosis ticket `KAN-11` corrected the manual ingest finding: local ignored `GITGOV_API_KEY` is present and validates against production `/stats` with HTTP `200`. Manual `/integrations/jira` calls also require `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured.
 - Web publication ticket `KAN-12` records the GitGov marketing/download site push: the invalid local-only commit `f2bdb24` (`dle`) was not pushed, the web changes were recreated on branch `web/KAN-12-web-push`, and the valid traced merge landed on `main` as commit `a0a4174` through PR `#77`.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Publication governance ticket `KAN-13` clarifies identifier handling: examples/templates must use placeholders, while agent operating memory and historical validation evidence may keep real repo/service identifiers when needed to preserve validation scope.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 

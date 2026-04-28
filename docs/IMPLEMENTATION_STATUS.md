@@ -15,6 +15,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-9` | Publication security | Hardened `.env.example` policy. Real `.env` files remain blocked; `.env.example` stays trackable; local and GitHub guards reject non-placeholder values for sensitive keys. | PR `#74`, main commit `83240bb`, `docs/reports/env-example-placeholder-policy-2026-04-25.md` |
 | `KAN-11` | GitGov API key diagnosis | Corrected the manual Jira ingest diagnosis. The ignored local `GITGOV_API_KEY` authenticates successfully against production; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`; `docs/reports/gitgov-api-key-diagnosis-2026-04-25.md` |
 | `KAN-12` | Website publication and traceability recovery | Recreated the local web changes under a traceable Jira branch/commit/PR flow. The invalid local-only commit `f2bdb24` (`dle`) was not pushed; the valid publication landed on `main` through PR `#77`. | PR `#77`, main commit `a0a4174`, CI run `24974947818`, Release Readiness run `24974947816`, `docs/reports/kan-12-web-publication-2026-04-28.md` |
+| `KAN-13` | Documentation publication governance | Clarified when docs must use placeholders and when real repo/service identifiers may remain for agent operating memory or historical validation evidence. | `docs/PUBLICATION_POLICY.md`, `docs/reports/kan-13-publication-governance-2026-04-28.md` |
 
 ### Current Remaining Work
 
@@ -34,8 +35,10 @@ This section consolidates the latest completed implementation/documentation poin
 5. Traceability coverage remains an operating discipline.
    - Platform guardrails are active.
    - Continue using Jira IDs in branch names, PR titles, commit messages, and PR comments to keep readiness/ticket coverage healthy.
-6. Documentation governance still has lower-priority cleanup.
-   - Remaining internal backlog: replace any remaining hardcoded repo URLs with placeholders where found, keep restricted/internal docs untracked, and avoid publishing forensic strategy docs.
+6. Documentation governance cleanup is now policy-defined.
+   - Public examples/templates should use placeholders.
+   - Agent operating memory and historical evidence snapshots may keep real repo/service identifiers when needed for validation scope.
+   - Restricted forensic/strategy docs remain ignored and blocked by publication guard.
 
 ## Completed
 
@@ -460,6 +463,7 @@ This section consolidates the latest completed implementation/documentation poin
 - Jenkins trigger-only URL flow still requires `JENKINS_BUILD_TRIGGER_TOKEN` if unauthenticated/manual trigger URLs are needed.
 - Local `GITGOV_API_KEY` is valid for production admin auth. Manual `/integrations/jira` calls must include `x-gitgov-jira-secret` and `org_name`; the previous `401` was not a key rotation/sync issue.
 - Website publication recovery completed in `KAN-12`: the prior local-only non-traceable commit was discarded from active branches, the web diff was recommitted as `web(KAN-12): publish marketing updates`, and both PR checks plus post-merge checks passed on `main`.
+- Documentation publication governance clarified in `KAN-13`: real repo/service identifiers are allowed only for agent operating memory, historical evidence snapshots, or security-safe validation scope; examples, templates, and reusable public guides must use placeholders.
 
 ## Website Feature Claims Alignment
 
@@ -650,6 +654,10 @@ Before adding or keeping any `/features` claim:
 6. Keep the website publication flow on the same traceability standard as backend/docs work.
    - `KAN-12` proved the repo policy works: recreate non-traceable local changes on a Jira branch instead of pushing ad-hoc commits on `main`.
    - Treat transient workflow failures like the `actionlint` download issue as rerun candidates only after confirming the code-path checks are already green.
+7. Apply the `KAN-13` publication governance rule to new docs.
+   - Use placeholders for examples and reusable setup instructions.
+   - Keep real repo/service identifiers only in agent memory and evidence snapshots where validation scope matters.
+   - Continue relying on `.gitignore`, `publication_guard.ps1`, and `Security Guard` to block restricted forensic/strategy docs.
 
 ## Operating Memory Rule
 
