@@ -182,7 +182,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Provider validation ticket `KAN-16` added `scripts/control-plane/validate_provider_access.ps1`, a secret-safe local smoke check for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files.
 - Self-hosted runner runbook ticket `KAN-17` documents the safe path for local SonarQube in GitHub Actions at `docs/runbooks/local-sonar-self-hosted-runner.md`; do not switch required workflows to `runs-on: [self-hosted, gitgov-local-sonar]` until the runner is registered, online, and validated.
 - Jenkins trigger-only ticket `KAN-18` added `scripts/jenkins/validate_trigger_token_flow.ps1` and `docs/runbooks/jenkins-trigger-token-flow.md`; the script dry-runs by default, redacts the trigger URL token, and only starts a build when `-Trigger` is explicitly passed.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`/`KAN-16`/`KAN-17`/`KAN-18`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Jira traceability ticket `KAN-19` added `scripts/control-plane/validate_jira_traceability_coverage.ps1` and `docs/runbooks/jira-traceability-coverage.md`; latest production validation refreshed correlations and reported ticket coverage `96.43%` (`54/56`) over 720h for `main`.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`/`KAN-16`/`KAN-17`/`KAN-18`/`KAN-19`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 
@@ -208,6 +209,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` was refreshed on 2026-04-28: standard readiness `91/100` against target `75`, signal coverage `3/3`, pipeline success `98.67%`, Sonar pass `98.67%`, and Jira coverage `66.22%`.
 - Secret-safe provider access validation can be run with `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`; latest KAN-16 validation returned all checks `ok`, readiness `91/100`, pipeline success `98.7%`, Jira ticket coverage `67.11%`, and Sonar pass `98.7%`.
 - Local SonarQube self-hosted runner activation is documented but not enabled by default. Keep `sonar-governance.yml` on GitHub-hosted/non-blocking behavior until a dedicated runner with label `gitgov-local-sonar` is online and validated.
+- Dedicated Jira traceability coverage validation can be run with `.\scripts\control-plane\validate_jira_traceability_coverage.ps1 -RefreshCorrelations -MinCoverage 50`; latest KAN-19 run passed with coverage `96.43%`, `scanned_prs=53`, and `correlations_created=0`.
 - GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
 - GitHub PR merge delivery validation with `KAN-4` titles was completed in production:
   - PR merge evidence was materialized in `pull_request_merges`.

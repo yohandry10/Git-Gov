@@ -15,6 +15,7 @@
 | `KAN-16` | Provider access validation was centralized. A single script validates GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness from ignored env files without printing secrets. | `scripts/control-plane/validate_provider_access.ps1`; latest run all checks `ok`, readiness `91/100`. |
 | `KAN-17` | Local Sonar self-hosted runner operation was documented. The runbook defines the safe setup, validation, activation, and rollback path without changing required workflow behavior. | `docs/runbooks/local-sonar-self-hosted-runner.md`. |
 | `KAN-18` | Jenkins trigger-only token operation was documented and made dry-run-validatable. Authenticated API remains the default for inspection; `/build?token=...` remains explicit and optional. | `scripts/jenkins/validate_trigger_token_flow.ps1`; `docs/runbooks/jenkins-trigger-token-flow.md`. |
+| `KAN-19` | Jira traceability coverage validation was split out from release readiness. Operators can now refresh correlations, measure ticket coverage, enforce a threshold, and emit JSON evidence. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest coverage `96.43%`. |
 
 ## What Is Now Stable
 
@@ -56,6 +57,7 @@
 5. **Traceability coverage is operational**
    - The platform is enforcing Jira IDs.
    - Coverage/readiness will keep improving as new PRs consistently include Jira IDs in branch names, PR titles, commits, and comments.
+   - `KAN-19` adds a dedicated coverage validator; latest production refresh reported `54/56` commits with ticket evidence (`96.43%`).
 
 6. **Documentation governance cleanup**
    - Use placeholders for examples, templates, and reusable setup instructions.
