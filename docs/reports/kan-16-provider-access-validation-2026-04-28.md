@@ -42,10 +42,10 @@ Latest local run with `-IncludeReleaseReadiness` returned all checks `ok`.
 | SonarQube | System `UP`, project `yohandry10_git-gov`, quality gate `OK` |
 | Jenkins | User `admin`, job `gitgov-demo-pipeline`, build `#30` `SUCCESS` |
 | Jira | Project `KAN`, name `GitGov`, ID `10000` |
-| Release readiness | `91/100`, target `75`, signal coverage `3/3` |
-| Pipeline signal | `98.7%` success |
-| Jira coverage | `67.11%` |
-| Sonar signal | `98.7%` pass |
+| Release readiness | `92/100`, target `75`, signal coverage `3/3` |
+| Pipeline signal | `98.81%` success |
+| Jira coverage | `69.88%` |
+| Sonar signal | `98.81%` pass |
 
 ## Operational Notes
 

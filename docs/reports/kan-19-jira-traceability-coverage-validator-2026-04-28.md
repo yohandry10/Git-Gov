@@ -42,11 +42,11 @@ Result:
 
 - `ok=true`
 - `scanned_commits=3`
-- `scanned_prs=53`
+- `scanned_prs=57`
 - `correlations_created=0`
-- `total_commits=56`
-- `commits_with_ticket=54`
-- `coverage_percentage=96.43`
+- `total_commits=60`
+- `commits_with_ticket=58`
+- `coverage_percentage=96.67`
 - `commits_without_ticket=2`
 
 Correlation refresh plus threshold:
