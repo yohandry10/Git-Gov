@@ -20,6 +20,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the `main.rs` route table as the operational contract source. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
 | `KAN-16` | Provider access validation | Added a single secret-safe PowerShell smoke test for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files. | `scripts/control-plane/validate_provider_access.ps1`; latest validation all checks `ok`, readiness `91/100` |
 | `KAN-17` | Local Sonar self-hosted runner runbook | Documented how to safely add a dedicated GitHub self-hosted runner for local SonarQube without breaking the current GitHub-hosted/non-blocking CI path. | `docs/runbooks/local-sonar-self-hosted-runner.md` |
+| `KAN-18` | Jenkins trigger-only token flow | Added a dry-run-first validator and runbook for the optional `/build?token=...` path while keeping authenticated Jenkins API access as the default verification path. | `scripts/jenkins/validate_trigger_token_flow.ps1`, `docs/runbooks/jenkins-trigger-token-flow.md`, `docs/reports/kan-18-jenkins-trigger-token-flow-2026-04-28.md` |
 
 ### Current Remaining Work
 
@@ -36,6 +37,7 @@ This section consolidates the latest completed implementation/documentation poin
    - API inspection/build access works through `JENKINS_API_TOKEN`.
    - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed.
    - Latest local validation on 2026-04-28: job `gitgov-demo-pipeline`, last build `#30`, result `SUCCESS`, not building.
+   - `KAN-18` added dry-run validation through `scripts/jenkins/validate_trigger_token_flow.ps1`; latest dry-run passed API inspection but reported `JENKINS_BUILD_TRIGGER_TOKEN` was not loaded. Pass `-Trigger` only to launch a real build.
 4. OpenAPI is still partial by design.
    - `/api-docs` is a schema explorer, not the full operational route contract.
    - Implement `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a requirement.
@@ -678,6 +680,9 @@ Before adding or keeping any `/features` claim:
 11. Use the local Sonar self-hosted runner runbook only when ready to operate a runner.
    - `docs/runbooks/local-sonar-self-hosted-runner.md` defines labels, GitHub settings, validation commands, activation pattern, and rollback.
    - Do not make a self-hosted Sonar workflow required until the runner has one successful validation run.
+12. Use the Jenkins trigger-token runbook only for manual/unauthenticated build starts.
+   - `docs/runbooks/jenkins-trigger-token-flow.md` defines dry-run validation, strict validation, real trigger invocation, and rotation guidance.
+   - Authenticated Jenkins API remains required for logs, queue state, and build result verification.
 
 ## Operating Memory Rule
 
