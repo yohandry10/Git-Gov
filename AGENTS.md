@@ -52,6 +52,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Local stack:
   - Use Docker Compose profiles `jenkins` and `sonar` to start Jenkins and SonarQube.
   - Validate local services before editing CI/CD configuration.
+  - On 2026-04-28 Docker Desktop was started successfully and `docker compose --profile sonar --profile jenkins up -d sonarqube-db sonarqube jenkins` brought the local validation stack online.
 
 ## GitHub Repository
 
@@ -175,12 +176,14 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - API key diagnosis ticket `KAN-11` corrected the manual ingest finding: local ignored `GITGOV_API_KEY` is present and validates against production `/stats` with HTTP `200`. Manual `/integrations/jira` calls also require `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured.
 - Web publication ticket `KAN-12` records the GitGov marketing/download site push: the invalid local-only commit `f2bdb24` (`dle`) was not pushed, the web changes were recreated on branch `web/KAN-12-web-push`, and the valid traced merge landed on `main` as commit `a0a4174` through PR `#77`.
 - Publication governance ticket `KAN-13` clarifies identifier handling: examples/templates must use placeholders, while agent operating memory and historical validation evidence may keep real repo/service identifiers when needed to preserve validation scope.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Operational validation refresh ticket `KAN-14` records the 2026-04-28 live/local check: Render `/health` was `ok`, production `/stats` returned HTTP `200`, local backend health responded on `http://127.0.0.1:3001/health`, local SonarQube was `UP` with project quality gate `OK`, Jenkins job `gitgov-demo-pipeline` last build `#30` was `SUCCESS`, and release readiness for `main` was `91/100`.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 
 - Render backend health endpoint passed on `https://gitgov-api.onrender.com/health`.
 - Local ignored `GITGOV_API_KEY` was validated against production `https://gitgov-api.onrender.com/stats` with HTTP `200`; Render does not need a `GITGOV_API_KEY` env var for current DB-backed admin auth, though setting it there can be used as bootstrap consistency.
+- Local Docker validation stack was refreshed on 2026-04-28: Docker Desktop engine became ready, `gitgov-sonarqube`, `gitgov-sonarqube-db`, and `gitgov-jenkins` were running, and the local backend health endpoint responded on `http://127.0.0.1:3001/health`.
 - Manual Jira ingest to production was validated with Bearer `GITGOV_API_KEY`, `x-gitgov-jira-secret`, and `org_name=yohandry10`; the previous `401` diagnosis was a missing Jira secret header, not a bad GitGov API key.
 - GitGov website publication validation completed through `KAN-12`: PR `#77` merged to `main` as commit `a0a4174`, PR checks passed after rerunning a transient `Workflow Lint` download failure, and post-merge `CI` run `24974947818` plus `Release Readiness Gate` run `24974947816` both passed.
 - Deployment documentation drift was cleaned so Render is documented as current production, GitHub/Jira webhooks are documented as already configured, and domain/`certbot` work is marked as optional for self-hosted/custom-domain migrations.
@@ -197,7 +200,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Native signed Jira webhook delivery was validated end-to-end by updating `KAN-6` in Jira Cloud and observing `last_ingest_at` advance in GitGov.
 - GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
 - Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
-- Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` produced standard readiness `69/100` against target `75`, composite risk `29/100`, signal coverage `3/3`; current blocker is Jira traceability coverage, not Sonar or Jenkins evidence.
+- Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` was refreshed on 2026-04-28: standard readiness `91/100` against target `75`, signal coverage `3/3`, pipeline success `98.67%`, Sonar pass `98.67%`, and Jira coverage `66.22%`.
 - GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
 - GitHub PR merge delivery validation with `KAN-4` titles was completed in production:
   - PR merge evidence was materialized in `pull_request_merges`.
