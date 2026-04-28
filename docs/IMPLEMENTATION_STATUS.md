@@ -21,6 +21,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-16` | Provider access validation | Added a single secret-safe PowerShell smoke test for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files. | `scripts/control-plane/validate_provider_access.ps1`; latest validation all checks `ok`, readiness `91/100` |
 | `KAN-17` | Local Sonar self-hosted runner runbook | Documented how to safely add a dedicated GitHub self-hosted runner for local SonarQube without breaking the current GitHub-hosted/non-blocking CI path. | `docs/runbooks/local-sonar-self-hosted-runner.md` |
 | `KAN-18` | Jenkins trigger-only token flow | Added a dry-run-first validator and runbook for the optional `/build?token=...` path while keeping authenticated Jenkins API access as the default verification path. | `scripts/jenkins/validate_trigger_token_flow.ps1`, `docs/runbooks/jenkins-trigger-token-flow.md`, `docs/reports/kan-18-jenkins-trigger-token-flow-2026-04-28.md` |
+| `KAN-19` | Jira traceability coverage validator | Added a dedicated validator and runbook for refreshing Jira/PR correlations and measuring ticket coverage independently from the release readiness gate. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest validation coverage `96.43%` (`54/56`) |
 
 ### Current Remaining Work
 
@@ -45,6 +46,7 @@ This section consolidates the latest completed implementation/documentation poin
 5. Traceability coverage remains an operating discipline.
    - Platform guardrails are active.
    - Continue using Jira IDs in branch names, PR titles, commit messages, and PR comments to keep readiness/ticket coverage healthy.
+   - `KAN-19` added `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest production validation with `-RefreshCorrelations -MinCoverage 50` passed at `96.43%` coverage.
 6. Documentation governance cleanup is now policy-defined.
    - Public examples/templates should use placeholders.
    - Agent operating memory and historical evidence snapshots may keep real repo/service identifiers when needed for validation scope.
@@ -683,6 +685,9 @@ Before adding or keeping any `/features` claim:
 12. Use the Jenkins trigger-token runbook only for manual/unauthenticated build starts.
    - `docs/runbooks/jenkins-trigger-token-flow.md` defines dry-run validation, strict validation, real trigger invocation, and rotation guidance.
    - Authenticated Jenkins API remains required for logs, queue state, and build result verification.
+13. Use the Jira traceability coverage validator when reviewing readiness data quality.
+   - `docs/runbooks/jira-traceability-coverage.md` defines local preflight, production coverage checks, correlation refresh, and threshold use.
+   - `.\scripts\control-plane\validate_jira_traceability_coverage.ps1 -RefreshCorrelations -MinCoverage 50` passed with coverage `96.43%`.
 
 ## Operating Memory Rule
 
