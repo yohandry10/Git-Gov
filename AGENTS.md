@@ -140,7 +140,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - Repository secret required by GitGov workflows: `GITGOV_API_KEY`.
 - Repository variable required by GitGov workflows: `GITGOV_URL=https://gitgov-api.onrender.com`.
-- SonarCloud is not used for this repository because the GitHub account is personal, not organizational.
+- SonarCloud is not used for this repository because the current GitHub repository/account is personal, not organizational. Treat this as a closed decision for this repo: do not ask again to use SonarCloud and do not propose SonarCloud onboarding unless the repository is moved to a GitHub organization.
 - Local SonarQube is the selected Sonar runtime. Repository variable `SONAR_HOST_URL=http://localhost:9000`; GitHub-hosted Sonar scan must skip unless a self-hosted runner can reach that host.
 - Sonar variable for local/runtime use: `SONAR_PROJECT_KEY=yohandry10_git-gov`.
 - GitHub Actions `SONAR_TOKEN` is optional while SonarQube remains local; do not force it for GitHub-hosted runners because the scan is expected to skip when `SONAR_HOST_URL` is localhost.
@@ -164,14 +164,15 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Current local SonarQube token expires on May 22, 2026.
 - Jenkins read/build access is configured through ignored env files with `JENKINS_SERVER_URL=http://localhost:8096`, `JENKINS_USER=admin`, `JENKINS_API_TOKEN`, and `JENKINS_JOB_NAME=gitgov-demo-pipeline`.
 - Current Jenkins API token name: `codex-local`.
-- Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
-- Use `.\scripts\jenkins\validate_trigger_token_flow.ps1` for trigger-only dry-run validation. Use `-RequireTriggerToken -Trigger` only when a real build launch is intended.
+- Jenkins authenticated API access through `JENKINS_API_TOKEN` is already configured and is the normal agent path for inspection, logs, queue state, build history, and authenticated build operations.
+- Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that only starts builds through `/job/{job}/build?token=...`; it is not enough to inspect logs or build status. Do not ask for this token unless the user explicitly wants unauthenticated/manual URL build starts.
+- Use `.\scripts\jenkins\validate_trigger_token_flow.ps1` for trigger-only dry-run validation. Use `-RequireTriggerToken -Trigger` only when a real unauthenticated URL build launch is intended.
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 - Jira Cloud API access is configured through ignored env files with `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY`.
 - GitHub webhook authentication is configured through ignored env files with `GITHUB_WEBHOOK_SECRET`; keep it aligned with Render and the GitHub repository webhook.
 - Native Jira webhooks require `JIRA_WEBHOOK_SECRET` on Render and the same webhook secret in Jira Cloud.
 - Current native Jira webhook name is `GitGov signed issue sync`; it is signed with `JIRA_WEBHOOK_SECRET` and targets `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
-- API contract drift reconciliation ticket `KAN-8` records that `docs/ARCHITECTURE.md` is aligned with the real backend routes for `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and `/violations/{violation_id}/decisions`; the remaining contract debt is optional OpenAPI path completeness, not route-table drift. `docs/ENTERPRISE_READINESS_DECISION.md` is ignored internal audit memory and must not be force-added.
+- API contract drift reconciliation ticket `KAN-8` records that `docs/ARCHITECTURE.md` is aligned with the real backend routes for `/jobs/{job_id}/retry`, `/compliance/{org_name}`, and `/violations/{violation_id}/decisions`; the remaining contract debt is optional OpenAPI path completeness, not route-table drift. OpenAPI here means the machine-readable API description used by Swagger tools and generated SDKs. If a generated SDK or Swagger contract test becomes a product requirement, implement full OpenAPI annotations deliberately; otherwise use the real backend routes/API directly. `docs/ENTERPRISE_READINESS_DECISION.md` is ignored internal audit memory and must not be force-added.
 - `.env.example` placeholder policy ticket `KAN-9` hardens publication safety: real `.env` files remain blocked, `.env.example` remains trackable, and both local `publication_guard.ps1` plus GitHub `Security Guard` validate that sensitive keys in `.env.example` contain placeholder-only values.
 - Implementation summary ticket `KAN-10` consolidates the latest closed points and remaining backlog in `docs/IMPLEMENTATION_STATUS.md` and `docs/reports/implementation-progress-summary-2026-04-25.md`.
 - API key diagnosis ticket `KAN-11` corrected the manual ingest finding: local ignored `GITGOV_API_KEY` is present and validates against production `/stats` with HTTP `200`. Manual `/integrations/jira` calls also require `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured.
@@ -184,6 +185,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jenkins trigger-only ticket `KAN-18` added `scripts/jenkins/validate_trigger_token_flow.ps1` and `docs/runbooks/jenkins-trigger-token-flow.md`; the script dry-runs by default, redacts the trigger URL token, and only starts a build when `-Trigger` is explicitly passed.
 - Jira traceability ticket `KAN-19` added `scripts/control-plane/validate_jira_traceability_coverage.ps1` and `docs/runbooks/jira-traceability-coverage.md`; latest production validation refreshed correlations and reported ticket coverage `96.43%` (`54/56`) over 720h for `main`.
 - Implementation backlog closure ticket `KAN-20` reframed the final status-list items as operational decisions or optional enhancements. No active implementation blocker remains after `KAN-14` through `KAN-20`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Operating decision clarification ticket `KAN-21` records three non-negotiable agent defaults: SonarCloud is off the table for this personal repository, OpenAPI/SDK work is optional product work rather than a current blocker, and Jenkins trigger-only token flow is not needed for normal agent operations because authenticated Jenkins API access already exists.
 
 ## Verified State
 

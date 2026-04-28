@@ -17,6 +17,8 @@ For normal agent work, prefer authenticated Jenkins API access through:
 - `JENKINS_API_TOKEN`
 - `JENKINS_JOB_NAME`
 
+This authenticated API path is already the configured operating path for the agent. It is sufficient for inspection, logs, queue state, build history, and authenticated build operations.
+
 The trigger-only token can start builds, but it cannot inspect logs, queue state, or build results. API access remains required for verification.
 
 ## Secret Handling

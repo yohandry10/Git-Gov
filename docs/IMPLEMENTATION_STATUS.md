@@ -23,6 +23,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-18` | Jenkins trigger-only token flow | Added a dry-run-first validator and runbook for the optional `/build?token=...` path while keeping authenticated Jenkins API access as the default verification path. | `scripts/jenkins/validate_trigger_token_flow.ps1`, `docs/runbooks/jenkins-trigger-token-flow.md`, `docs/reports/kan-18-jenkins-trigger-token-flow-2026-04-28.md` |
 | `KAN-19` | Jira traceability coverage validator | Added a dedicated validator and runbook for refreshing Jira/PR correlations and measuring ticket coverage independently from the release readiness gate. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest validation coverage `96.43%` (`54/56`) |
 | `KAN-20` | Implementation backlog closure | Reframed the last six "remaining" items as operational decisions or optional future enhancements. No required implementation blocker remains in this status list. | `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md` |
+| `KAN-21` | Operating decision clarification | Documented that SonarCloud is not a valid path for this personal repo, Jenkins trigger-only is not needed for normal API-based agent work, and OpenAPI completeness is only required if generated SDK/Swagger contract testing becomes product scope. | `docs/reports/kan-21-operational-decisions-2026-04-28.md` |
 
 ### Current Operational Decisions
 
@@ -33,18 +34,19 @@ As of `KAN-20`, this list has no required implementation blocker. The items belo
    - The previous manual `/integrations/jira` `401` was caused by missing Jira shared-secret handling, not by a bad GitGov API key.
    - Manual Jira ingest requires `Authorization: Bearer <GITGOV_API_KEY>`, `x-gitgov-jira-secret: <JIRA_WEBHOOK_SECRET>`, and an `org_name` payload hint such as `yohandry10`.
 2. Sonar remains intentionally local.
-   - SonarCloud is not applicable for the current personal GitHub account.
+   - SonarCloud is not applicable for the current personal GitHub repository/account because SonarCloud onboarding for this repo requires a GitHub organization path. Do not ask again to use SonarCloud for this repo unless it is moved to a GitHub organization.
    - GitHub-hosted runners cannot reach `localhost:9000`; keep GitHub Sonar scan optional/non-blocking unless a self-hosted runner is added.
    - Latest local validation on 2026-04-28: SonarQube `UP`, project `yohandry10_git-gov`, quality gate `OK`.
    - `KAN-17` documents the self-hosted runner activation path; no workflow `runs-on` change is enabled by default.
 3. Jenkins trigger-only URL flow is still optional and separate from Jenkins API access.
-   - API inspection/build access works through `JENKINS_API_TOKEN`.
-   - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed.
+   - API inspection/build access works through `JENKINS_API_TOKEN`; this is already configured and is the normal agent path.
+   - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed. It was not required to get Jenkins operational access and is not needed for logs, queue state, build history, or authenticated build operations.
    - Latest local validation on 2026-04-28: job `gitgov-demo-pipeline`, last build `#30`, result `SUCCESS`, not building.
    - `KAN-18` added dry-run validation through `scripts/jenkins/validate_trigger_token_flow.ps1`; latest dry-run passed API inspection but reported `JENKINS_BUILD_TRIGGER_TOKEN` was not loaded. Pass `-Trigger` only to launch a real build.
 4. OpenAPI is still partial by design.
+   - OpenAPI is the machine-readable API description used by Swagger tools and generated SDKs. It is not the API itself.
    - `/api-docs` is a schema explorer, not the full operational route contract.
-   - Implement `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a requirement.
+   - Implement full `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a product requirement. Until then, use the real backend routes/API directly.
    - `KAN-15` added a unit guard so this partial-scope claim cannot be removed silently.
 5. Traceability coverage remains an operating discipline.
    - Platform guardrails are active.
@@ -632,7 +634,7 @@ Before adding or keeping any `/features` claim:
 `KAN-20` closes the implementation-status backlog: the remaining work below is operational cadence or an explicit optional decision, not required platform plumbing.
 
 1. Keep SonarQube local as the Sonar source of truth.
-   - SonarCloud onboarding is not applicable for the current personal GitHub account.
+   - SonarCloud onboarding is not applicable for the current personal GitHub repository/account. Do not propose it again for this repo unless the repo moves to a GitHub organization.
    - GitHub-hosted Sonar scan is optional and should skip while `SONAR_HOST_URL=http://localhost:9000`; hosted runners cannot reach the workstation.
    - Jenkins/local validation is the supported Sonar path for this environment.
    - Last operational validation: local Sonar token valid, project `yohandry10_git-gov` quality gate `OK`, Jenkins job `gitgov-demo-pipeline` build `#30` `SUCCESS`, GitGov Render has Sonar/Jenkins evidence for `main`.
@@ -667,7 +669,7 @@ Before adding or keeping any `/features` claim:
    - Manual `/integrations/jira` calls must include both Bearer admin auth and `x-gitgov-jira-secret` when `JIRA_WEBHOOK_SECRET` is configured, plus `org_name` for global admin scope.
 5. Decide whether OpenAPI completeness is worth implementing.
    - Current `/api-docs` claim is intentionally partial and safe.
-   - Full path annotation is only needed if Swagger becomes a generated SDK or contract-testing source.
+   - OpenAPI completeness is not blocking normal GitGov API usage. Full path annotation is only needed if Swagger becomes a generated SDK or contract-testing source.
 6. Keep the website publication flow on the same traceability standard as backend/docs work.
    - `KAN-12` proved the repo policy works: recreate non-traceable local changes on a Jira branch instead of pushing ad-hoc commits on `main`.
    - Treat transient workflow failures like the `actionlint` download issue as rerun candidates only after confirming the code-path checks are already green.

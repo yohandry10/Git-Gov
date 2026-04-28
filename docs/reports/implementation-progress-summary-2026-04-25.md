@@ -17,6 +17,7 @@
 | `KAN-18` | Jenkins trigger-only token operation was documented and made dry-run-validatable. Authenticated API remains the default for inspection; `/build?token=...` remains explicit and optional. | `scripts/jenkins/validate_trigger_token_flow.ps1`; `docs/runbooks/jenkins-trigger-token-flow.md`. |
 | `KAN-19` | Jira traceability coverage validation was split out from release readiness. Operators can now refresh correlations, measure ticket coverage, enforce a threshold, and emit JSON evidence. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest coverage `96.43%`. |
 | `KAN-20` | Implementation status was reframed so validated operating decisions are not presented as required implementation blockers. | `docs/IMPLEMENTATION_STATUS.md`; `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md`. |
+| `KAN-21` | Operating decisions were clarified to avoid repeating the same questions: SonarCloud is not valid for this personal repo, Jenkins trigger-only is optional, and OpenAPI completeness matters only for generated SDK/contract-testing scope. | `docs/reports/kan-21-operational-decisions-2026-04-28.md`. |
 
 ## What Is Now Stable
 
@@ -43,19 +44,20 @@ The items below are not implementation blockers after `KAN-20`; they define the 
    - Global admin keys must include an `org_name` payload hint such as `yohandry10`.
 
 2. **Sonar runtime decision remains local**
-   - SonarCloud is not applicable for the personal GitHub account.
+   - SonarCloud is not applicable for the personal GitHub repository/account and should not be proposed again for this repo unless it moves to a GitHub organization.
    - GitHub-hosted Sonar scan should keep skipping while `SONAR_HOST_URL` points to `localhost`.
    - Use Jenkins/local or a future self-hosted runner for real Sonar scans.
    - `KAN-17` documents the self-hosted runner path; the current required workflow is intentionally unchanged.
 
 3. **Jenkins trigger-only token is optional**
-   - Jenkins API token supports inspection and authenticated operations.
-   - `JENKINS_BUILD_TRIGGER_TOKEN` is only needed for the unauthenticated `/build?token=...` URL flow.
+   - Jenkins API token supports inspection and authenticated operations; this is the normal agent path and is already configured.
+   - `JENKINS_BUILD_TRIGGER_TOKEN` is only needed for the unauthenticated `/build?token=...` URL flow. It is not needed for logs, queue state, build history, or authenticated build operations.
    - `KAN-18` adds dry-run validation and requires `-Trigger` before launching a real build.
 
 4. **OpenAPI is intentionally partial**
+   - OpenAPI is the machine-readable API description used by Swagger tools and generated SDKs; it is not the API itself.
    - `/api-docs` is a schema explorer, not a complete route contract.
-   - Add full `#[utoipa::path]` annotations only if generated SDKs or Swagger contract tests become a requirement.
+   - Add full `#[utoipa::path]` annotations only if generated SDKs or Swagger contract tests become a product requirement.
    - A unit guard now preserves this disclaimer so the UI cannot accidentally imply full operational route coverage.
 
 5. **Traceability coverage is operational**
