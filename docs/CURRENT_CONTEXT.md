@@ -9,25 +9,25 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current branch after latest completed work: `main`.
-- Current `main` HEAD after `KAN-21`: `31ae5e7 docs(KAN-21): clarify operational decisions`.
-- Last merged PR: `#87` - `docs(KAN-21): clarify operational decisions`.
-- Previous merged PR: `#86` - `docs(KAN-20): clarify implementation backlog closure`.
+- Current `main` HEAD after `KAN-22`: `65d61f2 docs(KAN-22): add current context handoff`.
+- Last merged PR: `#88` - `docs(KAN-22): add current context handoff`.
+- Previous merged PR: `#87` - `docs(KAN-21): clarify operational decisions`.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-22`.
 
 ## Latest Verified GitHub Checks
 
-Latest post-merge validation for `main` commit `31ae5e7` passed:
+Latest post-merge validation for `main` commit `65d61f2` passed:
 
-- `CI` - run `25045820808`
-- `Release Readiness Gate` - run `25045820817`
-- `Quality Gate Policy Matrix (Optional)` - run `25045820804`
-- `Secret Scan` - run `25045820786`
-- `SonarQube Governance (Non-Blocking)` - run `25045820864`
-- `Public Naming Guard` - run `25045820815`
-- `Governance Correlation Smoke (Optional)` - run `25045820812`
-- `Desktop Updater Readiness (Optional)` - run `25045820865`
+- `CI` - run `25048387741`
+- `Release Readiness Gate` - run `25048387795`
+- `Quality Gate Policy Matrix (Optional)` - run `25048387769`
+- `Secret Scan` - run `25048387762`
+- `SonarQube Governance (Non-Blocking)` - run `25048387783`
+- `Public Naming Guard` - run `25048387751`
+- `Governance Correlation Smoke (Optional)` - run `25048387779`
+- `Desktop Updater Readiness (Optional)` - run `25048387770`
 
 ## Non-Negotiable Operating Decisions
 
@@ -174,10 +174,10 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 - `KAN-14`: refreshed local/production operational validation after Docker Desktop and Sonar/Jenkins profiles were up.
 - `KAN-15`: added guard that `/api-docs` remains a partial schema explorer.
-- `KAN-16`: added provider access validator.
+- `KAN-16`: added provider access validator; latest refresh on 2026-04-28 returned all checks `ok`, readiness `92/100`, pipeline success `98.81%`, Jira coverage `69.88%`, and Sonar pass `98.81%`.
 - `KAN-17`: documented local Sonar self-hosted runner path without enabling it.
 - `KAN-18`: documented Jenkins trigger-only token flow as optional and dry-run-first.
-- `KAN-19`: added Jira traceability coverage validator; latest recorded coverage was `96.43%` (`54/56`) over 720h.
+- `KAN-19`: added Jira traceability coverage validator; latest recorded coverage was `96.67%` (`58/60`) over 720h.
 - `KAN-20`: closed implementation backlog semantics; remaining items are operational decisions.
 - `KAN-21`: clarified SonarCloud, OpenAPI/SDK, and Jenkins trigger-only defaults.
 - `KAN-22`: created this current-context handoff.
