@@ -33,19 +33,19 @@ jobs:
           $probe = "${{ github.event.inputs.probe_endpoint || '' }}"
           $failOnWarnings = "${{ github.event.inputs.fail_on_warnings || '' }}"
 
-          $args = @(
-            "-TauriConfigPath", "gitgov/src-tauri/tauri.conf.json",
-            "-OutputPath", $outputPath
-          )
+          $readinessArgs = @{
+            TauriConfigPath = "gitgov/src-tauri/tauri.conf.json"
+            OutputPath = $outputPath
+          }
 
           if ($probe -ne "true") {
-            $args += @("-SkipEndpointProbe")
+            $readinessArgs.SkipEndpointProbe = $true
           }
           if ($failOnWarnings -eq "true") {
-            $args += @("-FailOnWarnings")
+            $readinessArgs.FailOnWarnings = $true
           }
 
-          & ./scripts/deploy/validate_desktop_updater_readiness.ps1 @args
+          & ./scripts/deploy/validate_desktop_updater_readiness.ps1 @readinessArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload updater readiness report

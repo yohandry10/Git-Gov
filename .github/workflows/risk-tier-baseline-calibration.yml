@@ -94,22 +94,22 @@ jobs:
 
           $outputPath = "docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md"
 
-          $args = @(
-            "-GitGovUrl", $env:GITGOV_URL,
-            "-ApiKey", $env:GITGOV_API_KEY,
-            "-RepoFullName", $repoFullName,
-            "-Branch", $branch,
-            "-Tier", $tier,
-            "-Hours", $hours,
-            "-CorrelationLimit", $correlationLimit,
-            "-OutputPath", $outputPath
-          )
-
-          if (-not [string]::IsNullOrWhiteSpace($orgName)) {
-            $args += @("-OrgName", $orgName)
+          $calibrationArgs = @{
+            GitGovUrl = $env:GITGOV_URL
+            ApiKey = $env:GITGOV_API_KEY
+            RepoFullName = $repoFullName
+            Branch = $branch
+            Tier = $tier
+            Hours = $hours
+            CorrelationLimit = $correlationLimit
+            OutputPath = $outputPath
           }
 
-          & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 @args
+          if (-not [string]::IsNullOrWhiteSpace($orgName)) {
+            $calibrationArgs.OrgName = $orgName
+          }
+
+          & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 @calibrationArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           Add-Content -Path $env:GITHUB_OUTPUT -Value "report_path=$outputPath"
