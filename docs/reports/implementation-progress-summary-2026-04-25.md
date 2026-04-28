@@ -9,6 +9,7 @@
 | `KAN-9` | `.env.example` publication policy was hardened. Sensitive keys in tracked env templates must be blank or placeholder-only in local and GitHub guards. | PR `#74`; post-merge checks passed on commit `83240bb`; Security Guard and Workflow Lint passed. |
 | `KAN-11` | GitGov API key diagnosis was corrected. The local ignored `GITGOV_API_KEY` is valid for production admin auth; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name`. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`. |
 | `KAN-12` | The GitGov website marketing/download updates were published with traceability restored. The invalid local-only `dle` commit was not pushed; the recreated web commit merged through PR `#77`. | PR `#77`; post-merge CI `24974947818`; Release Readiness `24974947816`; main commit `a0a4174`. |
+| `KAN-13` | Documentation publication governance was clarified. Examples/templates use placeholders; agent memory and historical evidence may retain real repo/service identifiers when needed for validation scope. | `docs/PUBLICATION_POLICY.md`; `docs/reports/kan-13-publication-governance-2026-04-28.md`. |
 
 ## What Is Now Stable
 
@@ -20,6 +21,7 @@
 - Release readiness, quality gate matrix, security guard, and Sonar governance checks are green on `main`.
 - Local ignored GitGov admin credentials are usable for production API calls when the endpoint-specific shared-secret contract is also followed.
 - The website publication path now has a validated recovery pattern for non-traceable local commits: recreate on a Jira branch, rerun checks, merge through PR.
+- Documentation publication rules now distinguish reusable public examples from agent operating memory and validation evidence snapshots.
 
 ## What Still Remains
 
@@ -46,5 +48,6 @@
    - Coverage/readiness will keep improving as new PRs consistently include Jira IDs in branch names, PR titles, commits, and comments.
 
 6. **Documentation governance cleanup**
-   - Continue replacing any hardcoded repo URLs with placeholders when found.
+   - Use placeholders for examples, templates, and reusable setup instructions.
+   - Keep real repo/service identifiers only in agent memory or evidence snapshots where validation scope matters.
    - Keep ignored internal/forensic docs out of tracked changes.

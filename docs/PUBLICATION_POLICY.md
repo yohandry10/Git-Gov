@@ -14,6 +14,7 @@ Content allowed in public repo:
 - Setup and deployment guides without secrets
 - API usage examples with placeholders
 - User guides and troubleshooting without sensitive data
+- Sanitized evidence summaries that do not expose secrets, private hostnames, account IDs, or personal data
 
 ### 2) Internal
 
@@ -23,6 +24,7 @@ Content allowed only in private/internal storage:
 - Incident analysis and postmortems
 - Security hardening checklists tied to real infrastructure
 - Backlog prioritization with commercial strategy
+- Agent operating memory that names real local services, repository scope, or provider endpoints needed for day-to-day validation
 
 ### 3) Restricted
 
@@ -45,12 +47,25 @@ Never publish to public repo:
 7. Branch names, PR titles, and commit messages must be neutral and product-oriented; internal assistant/vendor/tooling identifiers are forbidden.
 8. Branch names, PR titles, and commit messages must include a Jira-style ticket ID such as `KAN-4` to preserve traceability coverage.
 
+## Identifier Handling
+
+Use placeholders such as `<owner>/<repo>`, `<org>`, `<your-domain>`, and `<service-url>` in examples, templates, setup guides, and reusable runbooks.
+
+Real repository or service identifiers may remain only when they are part of:
+
+- Agent operating memory needed to validate the current environment.
+- Historical evidence snapshots where replacing the value would make the result unverifiable.
+- Security-safe status reports that intentionally document production validation scope.
+
+These exceptions still must not include token values, private hostnames, personal data, account IDs, or credentials.
+
 ## Pre-Publish Checklist
 
 1. Secret scan passes.
 2. No restricted docs in staged changes.
 3. No hardcoded secrets, tokens, or private URLs.
 4. Public docs are explanatory only, not forensic.
+5. Real repo/service identifiers appear only under the allowed identifier exceptions above.
 
 ## Automated Guardrails
 
