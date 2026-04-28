@@ -18,6 +18,7 @@
 | `KAN-19` | Jira traceability coverage validation was split out from release readiness. Operators can now refresh correlations, measure ticket coverage, enforce a threshold, and emit JSON evidence. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest coverage `96.43%`. |
 | `KAN-20` | Implementation status was reframed so validated operating decisions are not presented as required implementation blockers. | `docs/IMPLEMENTATION_STATUS.md`; `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md`. |
 | `KAN-21` | Operating decisions were clarified to avoid repeating the same questions: SonarCloud is not valid for this personal repo, Jenkins trigger-only is optional, and OpenAPI completeness matters only for generated SDK/contract-testing scope. | `docs/reports/kan-21-operational-decisions-2026-04-28.md`. |
+| `KAN-22` | A current-context handoff was added so future sessions can resume from exact state without rediscovering access, decisions, validators, or next steps. | `docs/CURRENT_CONTEXT.md`; `docs/reports/kan-22-current-context-handoff-2026-04-28.md`. |
 
 ## What Is Now Stable
 
@@ -33,6 +34,7 @@
 - Operational validation is current as of 2026-04-28: local Sonar/Jenkins are reachable through Compose, Render production auth works, and release readiness is above target.
 - Provider access checks are now one command: `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`.
 - No required implementation blocker remains in the current status list; remaining items are operational decisions, optional future enhancements, or ongoing evidence hygiene.
+- Future sessions should read `docs/CURRENT_CONTEXT.md` first for exact resume context.
 
 ## Operational Decisions
 

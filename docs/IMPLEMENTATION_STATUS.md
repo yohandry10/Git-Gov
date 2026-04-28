@@ -24,10 +24,13 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-19` | Jira traceability coverage validator | Added a dedicated validator and runbook for refreshing Jira/PR correlations and measuring ticket coverage independently from the release readiness gate. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest validation coverage `96.43%` (`54/56`) |
 | `KAN-20` | Implementation backlog closure | Reframed the last six "remaining" items as operational decisions or optional future enhancements. No required implementation blocker remains in this status list. | `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md` |
 | `KAN-21` | Operating decision clarification | Documented that SonarCloud is not a valid path for this personal repo, Jenkins trigger-only is not needed for normal API-based agent work, and OpenAPI completeness is only required if generated SDK/Swagger contract testing becomes product scope. | `docs/reports/kan-21-operational-decisions-2026-04-28.md` |
+| `KAN-22` | Current context handoff | Added a single resume document with exact current state, latest PR/commit, access summary, non-negotiable decisions, validation commands, and practical next steps. | `docs/CURRENT_CONTEXT.md`, `docs/reports/kan-22-current-context-handoff-2026-04-28.md` |
 
 ### Current Operational Decisions
 
 As of `KAN-20`, this list has no required implementation blocker. The items below are validated operating decisions, optional future enhancements, or ongoing evidence hygiene.
+
+Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before continuing a future session.
 
 1. `GITGOV_API_KEY` production admin access is usable from ignored local env files.
    - `https://gitgov-api.onrender.com/stats` returned HTTP `200` with the local key.
