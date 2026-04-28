@@ -37,8 +37,8 @@ $scriptArgs = @{
 - `.\scripts\control-plane\calibrate_risk_tier_baseline.ps1` with hashtable splatting generated a report successfully.
 - Risk-tier validation result: readiness `92/100`, composite risk `8/100`, one SLA breach.
 - `.\scripts\deploy\validate_desktop_updater_readiness.ps1` with hashtable splatting completed with expected optional `WARN` state while endpoint probing was skipped.
-- Post-merge manual Risk Tier Baseline run `25049577630` confirmed the calibration step succeeded, then exposed a separate artifact upload issue because `report_path` was not visible to `actions/upload-artifact`.
-- The workflow now writes `report_path` to `$GITHUB_OUTPUT` with `[System.IO.File]::AppendAllText(..., [System.Text.Encoding]::UTF8)`.
+- Post-merge manual Risk Tier Baseline runs `25049577630` and `25049782826` confirmed the calibration step succeeded, then exposed a separate artifact upload issue because `report_path` was not visible to `actions/upload-artifact`.
+- The workflow now uploads `docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md` directly, matching the deterministic report path used by the calibration step.
 - `git diff --check` passed.
 - `.\scripts\security\publication_guard.ps1` passed.
 

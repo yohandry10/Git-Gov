@@ -189,7 +189,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `.github/workflows/desktop-updater-readiness.yml` used the same pattern and failed inside its optional job when `gitgov/src-tauri/tauri.conf.json` was bound to `TimeoutSeconds`.
 - Use hashtable splatting for workflow PowerShell script blocks that call repository scripts with named parameters.
 - Local validation for the fix generated a risk-tier baseline report with readiness `92/100`, composite risk `8/100`, and ran desktop updater readiness with endpoint probe skipped, returning the expected optional `WARN` state.
-- Manual Risk Tier Baseline run `25049577630` on `main` confirmed the calibration step generated a report, then failed artifact upload because `report_path` was not visible to `actions/upload-artifact`; the follow-up fix writes `$GITHUB_OUTPUT` with UTF-8 explicitly.
+- Manual Risk Tier Baseline runs `25049577630` and `25049782826` on `main` confirmed the calibration step generated a report, then failed artifact upload because `report_path` was not visible to `actions/upload-artifact`; the workflow now uploads the deterministic report path directly.
 
 ## Current Work Classification
 
