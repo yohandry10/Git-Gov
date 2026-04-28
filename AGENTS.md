@@ -2,6 +2,11 @@
 
 This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerShell.
 
+## Resume First
+
+- Read `docs/CURRENT_CONTEXT.md` first when resuming a paused or transferred session. It is the compact handoff for exact current state, latest commits/PRs, non-negotiable operating decisions, access summary, validation commands, and next steps.
+- Keep `docs/CURRENT_CONTEXT.md` current after major access/configuration/deployment/validation changes.
+
 ## Access
 
 - GitHub CLI is installed at `C:\Users\PC\Tools\gh\bin\gh.exe`.
@@ -186,6 +191,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jira traceability ticket `KAN-19` added `scripts/control-plane/validate_jira_traceability_coverage.ps1` and `docs/runbooks/jira-traceability-coverage.md`; latest production validation refreshed correlations and reported ticket coverage `96.43%` (`54/56`) over 720h for `main`.
 - Implementation backlog closure ticket `KAN-20` reframed the final status-list items as operational decisions or optional enhancements. No active implementation blocker remains after `KAN-14` through `KAN-20`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 - Operating decision clarification ticket `KAN-21` records three non-negotiable agent defaults: SonarCloud is off the table for this personal repository, OpenAPI/SDK work is optional product work rather than a current blocker, and Jenkins trigger-only token flow is not needed for normal agent operations because authenticated Jenkins API access already exists.
+- Current context handoff ticket `KAN-22` added `docs/CURRENT_CONTEXT.md`; use it as the first resume document for exact state, access, decisions, validators, and next steps.
 
 ## Verified State
 
