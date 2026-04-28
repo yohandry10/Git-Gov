@@ -83,3 +83,31 @@ pub fn build_openapi_spec() -> utoipa::openapi::OpenApi {
 
     spec
 }
+
+#[cfg(test)]
+mod tests {
+    use super::build_openapi_spec;
+
+    #[test]
+    fn openapi_description_declares_partial_schema_explorer_scope() {
+        let spec = build_openapi_spec();
+        let description = spec
+            .info
+            .description
+            .as_deref()
+            .expect("OpenAPI info description should explain contract scope");
+
+        assert!(
+            description.contains("intentionally partial"),
+            "OpenAPI description must not imply complete route coverage"
+        );
+        assert!(
+            description.contains("docs/ARCHITECTURE.md"),
+            "OpenAPI description must point operators to the architecture route contract"
+        );
+        assert!(
+            description.contains("main.rs"),
+            "OpenAPI description must point operators to the runtime route table"
+        );
+    }
+}

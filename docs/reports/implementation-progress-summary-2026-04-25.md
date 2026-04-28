@@ -11,6 +11,7 @@
 | `KAN-12` | The GitGov website marketing/download updates were published with traceability restored. The invalid local-only `dle` commit was not pushed; the recreated web commit merged through PR `#77`. | PR `#77`; post-merge CI `24974947818`; Release Readiness `24974947816`; main commit `a0a4174`. |
 | `KAN-13` | Documentation publication governance was clarified. Examples/templates use placeholders; agent memory and historical evidence may retain real repo/service identifiers when needed for validation scope. | `docs/PUBLICATION_POLICY.md`; `docs/reports/kan-13-publication-governance-2026-04-28.md`. |
 | `KAN-14` | Operational validation was refreshed after starting Docker Desktop and local Sonar/Jenkins profiles. Render production health, local backend health, Sonar, Jenkins, Jira, and release readiness were checked. | Render `/health` `ok`; `/stats` HTTP `200`; Sonar `UP` and quality gate `OK`; Jenkins build `#30` `SUCCESS`; readiness `91/100`. |
+| `KAN-15` | OpenAPI partial-contract scope was guarded. `/api-docs` remains a schema explorer, and the test now fails if the partial-scope disclaimer stops pointing to architecture docs and the runtime route table. | `gitgov/gitgov-server/src/openapi.rs`; `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md`. |
 
 ## What Is Now Stable
 
@@ -44,6 +45,7 @@
 4. **OpenAPI is intentionally partial**
    - `/api-docs` is a schema explorer, not a complete route contract.
    - Add full `#[utoipa::path]` annotations only if generated SDKs or Swagger contract tests become a requirement.
+   - A unit guard now preserves this disclaimer so the UI cannot accidentally imply full operational route coverage.
 
 5. **Traceability coverage is operational**
    - The platform is enforcing Jira IDs.
