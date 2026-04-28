@@ -112,7 +112,11 @@ jobs:
           & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 @calibrationArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "report_path=$outputPath"
+          [System.IO.File]::AppendAllText(
+            $env:GITHUB_OUTPUT,
+            "report_path=$outputPath`n",
+            [System.Text.Encoding]::UTF8
+          )
 
       - name: Upload calibration artifact
         if: ${{ steps.precheck.outputs.enabled == 'true' }}
