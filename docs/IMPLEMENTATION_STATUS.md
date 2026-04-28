@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-25
+Updated: 2026-04-28
 
 ## Current Execution Summary - 2026-04-25
 
@@ -16,6 +16,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-11` | GitGov API key diagnosis | Corrected the manual Jira ingest diagnosis. The ignored local `GITGOV_API_KEY` authenticates successfully against production; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name` when production `JIRA_WEBHOOK_SECRET` is configured. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`; `docs/reports/gitgov-api-key-diagnosis-2026-04-25.md` |
 | `KAN-12` | Website publication and traceability recovery | Recreated the local web changes under a traceable Jira branch/commit/PR flow. The invalid local-only commit `f2bdb24` (`dle`) was not pushed; the valid publication landed on `main` through PR `#77`. | PR `#77`, main commit `a0a4174`, CI run `24974947818`, Release Readiness run `24974947816`, `docs/reports/kan-12-web-publication-2026-04-28.md` |
 | `KAN-13` | Documentation publication governance | Clarified when docs must use placeholders and when real repo/service identifiers may remain for agent operating memory or historical validation evidence. | `docs/PUBLICATION_POLICY.md`, `docs/reports/kan-13-publication-governance-2026-04-28.md` |
+| `KAN-14` | Operational validation refresh | Refreshed local and production validation after starting Docker Desktop and the Sonar/Jenkins Compose profiles. | Render `/health` `ok`, production `/stats` HTTP `200`, local backend `/health` on port `3001`, Sonar `UP` / quality gate `OK`, Jenkins build `#30` `SUCCESS`, readiness `91/100`; `docs/reports/kan-14-operational-validation-2026-04-28.md` |
 
 ### Current Remaining Work
 
@@ -26,9 +27,11 @@ This section consolidates the latest completed implementation/documentation poin
 2. Sonar remains intentionally local.
    - SonarCloud is not applicable for the current personal GitHub account.
    - GitHub-hosted runners cannot reach `localhost:9000`; keep GitHub Sonar scan optional/non-blocking unless a self-hosted runner is added.
+   - Latest local validation on 2026-04-28: SonarQube `UP`, project `yohandry10_git-gov`, quality gate `OK`.
 3. Jenkins trigger-only URL flow is still optional and separate from Jenkins API access.
    - API inspection/build access works through `JENKINS_API_TOKEN`.
    - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed.
+   - Latest local validation on 2026-04-28: job `gitgov-demo-pipeline`, last build `#30`, result `SUCCESS`, not building.
 4. OpenAPI is still partial by design.
    - `/api-docs` is a schema explorer, not the full operational route contract.
    - Implement `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a requirement.
@@ -658,6 +661,9 @@ Before adding or keeping any `/features` claim:
    - Use placeholders for examples and reusable setup instructions.
    - Keep real repo/service identifiers only in agent memory and evidence snapshots where validation scope matters.
    - Continue relying on `.gitignore`, `publication_guard.ps1`, and `Security Guard` to block restricted forensic/strategy docs.
+8. Keep operational validation snapshots current when services are restarted.
+   - `KAN-14` refreshed the current state on 2026-04-28.
+   - Docker Desktop was started, Compose profiles `sonar` and `jenkins` came online, Render production health passed, and release readiness was `91/100`.
 
 ## Operating Memory Rule
 
@@ -675,6 +681,7 @@ Selected runtime:
 - Local SonarQube (`http://localhost:9000` for local API access).
 - Jenkins/local pipelines are the supported route for Sonar telemetry in this account.
 - GitHub-hosted Sonar workflow is intentionally non-blocking and skips unless explicitly configured with a reachable SonarQube endpoint.
+- Latest validated state on 2026-04-28: SonarQube system `UP`, project quality gate `OK`; Jenkins `gitgov-demo-pipeline` build `#30` `SUCCESS`; Render-backed readiness for `main` `91/100` with signal coverage `3/3`.
 
 Required local variables:
 

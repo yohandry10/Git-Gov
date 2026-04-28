@@ -10,6 +10,7 @@
 | `KAN-11` | GitGov API key diagnosis was corrected. The local ignored `GITGOV_API_KEY` is valid for production admin auth; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name`. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`. |
 | `KAN-12` | The GitGov website marketing/download updates were published with traceability restored. The invalid local-only `dle` commit was not pushed; the recreated web commit merged through PR `#77`. | PR `#77`; post-merge CI `24974947818`; Release Readiness `24974947816`; main commit `a0a4174`. |
 | `KAN-13` | Documentation publication governance was clarified. Examples/templates use placeholders; agent memory and historical evidence may retain real repo/service identifiers when needed for validation scope. | `docs/PUBLICATION_POLICY.md`; `docs/reports/kan-13-publication-governance-2026-04-28.md`. |
+| `KAN-14` | Operational validation was refreshed after starting Docker Desktop and local Sonar/Jenkins profiles. Render production health, local backend health, Sonar, Jenkins, Jira, and release readiness were checked. | Render `/health` `ok`; `/stats` HTTP `200`; Sonar `UP` and quality gate `OK`; Jenkins build `#30` `SUCCESS`; readiness `91/100`. |
 
 ## What Is Now Stable
 
@@ -22,6 +23,7 @@
 - Local ignored GitGov admin credentials are usable for production API calls when the endpoint-specific shared-secret contract is also followed.
 - The website publication path now has a validated recovery pattern for non-traceable local commits: recreate on a Jira branch, rerun checks, merge through PR.
 - Documentation publication rules now distinguish reusable public examples from agent operating memory and validation evidence snapshots.
+- Operational validation is current as of 2026-04-28: local Sonar/Jenkins are reachable through Compose, Render production auth works, and release readiness is above target.
 
 ## What Still Remains
 
