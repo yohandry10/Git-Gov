@@ -13,6 +13,7 @@
 | `KAN-14` | Operational validation was refreshed after starting Docker Desktop and local Sonar/Jenkins profiles. Render production health, local backend health, Sonar, Jenkins, Jira, and release readiness were checked. | Render `/health` `ok`; `/stats` HTTP `200`; Sonar `UP` and quality gate `OK`; Jenkins build `#30` `SUCCESS`; readiness `91/100`. |
 | `KAN-15` | OpenAPI partial-contract scope was guarded. `/api-docs` remains a schema explorer, and the test now fails if the partial-scope disclaimer stops pointing to architecture docs and the runtime route table. | `gitgov/gitgov-server/src/openapi.rs`; `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md`. |
 | `KAN-16` | Provider access validation was centralized. A single script validates GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness from ignored env files without printing secrets. | `scripts/control-plane/validate_provider_access.ps1`; latest run all checks `ok`, readiness `91/100`. |
+| `KAN-17` | Local Sonar self-hosted runner operation was documented. The runbook defines the safe setup, validation, activation, and rollback path without changing required workflow behavior. | `docs/runbooks/local-sonar-self-hosted-runner.md`. |
 
 ## What Is Now Stable
 
@@ -39,6 +40,7 @@
    - SonarCloud is not applicable for the personal GitHub account.
    - GitHub-hosted Sonar scan should keep skipping while `SONAR_HOST_URL` points to `localhost`.
    - Use Jenkins/local or a future self-hosted runner for real Sonar scans.
+   - `KAN-17` documents the self-hosted runner path; the current required workflow is intentionally unchanged.
 
 3. **Jenkins trigger-only token is optional**
    - Jenkins API token supports inspection and authenticated operations.

@@ -19,6 +19,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-14` | Operational validation refresh | Refreshed local and production validation after starting Docker Desktop and the Sonar/Jenkins Compose profiles. | Render `/health` `ok`, production `/stats` HTTP `200`, local backend `/health` on port `3001`, Sonar `UP` / quality gate `OK`, Jenkins build `#30` `SUCCESS`, readiness `91/100`; `docs/reports/kan-14-operational-validation-2026-04-28.md` |
 | `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the `main.rs` route table as the operational contract source. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
 | `KAN-16` | Provider access validation | Added a single secret-safe PowerShell smoke test for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files. | `scripts/control-plane/validate_provider_access.ps1`; latest validation all checks `ok`, readiness `91/100` |
+| `KAN-17` | Local Sonar self-hosted runner runbook | Documented how to safely add a dedicated GitHub self-hosted runner for local SonarQube without breaking the current GitHub-hosted/non-blocking CI path. | `docs/runbooks/local-sonar-self-hosted-runner.md` |
 
 ### Current Remaining Work
 
@@ -30,6 +31,7 @@ This section consolidates the latest completed implementation/documentation poin
    - SonarCloud is not applicable for the current personal GitHub account.
    - GitHub-hosted runners cannot reach `localhost:9000`; keep GitHub Sonar scan optional/non-blocking unless a self-hosted runner is added.
    - Latest local validation on 2026-04-28: SonarQube `UP`, project `yohandry10_git-gov`, quality gate `OK`.
+   - `KAN-17` documents the self-hosted runner activation path; no workflow `runs-on` change is enabled by default.
 3. Jenkins trigger-only URL flow is still optional and separate from Jenkins API access.
    - API inspection/build access works through `JENKINS_API_TOKEN`.
    - The unauthenticated/manual trigger URL requires `JENKINS_BUILD_TRIGGER_TOKEN` only if that flow is needed.
@@ -673,6 +675,9 @@ Before adding or keeping any `/features` claim:
 10. Use the provider access validator before external-service work.
    - `KAN-16` added `scripts/control-plane/validate_provider_access.ps1`.
    - Run `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness` to validate GitGov, local backend, Sonar, Jenkins, Jira, and readiness without printing secrets.
+11. Use the local Sonar self-hosted runner runbook only when ready to operate a runner.
+   - `docs/runbooks/local-sonar-self-hosted-runner.md` defines labels, GitHub settings, validation commands, activation pattern, and rollback.
+   - Do not make a self-hosted Sonar workflow required until the runner has one successful validation run.
 
 ## Operating Memory Rule
 
@@ -692,6 +697,7 @@ Selected runtime:
 - GitHub-hosted Sonar workflow is intentionally non-blocking and skips unless explicitly configured with a reachable SonarQube endpoint.
 - Latest validated state on 2026-04-28: SonarQube system `UP`, project quality gate `OK`; Jenkins `gitgov-demo-pipeline` build `#30` `SUCCESS`; Render-backed readiness for `main` `91/100` with signal coverage `3/3`.
 - Provider access validator: `scripts/control-plane/validate_provider_access.ps1`. Latest KAN-16 run with `-IncludeReleaseReadiness` returned all checks `ok`, readiness `91/100`, pipeline success `98.7%`, Jira coverage `67.11%`, and Sonar pass `98.7%`.
+- Self-hosted runner runbook: `docs/runbooks/local-sonar-self-hosted-runner.md`. Recommended custom label: `gitgov-local-sonar`.
 
 Required local variables:
 
