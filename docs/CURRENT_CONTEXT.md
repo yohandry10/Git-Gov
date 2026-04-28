@@ -190,6 +190,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Use hashtable splatting for workflow PowerShell script blocks that call repository scripts with named parameters.
 - Local validation for the fix generated a risk-tier baseline report with readiness `92/100`, composite risk `8/100`, and ran desktop updater readiness with endpoint probe skipped, returning the expected optional `WARN` state.
 - Manual Risk Tier Baseline runs `25049577630` and `25049782826` on `main` confirmed the calibration step generated a report, then failed artifact upload because `report_path` was not visible to `actions/upload-artifact`; the workflow now uploads the deterministic report path directly.
+- Final manual Risk Tier Baseline validation run `25049984199` passed on `main` commit `8e9b043` and uploaded artifact `risk-tier-baseline-25049984199` ID `6682824924`.
 
 ## Current Work Classification
 
