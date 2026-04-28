@@ -112,18 +112,12 @@ jobs:
           & ./scripts/control-plane/calibrate_risk_tier_baseline.ps1 @calibrationArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          [System.IO.File]::AppendAllText(
-            $env:GITHUB_OUTPUT,
-            "report_path=$outputPath`n",
-            [System.Text.Encoding]::UTF8
-          )
-
       - name: Upload calibration artifact
         if: ${{ steps.precheck.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: risk-tier-baseline-${{ github.run_id }}
-          path: ${{ steps.calibration.outputs.report_path }}
+          path: docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md
           if-no-files-found: warn
           retention-days: 30
 
