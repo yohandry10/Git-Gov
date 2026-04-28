@@ -14,6 +14,7 @@
 | `KAN-15` | OpenAPI partial-contract scope was guarded. `/api-docs` remains a schema explorer, and the test now fails if the partial-scope disclaimer stops pointing to architecture docs and the runtime route table. | `gitgov/gitgov-server/src/openapi.rs`; `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md`. |
 | `KAN-16` | Provider access validation was centralized. A single script validates GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness from ignored env files without printing secrets. | `scripts/control-plane/validate_provider_access.ps1`; latest run all checks `ok`, readiness `91/100`. |
 | `KAN-17` | Local Sonar self-hosted runner operation was documented. The runbook defines the safe setup, validation, activation, and rollback path without changing required workflow behavior. | `docs/runbooks/local-sonar-self-hosted-runner.md`. |
+| `KAN-18` | Jenkins trigger-only token operation was documented and made dry-run-validatable. Authenticated API remains the default for inspection; `/build?token=...` remains explicit and optional. | `scripts/jenkins/validate_trigger_token_flow.ps1`; `docs/runbooks/jenkins-trigger-token-flow.md`. |
 
 ## What Is Now Stable
 
@@ -45,6 +46,7 @@
 3. **Jenkins trigger-only token is optional**
    - Jenkins API token supports inspection and authenticated operations.
    - `JENKINS_BUILD_TRIGGER_TOKEN` is only needed for the unauthenticated `/build?token=...` URL flow.
+   - `KAN-18` adds dry-run validation and requires `-Trigger` before launching a real build.
 
 4. **OpenAPI is intentionally partial**
    - `/api-docs` is a schema explorer, not a complete route contract.

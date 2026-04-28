@@ -165,6 +165,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Jenkins read/build access is configured through ignored env files with `JENKINS_SERVER_URL=http://localhost:8096`, `JENKINS_USER=admin`, `JENKINS_API_TOKEN`, and `JENKINS_JOB_NAME=gitgov-demo-pipeline`.
 - Current Jenkins API token name: `codex-local`.
 - Jenkins trigger-only access can use `JENKINS_JOB_NAME` and `JENKINS_BUILD_TRIGGER_TOKEN`, but that is not enough to inspect logs or build status.
+- Use `.\scripts\jenkins\validate_trigger_token_flow.ps1` for trigger-only dry-run validation. Use `-RequireTriggerToken -Trigger` only when a real build launch is intended.
 - If Jenkins posts to GitGov, keep `JENKINS_WEBHOOK_SECRET` aligned with the Jenkins shared secret header expected by the backend.
 - Jira Cloud API access is configured through ignored env files with `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY`.
 - GitHub webhook authentication is configured through ignored env files with `GITHUB_WEBHOOK_SECRET`; keep it aligned with Render and the GitHub repository webhook.
@@ -180,7 +181,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - OpenAPI guard ticket `KAN-15` keeps `/api-docs` honest as a partial schema explorer: `openapi_description_declares_partial_schema_explorer_scope` fails if the OpenAPI description stops pointing operators to `docs/ARCHITECTURE.md` and the `main.rs` route table.
 - Provider validation ticket `KAN-16` added `scripts/control-plane/validate_provider_access.ps1`, a secret-safe local smoke check for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files.
 - Self-hosted runner runbook ticket `KAN-17` documents the safe path for local SonarQube in GitHub Actions at `docs/runbooks/local-sonar-self-hosted-runner.md`; do not switch required workflows to `runs-on: [self-hosted, gitgov-local-sonar]` until the runner is registered, online, and validated.
-- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`/`KAN-16`/`KAN-17`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
+- Jenkins trigger-only ticket `KAN-18` added `scripts/jenkins/validate_trigger_token_flow.ps1` and `docs/runbooks/jenkins-trigger-token-flow.md`; the script dry-runs by default, redacts the trigger URL token, and only starts a build when `-Trigger` is explicitly passed.
+- Current remaining blockers/gaps after `KAN-7`/`KAN-8`/`KAN-9`/`KAN-11`/`KAN-12`/`KAN-13`/`KAN-14`/`KAN-15`/`KAN-16`/`KAN-17`/`KAN-18`: Sonar remains local unless a self-hosted runner is added; Jenkins trigger-only token is only needed for unauthenticated build URLs; OpenAPI path completeness is optional unless generated SDK/contract testing is required; traceability coverage stays an operational discipline.
 
 ## Verified State
 
