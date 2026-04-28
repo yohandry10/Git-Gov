@@ -8,26 +8,27 @@ Read this file first when resuming work. It is the compact operational handoff f
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Current branch after latest completed work: `main`.
-- Current `main` HEAD after `KAN-22`: `65d61f2 docs(KAN-22): add current context handoff`.
-- Last merged PR: `#88` - `docs(KAN-22): add current context handoff`.
-- Previous merged PR: `#87` - `docs(KAN-21): clarify operational decisions`.
+- Expected branch before new work: `main`.
+- Latest completed handoff baseline: `c1951c8 docs(KAN-22): refresh current context evidence`.
+- Last merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
+- Previous merged PR: `#88` - `docs(KAN-22): add current context handoff`.
+- Treat commit/PR fields in this file as a validated handoff baseline, not an auto-updating source of truth; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-22`.
 
 ## Latest Verified GitHub Checks
 
-Latest post-merge validation for `main` commit `65d61f2` passed:
+Latest post-merge validation for handoff baseline commit `c1951c8` passed:
 
-- `CI` - run `25048387741`
-- `Release Readiness Gate` - run `25048387795`
-- `Quality Gate Policy Matrix (Optional)` - run `25048387769`
-- `Secret Scan` - run `25048387762`
-- `SonarQube Governance (Non-Blocking)` - run `25048387783`
-- `Public Naming Guard` - run `25048387751`
-- `Governance Correlation Smoke (Optional)` - run `25048387779`
-- `Desktop Updater Readiness (Optional)` - run `25048387770`
+- `CI` - run `25048800803`
+- `Release Readiness Gate` - run `25048800807`
+- `Quality Gate Policy Matrix (Optional)` - run `25048800838`
+- `Secret Scan` - run `25048800831`
+- `SonarQube Governance (Non-Blocking)` - run `25048800812`
+- `Public Naming Guard` - run `25048800822`
+- `Governance Correlation Smoke (Optional)` - run `25048800832`
+- `Desktop Updater Readiness (Optional)` - run `25048800795`
 
 ## Non-Negotiable Operating Decisions
 
@@ -180,7 +181,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-19`: added Jira traceability coverage validator; latest recorded coverage was `96.67%` (`58/60`) over 720h.
 - `KAN-20`: closed implementation backlog semantics; remaining items are operational decisions.
 - `KAN-21`: clarified SonarCloud, OpenAPI/SDK, and Jenkins trigger-only defaults.
-- `KAN-22`: created this current-context handoff.
+- `KAN-22`: created this current-context handoff and refreshed it through PR `#89` with baseline commit `c1951c8`.
 
 ## Current Work Classification
 
