@@ -16,6 +16,7 @@
 | `KAN-17` | Local Sonar self-hosted runner operation was documented. The runbook defines the safe setup, validation, activation, and rollback path without changing required workflow behavior. | `docs/runbooks/local-sonar-self-hosted-runner.md`. |
 | `KAN-18` | Jenkins trigger-only token operation was documented and made dry-run-validatable. Authenticated API remains the default for inspection; `/build?token=...` remains explicit and optional. | `scripts/jenkins/validate_trigger_token_flow.ps1`; `docs/runbooks/jenkins-trigger-token-flow.md`. |
 | `KAN-19` | Jira traceability coverage validation was split out from release readiness. Operators can now refresh correlations, measure ticket coverage, enforce a threshold, and emit JSON evidence. | `scripts/control-plane/validate_jira_traceability_coverage.ps1`; latest coverage `96.43%`. |
+| `KAN-20` | Implementation status was reframed so validated operating decisions are not presented as required implementation blockers. | `docs/IMPLEMENTATION_STATUS.md`; `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md`. |
 
 ## What Is Now Stable
 
@@ -30,8 +31,11 @@
 - Documentation publication rules now distinguish reusable public examples from agent operating memory and validation evidence snapshots.
 - Operational validation is current as of 2026-04-28: local Sonar/Jenkins are reachable through Compose, Render production auth works, and release readiness is above target.
 - Provider access checks are now one command: `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`.
+- No required implementation blocker remains in the current status list; remaining items are operational decisions, optional future enhancements, or ongoing evidence hygiene.
 
-## What Still Remains
+## Operational Decisions
+
+The items below are not implementation blockers after `KAN-20`; they define the supported operating model.
 
 1. **Manual Jira ingest contract**
    - `GITGOV_API_KEY` in ignored local env files is valid for production admin auth.
