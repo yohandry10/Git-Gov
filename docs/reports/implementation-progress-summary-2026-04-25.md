@@ -12,6 +12,7 @@
 | `KAN-13` | Documentation publication governance was clarified. Examples/templates use placeholders; agent memory and historical evidence may retain real repo/service identifiers when needed for validation scope. | `docs/PUBLICATION_POLICY.md`; `docs/reports/kan-13-publication-governance-2026-04-28.md`. |
 | `KAN-14` | Operational validation was refreshed after starting Docker Desktop and local Sonar/Jenkins profiles. Render production health, local backend health, Sonar, Jenkins, Jira, and release readiness were checked. | Render `/health` `ok`; `/stats` HTTP `200`; Sonar `UP` and quality gate `OK`; Jenkins build `#30` `SUCCESS`; readiness `91/100`. |
 | `KAN-15` | OpenAPI partial-contract scope was guarded. `/api-docs` remains a schema explorer, and the test now fails if the partial-scope disclaimer stops pointing to architecture docs and the runtime route table. | `gitgov/gitgov-server/src/openapi.rs`; `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md`. |
+| `KAN-16` | Provider access validation was centralized. A single script validates GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness from ignored env files without printing secrets. | `scripts/control-plane/validate_provider_access.ps1`; latest run all checks `ok`, readiness `91/100`. |
 
 ## What Is Now Stable
 
@@ -25,6 +26,7 @@
 - The website publication path now has a validated recovery pattern for non-traceable local commits: recreate on a Jira branch, rerun checks, merge through PR.
 - Documentation publication rules now distinguish reusable public examples from agent operating memory and validation evidence snapshots.
 - Operational validation is current as of 2026-04-28: local Sonar/Jenkins are reachable through Compose, Render production auth works, and release readiness is above target.
+- Provider access checks are now one command: `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`.
 
 ## What Still Remains
 

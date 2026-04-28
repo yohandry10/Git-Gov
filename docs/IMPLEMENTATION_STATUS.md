@@ -18,6 +18,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-13` | Documentation publication governance | Clarified when docs must use placeholders and when real repo/service identifiers may remain for agent operating memory or historical validation evidence. | `docs/PUBLICATION_POLICY.md`, `docs/reports/kan-13-publication-governance-2026-04-28.md` |
 | `KAN-14` | Operational validation refresh | Refreshed local and production validation after starting Docker Desktop and the Sonar/Jenkins Compose profiles. | Render `/health` `ok`, production `/stats` HTTP `200`, local backend `/health` on port `3001`, Sonar `UP` / quality gate `OK`, Jenkins build `#30` `SUCCESS`, readiness `91/100`; `docs/reports/kan-14-operational-validation-2026-04-28.md` |
 | `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the `main.rs` route table as the operational contract source. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
+| `KAN-16` | Provider access validation | Added a single secret-safe PowerShell smoke test for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files. | `scripts/control-plane/validate_provider_access.ps1`; latest validation all checks `ok`, readiness `91/100` |
 
 ### Current Remaining Work
 
@@ -669,6 +670,9 @@ Before adding or keeping any `/features` claim:
 9. Keep OpenAPI as a guarded schema explorer unless product requirements change.
    - `KAN-15` protects the disclaimer that `/api-docs` is intentionally partial.
    - Full `#[utoipa::path]` rollout should remain a deliberate product decision tied to SDK generation or Swagger contract tests.
+10. Use the provider access validator before external-service work.
+   - `KAN-16` added `scripts/control-plane/validate_provider_access.ps1`.
+   - Run `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness` to validate GitGov, local backend, Sonar, Jenkins, Jira, and readiness without printing secrets.
 
 ## Operating Memory Rule
 
@@ -687,6 +691,7 @@ Selected runtime:
 - Jenkins/local pipelines are the supported route for Sonar telemetry in this account.
 - GitHub-hosted Sonar workflow is intentionally non-blocking and skips unless explicitly configured with a reachable SonarQube endpoint.
 - Latest validated state on 2026-04-28: SonarQube system `UP`, project quality gate `OK`; Jenkins `gitgov-demo-pipeline` build `#30` `SUCCESS`; Render-backed readiness for `main` `91/100` with signal coverage `3/3`.
+- Provider access validator: `scripts/control-plane/validate_provider_access.ps1`. Latest KAN-16 run with `-IncludeReleaseReadiness` returned all checks `ok`, readiness `91/100`, pipeline success `98.7%`, Jira coverage `67.11%`, and Sonar pass `98.7%`.
 
 Required local variables:
 
