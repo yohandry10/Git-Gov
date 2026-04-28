@@ -181,7 +181,14 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-19`: added Jira traceability coverage validator; latest recorded coverage was `96.67%` (`58/60`) over 720h.
 - `KAN-20`: closed implementation backlog semantics; remaining items are operational decisions.
 - `KAN-21`: clarified SonarCloud, OpenAPI/SDK, and Jenkins trigger-only defaults.
-- `KAN-22`: created this current-context handoff and refreshed it through PR `#89` with baseline commit `c1951c8`.
+- `KAN-22`: created this current-context handoff, refreshed it through PR `#89` with baseline commit `c1951c8`, and fixed PowerShell workflow splatting in risk-tier baseline and desktop updater readiness workflows after scheduled/optional job failures.
+
+## Latest Workflow Fix Context
+
+- `Risk Tier Baseline Calibration` scheduled run `24999681550` failed on 2026-04-27 because `.github/workflows/risk-tier-baseline-calibration.yml` used array splatting with `"-Param", value` pairs; PowerShell passed those positionally, so `-RepoFullName` reached the `Tier` parameter.
+- `.github/workflows/desktop-updater-readiness.yml` used the same pattern and failed inside its optional job when `gitgov/src-tauri/tauri.conf.json` was bound to `TimeoutSeconds`.
+- Use hashtable splatting for workflow PowerShell script blocks that call repository scripts with named parameters.
+- Local validation for the fix generated a risk-tier baseline report with readiness `92/100`, composite risk `8/100`, and ran desktop updater readiness with endpoint probe skipped, returning the expected optional `WARN` state.
 
 ## Current Work Classification
 
