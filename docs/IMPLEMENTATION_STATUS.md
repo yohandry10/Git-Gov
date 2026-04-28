@@ -17,6 +17,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-12` | Website publication and traceability recovery | Recreated the local web changes under a traceable Jira branch/commit/PR flow. The invalid local-only commit `f2bdb24` (`dle`) was not pushed; the valid publication landed on `main` through PR `#77`. | PR `#77`, main commit `a0a4174`, CI run `24974947818`, Release Readiness run `24974947816`, `docs/reports/kan-12-web-publication-2026-04-28.md` |
 | `KAN-13` | Documentation publication governance | Clarified when docs must use placeholders and when real repo/service identifiers may remain for agent operating memory or historical validation evidence. | `docs/PUBLICATION_POLICY.md`, `docs/reports/kan-13-publication-governance-2026-04-28.md` |
 | `KAN-14` | Operational validation refresh | Refreshed local and production validation after starting Docker Desktop and the Sonar/Jenkins Compose profiles. | Render `/health` `ok`, production `/stats` HTTP `200`, local backend `/health` on port `3001`, Sonar `UP` / quality gate `OK`, Jenkins build `#30` `SUCCESS`, readiness `91/100`; `docs/reports/kan-14-operational-validation-2026-04-28.md` |
+| `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the `main.rs` route table as the operational contract source. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
 
 ### Current Remaining Work
 
@@ -35,6 +36,7 @@ This section consolidates the latest completed implementation/documentation poin
 4. OpenAPI is still partial by design.
    - `/api-docs` is a schema explorer, not the full operational route contract.
    - Implement `#[utoipa::path]` coverage only if generated SDKs or Swagger-based contract tests become a requirement.
+   - `KAN-15` added a unit guard so this partial-scope claim cannot be removed silently.
 5. Traceability coverage remains an operating discipline.
    - Platform guardrails are active.
    - Continue using Jira IDs in branch names, PR titles, commit messages, and PR comments to keep readiness/ticket coverage healthy.
@@ -664,6 +666,9 @@ Before adding or keeping any `/features` claim:
 8. Keep operational validation snapshots current when services are restarted.
    - `KAN-14` refreshed the current state on 2026-04-28.
    - Docker Desktop was started, Compose profiles `sonar` and `jenkins` came online, Render production health passed, and release readiness was `91/100`.
+9. Keep OpenAPI as a guarded schema explorer unless product requirements change.
+   - `KAN-15` protects the disclaimer that `/api-docs` is intentionally partial.
+   - Full `#[utoipa::path]` rollout should remain a deliberate product decision tied to SDK generation or Swagger contract tests.
 
 ## Operating Memory Rule
 
