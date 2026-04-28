@@ -8,6 +8,7 @@
 | `KAN-8` | API contract documentation drift was reconciled. Architecture routes and DB migration chain now match current backend reality through `supabase_schema_v22.sql`. | PR `#73`; post-merge checks passed on commit `7e0cc4b`. |
 | `KAN-9` | `.env.example` publication policy was hardened. Sensitive keys in tracked env templates must be blank or placeholder-only in local and GitHub guards. | PR `#74`; post-merge checks passed on commit `83240bb`; Security Guard and Workflow Lint passed. |
 | `KAN-11` | GitGov API key diagnosis was corrected. The local ignored `GITGOV_API_KEY` is valid for production admin auth; manual Jira ingest also requires `x-gitgov-jira-secret` and `org_name`. | Production `/stats` returned HTTP `200`; manual `/integrations/jira` accepted `KAN-8`. |
+| `KAN-12` | The GitGov website marketing/download updates were published with traceability restored. The invalid local-only `dle` commit was not pushed; the recreated web commit merged through PR `#77`. | PR `#77`; post-merge CI `24974947818`; Release Readiness `24974947816`; main commit `a0a4174`. |
 
 ## What Is Now Stable
 
@@ -18,6 +19,7 @@
 - Branch/PR/commit Jira traceability guardrails are active.
 - Release readiness, quality gate matrix, security guard, and Sonar governance checks are green on `main`.
 - Local ignored GitGov admin credentials are usable for production API calls when the endpoint-specific shared-secret contract is also followed.
+- The website publication path now has a validated recovery pattern for non-traceable local commits: recreate on a Jira branch, rerun checks, merge through PR.
 
 ## What Still Remains
 
