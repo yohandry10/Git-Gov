@@ -39,6 +39,8 @@ $scriptArgs = @{
 - `.\scripts\deploy\validate_desktop_updater_readiness.ps1` with hashtable splatting completed with expected optional `WARN` state while endpoint probing was skipped.
 - Post-merge manual Risk Tier Baseline runs `25049577630` and `25049782826` confirmed the calibration step succeeded, then exposed a separate artifact upload issue because `report_path` was not visible to `actions/upload-artifact`.
 - The workflow now uploads `docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md` directly, matching the deterministic report path used by the calibration step.
+- Final manual Risk Tier Baseline validation run `25049984199` passed on `main` commit `8e9b043`.
+- Final validation artifact: `risk-tier-baseline-25049984199`, artifact ID `6682824924`, not expired at validation time.
 - `git diff --check` passed.
 - `.\scripts\security\publication_guard.ps1` passed.
 
