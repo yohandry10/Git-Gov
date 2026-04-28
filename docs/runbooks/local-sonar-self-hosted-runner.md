@@ -6,6 +6,8 @@ Date: 2026-04-28
 
 Use this runbook only if GitHub Actions needs to run a real SonarQube scan against the local SonarQube server at `http://localhost:9000`.
 
+SonarCloud is intentionally not part of the operating model for this repository. The current GitHub repository/account is personal, not organizational, so SonarCloud onboarding for this repo is not a viable path. Do not reopen SonarCloud as an option unless the repository is moved to a GitHub organization.
+
 Current default behavior is intentional:
 
 - `sonar-governance.yml` runs on GitHub-hosted runners.
