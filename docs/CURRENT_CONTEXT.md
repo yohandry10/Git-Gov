@@ -155,6 +155,26 @@ Latest KAN-31 adoption profile persistence baseline:
   - `Public Naming Guard` - run `25186881451`
   - `Governance Correlation Smoke (Optional)` - run `25186881376`
   - `Desktop Updater Readiness (Optional)` - run `25186881345`
+- Documentation validation PR: `#113` - `docs(KAN-31): record adoption profile validation`.
+- Documentation validation commit: `171d43d docs(KAN-31): record adoption profile validation`.
+- Post-merge docs refresh checks passed:
+  - `CI` - run `25187583892`
+  - `Release Readiness Gate` - run `25187583994`
+  - `Quality Gate Policy Matrix (Optional)` - run `25187583967`
+  - `Secret Scan` - run `25187583907`
+  - `SonarQube Governance (Non-Blocking)` - run `25187583895`
+  - `Public Naming Guard` - run `25187584004`
+  - `Governance Correlation Smoke (Optional)` - run `25187583992`
+  - `Desktop Updater Readiness (Optional)` - run `25187583943`
+- Production DB migration `v23` was applied on 2026-04-30 using ignored local `DATABASE_URL` without printing credentials.
+- `gitgov/gitgov-server/supabase/checks/v23_postcheck.sql` passed:
+  - `enterprise_adoption_profiles.table_exists` - `PASS`
+  - `enterprise_adoption_profiles.primary_key` - `PASS`
+  - `enterprise_adoption_profiles.updated_at_index` - `PASS`
+- Production route validation after migration:
+  - `GET /health` returned `200`.
+  - Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` returned `401`.
+  - Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` returned `200` with `found=false`.
 
 KAN-24 local validation before PR creation:
 
@@ -344,6 +364,7 @@ psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/checks/v23_postcheck.sql
 ```
 
 Do not print the database URL or credentials.
+Production `v23` has already been applied; rerun the postcheck only when revalidating or provisioning a new environment.
 
 Provider access smoke test:
 
@@ -384,7 +405,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
 - `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
-- `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs.
+- `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs. Documentation refresh PR `#113` merged as `171d43d`, and production migration `v23` was applied and validated on 2026-04-30.
 
 ## Current Product Roadmap
 
@@ -433,9 +454,11 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Design: `docs/design/adoption-profile-persistence-mvp.md`.
 - Report: `docs/reports/adoption-profile-persistence-2026-04-30.md`.
 - Saved profiles contain configuration intent only: no API keys, tokens, webhook secrets, generated secret values, or `.env` values.
-- Apply database migration `v23` before using persisted adoption profiles in production.
+- Production database migration `v23` was applied on 2026-04-30; use `v23_postcheck.sql` for revalidation or new environment provisioning.
 - Local validation passed with `cargo test enterprise_adoption_profile_validation`, backend `cargo check`, backend `cargo clippy -- -D warnings`, Tauri `cargo check`, Tauri `cargo clippy -- -D warnings`, `npm run typecheck`, `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run lint`, `npm run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
 - PR `#112` merged this MVP on `main` as `509e2a2`; post-merge `CI` run `25186881414` and `Release Readiness Gate` run `25186881375` passed.
+- PR `#113` recorded KAN-31 validation on `main` as `171d43d`; post-merge `CI` run `25187583892` and `Release Readiness Gate` run `25187583994` passed.
+- Production validation after `v23` migration: `/health` `200`, anonymous adoption-profile GET `401`, authenticated adoption-profile GET `200` with `found=false`.
 
 ## Current KAN-28 Implementation Notes
 
