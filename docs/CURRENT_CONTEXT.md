@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-24`
+Ticket: `KAN-27`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -18,7 +18,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
 - Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-26`.
+- Current active follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-27`.
 
 ## Latest Verified GitHub Checks
 
@@ -227,6 +228,14 @@ KAN-26 artifact monitor workflow:
 
 It checks latest successful `product-vulnerability-review.yml` runs for artifacts with prefix `product-vulnerability-review-`.
 
+KAN-27 trend report workflow:
+
+```text
+.github/workflows/product-vulnerability-review-trend-report.yml
+```
+
+It builds Markdown/JSON trend evidence from sanitized `summary.json` files in recent `product-vulnerability-review-*` artifacts.
+
 Provider access smoke test:
 
 ```powershell
@@ -262,6 +271,17 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-24`: opened Jira issue `KAN-24 - Product vulnerability review and production hardening` and started branch `security/KAN-24-product-vulnerability-review`. Scope covers end-to-end product vulnerability review across code, architecture, runtime, CI/CD, dependencies, and real user surfaces.
 - `KAN-25`: opened Jira issue `KAN-25 - Automate product vulnerability review evidence` and started branch `security/KAN-25-product-vulnerability-review-automation`. Scope is operationalizing the KAN-24 runner as a weekly/manual GitHub Actions workflow with sanitized artifacts.
 - `KAN-26`: opened Jira issue `KAN-26 - Monitor product vulnerability review artifact freshness` and started branch `security/KAN-26-product-vulnerability-artifact-monitor`. Scope is monitoring the freshness and presence of Product Vulnerability Review artifacts.
+- `KAN-27`: opened Jira issue `KAN-27 - Trend product vulnerability review artifacts` and started branch `security/KAN-27-product-vulnerability-review-trend`. Scope is aggregating recent Product Vulnerability Review artifacts into trend evidence so regressions are visible across runs.
+
+## Current KAN-27 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-trend-report.yml`.
+- Script: `scripts/control-plane/generate_product_vulnerability_review_trend_report.ps1`.
+- Report: `docs/reports/product-vulnerability-review-trend-2026-04-30.md`.
+- Runbook: `docs/runbooks/product-vulnerability-review-automation.md`.
+- The script downloads recent successful `product-vulnerability-review.yml` artifacts with prefix `product-vulnerability-review-`, parses sanitized `summary.json`, and writes Markdown/JSON trend evidence.
+- Local validation analyzed workflow run `25157972836`, artifact `product-vulnerability-review-25157972836`, artifact ID `6726899384`, and produced trend status `findings` with `5` pass, `1` expected finding, and `0` fail.
+- Scheduled trend report time is Friday `13:03 UTC`.
 
 ## Current KAN-26 Implementation Notes
 
