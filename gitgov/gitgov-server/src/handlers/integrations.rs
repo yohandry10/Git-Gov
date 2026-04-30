@@ -623,6 +623,201 @@ pub async fn get_jira_ticket_detail(
     }
 }
 
+fn evidence_packet_quality_gate_runs(
+    commits: &[TicketFlowCorrelation],
+) -> Vec<CommitPipelineRun> {
+    let mut seen = HashSet::new();
+    let mut quality_gates = Vec::new();
+
+    for commit in commits {
+        let Some(pipeline) = commit.pipeline.as_ref() else {
+            continue;
+        };
+        let job = pipeline.job_name.to_ascii_lowercase();
+        let is_quality_gate = job.contains("sonar")
+            || job.contains("quality")
+            || job.contains("clippy")
+            || job.contains("lint")
+            || job.contains("readiness");
+        if is_quality_gate && seen.insert(pipeline.pipeline_event_id.clone()) {
+            quality_gates.push(pipeline.clone());
+        }
+    }
+
+    quality_gates
+}
+
+fn build_evidence_packet_completeness(
+    ticket_found: bool,
+    commits: &[TicketFlowCorrelation],
+    pull_requests: &[PrMergeEvidenceEntry],
+    quality_gates: &[CommitPipelineRun],
+) -> EvidencePacketCompleteness {
+    let pipelines = commits.iter().filter(|item| item.pipeline.is_some()).count() as i64;
+    let mut missing = Vec::new();
+    if !ticket_found {
+        missing.push("ticket".to_string());
+    }
+    if commits.is_empty() {
+        missing.push("commits".to_string());
+    }
+    if pull_requests.is_empty() {
+        missing.push("pull_requests".to_string());
+    }
+    if pipelines == 0 {
+        missing.push("pipelines".to_string());
+    }
+    if quality_gates.is_empty() {
+        missing.push("quality_gates".to_string());
+    }
+
+    EvidencePacketCompleteness {
+        ticket_found,
+        commits: commits.len() as i64,
+        pull_requests: pull_requests.len() as i64,
+        pipelines,
+        quality_gates: quality_gates.len() as i64,
+        missing,
+    }
+}
+
+fn evidence_packet_hash(packet: &EvidencePacket) -> String {
+    let mut value = serde_json::to_value(packet).unwrap_or_else(|_| serde_json::json!({}));
+    if let Some(obj) = value.as_object_mut() {
+        obj.remove("content_hash");
+    }
+    let bytes = serde_json::to_vec(&value).unwrap_or_default();
+    format!("{:x}", Sha256::digest(&bytes))
+}
+
+pub async fn get_ticket_evidence_packet(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(ticket_id): Path<String>,
+    Query(query): Query<EvidencePacketQuery>,
+) -> impl IntoResponse {
+    if require_admin(&auth_user).is_err() {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(EvidencePacketResponse::default()),
+        );
+    }
+
+    let normalized = ticket_id.trim().to_ascii_uppercase();
+    if normalized.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(EvidencePacketResponse::default()),
+        );
+    }
+
+    let hours = query.hours.unwrap_or(24 * 30).clamp(1, 24 * 90);
+    let ticket = match state.db.get_project_ticket_by_ticket_id(&normalized).await {
+        Ok(ticket) => ticket,
+        Err(e) => {
+            tracing::error!(ticket_id = %normalized, error = %e, "Failed to load ticket for evidence packet");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(EvidencePacketResponse::default()),
+            );
+        }
+    };
+
+    let flow_query = CorrelationV2Query {
+        org_name: query.org_name.clone(),
+        repo_full_name: query.repo_full_name.clone(),
+        ticket_id: Some(normalized.clone()),
+        hours: Some(hours),
+        limit: 500,
+        offset: 0,
+    };
+    let commits = match state.db.get_ticket_flow_correlations_v2(&flow_query).await {
+        Ok((items, _)) => items,
+        Err(e) => {
+            tracing::error!(ticket_id = %normalized, error = %e, "Failed to load commit correlations for evidence packet");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(EvidencePacketResponse::default()),
+            );
+        }
+    };
+
+    let commit_shas: Vec<String> = commits
+        .iter()
+        .map(|item| item.commit_sha.clone())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+    let pull_requests = match state
+        .db
+        .get_pr_merge_evidence_for_ticket_packet(
+            auth_user.org_id.as_deref(),
+            query.org_name.as_deref(),
+            query.repo_full_name.as_deref(),
+            &normalized,
+            &commit_shas,
+            hours,
+        )
+        .await
+    {
+        Ok(items) => items,
+        Err(e) => {
+            tracing::error!(ticket_id = %normalized, error = %e, "Failed to load PR evidence for evidence packet");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(EvidencePacketResponse::default()),
+            );
+        }
+    };
+
+    let quality_gates = evidence_packet_quality_gate_runs(&commits);
+    let completeness = build_evidence_packet_completeness(
+        ticket.is_some(),
+        &commits,
+        &pull_requests,
+        &quality_gates,
+    );
+    let found = completeness.ticket_found
+        || completeness.commits > 0
+        || completeness.pull_requests > 0
+        || completeness.pipelines > 0;
+
+    if !found {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(EvidencePacketResponse {
+                found: false,
+                packet: None,
+            }),
+        );
+    }
+
+    let mut packet = EvidencePacket {
+        packet_type: "ticket".to_string(),
+        subject: normalized,
+        generated_at: chrono::Utc::now().timestamp_millis(),
+        org_name: query.org_name,
+        repo_full_name: query.repo_full_name,
+        branch: query.branch,
+        period: format!("last_{}h", hours),
+        ticket,
+        commits,
+        pull_requests,
+        quality_gates,
+        completeness,
+        content_hash: String::new(),
+    };
+    packet.content_hash = evidence_packet_hash(&packet);
+
+    (
+        StatusCode::OK,
+        Json(EvidencePacketResponse {
+            found: true,
+            packet: Some(packet),
+        }),
+    )
+}
+
 pub async fn get_jenkins_integration_status(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -769,6 +964,59 @@ mod jira_pr_correlation_tests {
         assert!(validate_jira_signature("secret", payload, &signature));
         assert!(!validate_jira_signature("other-secret", payload, &signature));
         assert!(!validate_jira_signature("secret", br#"{"issue":{"key":"KAN-7"}}"#, &signature));
+    }
+
+    #[test]
+    fn evidence_packet_completeness_reports_missing_signals() {
+        let completeness = build_evidence_packet_completeness(true, &[], &[], &[]);
+
+        assert!(completeness.ticket_found);
+        assert_eq!(completeness.commits, 0);
+        assert_eq!(completeness.pull_requests, 0);
+        assert_eq!(completeness.pipelines, 0);
+        assert_eq!(completeness.quality_gates, 0);
+        assert_eq!(
+            completeness.missing,
+            vec![
+                "commits".to_string(),
+                "pull_requests".to_string(),
+                "pipelines".to_string(),
+                "quality_gates".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn evidence_packet_hash_ignores_existing_hash_field() {
+        let mut packet = EvidencePacket {
+            packet_type: "ticket".to_string(),
+            subject: "KAN-23".to_string(),
+            generated_at: 1_777_560_000_000,
+            org_name: Some("yohandry10".to_string()),
+            repo_full_name: Some("yohandry10/Git-Gov".to_string()),
+            branch: Some("main".to_string()),
+            period: "last_720h".to_string(),
+            ticket: None,
+            commits: vec![],
+            pull_requests: vec![],
+            quality_gates: vec![],
+            completeness: EvidencePacketCompleteness {
+                ticket_found: false,
+                commits: 0,
+                pull_requests: 0,
+                pipelines: 0,
+                quality_gates: 0,
+                missing: vec!["ticket".to_string()],
+            },
+            content_hash: String::new(),
+        };
+
+        let first = evidence_packet_hash(&packet);
+        packet.content_hash = "different-existing-value".to_string();
+        let second = evidence_packet_hash(&packet);
+
+        assert_eq!(first, second);
+        assert_eq!(first.len(), 64);
     }
 }
 

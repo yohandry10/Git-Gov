@@ -1526,6 +1526,10 @@ async fn main() {
             get(handlers::get_jira_ticket_coverage),
         )
         .route(
+            "/evidence/packets/tickets/{ticket_id}",
+            get(handlers::get_ticket_evidence_packet),
+        )
+        .route(
             "/compliance/{org_name}",
             get(handlers::get_compliance_dashboard),
         )

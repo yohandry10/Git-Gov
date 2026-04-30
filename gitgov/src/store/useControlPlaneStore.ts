@@ -97,6 +97,36 @@ interface JiraTicketDetailResponse {
   ticket?: JiraTicketDetail | null
 }
 
+interface EvidencePacketCompleteness {
+  ticket_found: boolean
+  commits: number
+  pull_requests: number
+  pipelines: number
+  quality_gates: number
+  missing: string[]
+}
+
+interface EvidencePacket {
+  packet_type: string
+  subject: string
+  generated_at: number
+  org_name?: string | null
+  repo_full_name?: string | null
+  branch?: string | null
+  period: string
+  ticket?: JiraTicketDetail | null
+  commits: Record<string, unknown>[]
+  pull_requests: PrMergeEvidenceEntry[]
+  quality_gates: CommitPipelineRun[]
+  completeness: EvidencePacketCompleteness
+  content_hash: string
+}
+
+interface EvidencePacketResponse {
+  found: boolean
+  packet?: EvidencePacket | null
+}
+
 interface JiraCoverageFilters {
   hours: number
   repo_full_name: string
@@ -343,6 +373,9 @@ interface ControlPlaneState {
   jiraTicketDetails: Record<string, JiraTicketDetail | null>
   jiraTicketDetailFetchedAt: Record<string, number>
   jiraTicketDetailLoading: Record<string, boolean>
+  evidencePacket: EvidencePacket | null
+  evidencePacketTicketId: string
+  isEvidencePacketLoading: boolean
   userRole: string | null
   userClientId: string | null
   userOrgId: string | null
@@ -404,6 +437,7 @@ interface ControlPlaneActions {
   applyTicketCoverageFilters: (filters: Partial<JiraCoverageFilters>) => Promise<void>
   correlateJiraTickets: (params?: { hours?: number; limit?: number; repo_full_name?: string; org_name?: string }) => Promise<JiraCorrelateResponse | null>
   loadJiraTicketDetail: (ticketId: string) => Promise<JiraTicketDetail | null>
+  loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; org_name?: string }) => Promise<EvidencePacket | null>
   loadMe: () => Promise<boolean>
   createOrg: (payload: { login: string; name?: string }) => Promise<CreateOrgResponse | null>
   setSelectedOrgName: (orgName: string) => void
@@ -1112,6 +1146,9 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   jiraTicketDetails: {},
   jiraTicketDetailFetchedAt: {},
   jiraTicketDetailLoading: {},
+  evidencePacket: null,
+  evidencePacketTicketId: '',
+  isEvidencePacketLoading: false,
   userRole: null,
   userClientId: null,
   userOrgId: null,
@@ -1625,6 +1662,43 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
   },
 
+  loadTicketEvidencePacket: async (ticketId, params) => {
+    const { serverConfig, jiraCoverageFilters } = get()
+    if (!serverConfig) return null
+    const normalized = ticketId.trim().toUpperCase()
+    if (!normalized) {
+      set({ error: 'Ingresa un ticket válido para generar el evidence packet.' })
+      return null
+    }
+
+    set({ isEvidencePacketLoading: true, error: null, evidencePacketTicketId: normalized })
+    try {
+      const response = await tauriInvoke<EvidencePacketResponse>('cmd_server_get_ticket_evidence_packet', {
+        config: serverConfig,
+        ticketId: normalized,
+        query: {
+          hours: params?.hours ?? jiraCoverageFilters.hours,
+          repo_full_name: params?.repo_full_name ?? (jiraCoverageFilters.repo_full_name.trim() || undefined),
+          branch: params?.branch ?? (jiraCoverageFilters.branch.trim() || undefined),
+          org_name: params?.org_name,
+        },
+      })
+      const packet = response.found ? response.packet ?? null : null
+      set({ evidencePacket: packet, isEvidencePacketLoading: false })
+      if (!packet) {
+        set({ error: `No hay evidencia para ${normalized} en la ventana seleccionada.` })
+      }
+      return packet
+    } catch (e) {
+      set({
+        error: parseCommandError(String(e)).message,
+        evidencePacket: null,
+        isEvidencePacketLoading: false,
+      })
+      return null
+    }
+  },
+
   exportAuditData: async (params) => {
     const { serverConfig } = get()
     if (!serverConfig) return null
@@ -2076,6 +2150,9 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       jiraTicketDetails: {},
       jiraTicketDetailFetchedAt: {},
       jiraTicketDetailLoading: {},
+      evidencePacket: null,
+      evidencePacketTicketId: '',
+      isEvidencePacketLoading: false,
       userRole: null,
       userClientId: null,
       userOrgId: null,
