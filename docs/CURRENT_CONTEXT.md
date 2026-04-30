@@ -26,7 +26,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-32 - Enterprise provider health validation MVP`.
 - Latest completed follow-up: `KAN-33 - Workflow template generation from adoption profile`.
 - Latest completed follow-up: `KAN-34 - Dashboard workflow template pack download`.
-- Current in-progress follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
+- Latest completed follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-35`.
 
 ## Latest Verified GitHub Checks
@@ -429,7 +429,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
 - `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
-- `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, started branch `product/KAN-35-reviewed-workflow-installation`, and opened PR `#121`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
+- `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, implemented branch `product/KAN-35-reviewed-workflow-installation`, and merged PR `#121` as `c60c486`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 
 ## Current Product Roadmap
 
@@ -593,7 +593,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current KAN-35 Implementation Notes
 
-- Branch: `product/KAN-35-reviewed-workflow-installation`.
+- Implementation commit: `c60c486 product(KAN-35): add reviewed workflow installation`.
 - PR: `#121` - `product(KAN-35): add reviewed workflow installation`.
 - Script: `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
 - Design: `docs/design/reviewed-workflow-installation-mvp.md`.
@@ -606,6 +606,15 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Safety: no `.env` reads, no provider token reads, no secret value printing, and no remote GitHub repository mutation.
 - Local validation passed for CLI pack dry-run/apply, dashboard JSON pack dry-run/apply, unsafe path rejection, and differing existing workflow `blocked=1` planning.
 - Vercel AI SDK Copilot remains pending. Remaining onboarding gaps are direct provider credential/reachability checks and formal enterprise release approval.
+- Post-merge `main` checks passed:
+  - `CI` - run `25191857023`
+  - `Release Readiness Gate` - run `25191857006`
+  - `Quality Gate Policy Matrix (Optional)` - run `25191857008`
+  - `Secret Scan` - run `25191856999`
+  - `Public Naming Guard` - run `25191857012`
+  - `SonarQube Governance (Non-Blocking)` - run `25191857029`
+  - `Governance Correlation Smoke (Optional)` - run `25191857024`
+  - `Desktop Updater Readiness (Optional)` - run `25191857020`
 
 ## Current KAN-28 Implementation Notes
 
