@@ -16,7 +16,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Treat commit/PR fields in this file as validated KAN-24 implementation and validation baselines, not an auto-updating source of truth for later docs-only refresh commits; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
-- Current active follow-up: `KAN-25 - Automate product vulnerability review evidence` on branch `security/KAN-25-product-vulnerability-review-automation`.
+- Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-25`.
 
 ## Latest Verified GitHub Checks
@@ -31,6 +31,25 @@ Latest post-merge validation for handoff baseline commit `126167f` passed:
 - `Public Naming Guard` - run `25156959899`
 - `Governance Correlation Smoke (Optional)` - run `25156959914`
 - `Desktop Updater Readiness (Optional)` - run `25156959949`
+
+Latest KAN-25 automation baseline:
+
+- Implementation commit: `7c260fe security(KAN-25): automate vulnerability review evidence`.
+- PR: `#100` - `security(KAN-25): automate product vulnerability review evidence`.
+- Post-merge checks passed:
+  - `CI` - run `25157965635`
+  - `Release Readiness Gate` - run `25157965664`
+  - `Quality Gate Policy Matrix (Optional)` - run `25157965674`
+  - `Secret Scan` - run `25157965657`
+  - `SonarQube Governance (Non-Blocking)` - run `25157965627`
+  - `Public Naming Guard` - run `25157965648`
+  - `Governance Correlation Smoke (Optional)` - run `25157965686`
+  - `Desktop Updater Readiness (Optional)` - run `25157965670`
+- First manual `Product Vulnerability Review` run passed:
+  - Run `25157972836`
+  - Mode `DependenciesOnly`
+  - Artifact `product-vulnerability-review-25157972836`
+  - Artifact status: not expired
 
 KAN-24 local validation before PR creation:
 
