@@ -1457,6 +1457,92 @@ pub struct UpsertEnterpriseAdoptionProfileRequest {
     pub profile: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnterpriseReleaseApprovalRecord {
+    pub id: String,
+    pub org_id: String,
+    pub release_id: String,
+    pub repository_full_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_sha: Option<String>,
+    pub environment: String,
+    pub decision: String,
+    pub approver: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_uri: Option<String>,
+    pub evidence_summary: serde_json::Value,
+    pub risk_severity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub risk_acceptance_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    pub approval_hash: String,
+    pub created_by: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseApprovalQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub release_id: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub decision: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseApprovalListResponse {
+    #[serde(default)]
+    pub items: Vec<EnterpriseReleaseApprovalRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CreateEnterpriseReleaseApprovalRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub release_id: String,
+    pub repository_full_name: String,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    pub environment: String,
+    pub decision: String,
+    pub approver: String,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(default)]
+    pub evidence_packet_uri: Option<String>,
+    #[serde(default)]
+    pub evidence_summary: serde_json::Value,
+    #[serde(default)]
+    pub risk_severity: Option<String>,
+    #[serde(default)]
+    pub risk_acceptance_reason: Option<String>,
+    #[serde(default)]
+    pub expires_at: Option<i64>,
+}
+
 pub const RELEVANT_AUDIT_ACTIONS: &[&str] = &[
     "protected_branch.create",
     "protected_branch.destroy",

@@ -131,6 +131,7 @@ pub async fn auth_middleware(
 fn is_sensitive_admin_path(path: &str) -> bool {
     path.starts_with("/api-keys")
         || path.starts_with("/dashboard")
+        || path.starts_with("/enterprise/release-approvals")
         || path.starts_with("/jobs/metrics")
         || path.starts_with("/outbox/lease/metrics")
 }
@@ -235,6 +236,7 @@ mod tests {
         assert!(is_sensitive_admin_path("/api-keys"));
         assert!(is_sensitive_admin_path("/api-keys/revoke"));
         assert!(is_sensitive_admin_path("/dashboard"));
+        assert!(is_sensitive_admin_path("/enterprise/release-approvals"));
         assert!(is_sensitive_admin_path("/jobs/metrics"));
         assert!(is_sensitive_admin_path("/outbox/lease/metrics"));
         assert!(!is_sensitive_admin_path("/logs"));

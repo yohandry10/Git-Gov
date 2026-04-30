@@ -1,14 +1,14 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-36`
+Ticket: `KAN-37`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Expected branch before new work: `main`.
+- Expected branch while KAN-37 is active: `product/KAN-37-formal-release-approval`; return to `main` after merge.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
 - KAN-24 post-merge context refresh PR: `#98` - `docs(KAN-24): record post-merge validation`.
@@ -28,7 +28,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-34 - Dashboard workflow template pack download`.
 - Latest completed follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
 - Latest completed follow-up: `KAN-36 - Direct provider connection validation for enterprise onboarding`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-36`.
+- Current active implementation: `KAN-37 - Formal enterprise release approval MVP` on branch `product/KAN-37-formal-release-approval`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-37`.
 
 ## Latest Verified GitHub Checks
 
@@ -440,10 +441,11 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
 - `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, implemented branch `product/KAN-35-reviewed-workflow-installation`, and merged PR `#121` as `c60c486`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 - `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, implemented branch `product/KAN-36-provider-connection-validation`, and merged PR `#123` as `8c075a4`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
+- `KAN-37`: opened Jira issue `KAN-37 - Formal enterprise release approval MVP` and started branch `product/KAN-37-formal-release-approval`. Scope is append-only formal release approvals with admin-only org scope, evidence packet hash binding, risk acceptance expiration, audit logging, Supabase migration `v24`, and backend validation tests.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`/`KAN-35`/`KAN-36`).
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`/`KAN-35`/`KAN-36`/`KAN-37`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
@@ -452,7 +454,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-34 adds dashboard download for workflow template packs.
   - KAN-35 adds reviewed local workflow installation from CLI or dashboard workflow packs.
   - KAN-36 adds direct provider credential/reachability checks.
-  - Remaining future work: formal release approval.
+  - KAN-37 adds formal release approval persistence with evidence packet hash and risk expiration.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -616,7 +618,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Unsafe paths, duplicate workflow paths, null bytes, declared secret-value packs, and declared repository-mutation packs are rejected.
 - Safety: no `.env` reads, no provider token reads, no secret value printing, and no remote GitHub repository mutation.
 - Local validation passed for CLI pack dry-run/apply, dashboard JSON pack dry-run/apply, unsafe path rejection, and differing existing workflow `blocked=1` planning.
-- Vercel AI SDK Copilot remains pending. Direct provider credential/reachability checks are covered by `KAN-36`; remaining onboarding gap is formal enterprise release approval.
+- Vercel AI SDK Copilot remains pending. Direct provider credential/reachability checks are covered by `KAN-36`; formal enterprise release approval persistence is covered by `KAN-37`.
 - Post-merge `main` checks passed:
   - `CI` - run `25191857023`
   - `Release Readiness Gate` - run `25191857006`
@@ -640,7 +642,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Default mode exits non-zero unless all selected providers are `ready`; `-ReportOnly` writes evidence without failing the process.
 - Safety: no secret value printing, no secret value writing, no provider mutation, no webhook creation, no GitHub Actions variable/secret creation, and no customer repository mutation.
 - Local validation passed for GitHub/Jira ready path, full profile `-ReportOnly` with local Jenkins/Sonar offline findings, Vercel missing-config report, and strict-mode missing-config failure.
-- Vercel AI SDK Copilot remains pending. Remaining onboarding gap is formal enterprise release approval.
+- Vercel AI SDK Copilot remains pending. Formal enterprise release approval persistence is covered by `KAN-37`.
 - Post-merge `main` checks passed:
   - `CI` - run `25192626074`
   - `Release Readiness Gate` - run `25192626059`
@@ -650,6 +652,25 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `SonarQube Governance (Non-Blocking)` - run `25192626079`
   - `Governance Correlation Smoke (Optional)` - run `25192626054`
   - `Desktop Updater Readiness (Optional)` - run `25192626050`
+
+## Current KAN-37 Implementation Notes
+
+- Jira: `KAN-37 - Formal enterprise release approval MVP`.
+- Active branch: `product/KAN-37-formal-release-approval`.
+- API: `GET /enterprise/release-approvals` and `POST /enterprise/release-approvals`.
+- Backend table: `enterprise_release_approvals`.
+- Migration: `gitgov/gitgov-server/supabase/supabase_schema_v24.sql`.
+- Post-check: `gitgov/gitgov-server/supabase/checks/v24_postcheck.sql`.
+- Design: `docs/design/formal-release-approval-mvp.md`.
+- Report: `docs/reports/formal-release-approval-2026-04-30.md`.
+- Local validation already run:
+  - `cargo test enterprise_release_approval_validation` from `gitgov/gitgov-server`: `5` passed, `0` failed.
+  - `cargo test` from `gitgov/gitgov-server`: `178` passed, `0` failed.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Vercel AI SDK Copilot remains pending until KAN-37 is merged and validated.
 
 ## Current KAN-28 Implementation Notes
 
