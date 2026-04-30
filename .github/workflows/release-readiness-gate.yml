@@ -96,32 +96,46 @@ jobs:
         env:
           GITGOV_URL: ${{ vars.GITGOV_URL }}
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_TIER: ${{ github.event.inputs.tier }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          INPUT_REPO_FULL_NAME: ${{ github.event.inputs.repo_full_name }}
+          INPUT_TARGET_READINESS: ${{ github.event.inputs.target_readiness }}
+          INPUT_HOURS: ${{ github.event.inputs.hours }}
+          INPUT_CORRELATION_LIMIT: ${{ github.event.inputs.correlation_limit }}
+          INPUT_ORG_NAME: ${{ github.event.inputs.org_name }}
+          INPUT_STRICT_SIGNALS: ${{ github.event.inputs.strict_signals }}
+          INPUT_ENFORCE_GATE: ${{ github.event.inputs.enforce_gate }}
+          INPUT_REFRESH_JIRA_CORRELATIONS: ${{ github.event.inputs.refresh_jira_correlations }}
+          GITHUB_REF_NAME_VALUE: ${{ github.ref_name }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+          GITHUB_EVENT_NAME_VALUE: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          $tier = "${{ github.event.inputs.tier }}"
+          $tier = $env:INPUT_TIER
           if ([string]::IsNullOrWhiteSpace($tier)) { $tier = "standard" }
 
-          $branch = "${{ github.event.inputs.branch }}"
-          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "${{ github.ref_name }}" }
+          $branch = $env:INPUT_BRANCH
+          if ([string]::IsNullOrWhiteSpace($branch)) { $branch = $env:GITHUB_REF_NAME_VALUE }
           if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
 
-          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
-          if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "${{ github.repository }}" }
+          $repoFullName = $env:INPUT_REPO_FULL_NAME
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = $env:GITHUB_REPOSITORY_NAME }
 
-          $targetReadiness = "${{ github.event.inputs.target_readiness }}"
+          $targetReadiness = $env:INPUT_TARGET_READINESS
           if ([string]::IsNullOrWhiteSpace($targetReadiness)) { $targetReadiness = "0" }
 
-          $hours = "${{ github.event.inputs.hours }}"
+          $hours = $env:INPUT_HOURS
           if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "720" }
 
-          $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
+          $correlationLimit = $env:INPUT_CORRELATION_LIMIT
           if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
 
-          $orgName = "${{ github.event.inputs.org_name }}"
-          $strictSignals = "${{ github.event.inputs.strict_signals }}"
-          $enforceGate = "${{ github.event.inputs.enforce_gate }}"
-          $refreshJiraCorrelations = "${{ github.event.inputs.refresh_jira_correlations }}"
+          $orgName = $env:INPUT_ORG_NAME
+          $strictSignals = $env:INPUT_STRICT_SIGNALS
+          $enforceGate = $env:INPUT_ENFORCE_GATE
+          $refreshJiraCorrelations = $env:INPUT_REFRESH_JIRA_CORRELATIONS
           if ([string]::IsNullOrWhiteSpace($refreshJiraCorrelations)) { $refreshJiraCorrelations = "true" }
-          $eventName = "${{ github.event_name }}"
+          $eventName = $env:GITHUB_EVENT_NAME_VALUE
           if ($eventName -eq "schedule") { $enforceGate = "true" }
 
           if ($refreshJiraCorrelations -eq "true") {
@@ -140,7 +154,7 @@ jobs:
                 $payload["org_name"] = $orgName
               }
 
-              $correlationPath = "docs/reports/jira-correlation-refresh-${{ github.run_id }}.json"
+              $correlationPath = "docs/reports/jira-correlation-refresh-$env:RUN_ID.json"
               $correlationResponse = Invoke-RestMethod `
                 -Method POST `
                 -Uri "$baseUrl/integrations/jira/correlate" `
@@ -157,7 +171,7 @@ jobs:
             }
           }
 
-          $outputPath = "docs/reports/release-readiness-gate-${{ github.run_id }}.json"
+          $outputPath = "docs/reports/release-readiness-gate-$env:RUN_ID.json"
 
           $readinessArgs = @{
             GitGovUrl = $env:GITGOV_URL

@@ -101,8 +101,19 @@ export async function getReleaseMetadata(): Promise<ReleaseMetadata> {
         return result;
     }
 
-    const relativePath = siteConfig.downloadPath.replace(/^\//, '');
-    const absolutePath = path.join(process.cwd(), 'public', relativePath);
+    const publicRoot = path.resolve(process.cwd(), 'public');
+    const relativePath = siteConfig.downloadPath.replace(/^\/+/, '');
+    const absolutePath = path.resolve(publicRoot, relativePath);
+    const relativeToPublic = path.relative(publicRoot, absolutePath);
+    if (relativeToPublic.startsWith('..') || path.isAbsolute(relativeToPublic)) {
+        return {
+            version: siteConfig.version,
+            downloadUrl: siteConfig.downloadPath,
+            checksum: siteConfig.downloadChecksum,
+            msiUrl,
+            available: false,
+        };
+    }
 
     try {
         const stat = await fs.stat(absolutePath);

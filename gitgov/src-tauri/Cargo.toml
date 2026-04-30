@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "GitGov - Controlled Git workflow with roles and audit"
 authors = ["GitGov Team"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "gitgov_lib"

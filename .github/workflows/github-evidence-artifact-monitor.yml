@@ -27,14 +27,16 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          INPUT_MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
         run: |
-          $maxAgeHours = "${{ inputs.max_age_hours }}"
+          $maxAgeHours = $env:INPUT_MAX_AGE_HOURS
           if ([string]::IsNullOrWhiteSpace($maxAgeHours)) {
             $maxAgeHours = "192"
           }
 
           .\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
-            -Repository "${{ github.repository }}" `
+            -Repository $env:GITHUB_REPOSITORY_NAME `
             -WorkflowFile "github-evidence-report.yml" `
             -ArtifactName "github-evidence-executive-report" `
             -MaxAgeHours ([int]$maxAgeHours) `

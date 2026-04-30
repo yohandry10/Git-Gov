@@ -3,6 +3,7 @@ name = "gitgov-server"
 version = "0.1.0"
 edition = "2021"
 description = "GitGov Control Plane - Centralized audit and policy server"
+license = "MIT"
 
 [[bin]]
 name = "gitgov-server"

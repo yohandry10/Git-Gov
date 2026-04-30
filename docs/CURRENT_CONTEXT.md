@@ -1,40 +1,35 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-23`
+Ticket: `KAN-24`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Expected branch before new work: `main`.
-- Latest completed handoff baseline: `6d3fb85 feat(KAN-23): add evidence packet MVP (#95)`.
-- Last merged PR: `#95` - `feat(KAN-23): add evidence packet MVP`.
+- Current branch: `security/KAN-24-product-vulnerability-review`.
+- Latest `main` baseline before KAN-24 work: `a37d489 docs(KAN-23): record evidence packet merge validation (#96)`.
+- Last merged PR before KAN-24: `#96` - `docs(KAN-23): record evidence packet merge validation`.
 - Previous merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
 - Treat commit/PR fields in this file as a validated handoff baseline, not an auto-updating source of truth; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
-- Worktree expectation before new work: clean and aligned with `origin/main`.
+- Worktree expectation during KAN-24: dirty until the security review branch is committed and PR checks pass.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-23`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-24`.
 
 ## Latest Verified GitHub Checks
 
-Latest post-merge validation for handoff baseline commit `6d3fb85` passed:
+Latest local KAN-24 validation completed before PR creation:
 
-- `CI` - run `25153717623`
-- `Release Readiness Gate` - run `25153717624`
-- `Quality Gate Policy Matrix (Optional)` - run `25153717652`
-- `Secret Scan` - run `25153717622`
-- `SonarQube Governance (Non-Blocking)` - run `25153717650`
-- `Public Naming Guard` - run `25153717646`
-- `Governance Correlation Smoke (Optional)` - run `25153717617`
-- `Desktop Updater Readiness (Optional)` - run `25153717635`
+- `.\scripts\security\run_product_vulnerability_review.ps1 -Full -OutputDir docs/reports/product-vulnerability-review-2026-04-30 -CommandTimeoutSeconds 1200`
+- Result: `20` pass, `1` expected finding, `0` fail.
+- Remaining expected finding: backend `cargo audit` reports `rsa` through inactive `sqlx-mysql`; reachability checks showed no active dependency path in the current backend feature graph.
+- Production-safe runtime probes passed:
+  - `GET https://gitgov-api.onrender.com/health`
+  - anonymous `GET /stats` returned `401`
+  - authenticated `GET /stats` returned success without printing token values.
 
-Production validation after Render deploy `dep-d7pgh97aqgkc738i2dv0`:
-
-- Render deployed commit `6d3fb85` and reached `live` at `2026-04-30T07:52:47Z`.
-- `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
-- `GET /evidence/packets/tickets/KAN-23?org_name=yohandry10&repo_full_name=yohandry10%2FGit-Gov&hours=720` returned `found=true`, subject `KAN-23`, and complete evidence counters: commits `1`, pull requests `1`, pipelines `1`, quality gates `1`, with hash prefix `7fa12531dc10`.
+GitHub-hosted KAN-24 PR checks are pending until the branch is pushed and the PR is opened.
 
 ## Non-Negotiable Operating Decisions
 
@@ -157,6 +152,12 @@ Publication and traceability guard:
 .\scripts\security\publication_guard.ps1
 ```
 
+KAN-24 product vulnerability review runner:
+
+```powershell
+.\scripts\security\run_product_vulnerability_review.ps1 -Full -OutputDir docs/reports/product-vulnerability-review-2026-04-30 -CommandTimeoutSeconds 1200
+```
+
 Provider access smoke test:
 
 ```powershell
@@ -188,23 +189,26 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-20`: closed implementation backlog semantics; remaining items are operational decisions.
 - `KAN-21`: clarified SonarCloud, OpenAPI/SDK, and Jenkins trigger-only defaults.
 - `KAN-22`: created this current-context handoff, refreshed it through PR `#89` with baseline commit `c1951c8`, and fixed PowerShell workflow splatting in risk-tier baseline and desktop updater readiness workflows after scheduled/optional job failures.
-- `KAN-23`: opened Jira issue `KAN-23 - Evidence Packets MVP` and started branch `feature/KAN-23-evidence-packets-mvp`. Product decision: build ticket-scoped Evidence Packets before Vercel AI SDK. MVP adds `GET /evidence/packets/tickets/{ticket_id}`, a Tauri command, dashboard JSON download UI, and docs under `docs/design/evidence-packets-mvp.md`.
+- `KAN-23`: implemented ticket-scoped Evidence Packets before a Vercel AI SDK copilot. MVP added `GET /evidence/packets/tickets/{ticket_id}`, a Tauri command, dashboard JSON download UI, and docs under `docs/design/evidence-packets-mvp.md`; follow-up PR `#96` recorded production merge validation on `main` commit `a37d489`.
+- `KAN-24`: opened Jira issue `KAN-24 - Product vulnerability review and production hardening` and started branch `security/KAN-24-product-vulnerability-review`. Scope covers end-to-end product vulnerability review across code, architecture, runtime, CI/CD, dependencies, and real user surfaces.
 
-## Current KAN-23 Implementation Notes
+## Current KAN-24 Implementation Notes
 
-- Evidence packet endpoint is admin/Bearer and returns ticket metadata, commit-ticket-pipeline correlations, related PR merge evidence, quality-gate-like pipeline runs, completeness counters, and a SHA-256 content hash computed without the hash field.
-- Dashboard panel is `gitgov/src/components/control_plane/EvidencePacketPanel.tsx`.
-- Branch query is preserved in request/packet metadata, but strict branch filtering remains follow-up because the underlying ticket-flow correlation query is not branch-scoped yet.
-- Initial local validation passed on 2026-04-30:
-  - `cargo check` in `gitgov/gitgov-server`
-  - `cargo check` in `gitgov/src-tauri`
-  - `npm run typecheck` in `gitgov`
-  - `cargo test` in `gitgov/gitgov-server` (`170` tests)
-  - `npm test -- --run` in `gitgov` (`267` tests)
-  - `npm run lint` in `gitgov`
-  - `npm run build` in `gitgov`
-  - `git diff --check`
-  - `.\scripts\security\publication_guard.ps1`
+- Master plan: `docs/security/product-vulnerability-review-plan-2026-04-30.md`.
+- Live report: `docs/reports/product-vulnerability-review-2026-04-30.md`.
+- Reproducible runner: `scripts/security/run_product_vulnerability_review.ps1`.
+- Generated sanitized evidence directory: `docs/reports/product-vulnerability-review-2026-04-30/`.
+- Main fixes in the KAN-24 branch:
+  - GitHub Actions PowerShell script blocks now pass GitHub/input context through `env` instead of direct shell interpolation.
+  - Frontend and website dependency advisories were remediated; `npm audit --json` and `pnpm audit --json` pass.
+  - Backend and desktop Rust dependency chains were refreshed; `cargo deny check` passes for both, and desktop `cargo audit` exits 0.
+  - Backend `cargo audit` still reports `rsa` through inactive `sqlx-mysql`; documented as not reachable after `cargo tree` reachability checks.
+  - Windows external URL opening no longer uses `cmd /C start`.
+  - Website contact API has explicit body/field bounds and PII-safe logging.
+  - Website download metadata is constrained to the `public` root.
+  - Website security headers were added with a Next-compatible CSP.
+  - Evidence packet JSON download filenames are sanitized.
+- No critical/high reachable vulnerability remained open after the latest full runner.
 
 ## Latest Workflow Fix Context
 
@@ -217,14 +221,15 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-No active implementation blocker remains in the documented status list.
+KAN-24 is an active security hardening branch until PR checks pass and the branch is merged.
 
 Current work types are:
 
-- Operational validation cadence.
-- Evidence freshness.
-- Optional product enhancements.
-- Future implementation only when explicitly requested.
+- Finish final guardrails.
+- Commit and push `security/KAN-24-product-vulnerability-review`.
+- Open a Jira-traceable PR with `KAN-24` in the title.
+- Wait for required GitHub checks.
+- Merge only when green, then run post-merge production-safe smoke checks and comment Jira.
 
 ## Practical Next Steps
 
@@ -232,8 +237,8 @@ When resuming, do this first:
 
 1. Run `git status --short --branch`.
 2. Read `AGENTS.md` and this file.
-3. If work changes code or docs, create/use a Jira ticket first.
-4. Use a Jira-traceable branch such as `docs/KAN-22-current-context-handoff`.
+3. Continue KAN-24 on `security/KAN-24-product-vulnerability-review` unless it has already merged.
+4. Use `KAN-24` in commits, PR title, and Jira comments.
 5. Run `.\scripts\security\publication_guard.ps1` before commit.
 6. Push, open PR, wait for required checks, merge only when green.
 7. After merge, pull `main`, wait for post-merge checks, and comment the Jira ticket with evidence.

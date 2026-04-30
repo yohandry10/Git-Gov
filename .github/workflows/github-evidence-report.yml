@@ -39,8 +39,10 @@ jobs:
         id: report
         if: steps.config.outputs.enabled == 'true'
         shell: pwsh
+        env:
+          INPUT_ORG_NAME: ${{ inputs.org_name }}
         run: |
-          $orgName = "${{ inputs.org_name }}"
+          $orgName = $env:INPUT_ORG_NAME
           if ([string]::IsNullOrWhiteSpace($orgName)) {
             $orgName = "yohandry10"
           }

@@ -10,64 +10,101 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Currently validates payload and returns 200.
  */
+const MAX_BODY_BYTES = 8 * 1024;
+const FIELD_LIMITS = {
+    name: 120,
+    email: 254,
+    company: 160,
+    teamSize: 80,
+    toolchain: 300,
+    interestType: 120,
+    message: 3000,
+} as const;
+
+function readStringField(body: Record<string, unknown>, field: keyof typeof FIELD_LIMITS, required = true) {
+    const value = body[field];
+    if (typeof value !== 'string') {
+        return required ? null : '';
+    }
+
+    const trimmed = value.trim();
+    if (required && !trimmed) {
+        return null;
+    }
+
+    return trimmed.slice(0, FIELD_LIMITS[field]);
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
+        const text = await request.text();
+        if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
+            return NextResponse.json(
+                { error: 'Request body is too large' },
+                { status: 413 }
+            );
+        }
 
-        const { name, email, company, teamSize, toolchain, interestType, message } = body;
+        const body = JSON.parse(text) as Record<string, unknown>;
 
-        // Basic validation
-        if (!name || typeof name !== 'string' || !name.trim()) {
+        const name = readStringField(body, 'name');
+        const email = readStringField(body, 'email');
+        const company = readStringField(body, 'company');
+        const teamSize = readStringField(body, 'teamSize');
+        const toolchain = readStringField(body, 'toolchain', false) || '';
+        const interestType = readStringField(body, 'interestType');
+        const message = readStringField(body, 'message');
+
+        if (!name) {
             return NextResponse.json(
                 { error: 'Name is required' },
                 { status: 400 }
             );
         }
 
-        if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             return NextResponse.json(
                 { error: 'Valid email is required' },
                 { status: 400 }
             );
         }
 
-        if (!company || typeof company !== 'string' || !company.trim()) {
+        if (!company) {
             return NextResponse.json(
                 { error: 'Company is required' },
                 { status: 400 }
             );
         }
 
-        if (!teamSize || typeof teamSize !== 'string' || !teamSize.trim()) {
+        if (!teamSize) {
             return NextResponse.json(
                 { error: 'Team size is required' },
                 { status: 400 }
             );
         }
 
-        if (!interestType || typeof interestType !== 'string' || !interestType.trim()) {
+        if (!interestType) {
             return NextResponse.json(
                 { error: 'Interest type is required' },
                 { status: 400 }
             );
         }
 
-        if (!message || typeof message !== 'string' || !message.trim()) {
+        if (!message) {
             return NextResponse.json(
                 { error: 'Message is required' },
                 { status: 400 }
             );
         }
 
-        // Log in development (placeholder for real service)
+        const emailDomain = email.split('@')[1] || 'unknown';
         console.log('[Contact Form Submission]', {
-            name: name.trim(),
-            email: email.trim(),
-            company: (company || '').trim(),
-            teamSize: (teamSize || '').trim(),
-            toolchain: (toolchain || '').trim(),
-            interestType: (interestType || '').trim(),
-            message: message.trim(),
+            emailDomain,
+            companyLength: company.length,
+            teamSize,
+            toolchainLength: toolchain.length,
+            interestType,
+            messageLength: message.length,
             timestamp: new Date().toISOString(),
         });
 

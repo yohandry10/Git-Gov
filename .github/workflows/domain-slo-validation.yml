@@ -84,21 +84,28 @@ jobs:
         env:
           GITGOV_URL: ${{ vars.GITGOV_URL }}
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_HOURS: ${{ github.event.inputs.hours }}
+          INPUT_CORRELATION_LIMIT: ${{ github.event.inputs.correlation_limit }}
+          INPUT_DOMAIN_NAME: ${{ github.event.inputs.domain_name }}
+          INPUT_REPO_FULL_NAME: ${{ github.event.inputs.repo_full_name }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          INPUT_FAIL_ON_BREACH: ${{ github.event.inputs.fail_on_breach }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          $hours = "${{ github.event.inputs.hours }}"
+          $hours = $env:INPUT_HOURS
           if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
 
-          $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
+          $correlationLimit = $env:INPUT_CORRELATION_LIMIT
           if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
 
-          $domainName = "${{ github.event.inputs.domain_name }}"
-          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          $domainName = $env:INPUT_DOMAIN_NAME
+          $repoFullName = $env:INPUT_REPO_FULL_NAME
           if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "yohandry10/Git-Gov" }
 
-          $branch = "${{ github.event.inputs.branch }}"
+          $branch = $env:INPUT_BRANCH
           if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
 
-          $outputDir = "docs/reports/domain-slo-validation-gh-${{ github.run_id }}"
+          $outputDir = "docs/reports/domain-slo-validation-gh-$env:RUN_ID"
 
           $params = @{
             GitGovUrl = $env:GITGOV_URL
@@ -114,7 +121,7 @@ jobs:
           if (-not [string]::IsNullOrWhiteSpace($domainName)) {
             $params.DomainName = $domainName
           }
-          if ("${{ github.event.inputs.fail_on_breach }}" -eq "true") {
+          if ($env:INPUT_FAIL_ON_BREACH -eq "true") {
             $params.FailOnBreach = $true
           }
 
