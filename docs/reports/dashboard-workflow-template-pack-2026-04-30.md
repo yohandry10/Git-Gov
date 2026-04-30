@@ -55,6 +55,32 @@ Local validation passed:
   - passed.
 - Targeted secret-pattern scan over KAN-34 files returned no matches for committed secret assignments.
 
+## PR Validation
+
+- PR: `#119` - `product(KAN-34): add dashboard workflow template pack`.
+- Merge commit: `31b109d`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+
+Post-merge `main` checks passed:
+
+- `CI` run `25190963652`.
+- `Release Readiness Gate` run `25190963636`.
+- `Quality Gate Policy Matrix (Optional)` run `25190963623`.
+- `Secret Scan` run `25190963646`.
+- `SonarQube Governance (Non-Blocking)` run `25190963649`.
+- `Public Naming Guard` run `25190963657`.
+- `Governance Correlation Smoke (Optional)` run `25190963633`.
+- `Desktop Updater Readiness (Optional)` run `25190963664`.
+
 ## Remaining Product Work Before AI SDK
 
 - Explicitly authorized workflow installation into customer repositories.

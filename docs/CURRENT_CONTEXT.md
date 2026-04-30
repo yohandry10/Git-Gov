@@ -25,7 +25,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-31 - Adoption profile persistence`.
 - Latest completed follow-up: `KAN-32 - Enterprise provider health validation MVP`.
 - Latest completed follow-up: `KAN-33 - Workflow template generation from adoption profile`.
-- Active follow-up: `KAN-34 - Dashboard workflow template pack download`.
+- Latest completed follow-up: `KAN-34 - Dashboard workflow template pack download`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-34`.
 
 ## Latest Verified GitHub Checks
@@ -419,7 +419,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs. Documentation refresh PR `#113` merged as `171d43d`, and production migration `v23` was applied and validated on 2026-04-30.
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
-- `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download` and started branch `product/KAN-34-dashboard-workflow-template-pack`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
+- `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
 
 ## Current Product Roadmap
 
@@ -548,7 +548,8 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current KAN-34 Implementation Notes
 
-- Active branch: `product/KAN-34-dashboard-workflow-template-pack`.
+- Implementation commit: `31b109d product(KAN-34): add dashboard workflow template pack`.
+- PR: `#119` - `product(KAN-34): add dashboard workflow template pack`.
 - Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - Helpers: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
 - Tests: `gitgov/src/test/components/dashboard-helpers.test.ts`.
@@ -559,6 +560,25 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Safety: no `.env` reads, no provider token reads, no secret value display, and no customer repository mutation.
 - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts` (`13` tests), `npm run typecheck`, `npm run lint`, full `npm test -- --run` (`25` files, `276` tests), `npm run build` with the existing Vite large chunk warning, `git diff --check`, targeted secret-pattern scan, and `.\scripts\security\publication_guard.ps1`.
 - Vercel AI SDK Copilot remains pending until onboarding gaps are closed.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25190963652`
+  - `Release Readiness Gate` - run `25190963636`
+  - `Quality Gate Policy Matrix (Optional)` - run `25190963623`
+  - `Secret Scan` - run `25190963646`
+  - `SonarQube Governance (Non-Blocking)` - run `25190963649`
+  - `Public Naming Guard` - run `25190963657`
+  - `Governance Correlation Smoke (Optional)` - run `25190963633`
+  - `Desktop Updater Readiness (Optional)` - run `25190963664`
 
 ## Current KAN-28 Implementation Notes
 
