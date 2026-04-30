@@ -58,7 +58,7 @@ Update the version and filename in `lib/config/site.ts` if needed.
 gitgov-web/
 ├── app/                    # Next.js App Router pages
 │   ├── (marketing)/        # Marketing pages (features, download, contact, pricing)
-│   ├── api/                # API routes (contact, download)
+│   ├── api/                # API routes (contact, download, copilot)
 │   └── docs/               # Documentation pages
 ├── components/
 │   ├── layout/             # Header, Footer, Container, Preloader
@@ -101,3 +101,13 @@ gitgov-web/
 This is the **public-facing website only**. It does not replace:
 - The Desktop App (`gitgov/`)
 - The Control Plane Server (`gitgov/gitgov-server/`)
+
+## Copilot API
+
+The first Vercel AI SDK Copilot route is:
+
+```text
+POST /api/copilot/governance
+```
+
+It gathers bounded GitGov evidence server-side and returns a cited governance brief. The caller must provide a GitGov bearer token in the `Authorization` header unless explicitly configured server-key mode is enabled.

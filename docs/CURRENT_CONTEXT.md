@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-37`
+Ticket: `KAN-38`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -29,7 +29,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
 - Latest completed follow-up: `KAN-36 - Direct provider connection validation for enterprise onboarding`.
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-37`.
+- Current active implementation: `KAN-38 - Vercel AI SDK governance copilot MVP` on branch `product/KAN-38-ai-sdk-copilot`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-38`.
 
 ## Latest Verified GitHub Checks
 
@@ -442,6 +443,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, implemented branch `product/KAN-35-reviewed-workflow-installation`, and merged PR `#121` as `c60c486`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 - `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, implemented branch `product/KAN-36-provider-connection-validation`, and merged PR `#123` as `8c075a4`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
 - `KAN-37`: opened Jira issue `KAN-37 - Formal enterprise release approval MVP`, implemented branch `product/KAN-37-formal-release-approval`, and merged PR `#125` as `d7ae92e`. Scope is append-only formal release approvals with admin-only org scope, evidence packet hash binding, risk acceptance expiration, audit logging, Supabase migration `v24`, and backend validation tests. Production migration `v24` was applied and validated on 2026-04-30; Render deploy `dep-d7ptsvhoagis738cj88g` reached `live`.
+- `KAN-38`: opened Jira issue `KAN-38 - Vercel AI SDK governance copilot MVP` and started branch `product/KAN-38-ai-sdk-copilot`. Scope is the first server-side Next.js AI SDK copilot route over bounded GitGov evidence with citations and fallback when AI Gateway/OIDC is unavailable.
 
 ## Current Product Roadmap
 
@@ -455,8 +457,9 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-35 adds reviewed local workflow installation from CLI or dashboard workflow packs.
   - KAN-36 adds direct provider credential/reachability checks.
   - KAN-37 adds formal release approval persistence with evidence packet hash and risk expiration.
-- Next major AI feature: Vercel AI SDK Copilot.
+- Current major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
+  - KAN-38 starts this with `POST /api/copilot/governance`.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
@@ -689,7 +692,37 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - authenticated `GET /evidence/packets/tickets/KAN-37` returned `found=true`.
   - authenticated `POST /enterprise/release-approvals` created `KAN-37-runtime-smoke` with decision `approved`.
   - authenticated follow-up list for `KAN-37-runtime-smoke` returned `total=1`.
-- Vercel AI SDK Copilot remains the next major product feature.
+- Vercel AI SDK Copilot starts in `KAN-38`.
+
+## Current KAN-38 Implementation Notes
+
+- Jira: `KAN-38 - Vercel AI SDK governance copilot MVP`.
+- Active branch: `product/KAN-38-ai-sdk-copilot`.
+- Route: `POST /api/copilot/governance`.
+- Package: `gitgov-web` now depends on `ai@^6.0.0`.
+- Implementation:
+  - `gitgov-web/app/api/copilot/governance/route.ts`.
+  - `gitgov-web/lib/copilot/governance.ts`.
+- Design: `docs/design/ai-sdk-governance-copilot-mvp.md`.
+- Report: `docs/reports/ai-sdk-governance-copilot-2026-04-30.md`.
+- Evidence sources:
+  - `GET /evidence/packets/tickets/{ticket_id}`.
+  - `GET /integrations/jira/ticket-coverage`.
+  - `GET /enterprise/release-approvals`.
+  - `GET /enterprise/adoption-profile`.
+- Security defaults:
+  - caller Bearer token is required by default and forwarded only to GitGov backend.
+  - server-key mode requires explicit `GITGOV_COPILOT_USE_SERVER_API_KEY=true` and `GITGOV_COPILOT_ACCESS_TOKEN`.
+  - request body is limited to 12 KB.
+  - route does not log or return Authorization headers.
+- Local validation already run:
+  - `pnpm run typecheck` from `gitgov-web`: passed.
+  - `pnpm run lint` from `gitgov-web`: passed.
+  - `pnpm run build` from `gitgov-web`: passed and registered `/api/copilot/governance`.
+  - `pnpm audit --prod` from `gitgov-web`: no known vulnerabilities found.
+  - local `next start -p 3108` route smoke with `GITGOV_COPILOT_DISABLE_AI=true`: `success=true`, `mode=fallback`, `4` citations, `4` evidence sources.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
 
 ## Current KAN-28 Implementation Notes
 
