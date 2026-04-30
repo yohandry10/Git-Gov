@@ -72,7 +72,8 @@ The pack uses GitHub Actions secret references such as `${{ secrets.GITGOV_API_K
 
 ## Next Product Steps
 
-1. Add an explicit reviewed install flow for GitHub repositories.
-2. Add direct provider credential/reachability checks where a customer grants explicit access.
-3. Add formal enterprise release approval.
-4. Start Vercel AI SDK Copilot only after onboarding is finished enough for the copilot to explain a complete adoption state.
+1. Add direct provider credential/reachability checks where a customer grants explicit access.
+2. Add formal enterprise release approval.
+3. Start Vercel AI SDK Copilot only after onboarding is finished enough for the copilot to explain a complete adoption state.
+
+Follow-up `KAN-35` adds reviewed local workflow installation from this dashboard pack format.

@@ -2,7 +2,7 @@
 
 Updated: 2026-04-30
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`
 
 ## Purpose
 
@@ -68,6 +68,49 @@ It does not:
 - read local `.env` files.
 - include provider token values.
 - generate secret values.
+
+## Install Workflow Templates With Review
+
+Use this only after reviewing the generated workflow pack. The installer is dry-run by default and writes files only when `-Apply` is passed.
+
+Install from the CLI-generated pack directory:
+
+```powershell
+.\scripts\control-plane\install_enterprise_workflow_templates.ps1 -PackDir out/enterprise-workflow-templates -TargetRepoPath C:\path\to\customer-repo -OutputPlanPath out/workflow-install-plan.json
+```
+
+Install from the dashboard JSON pack:
+
+```powershell
+.\scripts\control-plane\install_enterprise_workflow_templates.ps1 -PackPath C:\path\to\workflow-template-pack.json -TargetRepoPath C:\path\to\customer-repo -OutputPlanPath out/workflow-install-plan.json
+```
+
+The plan reports each workflow file as:
+
+- `create`: new workflow file would be added.
+- `update`: existing workflow file would be replaced, only when `-Overwrite` is also used.
+- `skip`: existing workflow file already matches.
+- `blocked`: existing workflow file differs and needs review before overwrite.
+
+After reviewing the plan, apply it:
+
+```powershell
+.\scripts\control-plane\install_enterprise_workflow_templates.ps1 -PackDir out/enterprise-workflow-templates -TargetRepoPath C:\path\to\customer-repo -OutputPlanPath out/workflow-install-plan-apply.json -Apply
+```
+
+Use `-Overwrite` only after reviewing replacements:
+
+```powershell
+.\scripts\control-plane\install_enterprise_workflow_templates.ps1 -PackDir out/enterprise-workflow-templates -TargetRepoPath C:\path\to\customer-repo -OutputPlanPath out/workflow-install-plan-overwrite.json -Apply -Overwrite
+```
+
+Safety boundaries:
+
+- target path must be a git checkout with a `.git` marker.
+- writes are limited to `.github/workflows/*.yml` and `.github/workflows/*.yaml`.
+- unsafe paths such as `..`, rooted paths, drive-qualified paths, nested workflow paths, and non-YAML files are rejected.
+- the installer does not read `.env` files, provider tokens, or secret values.
+- the installer does not call GitHub APIs or mutate remote repositories.
 
 ## Policy Presets
 
