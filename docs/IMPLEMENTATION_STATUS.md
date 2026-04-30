@@ -650,7 +650,7 @@ The security review did not create a new critical/high implementation blocker. T
    - Current state: the evidence substrate exists; the customer-facing copilot is not implemented.
 3. KAN-28 vulnerability trend enforcement.
    - Goal: convert the KAN-27 trend from informational evidence into an automated gate that fails when failures appear, findings increase, or the latest review artifact is missing/expired.
-   - Current state: active KAN-28 work.
+   - Current state: implemented through PR `#106`; first manual enforcement workflow run `25160194313` passed and uploaded artifact `product-vulnerability-review-trend-enforcement` ID `6727810243`.
 4. Optional dependency hygiene.
    - Goal: remove the residual `rsa` / inactive `sqlx-mysql` finding when upstream resolution or a safe dependency cleanup makes that practical.
    - Current state: documented as expected and not reachable; not a production blocker.

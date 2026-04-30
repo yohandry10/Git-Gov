@@ -19,7 +19,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
 - Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
-- Current active follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
+- Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-28`.
 
 ## Latest Verified GitHub Checks
@@ -90,6 +90,25 @@ Latest KAN-27 trend report baseline:
   - Run `25159031614`
   - Artifact `product-vulnerability-review-trend-report`
   - Artifact ID `6727320469`
+  - Artifact status: not expired
+
+Latest KAN-28 trend enforcement baseline:
+
+- Implementation commit: `7b36cec security(KAN-28): enforce product vulnerability trend baseline`.
+- PR: `#106` - `security(KAN-28): enforce product vulnerability trend baseline`.
+- Post-merge checks passed:
+  - `CI` - run `25160187848`
+  - `Release Readiness Gate` - run `25160187829`
+  - `Quality Gate Policy Matrix (Optional)` - run `25160187813`
+  - `Secret Scan` - run `25160187847`
+  - `SonarQube Governance (Non-Blocking)` - run `25160187844`
+  - `Public Naming Guard` - run `25160187839`
+  - `Governance Correlation Smoke (Optional)` - run `25160187818`
+  - `Desktop Updater Readiness (Optional)` - run `25160187859`
+- First manual `Product Vulnerability Review Trend Enforcement` run passed:
+  - Run `25160194313`
+  - Artifact `product-vulnerability-review-trend-enforcement`
+  - Artifact ID `6727810243`
   - Artifact status: not expired
 
 KAN-24 local validation before PR creation:
