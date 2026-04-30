@@ -83,6 +83,6 @@ Secret handling remains name-only, matching the `KAN-29` adoption pack generator
 ## Next Product Steps
 
 1. Provider validation dashboard: implemented as a secret-safe evidence MVP by `KAN-32`; direct provider reachability checks remain future work.
-2. Workflow template generation/installation: convert selected modules into installable customer workflows.
+2. Workflow template generation: implemented by `KAN-33`; reviewed installation remains future work.
 3. Formal release approval: approvers, risk acceptance, expiration, evidence binding, and release packet.
 4. Vercel AI SDK Copilot: explain adoption readiness, blockers, evidence packets, and security findings in plain language with cited GitGov evidence.

@@ -27,6 +27,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-22` | Current context handoff | Added a single resume document with exact current state, latest PR/commit, access summary, non-negotiable decisions, validation commands, and practical next steps. | `docs/CURRENT_CONTEXT.md`, `docs/reports/kan-22-current-context-handoff-2026-04-28.md` |
 | `KAN-31` | Enterprise adoption persistence | Persisted the dashboard adoption profile per org with admin get/upsert endpoints, Tauri commands, UI save/load, backend validation, audit metadata, and Supabase migration `v23`; production `v23` was applied and postchecked on 2026-04-30. | PR `#112`, docs PR `#113`, main commits `509e2a2` and `171d43d`, `docs/design/adoption-profile-persistence-mvp.md`, `docs/reports/adoption-profile-persistence-2026-04-30.md` |
 | `KAN-32` | Enterprise provider health validation | Added a secret-safe Provider Health dashboard section that evaluates selected adoption providers from profile intent plus existing GitGov evidence, without reading or displaying provider credentials. | PR `#115`, main commit `1a16d88`, `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`, `gitgov/src/components/control_plane/dashboard-helpers.ts`, `docs/design/provider-health-validation-mvp.md`, `docs/reports/provider-health-validation-2026-04-30.md` |
+| `KAN-33` | Enterprise workflow template generation | Added a secret-safe workflow template generator that converts the adoption profile into reviewed GitHub Actions template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories. | `scripts/control-plane/generate_enterprise_workflow_templates.ps1`, `docs/design/workflow-template-generation-mvp.md`, `docs/reports/workflow-template-generation-2026-04-30.md` |
 
 ### Current Operational Decisions
 
@@ -645,7 +646,7 @@ The security review did not create a new critical/high implementation blocker. T
 1. Enterprise Self-Service Adoption.
    - Goal: let another company adopt the proven GitGov operating model without manual, repo-specific setup.
    - Needed product surfaces: provider onboarding, repository selection, workflow template installation, policy presets, module toggles, integration health, and formal release approval rules.
-   - Current state: KAN-29 implemented the first packaging layer through PR `#108` with a reproducible adoption pack generator, example profile, design doc, and runbook. KAN-30 adds the first dashboard profile builder so admins can choose providers, modules, and policy preset, preview the generated workflow/policy/config plan, and download secret-safe JSON. KAN-31 persists the profile per org. KAN-32 adds evidence-based provider health in the dashboard. Direct provider credential checks, workflow installation, and formal enterprise release approval are still future product work.
+   - Current state: KAN-29 implemented the first packaging layer through PR `#108` with a reproducible adoption pack generator, example profile, design doc, and runbook. KAN-30 adds the first dashboard profile builder so admins can choose providers, modules, and policy preset, preview the generated workflow/policy/config plan, and download secret-safe JSON. KAN-31 persists the profile per org. KAN-32 adds evidence-based provider health in the dashboard. KAN-33 generates reviewed workflow template packs from the same profile. Direct provider credential checks, automatic/reviewed workflow installation, and formal enterprise release approval are still future product work.
 2. Vercel AI SDK Copilot.
    - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
    - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
@@ -662,6 +663,7 @@ Detailed roadmap documents:
 - `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
 - `docs/design/enterprise-self-service-adoption-mvp.md`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
+- `docs/design/workflow-template-generation-mvp.md`.
 
 1. Keep SonarQube local as the Sonar source of truth.
    - SonarCloud onboarding is not applicable for the current personal GitHub repository/account. Do not propose it again for this repo unless the repo moves to a GitHub organization.

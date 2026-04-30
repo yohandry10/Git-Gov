@@ -58,6 +58,6 @@ It does not:
 
 1. Persist adoption profiles per tenant/org. Implemented by `KAN-31`.
 2. Add provider health validation. Implemented as a dashboard evidence MVP by `KAN-32`; direct provider credential checks remain future work.
-3. Generate or install workflow templates for selected repositories.
+3. Generate workflow templates for selected repositories. Implemented by `KAN-33`; automatic/reviewed installation remains future work.
 4. Add formal release approval with approvers, expiration, risk acceptance, and evidence binding.
 5. Build the Vercel AI SDK Copilot over adoption profiles and evidence APIs.

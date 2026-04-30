@@ -2,7 +2,7 @@
 
 Updated: 2026-04-30
 
-Ticket: `KAN-29`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`
 
 ## Purpose
 
@@ -32,6 +32,32 @@ Expected outputs:
 out/enterprise-adoption-pack/enterprise-adoption-pack.md
 out/enterprise-adoption-pack/enterprise-adoption-pack.json
 ```
+
+## Generate Workflow Templates
+
+Run from the repository root:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs/examples/enterprise-adoption-profile.example.json -OutputDir out/enterprise-workflow-templates -Force
+```
+
+Expected outputs:
+
+```text
+out/enterprise-workflow-templates/README.md
+out/enterprise-workflow-templates/workflow-template-manifest.json
+out/enterprise-workflow-templates/.github/workflows/*.yml
+```
+
+The workflow template pack is an onboarding artifact. It is meant to be reviewed before copying files into a customer repository.
+
+It does not:
+
+- install workflows automatically.
+- mutate customer repositories.
+- read local `.env` files.
+- include provider token values.
+- generate secret values.
 
 ## Policy Presets
 
@@ -63,3 +89,4 @@ out/enterprise-adoption-pack/enterprise-adoption-pack.json
 - Store provider tokens only in customer secret stores or GitHub Actions secrets.
 - Do not paste `.env` values into adoption profiles.
 - Treat generated packs as customer-specific planning evidence, not as a secret store.
+- Treat generated workflow templates as customer-specific installation candidates, not as automatically approved production CI.
