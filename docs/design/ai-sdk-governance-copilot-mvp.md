@@ -10,6 +10,13 @@ This MVP adds a server-side Next.js API route that gathers GitGov evidence first
 
 The route is deliberately not an autonomous agent yet. It is an evidence brief generator. That keeps the first AI feature predictable: GitGov fetches bounded evidence, and the model explains only that evidence.
 
+## Validation Status
+
+- Implementation PR `#127` merged on `main` as `9742472`.
+- Production Vercel deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
+- Production route smoke passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance`.
+- Current production behavior is `mode=fallback` because AI Gateway/OIDC generation was not active during validation. This is the expected safe behavior until production AI generation is explicitly enabled.
+
 ## Route
 
 ```text

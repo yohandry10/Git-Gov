@@ -29,8 +29,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
 - Latest completed follow-up: `KAN-36 - Direct provider connection validation for enterprise onboarding`.
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
-- Current active implementation: `KAN-38 - Vercel AI SDK governance copilot MVP` on branch `product/KAN-38-ai-sdk-copilot`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-38`.
+- Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
+- Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
 
@@ -182,6 +182,23 @@ Latest KAN-31 adoption profile persistence baseline:
   - `GET /health` returned `200`.
   - Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` returned `401`.
   - Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` returned `200` with `found=false`.
+
+Latest KAN-38 AI SDK governance copilot baseline:
+
+- Implementation commit: `9742472 product(KAN-38): add AI SDK governance copilot`.
+- PR: `#127` - `product(KAN-38): add AI SDK governance copilot`.
+- Jira final comment: `10197`.
+- Post-merge checks passed:
+  - `CI` - run `25194421718`
+  - `Release Readiness Gate` - run `25194421743`
+  - `Quality Gate Policy Matrix (Optional)` - run `25194421721`
+  - `Secret Scan` - run `25194421747`
+  - `SonarQube Governance (Non-Blocking)` - run `25194421756`
+  - `Public Naming Guard` - run `25194421752`
+  - `Governance Correlation Smoke (Optional)` - run `25194421750`
+  - `Desktop Updater Readiness (Optional)` - run `25194421717`
+- Vercel production deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
+- Production smoke passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` with `success=true`, `mode=fallback`, `4` citations, `4` sources, and `1` expected warning because AI Gateway/OIDC generation was not active.
 
 KAN-24 local validation before PR creation:
 
@@ -443,7 +460,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, implemented branch `product/KAN-35-reviewed-workflow-installation`, and merged PR `#121` as `c60c486`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 - `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, implemented branch `product/KAN-36-provider-connection-validation`, and merged PR `#123` as `8c075a4`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
 - `KAN-37`: opened Jira issue `KAN-37 - Formal enterprise release approval MVP`, implemented branch `product/KAN-37-formal-release-approval`, and merged PR `#125` as `d7ae92e`. Scope is append-only formal release approvals with admin-only org scope, evidence packet hash binding, risk acceptance expiration, audit logging, Supabase migration `v24`, and backend validation tests. Production migration `v24` was applied and validated on 2026-04-30; Render deploy `dep-d7ptsvhoagis738cj88g` reached `live`.
-- `KAN-38`: opened Jira issue `KAN-38 - Vercel AI SDK governance copilot MVP` and started branch `product/KAN-38-ai-sdk-copilot`. Scope is the first server-side Next.js AI SDK copilot route over bounded GitGov evidence with citations and fallback when AI Gateway/OIDC is unavailable.
+- `KAN-38`: implemented `KAN-38 - Vercel AI SDK governance copilot MVP` on branch `product/KAN-38-ai-sdk-copilot`; PR `#127` merged as `9742472`. Scope is the first server-side Next.js AI SDK copilot route over bounded GitGov evidence with citations and fallback when AI Gateway/OIDC is unavailable.
 
 ## Current Product Roadmap
 
@@ -459,7 +476,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-37 adds formal release approval persistence with evidence packet hash and risk expiration.
 - Current major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
-  - KAN-38 starts this with `POST /api/copilot/governance`.
+  - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
@@ -586,7 +603,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Helper output shape: one JSON file with `manifest`, `files`, and `readme`.
 - Safety: no `.env` reads, no provider token reads, no secret value display, and no customer repository mutation.
 - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts` (`13` tests), `npm run typecheck`, `npm run lint`, full `npm test -- --run` (`25` files, `276` tests), `npm run build` with the existing Vite large chunk warning, `git diff --check`, targeted secret-pattern scan, and `.\scripts\security\publication_guard.ps1`.
-- Vercel AI SDK Copilot remains pending until onboarding gaps are closed.
+- Vercel AI SDK Copilot later starts in `KAN-38` after the onboarding/evidence surfaces are ready enough.
 - PR checks passed:
   - `Security Guard`.
   - `Server Clippy + Check`.
@@ -621,7 +638,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Unsafe paths, duplicate workflow paths, null bytes, declared secret-value packs, and declared repository-mutation packs are rejected.
 - Safety: no `.env` reads, no provider token reads, no secret value printing, and no remote GitHub repository mutation.
 - Local validation passed for CLI pack dry-run/apply, dashboard JSON pack dry-run/apply, unsafe path rejection, and differing existing workflow `blocked=1` planning.
-- Vercel AI SDK Copilot remains pending. Direct provider credential/reachability checks are covered by `KAN-36`; formal enterprise release approval persistence is covered by `KAN-37`.
+- Direct provider credential/reachability checks are covered by `KAN-36`; formal enterprise release approval persistence is covered by `KAN-37`; Vercel AI SDK Copilot later starts in `KAN-38`.
 - Post-merge `main` checks passed:
   - `CI` - run `25191857023`
   - `Release Readiness Gate` - run `25191857006`
@@ -645,7 +662,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Default mode exits non-zero unless all selected providers are `ready`; `-ReportOnly` writes evidence without failing the process.
 - Safety: no secret value printing, no secret value writing, no provider mutation, no webhook creation, no GitHub Actions variable/secret creation, and no customer repository mutation.
 - Local validation passed for GitHub/Jira ready path, full profile `-ReportOnly` with local Jenkins/Sonar offline findings, Vercel missing-config report, and strict-mode missing-config failure.
-- Vercel AI SDK Copilot remains pending. Formal enterprise release approval persistence is covered by `KAN-37`.
+- Formal enterprise release approval persistence is covered by `KAN-37`; Vercel AI SDK Copilot later starts in `KAN-38`.
 - Post-merge `main` checks passed:
   - `CI` - run `25192626074`
   - `Release Readiness Gate` - run `25192626059`
@@ -692,12 +709,15 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - authenticated `GET /evidence/packets/tickets/KAN-37` returned `found=true`.
   - authenticated `POST /enterprise/release-approvals` created `KAN-37-runtime-smoke` with decision `approved`.
   - authenticated follow-up list for `KAN-37-runtime-smoke` returned `total=1`.
-- Vercel AI SDK Copilot starts in `KAN-38`.
+- Vercel AI SDK Copilot first server-side route is implemented in `KAN-38`.
 
-## Current KAN-38 Implementation Notes
+## Latest KAN-38 Validation Notes
 
 - Jira: `KAN-38 - Vercel AI SDK governance copilot MVP`.
-- Active branch: `product/KAN-38-ai-sdk-copilot`.
+- Implementation branch: `product/KAN-38-ai-sdk-copilot`.
+- Implementation PR: `#127 - product(KAN-38): add AI SDK governance copilot`.
+- Implementation commit: `9742472 product(KAN-38): add AI SDK governance copilot`.
+- Jira final comment: `10197`.
 - Route: `POST /api/copilot/governance`.
 - Package: `gitgov-web` now depends on `ai@^6.0.0`.
 - Implementation:
@@ -723,6 +743,21 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - local `next start -p 3108` route smoke with `GITGOV_COPILOT_DISABLE_AI=true`: `success=true`, `mode=fallback`, `4` citations, `4` evidence sources.
   - `git diff --check`: passed.
   - `.\scripts\security\publication_guard.ps1`: passed.
+- Post-merge validation:
+  - `CI` run `25194421718`: passed.
+  - `Release Readiness Gate` run `25194421743`: passed.
+  - `Quality Gate Policy Matrix (Optional)` run `25194421721`: passed.
+  - `Secret Scan` run `25194421747`: passed.
+  - `Public Naming Guard` run `25194421752`: passed.
+  - `SonarQube Governance (Non-Blocking)` run `25194421756`: passed.
+  - `Governance Correlation Smoke (Optional)` run `25194421750`: passed.
+  - `Desktop Updater Readiness (Optional)` run `25194421717`: passed.
+- Vercel production deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
+- Production route smoke:
+  - `POST https://www.gitgov.cloud/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
+  - `POST https://git-gov.vercel.app/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
+  - Direct deployment URL returned `401` HTML and apex `https://gitgov.cloud/api/copilot/governance` returned `401`; canonical `www` and Vercel production aliases are the validated paths.
+- Production AI Gateway/OIDC was not active during validation, so the route used deterministic fallback mode. Enable and validate production AI Gateway/OIDC if `mode=ai` is required.
 
 ## Current KAN-28 Implementation Notes
 

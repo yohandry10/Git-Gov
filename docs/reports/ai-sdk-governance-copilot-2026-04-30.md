@@ -10,6 +10,14 @@ This first MVP adds a server-side Next.js API route that gathers GitGov evidence
 
 If AI generation is unavailable, it returns a deterministic evidence brief instead of exposing an error to the caller.
 
+## Merge And Traceability
+
+- Jira issue: `KAN-38 - Vercel AI SDK governance copilot MVP`.
+- Implementation branch: `product/KAN-38-ai-sdk-copilot`.
+- Implementation PR: `#127 - product(KAN-38): add AI SDK governance copilot`.
+- Merged commit: `9742472 product(KAN-38): add AI SDK governance copilot`.
+- Jira final comment: `10197`.
+
 ## Changes
 
 - Created Jira issue `KAN-38 - Vercel AI SDK governance copilot MVP`.
@@ -102,6 +110,39 @@ Result:
 
 Note: one parallel validation attempt ran `pnpm run typecheck` while `next build` was regenerating `.next/types`, which produced transient missing `.next/types` errors. Re-running `pnpm run typecheck` sequentially passed.
 
+## Post-Merge Validation
+
+GitHub checks passed on `main` commit `9742472`:
+
+- `CI` - run `25194421718`.
+- `Release Readiness Gate` - run `25194421743`.
+- `Quality Gate Policy Matrix (Optional)` - run `25194421721`.
+- `Secret Scan` - run `25194421747`.
+- `Public Naming Guard` - run `25194421752`.
+- `SonarQube Governance (Non-Blocking)` - run `25194421756`.
+- `Governance Correlation Smoke (Optional)` - run `25194421750`.
+- `Desktop Updater Readiness (Optional)` - run `25194421717`.
+
+Vercel deployment:
+
+- Deployment URL: `https://git-ih2bzdqq5-trivia1.vercel.app`.
+- Status: `Ready`.
+- Aliases include `https://www.gitgov.cloud`, `https://git-gov.vercel.app`, and `https://gitgov.cloud`.
+
+Production route smoke:
+
+- `POST https://www.gitgov.cloud/api/copilot/governance` returned `200`.
+- `POST https://git-gov.vercel.app/api/copilot/governance` returned `200`.
+- Sanitized result: `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, and `1` expected warning.
+- Direct deploy URL returned `401` with HTML, consistent with Vercel deployment URL protection rather than the application route.
+- Apex `https://gitgov.cloud/api/copilot/governance` returned `401`; the canonical `www` and Vercel production aliases were used for validation.
+
+Interpretation:
+
+- The product endpoint is live and can generate a deterministic evidence brief from real GitGov evidence.
+- AI generation did not run in production during this validation because AI Gateway/OIDC was not available to the route, so the expected fallback mode was used.
+- No secret values, Authorization headers, or provider credentials were printed during validation.
+
 ## Remaining Work
 
 - Dashboard UI for governance copilot.
@@ -109,4 +150,4 @@ Note: one parallel validation attempt ran `pnpm run typecheck` while `next build
 - AI SDK `ToolLoopAgent` once tool-calling behavior is explicitly needed.
 - MCP integration.
 - Persisted copilot transcripts or evidence-linked explanations.
-- Production runtime validation after merge/deploy with the configured GitGov bearer path and AI Gateway/OIDC state.
+- Enable and validate production AI Gateway/OIDC if the desired production behavior is `mode=ai` instead of deterministic `mode=fallback`.
