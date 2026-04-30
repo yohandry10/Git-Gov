@@ -4,13 +4,13 @@ use crate::control_plane::{
     CliCommandResponse, CombinedEvent, CommitPipelineCorrelation, ControlPlaneClient,
     CreateOrgInvitationRequest, CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse,
     CreateOrgUserRequest, CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
-    EventPayload, ExportLogEntry, ExportResponse, FeatureRequestCreated, FeatureRequestInput,
-    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
-    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgUser,
-    OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
-    PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
-    ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
-    TicketCoverageResponse,
+    EventPayload, EvidencePacketQuery, EvidencePacketResponse, ExportLogEntry, ExportResponse,
+    FeatureRequestCreated, FeatureRequestInput, JenkinsCorrelationFilter, JiraCorrelateRequest,
+    JiraCorrelateResponse, JiraTicketDetailResponse, MeResponse, OrgInvitation,
+    OrgInvitationsResponse, OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry,
+    PolicyResponse, PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest,
+    RevokeApiKeyResponse, ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse,
+    TicketCoverageQuery, TicketCoverageResponse,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::Outbox;
@@ -527,6 +527,24 @@ pub async fn cmd_server_get_jira_ticket_detail(
         });
         client
             .get_jira_ticket_detail(&ticket_id)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_ticket_evidence_packet(
+    config: ServerConnectionConfig,
+    ticket_id: String,
+    query: EvidencePacketQuery,
+) -> Result<EvidencePacketResponse, String> {
+    run_blocking_command("GET_TICKET_EVIDENCE_PACKET", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_ticket_evidence_packet(&ticket_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

@@ -336,6 +336,12 @@ The `jobs` table allows state transitions but restricts which columns can be upd
 |--------|------|-------------|
 | POST | `/export` | Export events (JSON/CSV) with SHA256 hash |
 
+### Evidence Packets
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/evidence/packets/tickets/:ticket_id` | Build a ticket-scoped audit evidence packet with SHA256 content hash |
+
 ### Admin
 
 | Method | Path | Description |

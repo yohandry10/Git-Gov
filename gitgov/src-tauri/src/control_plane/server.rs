@@ -379,6 +379,48 @@ pub struct JiraTicketDetailResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EvidencePacketQuery {
+    pub org_name: Option<String>,
+    pub repo_full_name: Option<String>,
+    pub branch: Option<String>,
+    pub hours: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EvidencePacketCompleteness {
+    pub ticket_found: bool,
+    pub commits: i64,
+    pub pull_requests: i64,
+    pub pipelines: i64,
+    pub quality_gates: i64,
+    pub missing: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EvidencePacket {
+    pub packet_type: String,
+    pub subject: String,
+    pub generated_at: i64,
+    pub org_name: Option<String>,
+    pub repo_full_name: Option<String>,
+    pub branch: Option<String>,
+    pub period: String,
+    pub ticket: Option<ProjectTicket>,
+    pub commits: Vec<serde_json::Value>,
+    pub pull_requests: Vec<PrMergeEvidenceEntry>,
+    pub quality_gates: Vec<CommitPipelineRun>,
+    pub completeness: EvidencePacketCompleteness,
+    pub content_hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EvidencePacketResponse {
+    pub found: bool,
+    pub packet: Option<EvidencePacket>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiKeyInfo {
     pub id: String,
     pub client_id: String,
@@ -1477,6 +1519,52 @@ impl ControlPlaneClient {
             return Ok(JiraTicketDetailResponse {
                 found: false,
                 ticket: None,
+            });
+        }
+        if !response.status().is_success() {
+            return Err(ServerError::ServerError(format!(
+                "Server returned status: {}",
+                response.status()
+            )));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_ticket_evidence_packet(
+        &self,
+        ticket_id: &str,
+        query: &EvidencePacketQuery,
+    ) -> Result<EvidencePacketResponse, ServerError> {
+        let url = self.endpoint_url(&["evidence", "packets", "tickets", ticket_id])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        if let Some(repo_full_name) = &query.repo_full_name {
+            query_params.push(("repo_full_name".to_string(), repo_full_name.clone()));
+        }
+        if let Some(branch) = &query.branch {
+            query_params.push(("branch".to_string(), branch.clone()));
+        }
+        if let Some(hours) = query.hours {
+            query_params.push(("hours".to_string(), hours.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if response.status().as_u16() == 404 {
+            return Ok(EvidencePacketResponse {
+                found: false,
+                packet: None,
             });
         }
         if !response.status().is_success() {

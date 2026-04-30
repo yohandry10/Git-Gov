@@ -160,6 +160,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/policy/requests/{request_id}/reject` | Bearer (admin) | Rechazar request de cambio de política |
 | `/export` | Bearer (admin) | Export de audit data |
 | `/exports` | Bearer (admin) | Historial de exports generados |
+| `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
 | `/integrations/jenkins/status` | Bearer (admin) | Health check Jenkins |

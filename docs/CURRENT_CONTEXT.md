@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-04-28
-Ticket: `KAN-22`
+Updated: 2026-04-30
+Ticket: `KAN-23`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,6 +9,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Expected branch before new work: `main`.
+- Active implementation branch for evidence packets work: `feature/KAN-23-evidence-packets-mvp`.
+- Latest observed `main` HEAD before `KAN-23`: `1f4ebfa docs(KAN-22): record risk workflow validation`.
 - Latest completed handoff baseline: `c1951c8 docs(KAN-22): refresh current context evidence`.
 - Last merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
 - Previous merged PR: `#88` - `docs(KAN-22): add current context handoff`.
@@ -182,6 +184,23 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-20`: closed implementation backlog semantics; remaining items are operational decisions.
 - `KAN-21`: clarified SonarCloud, OpenAPI/SDK, and Jenkins trigger-only defaults.
 - `KAN-22`: created this current-context handoff, refreshed it through PR `#89` with baseline commit `c1951c8`, and fixed PowerShell workflow splatting in risk-tier baseline and desktop updater readiness workflows after scheduled/optional job failures.
+- `KAN-23`: opened Jira issue `KAN-23 - Evidence Packets MVP` and started branch `feature/KAN-23-evidence-packets-mvp`. Product decision: build ticket-scoped Evidence Packets before Vercel AI SDK. MVP adds `GET /evidence/packets/tickets/{ticket_id}`, a Tauri command, dashboard JSON download UI, and docs under `docs/design/evidence-packets-mvp.md`.
+
+## Current KAN-23 Implementation Notes
+
+- Evidence packet endpoint is admin/Bearer and returns ticket metadata, commit-ticket-pipeline correlations, related PR merge evidence, quality-gate-like pipeline runs, completeness counters, and a SHA-256 content hash computed without the hash field.
+- Dashboard panel is `gitgov/src/components/control_plane/EvidencePacketPanel.tsx`.
+- Branch query is preserved in request/packet metadata, but strict branch filtering remains follow-up because the underlying ticket-flow correlation query is not branch-scoped yet.
+- Initial local validation passed on 2026-04-30:
+  - `cargo check` in `gitgov/gitgov-server`
+  - `cargo check` in `gitgov/src-tauri`
+  - `npm run typecheck` in `gitgov`
+  - `cargo test` in `gitgov/gitgov-server` (`170` tests)
+  - `npm test -- --run` in `gitgov` (`267` tests)
+  - `npm run lint` in `gitgov`
+  - `npm run build` in `gitgov`
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
 
 ## Latest Workflow Fix Context
 
