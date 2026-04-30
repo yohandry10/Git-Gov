@@ -165,6 +165,327 @@ export function buildOperationalEvidenceMetrics(
   }
 }
 
+export type AdoptionPolicyPreset = 'audit-only' | 'moderate' | 'strict'
+export type AdoptionProvider = 'github' | 'jira' | 'jenkins' | 'sonarqube' | 'render' | 'vercel'
+export type AdoptionModule =
+  | 'traceability'
+  | 'github-evidence'
+  | 'release-readiness'
+  | 'quality-gates'
+  | 'evidence-packets'
+  | 'vulnerability-review'
+  | 'artifact-monitoring'
+  | 'trend-enforcement'
+  | 'formal-approval'
+
+export interface AdoptionOption<T extends string> {
+  id: T
+  label: string
+}
+
+export const ADOPTION_PROVIDER_OPTIONS: AdoptionOption<AdoptionProvider>[] = [
+  { id: 'github', label: 'GitHub' },
+  { id: 'jira', label: 'Jira' },
+  { id: 'jenkins', label: 'Jenkins' },
+  { id: 'sonarqube', label: 'SonarQube' },
+  { id: 'render', label: 'Render' },
+  { id: 'vercel', label: 'Vercel' },
+]
+
+export const ADOPTION_MODULE_OPTIONS: AdoptionOption<AdoptionModule>[] = [
+  { id: 'traceability', label: 'Traceability' },
+  { id: 'github-evidence', label: 'GitHub evidence' },
+  { id: 'release-readiness', label: 'Release readiness' },
+  { id: 'quality-gates', label: 'Quality gates' },
+  { id: 'evidence-packets', label: 'Evidence packets' },
+  { id: 'vulnerability-review', label: 'Vulnerability review' },
+  { id: 'artifact-monitoring', label: 'Artifact monitoring' },
+  { id: 'trend-enforcement', label: 'Trend enforcement' },
+  { id: 'formal-approval', label: 'Formal approval' },
+]
+
+export const ADOPTION_POLICY_PRESET_OPTIONS: AdoptionOption<AdoptionPolicyPreset>[] = [
+  { id: 'audit-only', label: 'Audit-only' },
+  { id: 'moderate', label: 'Moderate' },
+  { id: 'strict', label: 'Strict' },
+]
+
+export interface EnterpriseAdoptionProfile {
+  customer_name: string
+  repository_full_name: string
+  default_branch: string
+  jira_project_key: string
+  policy_preset: AdoptionPolicyPreset
+  providers: AdoptionProvider[]
+  modules: AdoptionModule[]
+}
+
+export interface EnterpriseAdoptionWorkflowPlan {
+  file: string
+  reason: string
+}
+
+export interface EnterpriseAdoptionVariable {
+  name: string
+  scope: string
+  purpose: string
+  example: string
+}
+
+export interface EnterpriseAdoptionSecret {
+  name: string
+  scope: string
+  purpose: string
+  value_policy: string
+}
+
+export interface EnterpriseAdoptionPolicyRule {
+  rule: string
+  setting: string
+}
+
+export interface EnterpriseAdoptionManualStep {
+  step: string
+  detail: string
+}
+
+export interface EnterpriseAdoptionProductGap {
+  gap: string
+  detail: string
+}
+
+export interface EnterpriseAdoptionPack {
+  generated_at: string
+  customer_name: string
+  repository_full_name: string
+  default_branch: string
+  jira_project_key: string
+  policy_preset: AdoptionPolicyPreset
+  providers: AdoptionProvider[]
+  modules: AdoptionModule[]
+  workflow_plan: EnterpriseAdoptionWorkflowPlan[]
+  variables: EnterpriseAdoptionVariable[]
+  secrets: EnterpriseAdoptionSecret[]
+  policy_rules: EnterpriseAdoptionPolicyRule[]
+  manual_steps: EnterpriseAdoptionManualStep[]
+  open_product_gaps: EnterpriseAdoptionProductGap[]
+}
+
+export interface EnterpriseAdoptionValidation {
+  valid: boolean
+  errors: string[]
+}
+
+export const DEFAULT_ENTERPRISE_ADOPTION_PROFILE: EnterpriseAdoptionProfile = {
+  customer_name: 'ExampleCo',
+  repository_full_name: 'example-org/example-repo',
+  default_branch: 'main',
+  jira_project_key: 'EX',
+  policy_preset: 'moderate',
+  providers: ['github', 'jira', 'jenkins', 'sonarqube'],
+  modules: [
+    'traceability',
+    'github-evidence',
+    'release-readiness',
+    'quality-gates',
+    'evidence-packets',
+    'vulnerability-review',
+    'artifact-monitoring',
+    'trend-enforcement',
+  ],
+}
+
+const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
+const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
+
+function uniqueKnownValues<T extends string>(values: readonly T[], knownValues: readonly T[]): T[] {
+  const known = new Set(knownValues)
+  const result: T[] = []
+  for (const value of values) {
+    if (!known.has(value)) continue
+    if (!result.includes(value)) result.push(value)
+  }
+  return result
+}
+
+function addUniqueByKey<T extends Record<K, string>, K extends keyof T>(
+  items: T[],
+  item: T,
+  key: K,
+) {
+  if (items.some((existing) => existing[key] === item[key])) return
+  items.push(item)
+}
+
+function adoptionReadinessTarget(preset: AdoptionPolicyPreset): number {
+  if (preset === 'audit-only') return 0
+  if (preset === 'strict') return 85
+  return 75
+}
+
+function criticalHighPolicy(preset: AdoptionPolicyPreset): string {
+  if (preset === 'audit-only') return 'report-only'
+  if (preset === 'strict') return 'block reachable critical/high vulnerabilities and require documented medium-risk acceptance'
+  return 'block reachable critical/high vulnerabilities'
+}
+
+export function validateEnterpriseAdoptionProfile(profile: EnterpriseAdoptionProfile): EnterpriseAdoptionValidation {
+  const errors: string[] = []
+  const repo = profile.repository_full_name.trim()
+  const branch = profile.default_branch.trim()
+  const jiraKey = profile.jira_project_key.trim()
+
+  if (!profile.customer_name.trim()) errors.push('Customer name is required.')
+  if (!repo) {
+    errors.push('Repository is required.')
+  } else if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
+    errors.push('Repository must look like owner/repo.')
+  }
+  if (!branch) errors.push('Default branch is required.')
+  if (profile.modules.includes('traceability') && !jiraKey) {
+    errors.push('Jira project key is required when traceability is selected.')
+  }
+  if (jiraKey && !/^[A-Z][A-Z0-9]{1,15}$/.test(jiraKey)) {
+    errors.push('Jira project key should be uppercase letters/numbers, like KAN.')
+  }
+  if (profile.providers.length === 0) errors.push('Select at least one provider.')
+  if (profile.modules.length === 0) errors.push('Select at least one module.')
+
+  return { valid: errors.length === 0, errors }
+}
+
+export function buildEnterpriseAdoptionPack(
+  profile: EnterpriseAdoptionProfile,
+  generatedAt = new Date().toISOString(),
+): EnterpriseAdoptionPack {
+  const providers = uniqueKnownValues(profile.providers, ADOPTION_PROVIDER_IDS)
+  const modules = uniqueKnownValues(profile.modules, ADOPTION_MODULE_IDS)
+  const readinessTarget = adoptionReadinessTarget(profile.policy_preset)
+  const trendEnforcementRequired =
+    profile.policy_preset === 'strict' || modules.includes('trend-enforcement')
+  const prReviewRequired = profile.policy_preset === 'strict'
+  const freshArtifactRequired = profile.policy_preset !== 'audit-only'
+  const jiraKey = profile.jira_project_key.trim()
+  const ticketPrefix = jiraKey || 'KAN'
+
+  const workflowPlan: EnterpriseAdoptionWorkflowPlan[] = []
+  const variables: EnterpriseAdoptionVariable[] = []
+  const secrets: EnterpriseAdoptionSecret[] = []
+  const manualSteps: EnterpriseAdoptionManualStep[] = []
+  const openProductGaps: EnterpriseAdoptionProductGap[] = []
+
+  addUniqueByKey(workflowPlan, { file: '.github/workflows/ci.yml', reason: 'core build, lint, typecheck, and tests' }, 'file')
+  addUniqueByKey(workflowPlan, { file: '.github/workflows/secret-scan.yml', reason: 'publication guard, secret policy, and traceability hygiene' }, 'file')
+
+  if (modules.includes('traceability')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/public-naming-guard.yml', reason: 'public naming and repository hygiene' }, 'file')
+    addUniqueByKey(manualSteps, {
+      step: 'Set Jira-style ticket ID policy',
+      detail: `Require branch names, PR titles, and commit messages to include ticket IDs such as ${ticketPrefix}-123.`,
+    }, 'step')
+  }
+
+  if (modules.includes('github-evidence')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/github-evidence-report.yml', reason: 'GitHub evidence executive report' }, 'file')
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/github-evidence-artifact-monitor.yml', reason: 'GitHub evidence artifact freshness' }, 'file')
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/github-evidence-trend-report.yml', reason: 'GitHub evidence trend history' }, 'file')
+  }
+
+  if (modules.includes('release-readiness')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/release-readiness-gate.yml', reason: 'release readiness score and evidence artifact' }, 'file')
+  }
+
+  if (modules.includes('quality-gates')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/quality-gate-policy-matrix.yml', reason: 'quality gate warn/block matrix validation' }, 'file')
+    if (providers.includes('sonarqube')) {
+      addUniqueByKey(workflowPlan, { file: '.github/workflows/sonar-governance.yml', reason: 'SonarQube governance telemetry when reachable' }, 'file')
+    }
+  }
+
+  if (modules.includes('vulnerability-review')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/product-vulnerability-review.yml', reason: 'product vulnerability review evidence' }, 'file')
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/product-vulnerability-review-trend-report.yml', reason: 'product vulnerability review trend report' }, 'file')
+  }
+
+  if (modules.includes('artifact-monitoring')) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/product-vulnerability-review-artifact-monitor.yml', reason: 'product vulnerability review artifact freshness' }, 'file')
+  }
+
+  if (trendEnforcementRequired) {
+    addUniqueByKey(workflowPlan, { file: '.github/workflows/product-vulnerability-review-trend-enforcement.yml', reason: 'block regressions in vulnerability review trend' }, 'file')
+  }
+
+  if (modules.includes('formal-approval')) {
+    addUniqueByKey(openProductGaps, {
+      gap: 'Formal release approval',
+      detail: 'GitGov has PR review evidence and policy decisions, but a full enterprise release approval model still needs approvers, expiration, risk acceptance, and evidence binding.',
+    }, 'gap')
+  }
+
+  if (providers.includes('github')) {
+    addUniqueByKey(variables, { name: 'GITGOV_URL', scope: 'GitHub Actions variable', purpose: 'GitGov API base URL', example: 'https://gitgov-api.example.com' }, 'name')
+    addUniqueByKey(secrets, { name: 'GITGOV_API_KEY', scope: 'GitHub Actions secret', purpose: 'GitGov API authentication for workflow telemetry', value_policy: 'secret value only, never committed' }, 'name')
+    addUniqueByKey(manualSteps, { step: 'Install GitHub webhook', detail: 'Configure signed GitHub webhook events for push, pull_request, pull_request_review, comments, checks, and status.' }, 'step')
+  }
+
+  if (providers.includes('jira')) {
+    addUniqueByKey(manualSteps, { step: 'Connect Jira project', detail: 'Set Jira project key, enable signed Jira webhook, and verify ticket ingestion.' }, 'step')
+  }
+
+  if (providers.includes('jenkins')) {
+    addUniqueByKey(manualSteps, { step: 'Connect Jenkins', detail: 'Configure authenticated Jenkins API access and GitGov telemetry publishing from pipeline jobs.' }, 'step')
+  }
+
+  if (providers.includes('sonarqube')) {
+    addUniqueByKey(variables, { name: 'SONAR_HOST_URL', scope: 'GitHub Actions variable', purpose: 'SonarQube endpoint when reachable by runner', example: 'https://sonarqube.example.com' }, 'name')
+    addUniqueByKey(variables, { name: 'SONAR_PROJECT_KEY', scope: 'GitHub Actions variable', purpose: 'SonarQube project key', example: 'example_org_example_repo' }, 'name')
+    addUniqueByKey(secrets, { name: 'SONAR_TOKEN', scope: 'GitHub Actions secret', purpose: 'Optional SonarQube API token when runner can reach SonarQube', value_policy: 'secret value only, never committed' }, 'name')
+    addUniqueByKey(manualSteps, { step: 'Validate Sonar runtime', detail: 'Use reachable SonarQube for customer environments; skip GitHub-hosted scans when Sonar is private/local.' }, 'step')
+  }
+
+  if (providers.includes('render')) {
+    addUniqueByKey(manualSteps, { step: 'Connect deployment provider', detail: 'Record deployment health and service metadata without storing provider tokens in the repository.' }, 'step')
+  }
+
+  if (providers.includes('vercel')) {
+    addUniqueByKey(manualSteps, { step: 'Connect Vercel deployment evidence', detail: 'Use deployment status and preview evidence as governance context when the customer deploys on Vercel.' }, 'step')
+  }
+
+  const policyRules: EnterpriseAdoptionPolicyRule[] = [
+    { rule: 'Ticket traceability', setting: modules.includes('traceability') ? 'required' : 'optional' },
+    { rule: 'Release readiness target', setting: String(readinessTarget) },
+    { rule: 'Critical/high vulnerability policy', setting: criticalHighPolicy(profile.policy_preset) },
+    { rule: 'PR review evidence', setting: prReviewRequired ? 'required' : 'recommended' },
+    { rule: 'Fresh evidence artifacts', setting: freshArtifactRequired ? 'required' : 'report-only' },
+    { rule: 'Vulnerability trend enforcement', setting: trendEnforcementRequired ? 'enabled' : 'informational' },
+  ]
+
+  return {
+    generated_at: generatedAt,
+    customer_name: profile.customer_name.trim(),
+    repository_full_name: profile.repository_full_name.trim(),
+    default_branch: profile.default_branch.trim() || 'main',
+    jira_project_key: jiraKey,
+    policy_preset: profile.policy_preset,
+    providers,
+    modules,
+    workflow_plan: workflowPlan,
+    variables,
+    secrets,
+    policy_rules: policyRules,
+    manual_steps: manualSteps,
+    open_product_gaps: openProductGaps,
+  }
+}
+
+export function buildEnterpriseAdoptionPackFilename(profile: EnterpriseAdoptionProfile): string {
+  const basis = `${profile.customer_name}-${profile.repository_full_name}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${basis || 'enterprise-adoption'}-pack.json`
+}
+
 export function readDetailFiles(log: CombinedEvent): string[] {
   const direct = log.details?.['files']
   if (Array.isArray(direct)) return direct.filter((v): v is string => typeof v === 'string')

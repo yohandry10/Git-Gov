@@ -104,6 +104,7 @@ For future product work:
 ## Next Steps After MVP
 
 1. Add a dashboard onboarding view that writes the same profile shape.
+   - Status: implemented as the KAN-30 Adoption Profile Dashboard MVP.
 2. Add backend persistence for tenant adoption profiles.
 3. Add validation endpoints that compare expected modules against real provider evidence.
 4. Add formal release approval records with approver, expiration, risk acceptance, and linked evidence packet.
