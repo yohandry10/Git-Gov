@@ -16,7 +16,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Treat commit/PR fields in this file as validated KAN-24 implementation and validation baselines, not an auto-updating source of truth for later docs-only refresh commits; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-24`.
+- Current active follow-up: `KAN-25 - Automate product vulnerability review evidence` on branch `security/KAN-25-product-vulnerability-review-automation`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-25`.
 
 ## Latest Verified GitHub Checks
 
@@ -171,6 +172,14 @@ KAN-24 product vulnerability review runner:
 .\scripts\security\run_product_vulnerability_review.ps1 -Full -OutputDir docs/reports/product-vulnerability-review-2026-04-30 -CommandTimeoutSeconds 1200
 ```
 
+KAN-25 automation workflow:
+
+```text
+.github/workflows/product-vulnerability-review.yml
+```
+
+Default scheduled mode is `DependenciesOnly`; manual modes are `DependenciesOnly`, `StaticOnly`, `RuntimeSmoke`, and `Full`.
+
 Provider access smoke test:
 
 ```powershell
@@ -204,6 +213,16 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-22`: created this current-context handoff, refreshed it through PR `#89` with baseline commit `c1951c8`, and fixed PowerShell workflow splatting in risk-tier baseline and desktop updater readiness workflows after scheduled/optional job failures.
 - `KAN-23`: implemented ticket-scoped Evidence Packets before a Vercel AI SDK copilot. MVP added `GET /evidence/packets/tickets/{ticket_id}`, a Tauri command, dashboard JSON download UI, and docs under `docs/design/evidence-packets-mvp.md`; follow-up PR `#96` recorded production merge validation on `main` commit `a37d489`.
 - `KAN-24`: opened Jira issue `KAN-24 - Product vulnerability review and production hardening` and started branch `security/KAN-24-product-vulnerability-review`. Scope covers end-to-end product vulnerability review across code, architecture, runtime, CI/CD, dependencies, and real user surfaces.
+- `KAN-25`: opened Jira issue `KAN-25 - Automate product vulnerability review evidence` and started branch `security/KAN-25-product-vulnerability-review-automation`. Scope is operationalizing the KAN-24 runner as a weekly/manual GitHub Actions workflow with sanitized artifacts.
+
+## Current KAN-25 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review.yml`.
+- Runbook: `docs/runbooks/product-vulnerability-review-automation.md`.
+- Report: `docs/reports/product-vulnerability-review-automation-2026-04-30.md`.
+- Scheduled default mode: `DependenciesOnly` every Thursday at `12:41 UTC`.
+- Manual modes: `DependenciesOnly`, `StaticOnly`, `RuntimeSmoke`, and `Full`.
+- The KAN-24 runner is being made cross-platform for Ubuntu GitHub runners and local Windows use.
 
 ## Current KAN-24 Implementation Notes
 
