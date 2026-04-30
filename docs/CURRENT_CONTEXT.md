@@ -17,7 +17,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-25`.
+- Current active follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-26`.
 
 ## Latest Verified GitHub Checks
 
@@ -199,6 +200,14 @@ KAN-25 automation workflow:
 
 Default scheduled mode is `DependenciesOnly`; manual modes are `DependenciesOnly`, `StaticOnly`, `RuntimeSmoke`, and `Full`.
 
+KAN-26 artifact monitor workflow:
+
+```text
+.github/workflows/product-vulnerability-review-artifact-monitor.yml
+```
+
+It checks latest successful `product-vulnerability-review.yml` runs for artifacts with prefix `product-vulnerability-review-`.
+
 Provider access smoke test:
 
 ```powershell
@@ -233,6 +242,16 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-23`: implemented ticket-scoped Evidence Packets before a Vercel AI SDK copilot. MVP added `GET /evidence/packets/tickets/{ticket_id}`, a Tauri command, dashboard JSON download UI, and docs under `docs/design/evidence-packets-mvp.md`; follow-up PR `#96` recorded production merge validation on `main` commit `a37d489`.
 - `KAN-24`: opened Jira issue `KAN-24 - Product vulnerability review and production hardening` and started branch `security/KAN-24-product-vulnerability-review`. Scope covers end-to-end product vulnerability review across code, architecture, runtime, CI/CD, dependencies, and real user surfaces.
 - `KAN-25`: opened Jira issue `KAN-25 - Automate product vulnerability review evidence` and started branch `security/KAN-25-product-vulnerability-review-automation`. Scope is operationalizing the KAN-24 runner as a weekly/manual GitHub Actions workflow with sanitized artifacts.
+- `KAN-26`: opened Jira issue `KAN-26 - Monitor product vulnerability review artifact freshness` and started branch `security/KAN-26-product-vulnerability-artifact-monitor`. Scope is monitoring the freshness and presence of Product Vulnerability Review artifacts.
+
+## Current KAN-26 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-artifact-monitor.yml`.
+- Report: `docs/reports/product-vulnerability-review-artifact-monitor-2026-04-30.md`.
+- Reuses `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- The shared validator now supports `-ArtifactNamePrefix`, needed because Product Vulnerability Review artifacts are named `product-vulnerability-review-{run_id}`.
+- Default max artifact age is `192` hours.
+- Scheduled monitor time is Friday `12:53 UTC`.
 
 ## Current KAN-25 Implementation Notes
 
