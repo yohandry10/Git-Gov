@@ -65,6 +65,32 @@ psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/checks/v23_postcheck.sql
 
 Do not print the database URL or credentials.
 
+## PR Validation
+
+- PR: `#112` - `product(KAN-31): persist adoption profiles`.
+- Merge commit: `509e2a2`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+
+Post-merge `main` checks passed:
+
+- `CI` run `25186881414`.
+- `Release Readiness Gate` run `25186881375`.
+- `Quality Gate Policy Matrix (Optional)` run `25186881361`.
+- `Secret Scan` run `25186881344`.
+- `SonarQube Governance (Non-Blocking)` run `25186881363`.
+- `Public Naming Guard` run `25186881451`.
+- `Governance Correlation Smoke (Optional)` run `25186881376`.
+- `Desktop Updater Readiness (Optional)` run `25186881345`.
+
 ## Remaining Product Work
 
 - Provider health validation.

@@ -22,7 +22,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
 - Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
 - Latest completed follow-up: `KAN-30 - Adoption profile dashboard MVP`.
-- Current implementation follow-up: `KAN-31 - Adoption profile persistence`.
+- Latest completed follow-up: `KAN-31 - Adoption profile persistence`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-31`.
 
 ## Latest Verified GitHub Checks
@@ -141,6 +141,20 @@ Latest KAN-30 adoption profile dashboard baseline:
   - `Public Naming Guard` - run `25161644857`
   - `Governance Correlation Smoke (Optional)` - run `25161644871`
   - `Desktop Updater Readiness (Optional)` - run `25161644824`
+
+Latest KAN-31 adoption profile persistence baseline:
+
+- Implementation commit: `509e2a2 product(KAN-31): persist adoption profiles`.
+- PR: `#112` - `product(KAN-31): persist adoption profiles`.
+- Post-merge checks passed:
+  - `CI` - run `25186881414`
+  - `Release Readiness Gate` - run `25186881375`
+  - `Quality Gate Policy Matrix (Optional)` - run `25186881361`
+  - `Secret Scan` - run `25186881344`
+  - `SonarQube Governance (Non-Blocking)` - run `25186881363`
+  - `Public Naming Guard` - run `25186881451`
+  - `Governance Correlation Smoke (Optional)` - run `25186881376`
+  - `Desktop Updater Readiness (Optional)` - run `25186881345`
 
 KAN-24 local validation before PR creation:
 
@@ -370,7 +384,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
 - `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
-- `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding` and started branch `product/KAN-31-adoption-profile-persistence`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs.
+- `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs.
 
 ## Current Product Roadmap
 
@@ -421,6 +435,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Saved profiles contain configuration intent only: no API keys, tokens, webhook secrets, generated secret values, or `.env` values.
 - Apply database migration `v23` before using persisted adoption profiles in production.
 - Local validation passed with `cargo test enterprise_adoption_profile_validation`, backend `cargo check`, backend `cargo clippy -- -D warnings`, Tauri `cargo check`, Tauri `cargo clippy -- -D warnings`, `npm run typecheck`, `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run lint`, `npm run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
+- PR `#112` merged this MVP on `main` as `509e2a2`; post-merge `CI` run `25186881414` and `Release Readiness Gate` run `25186881375` passed.
 
 ## Current KAN-28 Implementation Notes
 
