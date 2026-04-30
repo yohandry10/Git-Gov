@@ -21,7 +21,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
 - Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
-- Current in-progress follow-up: `KAN-30 - Adoption profile dashboard MVP`.
+- Latest completed follow-up: `KAN-30 - Adoption profile dashboard MVP`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-30`.
 
 ## Latest Verified GitHub Checks
@@ -126,6 +126,20 @@ Latest KAN-29 enterprise adoption baseline:
   - `Public Naming Guard` - run `25160842023`
   - `Governance Correlation Smoke (Optional)` - run `25160842049`
   - `Desktop Updater Readiness (Optional)` - run `25160842036`
+
+Latest KAN-30 adoption profile dashboard baseline:
+
+- Implementation commit: `0412574 product(KAN-30): add adoption profile dashboard MVP`.
+- PR: `#110` - `product(KAN-30): add adoption profile dashboard MVP`.
+- Post-merge checks passed:
+  - `CI` - run `25161644820`
+  - `Release Readiness Gate` - run `25161644879`
+  - `Quality Gate Policy Matrix (Optional)` - run `25161644854`
+  - `Secret Scan` - run `25161644841`
+  - `SonarQube Governance (Non-Blocking)` - run `25161644861`
+  - `Public Naming Guard` - run `25161644857`
+  - `Governance Correlation Smoke (Optional)` - run `25161644871`
+  - `Desktop Updater Readiness (Optional)` - run `25161644824`
 
 KAN-24 local validation before PR creation:
 
@@ -345,7 +359,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-27`: opened Jira issue `KAN-27 - Trend product vulnerability review artifacts` and started branch `security/KAN-27-product-vulnerability-review-trend`. Scope is aggregating recent Product Vulnerability Review artifacts into trend evidence so regressions are visible across runs.
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
-- `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP` and started branch `product/KAN-30-adoption-profile-dashboard`. Scope is moving the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
+- `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
 
 ## Current Product Roadmap
 
@@ -378,6 +392,8 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - The dashboard builder uses the same profile/pack shape as the KAN-29 generator: customer, repository, default branch, Jira key, policy preset, providers, modules, workflow plan, variable names, secret names, policy rules, manual steps, and open product gaps.
 - The JSON export contains secret names only. It does not read local env files or provider tokens.
 - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, and `npm run lint`.
+- Full local preflight also passed with `npm test -- --run`, `npm run build`, `git diff --check`, `.\scripts\security\publication_guard.ps1`, and a browser smoke at `http://127.0.0.1:5174/` with `0` console errors.
+- PR `#110` merged this MVP on `main` as `0412574`.
 
 ## Current KAN-28 Implementation Notes
 

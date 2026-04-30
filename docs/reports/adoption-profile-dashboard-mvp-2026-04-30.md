@@ -66,6 +66,28 @@ Local validation passed:
   - console error count: `0`.
   - note: the Enterprise Adoption panel is admin-dashboard gated, so the unauthenticated browser smoke only validates app load and console health.
 
-Pending before merge:
+PR validation:
 
-- GitHub PR checks.
+- PR: `#110` - `product(KAN-30): add adoption profile dashboard MVP`.
+- Merge commit: `0412574`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+
+Post-merge `main` checks passed:
+
+- `CI` run `25161644820`.
+- `Release Readiness Gate` run `25161644879`.
+- `Quality Gate Policy Matrix (Optional)` run `25161644854`.
+- `Secret Scan` run `25161644841`.
+- `SonarQube Governance (Non-Blocking)` run `25161644861`.
+- `Public Naming Guard` run `25161644857`.
+- `Governance Correlation Smoke (Optional)` run `25161644871`.
+- `Desktop Updater Readiness (Optional)` run `25161644824`.
