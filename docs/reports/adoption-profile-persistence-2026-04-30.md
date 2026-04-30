@@ -52,11 +52,19 @@ Local validation passed:
 - `.\scripts\security\publication_guard.ps1`
   - passed.
 
-## Production Note
+## Production Migration
 
 The backend route depends on migration `supabase_schema_v23.sql`.
 
-Before using persisted adoption profiles in production, apply `v23` and run:
+Production `v23` was applied on 2026-04-30 using ignored local `DATABASE_URL` without printing credentials.
+
+Postcheck passed:
+
+- `enterprise_adoption_profiles.table_exists` - `PASS`.
+- `enterprise_adoption_profiles.primary_key` - `PASS`.
+- `enterprise_adoption_profiles.updated_at_index` - `PASS`.
+
+Use the same commands for revalidation or new environment provisioning:
 
 ```powershell
 psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/supabase_schema_v23.sql
@@ -64,6 +72,17 @@ psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/checks/v23_postcheck.sql
 ```
 
 Do not print the database URL or credentials.
+
+## Production Endpoint Validation
+
+Initial authenticated production validation returned `500` before `v23` was applied, which confirmed the route was deployed but the table was missing.
+
+After `v23` migration:
+
+- `GET /health` returned `200`.
+- Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` returned `401`.
+- Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` returned `200`.
+- Response `found=false` confirmed no adoption profile has been saved yet; this is expected and avoids writing customer/profile data during smoke validation.
 
 ## PR Validation
 
@@ -90,6 +109,13 @@ Post-merge `main` checks passed:
 - `Public Naming Guard` run `25186881451`.
 - `Governance Correlation Smoke (Optional)` run `25186881376`.
 - `Desktop Updater Readiness (Optional)` run `25186881345`.
+
+Documentation validation PR:
+
+- PR: `#113` - `docs(KAN-31): record adoption profile validation`.
+- Merge commit: `171d43d`.
+- Post-merge `CI` run `25187583892` passed.
+- Post-merge `Release Readiness Gate` run `25187583994` passed.
 
 ## Remaining Product Work
 
