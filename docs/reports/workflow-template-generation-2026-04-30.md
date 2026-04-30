@@ -84,6 +84,32 @@ Local validation performed:
 - `.\scripts\security\publication_guard.ps1` passed.
 - Targeted secret-pattern scan over new KAN-33 files returned no matches for committed secret assignments.
 
+## PR Validation
+
+- PR: `#117` - `product(KAN-33): generate enterprise workflow templates`.
+- Merge commit: `62b67e5`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+
+Post-merge `main` checks passed:
+
+- `CI` run `25189490341`.
+- `Release Readiness Gate` run `25189490316`.
+- `Quality Gate Policy Matrix (Optional)` run `25189490347`.
+- `Secret Scan` run `25189490317`.
+- `SonarQube Governance (Non-Blocking)` run `25189490329`.
+- `Public Naming Guard` run `25189490343`.
+- `Governance Correlation Smoke (Optional)` run `25189490321`.
+- `Desktop Updater Readiness (Optional)` run `25189490319`.
+
 ## Remaining Product Work
 
 - Dashboard-triggered workflow pack generation from the persisted profile.
