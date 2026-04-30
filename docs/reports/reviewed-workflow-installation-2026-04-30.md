@@ -101,8 +101,9 @@ Post-merge `main` checks passed for commit `c60c486`:
 
 ## Remaining Product Work Before AI SDK
 
-- Direct provider credential/reachability checks.
 - Formal enterprise release approval.
 - Optional future GitHub App or PR-based remote workflow installation if a customer wants GitGov to propose workflow changes directly.
 
 Vercel AI SDK Copilot remains pending until these onboarding surfaces are complete enough to explain a full adoption state.
+
+Follow-up `KAN-36` adds direct provider credential/reachability checks.

@@ -103,6 +103,7 @@ The installer copies reviewed template content. It does not certify that every c
 
 ## Next Product Steps
 
-1. Add direct provider credential/reachability checks where a customer explicitly grants access.
-2. Add formal enterprise release approval with approvers, risk acceptance, expiration, and evidence binding.
-3. Start Vercel AI SDK Copilot after onboarding has enough complete evidence to explain.
+1. Add formal enterprise release approval with approvers, risk acceptance, expiration, and evidence binding.
+2. Start Vercel AI SDK Copilot after onboarding has enough complete evidence to explain.
+
+Follow-up `KAN-36` adds direct provider credential/reachability checks where a customer explicitly grants access.

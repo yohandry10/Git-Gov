@@ -64,6 +64,7 @@ The UI only uses already-loaded GitGov Control Plane evidence and the secret-nam
 ## Next Product Steps
 
 1. Add customer workflow template generation/installation for selected modules.
-2. Add direct provider connection validation where safe and explicitly authorized.
-3. Add formal release approval with approvers, expiration, risk acceptance, and evidence binding.
-4. Build the Vercel AI SDK Copilot over adoption readiness, provider health, evidence packets, and security findings.
+2. Add formal release approval with approvers, expiration, risk acceptance, and evidence binding.
+3. Build the Vercel AI SDK Copilot over adoption readiness, provider health, evidence packets, and security findings.
+
+Follow-up `KAN-36` adds direct provider connection validation where credentials are explicitly provided through ignored env files or process environment variables.
