@@ -48,3 +48,27 @@ npm run build                  # gitgov
 git diff --check               # repo root
 .\scripts\security\publication_guard.ps1
 ```
+
+Completed on GitHub after PR `#95` merged as `6d3fb85`:
+
+```text
+CI                                      run 25153717623
+Release Readiness Gate                  run 25153717624
+Quality Gate Policy Matrix (Optional)   run 25153717652
+Secret Scan                             run 25153717622
+SonarQube Governance (Non-Blocking)     run 25153717650
+Public Naming Guard                     run 25153717646
+Governance Correlation Smoke (Optional) run 25153717617
+Desktop Updater Readiness (Optional)    run 25153717635
+```
+
+Production validation:
+
+```text
+Render deploy: dep-d7pgh97aqgkc738i2dv0
+Render status: live
+Backend health: ok
+Evidence packet: KAN-23 found=true
+Completeness: commits=1, pull_requests=1, pipelines=1, quality_gates=1
+Hash prefix: 7fa12531dc10
+```

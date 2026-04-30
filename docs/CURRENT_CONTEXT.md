@@ -9,28 +9,32 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Expected branch before new work: `main`.
-- Active implementation branch for evidence packets work: `feature/KAN-23-evidence-packets-mvp`.
-- Latest observed `main` HEAD before `KAN-23`: `1f4ebfa docs(KAN-22): record risk workflow validation`.
-- Latest completed handoff baseline: `c1951c8 docs(KAN-22): refresh current context evidence`.
-- Last merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
-- Previous merged PR: `#88` - `docs(KAN-22): add current context handoff`.
+- Latest completed handoff baseline: `6d3fb85 feat(KAN-23): add evidence packet MVP (#95)`.
+- Last merged PR: `#95` - `feat(KAN-23): add evidence packet MVP`.
+- Previous merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
 - Treat commit/PR fields in this file as a validated handoff baseline, not an auto-updating source of truth; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-22`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-23`.
 
 ## Latest Verified GitHub Checks
 
-Latest post-merge validation for handoff baseline commit `c1951c8` passed:
+Latest post-merge validation for handoff baseline commit `6d3fb85` passed:
 
-- `CI` - run `25048800803`
-- `Release Readiness Gate` - run `25048800807`
-- `Quality Gate Policy Matrix (Optional)` - run `25048800838`
-- `Secret Scan` - run `25048800831`
-- `SonarQube Governance (Non-Blocking)` - run `25048800812`
-- `Public Naming Guard` - run `25048800822`
-- `Governance Correlation Smoke (Optional)` - run `25048800832`
-- `Desktop Updater Readiness (Optional)` - run `25048800795`
+- `CI` - run `25153717623`
+- `Release Readiness Gate` - run `25153717624`
+- `Quality Gate Policy Matrix (Optional)` - run `25153717652`
+- `Secret Scan` - run `25153717622`
+- `SonarQube Governance (Non-Blocking)` - run `25153717650`
+- `Public Naming Guard` - run `25153717646`
+- `Governance Correlation Smoke (Optional)` - run `25153717617`
+- `Desktop Updater Readiness (Optional)` - run `25153717635`
+
+Production validation after Render deploy `dep-d7pgh97aqgkc738i2dv0`:
+
+- Render deployed commit `6d3fb85` and reached `live` at `2026-04-30T07:52:47Z`.
+- `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
+- `GET /evidence/packets/tickets/KAN-23?org_name=yohandry10&repo_full_name=yohandry10%2FGit-Gov&hours=720` returned `found=true`, subject `KAN-23`, and complete evidence counters: commits `1`, pull requests `1`, pipelines `1`, quality gates `1`, with hash prefix `7fa12531dc10`.
 
 ## Non-Negotiable Operating Decisions
 
