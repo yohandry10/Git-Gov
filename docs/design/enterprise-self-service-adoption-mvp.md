@@ -107,5 +107,8 @@ For future product work:
    - Status: implemented as the KAN-30 Adoption Profile Dashboard MVP.
 2. Add backend persistence for tenant adoption profiles.
 3. Add validation endpoints that compare expected modules against real provider evidence.
-4. Add formal release approval records with approver, expiration, risk acceptance, and linked evidence packet.
-5. Add Vercel AI SDK Copilot on top of the adoption profile and evidence APIs.
+4. Generate workflow templates for selected modules and providers.
+   - Status: implemented by `KAN-33`.
+5. Add a reviewed workflow installation flow for customer repositories.
+6. Add formal release approval records with approver, expiration, risk acceptance, and linked evidence packet.
+7. Add Vercel AI SDK Copilot on top of the adoption profile and evidence APIs.

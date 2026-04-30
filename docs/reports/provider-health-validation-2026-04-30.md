@@ -79,6 +79,6 @@ Post-merge `main` checks passed:
 ## Remaining Product Work
 
 - Direct provider connection checks with explicit customer authorization.
-- Customer workflow template installation.
+- Customer workflow template generation. Implemented by `KAN-33`; reviewed installation remains future work.
 - Formal enterprise release approval.
 - Vercel AI SDK Copilot over adoption readiness, provider health, evidence packets, and security findings.

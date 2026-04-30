@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-32`
+Ticket: `KAN-33`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -24,7 +24,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-30 - Adoption profile dashboard MVP`.
 - Latest completed follow-up: `KAN-31 - Adoption profile persistence`.
 - Latest completed follow-up: `KAN-32 - Enterprise provider health validation MVP`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-32`.
+- Active follow-up: `KAN-33 - Workflow template generation from adoption profile`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-33`.
 
 ## Latest Verified GitHub Checks
 
@@ -357,6 +358,14 @@ KAN-29 enterprise adoption pack generator:
 
 It writes a Markdown/JSON customer adoption pack with providers, modules, policy preset, workflow plan, variable/secret names, and manual setup checklist. It does not read or write secret values.
 
+KAN-33 workflow template generator:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\enterprise-workflow-templates -Force
+```
+
+It writes ignored onboarding output under `out/enterprise-workflow-templates/`: `README.md`, `workflow-template-manifest.json`, and selected `.github/workflows/*.yml` templates. It records variable and secret names only, does not read `.env`, and does not mutate customer repositories.
+
 KAN-31 adoption profile persistence migration postcheck:
 
 ```powershell
@@ -408,15 +417,17 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
 - `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs. Documentation refresh PR `#113` merged as `171d43d`, and production migration `v23` was applied and validated on 2026-04-30.
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
+- `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile` and started branch `product/KAN-33-workflow-template-generation`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`).
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
   - KAN-32 adds evidence-based provider health validation in the dashboard.
-  - Remaining future work: direct provider credential checks, workflow installation, and formal release approval.
+  - KAN-33 generates reviewed workflow template packs from the adoption profile.
+  - Remaining future work: direct provider credential checks, explicit workflow installation, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -498,6 +509,19 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `Public Naming Guard` - run `25188414424`
   - `Governance Correlation Smoke (Optional)` - run `25188414421`
   - `Desktop Updater Readiness (Optional)` - run `25188414432`
+
+## Current KAN-33 Implementation Notes
+
+- Active branch: `product/KAN-33-workflow-template-generation`.
+- Script: `scripts/control-plane/generate_enterprise_workflow_templates.ps1`.
+- Design: `docs/design/workflow-template-generation-mvp.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Report: `docs/reports/workflow-template-generation-2026-04-30.md`.
+- Example command: `.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\enterprise-workflow-templates -Force`.
+- ExampleCo validation generated `13` workflow templates plus `README.md` and `workflow-template-manifest.json`.
+- Generated outputs are ignored under `out/`.
+- Safety: the generator records variable names and secret names only, does not read `.env`, does not print provider tokens, and does not mutate customer repositories automatically.
+- Local validation passed: ExampleCo generation, generated YAML parse with PyYAML, no unresolved template tokens, `git diff --check`, targeted secret-pattern scan over new files, and `.\scripts\security\publication_guard.ps1`.
 
 ## Current KAN-28 Implementation Notes
 
