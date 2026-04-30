@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-34`
+Ticket: `KAN-35`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -26,7 +26,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-32 - Enterprise provider health validation MVP`.
 - Latest completed follow-up: `KAN-33 - Workflow template generation from adoption profile`.
 - Latest completed follow-up: `KAN-34 - Dashboard workflow template pack download`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-34`.
+- Current in-progress follow-up: `KAN-35 - Reviewed workflow installation from template pack`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-35`.
 
 ## Latest Verified GitHub Checks
 
@@ -367,6 +368,14 @@ KAN-33 workflow template generator:
 
 It writes ignored onboarding output under `out/enterprise-workflow-templates/`: `README.md`, `workflow-template-manifest.json`, and selected `.github/workflows/*.yml` templates. It records variable and secret names only, does not read `.env`, and does not mutate customer repositories.
 
+KAN-35 reviewed workflow installer dry-run:
+
+```powershell
+.\scripts\control-plane\install_enterprise_workflow_templates.ps1 -PackDir out\enterprise-workflow-templates -TargetRepoPath C:\path\to\customer-repo -OutputPlanPath out\workflow-install-plan.json
+```
+
+Use `-Apply` only after review. Use `-Overwrite` only for reviewed replacements. The installer also supports dashboard JSON packs with `-PackPath`.
+
 KAN-31 adoption profile persistence migration postcheck:
 
 ```powershell
@@ -420,17 +429,19 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
 - `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
+- `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack` and started branch `product/KAN-35-reviewed-workflow-installation`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`).
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`/`KAN-35`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
   - KAN-32 adds evidence-based provider health validation in the dashboard.
   - KAN-33 generates reviewed workflow template packs from the adoption profile.
   - KAN-34 adds dashboard download for workflow template packs.
-  - Remaining future work: direct provider credential checks, explicit workflow installation, and formal release approval.
+  - KAN-35 adds reviewed local workflow installation from CLI or dashboard workflow packs.
+  - Remaining future work: direct provider credential checks and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -579,6 +590,21 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `Public Naming Guard` - run `25190963657`
   - `Governance Correlation Smoke (Optional)` - run `25190963633`
   - `Desktop Updater Readiness (Optional)` - run `25190963664`
+
+## Current KAN-35 Implementation Notes
+
+- Branch: `product/KAN-35-reviewed-workflow-installation`.
+- Script: `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
+- Design: `docs/design/reviewed-workflow-installation-mvp.md`.
+- Report: `docs/reports/reviewed-workflow-installation-2026-04-30.md`.
+- The installer supports both KAN-33 CLI output directories through `-PackDir` and KAN-34 dashboard JSON packs through `-PackPath`.
+- Default mode is dry-run. Workflow writes require `-Apply`; replacements require `-Overwrite`.
+- Target repository path must have a `.git` marker.
+- Writes are constrained to `.github/workflows/*.yml` and `.github/workflows/*.yaml`.
+- Unsafe paths, duplicate workflow paths, null bytes, declared secret-value packs, and declared repository-mutation packs are rejected.
+- Safety: no `.env` reads, no provider token reads, no secret value printing, and no remote GitHub repository mutation.
+- Local validation passed for CLI pack dry-run/apply, dashboard JSON pack dry-run/apply, unsafe path rejection, and differing existing workflow `blocked=1` planning.
+- Vercel AI SDK Copilot remains pending. Remaining onboarding gaps are direct provider credential/reachability checks and formal enterprise release approval.
 
 ## Current KAN-28 Implementation Notes
 

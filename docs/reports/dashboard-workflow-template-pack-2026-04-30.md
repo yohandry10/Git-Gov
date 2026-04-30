@@ -83,8 +83,10 @@ Post-merge `main` checks passed:
 
 ## Remaining Product Work Before AI SDK
 
-- Explicitly authorized workflow installation into customer repositories.
 - Direct provider credential/reachability checks.
 - Formal enterprise release approval.
+- Optional future GitHub App or PR-based workflow installation into customer repositories.
 
 Vercel AI SDK Copilot remains pending until those onboarding surfaces are complete enough to explain a full adoption state.
+
+Follow-up `KAN-35` adds explicit reviewed installation into a local customer repository checkout from either the CLI-generated pack directory or dashboard JSON pack.
