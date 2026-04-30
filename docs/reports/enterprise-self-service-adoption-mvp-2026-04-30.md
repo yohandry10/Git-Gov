@@ -47,6 +47,24 @@ No secret values are read or written.
 
 ## Validation
 
+Post-merge validation:
+
+- PR: `#108` - `product(KAN-29): add enterprise self-service adoption MVP`.
+- Merge commit: `bf8e378`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+- Post-merge `main` checks passed:
+  - `CI` run `25160842461`.
+  - `Release Readiness Gate` run `25160842032`.
+
 Local validation passed before PR:
 
 - Command: `.\scripts\control-plane\generate_enterprise_adoption_pack.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json`.

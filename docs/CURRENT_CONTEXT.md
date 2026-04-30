@@ -20,7 +20,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
-- Current active follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
+- Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-29`.
 
 ## Latest Verified GitHub Checks
@@ -111,6 +111,20 @@ Latest KAN-28 trend enforcement baseline:
   - Artifact `product-vulnerability-review-trend-enforcement`
   - Artifact ID `6727810243`
   - Artifact status: not expired
+
+Latest KAN-29 enterprise adoption baseline:
+
+- Implementation commit: `bf8e378 product(KAN-29): add enterprise self-service adoption MVP`.
+- PR: `#108` - `product(KAN-29): add enterprise self-service adoption MVP`.
+- Post-merge checks passed:
+  - `CI` - run `25160842461`
+  - `Release Readiness Gate` - run `25160842032`
+  - `Quality Gate Policy Matrix (Optional)` - run `25160842064`
+  - `Secret Scan` - run `25160842081`
+  - `SonarQube Governance (Non-Blocking)` - run `25160842041`
+  - `Public Naming Guard` - run `25160842023`
+  - `Governance Correlation Smoke (Optional)` - run `25160842049`
+  - `Desktop Updater Readiness (Optional)` - run `25160842036`
 
 KAN-24 local validation before PR creation:
 
@@ -349,6 +363,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Report: `docs/reports/enterprise-self-service-adoption-mvp-2026-04-30.md`.
 - The generator supports policy presets `audit-only`, `moderate`, and `strict`.
 - Local validation generated a pack for `ExampleCo` / `example-org/example-repo` with preset `moderate`, `13` workflow recommendations, `3` variable names, `2` secret names, `6` policy rules, and `5` manual setup steps.
+- PR `#108` merged this MVP on `main` as `bf8e378`.
 
 ## Current KAN-28 Implementation Notes
 

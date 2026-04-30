@@ -643,7 +643,7 @@ The security review did not create a new critical/high implementation blocker. T
 1. Enterprise Self-Service Adoption.
    - Goal: let another company adopt the proven GitGov operating model without manual, repo-specific setup.
    - Needed product surfaces: provider onboarding, repository selection, workflow template installation, policy presets, module toggles, integration health, and formal release approval rules.
-   - Current state: KAN-29 starts the packaging layer with a reproducible adoption pack generator, example profile, design doc, and runbook. A full UI onboarding wizard, tenant profile persistence, live integration validation, and formal enterprise release approval are still future product work.
+   - Current state: KAN-29 implemented the first packaging layer through PR `#108` with a reproducible adoption pack generator, example profile, design doc, and runbook. A full UI onboarding wizard, tenant profile persistence, live integration validation, and formal enterprise release approval are still future product work.
 2. Vercel AI SDK Copilot.
    - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
    - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
