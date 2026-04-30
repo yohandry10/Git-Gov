@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import { AlertTriangle, Download, KeyRound, PackageCheck, ShieldCheck, Workflow } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Download, KeyRound, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
+import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import {
   ADOPTION_MODULE_OPTIONS,
   ADOPTION_POLICY_PRESET_OPTIONS,
@@ -37,11 +38,35 @@ function selectedClass(selected: boolean): string {
 }
 
 export function EnterpriseAdoptionPanel() {
+  const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
+  const persistedProfile = useControlPlaneStore((state) => state.enterpriseAdoptionProfile)
+  const persistedProfileUpdatedAt = useControlPlaneStore((state) => state.enterpriseAdoptionProfileUpdatedAt)
+  const isProfileLoading = useControlPlaneStore((state) => state.isEnterpriseAdoptionProfileLoading)
+  const isProfileSaving = useControlPlaneStore((state) => state.isEnterpriseAdoptionProfileSaving)
+  const profileError = useControlPlaneStore((state) => state.enterpriseAdoptionProfileError)
+  const loadEnterpriseAdoptionProfile = useControlPlaneStore((state) => state.loadEnterpriseAdoptionProfile)
+  const saveEnterpriseAdoptionProfile = useControlPlaneStore((state) => state.saveEnterpriseAdoptionProfile)
   const [profile, setProfile] = useState<EnterpriseAdoptionProfile>(() => cloneDefaultProfile())
   const pack = useMemo(() => buildEnterpriseAdoptionPack(profile), [profile])
   const validation = useMemo(() => validateEnterpriseAdoptionProfile(profile), [profile])
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
   const trendRule = pack.policy_rules.find((rule) => rule.rule === 'Vulnerability trend enforcement')?.setting ?? 'informational'
+  const savedAtLabel = persistedProfileUpdatedAt
+    ? new Date(persistedProfileUpdatedAt).toLocaleString()
+    : null
+
+  useEffect(() => {
+    void loadEnterpriseAdoptionProfile(selectedOrgName || undefined)
+  }, [loadEnterpriseAdoptionProfile, selectedOrgName])
+
+  useEffect(() => {
+    if (!persistedProfile) return
+    setProfile({
+      ...persistedProfile,
+      providers: [...persistedProfile.providers],
+      modules: [...persistedProfile.modules],
+    })
+  }, [persistedProfile])
 
   const updateText = (
     field: 'customer_name' | 'repository_full_name' | 'default_branch' | 'jira_project_key',
@@ -76,6 +101,11 @@ export function EnterpriseAdoptionPanel() {
     }
   }
 
+  const saveProfile = async () => {
+    if (!validation.valid) return
+    await saveEnterpriseAdoptionProfile(profile, selectedOrgName || undefined)
+  }
+
   return (
     <section className="glass-panel p-5">
       <div className="card-header mb-4">
@@ -87,19 +117,40 @@ export function EnterpriseAdoptionPanel() {
               {validation.valid ? 'Ready' : 'Needs input'}
             </Badge>
           </div>
-          <p>Customer profile, governance modules, workflow plan, and secret-safe adoption pack.</p>
+          <p>
+            Customer profile, governance modules, workflow plan, and secret-safe adoption pack.
+            {savedAtLabel ? <span className="ml-2 text-surface-500">Saved {savedAtLabel}</span> : null}
+          </p>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={downloadPack}
-          disabled={!validation.valid}
-          title="Download adoption pack JSON"
-        >
-          <Download size={14} />
-          JSON
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={saveProfile}
+            disabled={!validation.valid || isProfileSaving}
+            title="Save adoption profile"
+          >
+            <Save size={14} />
+            {isProfileSaving ? 'Saving' : 'Save'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadPack}
+            disabled={!validation.valid}
+            title="Download adoption pack JSON"
+          >
+            <Download size={14} />
+            JSON
+          </Button>
+        </div>
       </div>
+
+      {(isProfileLoading || profileError) && (
+        <div className={`mb-4 rounded border p-3 text-xs ${profileError ? 'border-warning-500/20 bg-warning-500/8 text-warning-100' : 'border-white/8 bg-white/[0.03] text-surface-300'}`}>
+          {profileError ?? 'Loading saved profile...'}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] gap-4">
         <div className="space-y-4">

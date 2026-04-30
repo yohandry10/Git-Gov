@@ -1578,6 +1578,11 @@ async fn main() {
         .route("/me", get(handlers::get_me))
         .route("/orgs", post(handlers::create_org))
         .route(
+            "/enterprise/adoption-profile",
+            get(handlers::get_enterprise_adoption_profile)
+                .put(handlers::upsert_enterprise_adoption_profile),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )

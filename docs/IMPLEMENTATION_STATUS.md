@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-04-28
+Updated: 2026-04-30
 
 ## Current Execution Summary - 2026-04-25
 
@@ -25,6 +25,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-20` | Implementation backlog closure | Reframed the last six "remaining" items as operational decisions or optional future enhancements. No required implementation blocker remains in this status list. | `docs/reports/kan-20-implementation-backlog-closure-2026-04-28.md` |
 | `KAN-21` | Operating decision clarification | Documented that SonarCloud is not a valid path for this personal repo, Jenkins trigger-only is not needed for normal API-based agent work, and OpenAPI completeness is only required if generated SDK/Swagger contract testing becomes product scope. | `docs/reports/kan-21-operational-decisions-2026-04-28.md` |
 | `KAN-22` | Current context handoff | Added a single resume document with exact current state, latest PR/commit, access summary, non-negotiable decisions, validation commands, and practical next steps. | `docs/CURRENT_CONTEXT.md`, `docs/reports/kan-22-current-context-handoff-2026-04-28.md` |
+| `KAN-31` | Enterprise adoption persistence | Persisted the dashboard adoption profile per org with admin get/upsert endpoints, Tauri commands, UI save/load, backend validation, audit metadata, and Supabase migration `v23`. | `docs/design/adoption-profile-persistence-mvp.md`, `docs/reports/adoption-profile-persistence-2026-04-30.md` |
 
 ### Current Operational Decisions
 

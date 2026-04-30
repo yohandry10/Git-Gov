@@ -1428,6 +1428,35 @@ pub struct EvidencePacketResponse {
     pub packet: Option<EvidencePacket>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnterpriseAdoptionProfileRecord {
+    pub org_id: String,
+    pub profile: serde_json::Value,
+    pub updated_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseAdoptionProfileResponse {
+    pub found: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<EnterpriseAdoptionProfileRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseAdoptionProfileQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpsertEnterpriseAdoptionProfileRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub profile: serde_json::Value,
+}
+
 pub const RELEVANT_AUDIT_ACTIONS: &[&str] = &[
     "protected_branch.create",
     "protected_branch.destroy",

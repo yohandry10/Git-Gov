@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { tauriInvoke, tauriListen, parseCommandError } from '@/lib/tauri'
 import type { CombinedEvent, ServerStats } from '@/lib/types'
+import type { EnterpriseAdoptionProfile } from '@/components/control_plane/dashboard-helpers'
 import { detectBrowserTimezone, persistTimezone, readStoredTimezone } from '@/lib/timezone'
 import { useAuthStore } from '@/store/useAuthStore'
 import { notifyNewEvents } from '@/lib/notifications'
@@ -125,6 +126,19 @@ interface EvidencePacket {
 interface EvidencePacketResponse {
   found: boolean
   packet?: EvidencePacket | null
+}
+
+interface EnterpriseAdoptionProfileRecord {
+  org_id: string
+  profile: EnterpriseAdoptionProfile
+  updated_by: string
+  created_at: number
+  updated_at: number
+}
+
+interface EnterpriseAdoptionProfileResponse {
+  found: boolean
+  profile?: EnterpriseAdoptionProfileRecord | null
 }
 
 interface JiraCoverageFilters {
@@ -376,6 +390,11 @@ interface ControlPlaneState {
   evidencePacket: EvidencePacket | null
   evidencePacketTicketId: string
   isEvidencePacketLoading: boolean
+  enterpriseAdoptionProfile: EnterpriseAdoptionProfile | null
+  enterpriseAdoptionProfileUpdatedAt: number | null
+  isEnterpriseAdoptionProfileLoading: boolean
+  isEnterpriseAdoptionProfileSaving: boolean
+  enterpriseAdoptionProfileError: string | null
   userRole: string | null
   userClientId: string | null
   userOrgId: string | null
@@ -438,6 +457,8 @@ interface ControlPlaneActions {
   correlateJiraTickets: (params?: { hours?: number; limit?: number; repo_full_name?: string; org_name?: string }) => Promise<JiraCorrelateResponse | null>
   loadJiraTicketDetail: (ticketId: string) => Promise<JiraTicketDetail | null>
   loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; org_name?: string }) => Promise<EvidencePacket | null>
+  loadEnterpriseAdoptionProfile: (orgName?: string) => Promise<EnterpriseAdoptionProfile | null>
+  saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
   loadMe: () => Promise<boolean>
   createOrg: (payload: { login: string; name?: string }) => Promise<CreateOrgResponse | null>
   setSelectedOrgName: (orgName: string) => void
@@ -1149,6 +1170,11 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   evidencePacket: null,
   evidencePacketTicketId: '',
   isEvidencePacketLoading: false,
+  enterpriseAdoptionProfile: null,
+  enterpriseAdoptionProfileUpdatedAt: null,
+  isEnterpriseAdoptionProfileLoading: false,
+  isEnterpriseAdoptionProfileSaving: false,
+  enterpriseAdoptionProfileError: null,
   userRole: null,
   userClientId: null,
   userOrgId: null,
@@ -1699,6 +1725,65 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
   },
 
+  loadEnterpriseAdoptionProfile: async (orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({ isEnterpriseAdoptionProfileLoading: true, enterpriseAdoptionProfileError: null })
+    try {
+      const response = await tauriInvoke<EnterpriseAdoptionProfileResponse>('cmd_server_get_enterprise_adoption_profile', {
+        config: serverConfig,
+        orgName,
+      })
+      const record = response.found ? response.profile ?? null : null
+      const profile = record?.profile ?? null
+      set({
+        enterpriseAdoptionProfile: profile,
+        enterpriseAdoptionProfileUpdatedAt: record?.updated_at ?? null,
+        isEnterpriseAdoptionProfileLoading: false,
+      })
+      return profile
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        enterpriseAdoptionProfileError: message,
+        isEnterpriseAdoptionProfileLoading: false,
+      })
+      return null
+    }
+  },
+
+  saveEnterpriseAdoptionProfile: async (profile, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return false
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({ isEnterpriseAdoptionProfileSaving: true, enterpriseAdoptionProfileError: null })
+    try {
+      const record = await tauriInvoke<EnterpriseAdoptionProfileRecord>('cmd_server_upsert_enterprise_adoption_profile', {
+        config: serverConfig,
+        payload: {
+          org_name: orgName ?? null,
+          profile,
+        },
+      })
+      set({
+        enterpriseAdoptionProfile: record.profile,
+        enterpriseAdoptionProfileUpdatedAt: record.updated_at,
+        isEnterpriseAdoptionProfileSaving: false,
+      })
+      return true
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        enterpriseAdoptionProfileError: message,
+        isEnterpriseAdoptionProfileSaving: false,
+      })
+      return false
+    }
+  },
+
   exportAuditData: async (params) => {
     const { serverConfig } = get()
     if (!serverConfig) return null
@@ -2153,6 +2238,11 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       evidencePacket: null,
       evidencePacketTicketId: '',
       isEvidencePacketLoading: false,
+      enterpriseAdoptionProfile: null,
+      enterpriseAdoptionProfileUpdatedAt: null,
+      isEnterpriseAdoptionProfileLoading: false,
+      isEnterpriseAdoptionProfileSaving: false,
+      enterpriseAdoptionProfileError: null,
       userRole: null,
       userClientId: null,
       userOrgId: null,
