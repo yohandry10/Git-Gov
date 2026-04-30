@@ -8,28 +8,41 @@ Read this file first when resuming work. It is the compact operational handoff f
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Current branch: `security/KAN-24-product-vulnerability-review`.
-- Latest `main` baseline before KAN-24 work: `a37d489 docs(KAN-23): record evidence packet merge validation (#96)`.
-- Last merged PR before KAN-24: `#96` - `docs(KAN-23): record evidence packet merge validation`.
-- Previous merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
+- Expected branch before new work: `main`.
+- Latest completed handoff baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
+- Last merged PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
+- Previous merged PR: `#96` - `docs(KAN-23): record evidence packet merge validation`.
+- Earlier merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
 - Treat commit/PR fields in this file as a validated handoff baseline, not an auto-updating source of truth; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
-- Worktree expectation during KAN-24: dirty until the security review branch is committed and PR checks pass.
+- Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-24`.
 
 ## Latest Verified GitHub Checks
 
-Latest local KAN-24 validation completed before PR creation:
+Latest post-merge validation for handoff baseline commit `126167f` passed:
+
+- `CI` - run `25156959926`
+- `Release Readiness Gate` - run `25156959919`
+- `Quality Gate Policy Matrix (Optional)` - run `25156959901`
+- `Secret Scan` - run `25156959895`
+- `SonarQube Governance (Non-Blocking)` - run `25156959902`
+- `Public Naming Guard` - run `25156959899`
+- `Governance Correlation Smoke (Optional)` - run `25156959914`
+- `Desktop Updater Readiness (Optional)` - run `25156959949`
+
+KAN-24 local validation before PR creation:
 
 - `.\scripts\security\run_product_vulnerability_review.ps1 -Full -OutputDir docs/reports/product-vulnerability-review-2026-04-30 -CommandTimeoutSeconds 1200`
 - Result: `20` pass, `1` expected finding, `0` fail.
 - Remaining expected finding: backend `cargo audit` reports `rsa` through inactive `sqlx-mysql`; reachability checks showed no active dependency path in the current backend feature graph.
-- Production-safe runtime probes passed:
-  - `GET https://gitgov-api.onrender.com/health`
-  - anonymous `GET /stats` returned `401`
-  - authenticated `GET /stats` returned success without printing token values.
 
-GitHub-hosted KAN-24 PR checks are pending until the branch is pushed and the PR is opened.
+Production validation after Render deploy `dep-d7phm1m8bjmc73fko1lg`:
+
+- Render deployed commit `126167ff1c4ad9756f2e3f78fcb69f9fcf14f2f1` and reached `live` on 2026-04-30.
+- `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
+- Anonymous `GET /stats` returned `401`.
+- Authenticated `GET /stats` returned `200` without printing token values.
 
 ## Non-Negotiable Operating Decisions
 
@@ -221,15 +234,14 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-24 is an active security hardening branch until PR checks pass and the branch is merged.
+No active implementation blocker remains after KAN-24 merge and production smoke validation.
 
 Current work types are:
 
-- Finish final guardrails.
-- Commit and push `security/KAN-24-product-vulnerability-review`.
-- Open a Jira-traceable PR with `KAN-24` in the title.
-- Wait for required GitHub checks.
-- Merge only when green, then run post-merge production-safe smoke checks and comment Jira.
+- Operational validation cadence.
+- Evidence freshness.
+- Optional product enhancements.
+- Future implementation only when explicitly requested.
 
 ## Practical Next Steps
 
@@ -237,8 +249,8 @@ When resuming, do this first:
 
 1. Run `git status --short --branch`.
 2. Read `AGENTS.md` and this file.
-3. Continue KAN-24 on `security/KAN-24-product-vulnerability-review` unless it has already merged.
-4. Use `KAN-24` in commits, PR title, and Jira comments.
+3. If work changes code or docs, create/use a Jira ticket first.
+4. Use a Jira-traceable branch, commit message, PR title, and Jira comment.
 5. Run `.\scripts\security\publication_guard.ps1` before commit.
 6. Push, open PR, wait for required checks, merge only when green.
 7. After merge, pull `main`, wait for post-merge checks, and comment the Jira ticket with evidence.
