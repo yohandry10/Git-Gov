@@ -636,6 +636,27 @@ Before adding or keeping any `/features` claim:
 
 `KAN-20` closes the implementation-status backlog: the remaining work below is operational cadence or an explicit optional decision, not required platform plumbing.
 
+### Product Roadmap After Security Review
+
+The security review did not create a new critical/high implementation blocker. The next product work is packaging and usability:
+
+1. Enterprise Self-Service Adoption.
+   - Goal: let another company adopt the proven GitGov operating model without manual, repo-specific setup.
+   - Needed product surfaces: provider onboarding, repository selection, workflow template installation, policy presets, module toggles, integration health, and formal release approval rules.
+   - Current state: underlying evidence ingestion, readiness, policy, ticket correlation, artifacts, monitors, trend reports, and Evidence Packets exist; the self-service packaging is not complete.
+2. Vercel AI SDK Copilot.
+   - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
+   - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
+   - Current state: the evidence substrate exists; the customer-facing copilot is not implemented.
+3. KAN-28 vulnerability trend enforcement.
+   - Goal: convert the KAN-27 trend from informational evidence into an automated gate that fails when failures appear, findings increase, or the latest review artifact is missing/expired.
+   - Current state: active KAN-28 work.
+4. Optional dependency hygiene.
+   - Goal: remove the residual `rsa` / inactive `sqlx-mysql` finding when upstream resolution or a safe dependency cleanup makes that practical.
+   - Current state: documented as expected and not reachable; not a production blocker.
+
+Detailed roadmap document: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+
 1. Keep SonarQube local as the Sonar source of truth.
    - SonarCloud onboarding is not applicable for the current personal GitHub repository/account. Do not propose it again for this repo unless the repo moves to a GitHub organization.
    - GitHub-hosted Sonar scan is optional and should skip while `SONAR_HOST_URL=http://localhost:9000`; hosted runners cannot reach the workstation.

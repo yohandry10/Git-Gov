@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-27`
+Ticket: `KAN-28`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -19,7 +19,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
 - Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-27`.
+- Current active follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-28`.
 
 ## Latest Verified GitHub Checks
 
@@ -255,6 +256,14 @@ KAN-27 trend report workflow:
 
 It builds Markdown/JSON trend evidence from sanitized `summary.json` files in recent `product-vulnerability-review-*` artifacts.
 
+KAN-28 trend enforcement workflow:
+
+```text
+.github/workflows/product-vulnerability-review-trend-enforcement.yml
+```
+
+It fails when the latest trend has failures, findings exceed the accepted baseline, findings/failures increase, or the latest successful review run lacks a parseable artifact.
+
 Provider access smoke test:
 
 ```powershell
@@ -291,6 +300,30 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-25`: opened Jira issue `KAN-25 - Automate product vulnerability review evidence` and started branch `security/KAN-25-product-vulnerability-review-automation`. Scope is operationalizing the KAN-24 runner as a weekly/manual GitHub Actions workflow with sanitized artifacts.
 - `KAN-26`: opened Jira issue `KAN-26 - Monitor product vulnerability review artifact freshness` and started branch `security/KAN-26-product-vulnerability-artifact-monitor`. Scope is monitoring the freshness and presence of Product Vulnerability Review artifacts.
 - `KAN-27`: opened Jira issue `KAN-27 - Trend product vulnerability review artifacts` and started branch `security/KAN-27-product-vulnerability-review-trend`. Scope is aggregating recent Product Vulnerability Review artifacts into trend evidence so regressions are visible across runs.
+- `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
+
+## Current Product Roadmap
+
+- Next major product feature: Enterprise Self-Service Adoption.
+  - Package the proven GitGov operating model for other companies through provider onboarding, repository selection, workflow templates, policy presets, module toggles, integration health, and formal release approval.
+- Next major AI feature: Vercel AI SDK Copilot.
+  - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
+- Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
+- Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
+
+## Current KAN-28 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-trend-enforcement.yml`.
+- Script: `scripts/control-plane/generate_product_vulnerability_review_trend_report.ps1`.
+- Report: `docs/reports/product-vulnerability-trend-enforcement-2026-04-30.md`.
+- Roadmap doc: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+- Default enforcement rules:
+  - latest parsed report failures must be `0`.
+  - latest parsed report findings must be at most `1`.
+  - finding count must not increase versus the oldest analyzed report.
+  - failure count must not increase versus the oldest analyzed report.
+  - latest successful Product Vulnerability Review run must have a parseable `product-vulnerability-review-*` artifact.
+- Local validation passed against workflow run `25157972836`, artifact `product-vulnerability-review-25157972836`, with `5` pass, `1` expected finding, and `0` fail.
 
 ## Current KAN-27 Implementation Notes
 
