@@ -17,7 +17,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Latest completed follow-up: `KAN-25 - Automate product vulnerability review evidence`.
-- Current active follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
+- Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-26`.
 
 ## Latest Verified GitHub Checks
@@ -50,6 +50,25 @@ Latest KAN-25 automation baseline:
   - Run `25157972836`
   - Mode `DependenciesOnly`
   - Artifact `product-vulnerability-review-25157972836`
+  - Artifact status: not expired
+
+Latest KAN-26 artifact monitor baseline:
+
+- Implementation commit: `89a234c security(KAN-26): monitor vulnerability review artifacts`.
+- PR: `#102` - `security(KAN-26): monitor product vulnerability review artifacts`.
+- Post-merge checks passed:
+  - `CI` - run `25158430862`
+  - `Release Readiness Gate` - run `25158431062`
+  - `Quality Gate Policy Matrix (Optional)` - run `25158430899`
+  - `Secret Scan` - run `25158430868`
+  - `SonarQube Governance (Non-Blocking)` - run `25158430873`
+  - `Public Naming Guard` - run `25158430891`
+  - `Governance Correlation Smoke (Optional)` - run `25158430896`
+  - `Desktop Updater Readiness (Optional)` - run `25158430919`
+- First manual `Product Vulnerability Review Artifact Monitor` run passed:
+  - Run `25158436168`
+  - Artifact `product-vulnerability-review-artifact-monitor`
+  - Artifact ID `6727075935`
   - Artifact status: not expired
 
 KAN-24 local validation before PR creation:
