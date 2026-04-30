@@ -2,6 +2,7 @@ param(
   [string]$Repository = $env:GITHUB_REPOSITORY,
   [string]$WorkflowFile = "github-evidence-report.yml",
   [string]$ArtifactName = "github-evidence-executive-report",
+  [string]$ArtifactNamePrefix = "",
   [int]$MaxAgeHours = 192,
   [string]$GitHubToken = $env:GITHUB_TOKEN,
   [string]$OutputPath = ""
@@ -50,10 +51,20 @@ if ($successfulRuns.Count -eq 0) {
 
 $latestRun = $successfulRuns | Sort-Object -Property created_at -Descending | Select-Object -First 1
 $artifacts = Invoke-GitHubApi -Path "/repos/$Repository/actions/runs/$($latestRun.id)/artifacts?per_page=100"
-$artifact = @($artifacts.artifacts | Where-Object { $_.name -eq $ArtifactName } | Sort-Object -Property created_at -Descending | Select-Object -First 1)
+$artifactMatches = if (-not [string]::IsNullOrWhiteSpace($ArtifactNamePrefix)) {
+  @($artifacts.artifacts | Where-Object { [string]$_.name -like "$ArtifactNamePrefix*" })
+} else {
+  @($artifacts.artifacts | Where-Object { $_.name -eq $ArtifactName })
+}
+$artifact = @($artifactMatches | Sort-Object -Property created_at -Descending | Select-Object -First 1)
 
 if ($artifact.Count -eq 0) {
-  Fail-Monitor "Latest successful run $($latestRun.id) does not contain artifact '$ArtifactName'."
+  $expectedArtifact = if (-not [string]::IsNullOrWhiteSpace($ArtifactNamePrefix)) {
+    "artifact with prefix '$ArtifactNamePrefix'"
+  } else {
+    "artifact '$ArtifactName'"
+  }
+  Fail-Monitor "Latest successful run $($latestRun.id) does not contain $expectedArtifact."
 }
 
 $selectedArtifact = $artifact[0]
@@ -74,6 +85,7 @@ $summary = [pscustomobject]@{
   workflow_run_url        = [string]$latestRun.html_url
   workflow_run_created_at = [string]$latestRun.created_at
   artifact_name           = [string]$selectedArtifact.name
+  artifact_name_prefix    = [string]$ArtifactNamePrefix
   artifact_id             = [int64]$selectedArtifact.id
   artifact_created_at     = [string]$selectedArtifact.created_at
   artifact_expired        = [bool]$selectedArtifact.expired
@@ -91,8 +103,8 @@ if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
 
 if ($status -eq "FAIL") {
   Write-Host ($summary | ConvertTo-Json -Depth 5)
-  Fail-Monitor "Artifact '$ArtifactName' is stale: $([math]::Round($ageHours, 2))h old, max $MaxAgeHours h."
+  Fail-Monitor "Artifact '$($selectedArtifact.name)' is stale: $([math]::Round($ageHours, 2))h old, max $MaxAgeHours h."
 }
 
-Write-Host "[PASS] GitHub evidence report artifact is fresh: run $($latestRun.id), artifact $($selectedArtifact.id), age $([math]::Round($ageHours, 2))h."
+Write-Host "[PASS] Workflow artifact is fresh: workflow '$WorkflowFile', run $($latestRun.id), artifact '$($selectedArtifact.name)' ($($selectedArtifact.id)), age $([math]::Round($ageHours, 2))h."
 exit 0
