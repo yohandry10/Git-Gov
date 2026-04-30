@@ -9,11 +9,11 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Expected branch before new work: `main`.
-- Latest completed handoff baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
-- Last merged PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
-- Previous merged PR: `#96` - `docs(KAN-23): record evidence packet merge validation`.
-- Earlier merged PR: `#89` - `docs(KAN-22): refresh current context evidence`.
-- Treat commit/PR fields in this file as a validated handoff baseline, not an auto-updating source of truth; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
+- Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
+- KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
+- KAN-24 post-merge context refresh PR: `#98` - `docs(KAN-24): record post-merge validation`.
+- Recent prior PR: `#96` - `docs(KAN-23): record evidence packet merge validation`.
+- Treat commit/PR fields in this file as validated KAN-24 implementation and validation baselines, not an auto-updating source of truth for later docs-only refresh commits; always run `git status --short --branch` and `git log -1 --oneline main` before new work.
 - Worktree expectation before new work: clean and aligned with `origin/main`.
 - Implementation-status backlog is closed. Remaining items are operational decisions, optional future enhancements, or evidence hygiene.
 - Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-24`.
