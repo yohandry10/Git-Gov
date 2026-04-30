@@ -643,7 +643,7 @@ The security review did not create a new critical/high implementation blocker. T
 1. Enterprise Self-Service Adoption.
    - Goal: let another company adopt the proven GitGov operating model without manual, repo-specific setup.
    - Needed product surfaces: provider onboarding, repository selection, workflow template installation, policy presets, module toggles, integration health, and formal release approval rules.
-   - Current state: underlying evidence ingestion, readiness, policy, ticket correlation, artifacts, monitors, trend reports, and Evidence Packets exist; the self-service packaging is not complete.
+   - Current state: KAN-29 starts the packaging layer with a reproducible adoption pack generator, example profile, design doc, and runbook. A full UI onboarding wizard, tenant profile persistence, live integration validation, and formal enterprise release approval are still future product work.
 2. Vercel AI SDK Copilot.
    - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
    - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
@@ -655,7 +655,10 @@ The security review did not create a new critical/high implementation blocker. T
    - Goal: remove the residual `rsa` / inactive `sqlx-mysql` finding when upstream resolution or a safe dependency cleanup makes that practical.
    - Current state: documented as expected and not reachable; not a production blocker.
 
-Detailed roadmap document: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+Detailed roadmap documents:
+
+- `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+- `docs/design/enterprise-self-service-adoption-mvp.md`.
 
 1. Keep SonarQube local as the Sonar source of truth.
    - SonarCloud onboarding is not applicable for the current personal GitHub repository/account. Do not propose it again for this repo unless the repo moves to a GitHub organization.

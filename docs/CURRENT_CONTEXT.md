@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-28`
+Ticket: `KAN-29`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -20,7 +20,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-26 - Monitor product vulnerability review artifact freshness`.
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-28`.
+- Current active follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-29`.
 
 ## Latest Verified GitHub Checks
 
@@ -283,6 +284,14 @@ KAN-28 trend enforcement workflow:
 
 It fails when the latest trend has failures, findings exceed the accepted baseline, findings/failures increase, or the latest successful review run lacks a parseable artifact.
 
+KAN-29 enterprise adoption pack generator:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_adoption_pack.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\enterprise-adoption-pack
+```
+
+It writes a Markdown/JSON customer adoption pack with providers, modules, policy preset, workflow plan, variable/secret names, and manual setup checklist. It does not read or write secret values.
+
 Provider access smoke test:
 
 ```powershell
@@ -320,15 +329,26 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-26`: opened Jira issue `KAN-26 - Monitor product vulnerability review artifact freshness` and started branch `security/KAN-26-product-vulnerability-artifact-monitor`. Scope is monitoring the freshness and presence of Product Vulnerability Review artifacts.
 - `KAN-27`: opened Jira issue `KAN-27 - Trend product vulnerability review artifacts` and started branch `security/KAN-27-product-vulnerability-review-trend`. Scope is aggregating recent Product Vulnerability Review artifacts into trend evidence so regressions are visible across runs.
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
+- `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
 
 ## Current Product Roadmap
 
-- Next major product feature: Enterprise Self-Service Adoption.
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`).
   - Package the proven GitGov operating model for other companies through provider onboarding, repository selection, workflow templates, policy presets, module toggles, integration health, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
+
+## Current KAN-29 Implementation Notes
+
+- Script: `scripts/control-plane/generate_enterprise_adoption_pack.ps1`.
+- Design: `docs/design/enterprise-self-service-adoption-mvp.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Example profile: `docs/examples/enterprise-adoption-profile.example.json`.
+- Report: `docs/reports/enterprise-self-service-adoption-mvp-2026-04-30.md`.
+- The generator supports policy presets `audit-only`, `moderate`, and `strict`.
+- Local validation generated a pack for `ExampleCo` / `example-org/example-repo` with preset `moderate`, `13` workflow recommendations, `3` variable names, `2` secret names, `6` policy rules, and `5` manual setup steps.
 
 ## Current KAN-28 Implementation Notes
 

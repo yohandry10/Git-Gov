@@ -1,0 +1,23 @@
+{
+  "customer_name": "ExampleCo",
+  "repository_full_name": "example-org/example-repo",
+  "default_branch": "main",
+  "jira_project_key": "EX",
+  "policy_preset": "moderate",
+  "providers": [
+    "github",
+    "jira",
+    "jenkins",
+    "sonarqube"
+  ],
+  "modules": [
+    "traceability",
+    "github-evidence",
+    "release-readiness",
+    "quality-gates",
+    "evidence-packets",
+    "vulnerability-review",
+    "artifact-monitoring",
+    "trend-enforcement"
+  ]
+}

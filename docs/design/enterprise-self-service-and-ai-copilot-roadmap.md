@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: next major product feature.
+Status: started in `KAN-29`.
 
 Current state:
 
@@ -56,6 +56,14 @@ Customer-facing value:
 
 GitGov turns existing delivery tooling into governed release evidence without asking teams to manually assemble screenshots, spreadsheets, or one-off audit notes.
 
+First MVP:
+
+- `scripts/control-plane/generate_enterprise_adoption_pack.ps1`.
+- `docs/design/enterprise-self-service-adoption-mvp.md`.
+- `docs/examples/enterprise-adoption-profile.example.json`.
+
+This MVP creates a reusable adoption pack from a customer profile. It does not yet replace the future UI onboarding wizard.
+
 ### 2. Vercel AI SDK Copilot
 
 Status: next major product feature after or alongside the self-service adoption work.
@@ -96,7 +104,7 @@ The agreed order is:
 1. Keep automatic vulnerability review, artifact monitor, and trend workflows on their weekly cadence.
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
-4. Start the next product feature design/implementation for Enterprise Self-Service Adoption.
+4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
 5. Start the Vercel AI SDK Copilot feature when the evidence surfaces and customer-facing workflows are ready.
 
 ## Non-Goals
