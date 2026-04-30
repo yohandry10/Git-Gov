@@ -75,14 +75,14 @@ Secret handling remains name-only, matching the `KAN-29` adoption pack generator
 
 ## Non-Goals
 
-- No automatic provider connection validation yet.
+- No direct provider credential validation yet. `KAN-32` adds a dashboard evidence-based provider health MVP.
 - No automatic GitHub workflow installation yet.
 - No formal enterprise release approval engine yet.
 - No Vercel AI SDK Copilot yet.
 
 ## Next Product Steps
 
-1. Provider validation dashboard: verify GitHub, Jira, Jenkins, SonarQube, Render, and Vercel reachability from configured customer context.
+1. Provider validation dashboard: implemented as a secret-safe evidence MVP by `KAN-32`; direct provider reachability checks remain future work.
 2. Workflow template generation/installation: convert selected modules into installable customer workflows.
 3. Formal release approval: approvers, risk acceptance, expiration, evidence binding, and release packet.
 4. Vercel AI SDK Copilot: explain adoption readiness, blockers, evidence packets, and security findings in plain language with cited GitGov evidence.

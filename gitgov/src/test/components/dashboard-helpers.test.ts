@@ -1,6 +1,7 @@
 import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
+  buildEnterpriseProviderHealth,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
   validateEnterpriseAdoptionProfile,
@@ -222,5 +223,58 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(validation.valid).toBe(false)
     expect(validation.errors).toContain('Repository must look like owner/repo.')
     expect(validation.errors).toContain('Jira project key should be uppercase letters/numbers, like KAN.')
+  })
+
+  it('builds provider health from profile and observable evidence', () => {
+    const health = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, {
+      githubEventsTotal: 42,
+      jiraCommitsWithTicket: 12,
+      jiraCoveragePercentage: 80,
+      pipelineRuns7d: 10,
+      pipelineSuccess7d: 9,
+      sonarRuns: 3,
+      sonarSuccessful: 3,
+      activeRepos: 1,
+    })
+
+    expect(health.map((check) => [check.provider, check.status])).toEqual([
+      ['github', 'ready'],
+      ['jira', 'ready'],
+      ['jenkins', 'ready'],
+      ['sonarqube', 'ready'],
+    ])
+    expect(JSON.stringify(health)).not.toContain('token')
+    expect(JSON.stringify(health)).not.toContain('secret value')
+  })
+
+  it('marks selected providers as needing evidence when telemetry has not arrived', () => {
+    const health = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
+
+    expect(health.map((check) => [check.provider, check.status])).toEqual([
+      ['github', 'needs-evidence'],
+      ['jira', 'needs-evidence'],
+      ['jenkins', 'needs-evidence'],
+      ['sonarqube', 'needs-evidence'],
+    ])
+  })
+
+  it('marks Jira provider as needing config when the project key is missing', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      jira_project_key: '',
+      providers: ['jira'],
+    }
+
+    const health = buildEnterpriseProviderHealth(profile, {
+      jiraCommitsWithTicket: 4,
+      jiraCoveragePercentage: 50,
+    })
+
+    expect(health).toEqual([
+      expect.objectContaining({
+        provider: 'jira',
+        status: 'needs-config',
+      }),
+    ])
   })
 })

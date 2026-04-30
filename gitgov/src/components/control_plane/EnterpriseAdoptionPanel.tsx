@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Download, KeyRound, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, Download, KeyRound, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -10,11 +10,13 @@ import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
+  buildEnterpriseProviderHealth,
   validateEnterpriseAdoptionProfile,
   type AdoptionModule,
   type AdoptionPolicyPreset,
   type AdoptionProvider,
   type EnterpriseAdoptionProfile,
+  type EnterpriseProviderHealthStatus,
 } from './dashboard-helpers'
 
 function cloneDefaultProfile(): EnterpriseAdoptionProfile {
@@ -37,8 +39,23 @@ function selectedClass(selected: boolean): string {
     : 'border-white/10 bg-white/[0.03] text-surface-300 hover:border-white/20 hover:bg-white/[0.05]'
 }
 
+function providerHealthBadgeVariant(status: EnterpriseProviderHealthStatus): 'success' | 'warning' | 'info' {
+  if (status === 'ready') return 'success'
+  if (status === 'needs-config') return 'warning'
+  return 'info'
+}
+
+function providerHealthLabel(status: EnterpriseProviderHealthStatus): string {
+  if (status === 'ready') return 'Ready'
+  if (status === 'needs-config') return 'Config'
+  return 'Evidence'
+}
+
 export function EnterpriseAdoptionPanel() {
   const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
+  const serverStats = useControlPlaneStore((state) => state.serverStats)
+  const ticketCoverage = useControlPlaneStore((state) => state.ticketCoverage)
+  const jenkinsCorrelations = useControlPlaneStore((state) => state.jenkinsCorrelations)
   const persistedProfile = useControlPlaneStore((state) => state.enterpriseAdoptionProfile)
   const persistedProfileUpdatedAt = useControlPlaneStore((state) => state.enterpriseAdoptionProfileUpdatedAt)
   const isProfileLoading = useControlPlaneStore((state) => state.isEnterpriseAdoptionProfileLoading)
@@ -49,6 +66,28 @@ export function EnterpriseAdoptionPanel() {
   const [profile, setProfile] = useState<EnterpriseAdoptionProfile>(() => cloneDefaultProfile())
   const pack = useMemo(() => buildEnterpriseAdoptionPack(profile), [profile])
   const validation = useMemo(() => validateEnterpriseAdoptionProfile(profile), [profile])
+  const sonarRuns = useMemo(
+    () => jenkinsCorrelations.filter((entry) => entry.pipeline?.job_name.toLowerCase().includes('sonar')).length,
+    [jenkinsCorrelations],
+  )
+  const sonarSuccessful = useMemo(
+    () => jenkinsCorrelations.filter(
+      (entry) => entry.pipeline?.job_name.toLowerCase().includes('sonar') && entry.pipeline.status === 'success',
+    ).length,
+    [jenkinsCorrelations],
+  )
+  const providerHealth = useMemo(() => buildEnterpriseProviderHealth(profile, {
+    githubEventsTotal: serverStats?.github_events.total,
+    githubEventTypes: serverStats?.github_events.by_type,
+    jiraCommitsWithTicket: ticketCoverage?.commits_with_ticket,
+    jiraCoveragePercentage: ticketCoverage?.coverage_percentage,
+    pipelineRuns7d: serverStats?.pipeline?.total_7d,
+    pipelineSuccess7d: serverStats?.pipeline?.success_7d,
+    sonarRuns,
+    sonarSuccessful,
+    activeRepos: serverStats?.active_repos,
+  }, pack), [pack, profile, serverStats, sonarRuns, sonarSuccessful, ticketCoverage])
+  const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
   const trendRule = pack.policy_rules.find((rule) => rule.rule === 'Vulnerability trend enforcement')?.setting ?? 'informational'
   const savedAtLabel = persistedProfileUpdatedAt
@@ -291,6 +330,32 @@ export function EnterpriseAdoptionPanel() {
             <div className="rounded border border-white/8 bg-white/[0.03] p-3">
               <div className="text-[10px] uppercase tracking-widest text-surface-500">Trend gate</div>
               <div className="mt-2 text-xs font-medium text-surface-100">{trendRule}</div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xs font-semibold text-surface-200">
+                <Activity size={14} className="text-brand-300" />
+                Provider health
+              </h3>
+              <Badge variant={providerHealth.length > 0 && readyProviders === providerHealth.length ? 'success' : 'info'}>
+                {readyProviders}/{providerHealth.length}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {providerHealth.map((check) => (
+                <div key={check.provider} className="rounded border border-white/8 bg-white/[0.03] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-surface-200">{check.label}</span>
+                    <Badge variant={providerHealthBadgeVariant(check.status)}>
+                      {providerHealthLabel(check.status)}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-5 text-surface-400">{check.evidence}</p>
+                  <p className="mt-1 text-[10px] leading-4 text-surface-500">{check.next_step}</p>
+                </div>
+              ))}
             </div>
           </div>
 
