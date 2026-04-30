@@ -17,6 +17,10 @@ This complements KAN-32 provider health. KAN-32 answers "has GitGov observed evi
 - Supports strict mode by default and non-blocking `-ReportOnly` mode.
 - Supports GitHub, Jira, Jenkins, SonarQube, Render, and Vercel checks.
 
+## PR
+
+- PR: `#123` - `product(KAN-36): add provider connection validation`.
+
 ## Safety
 
 The validator:

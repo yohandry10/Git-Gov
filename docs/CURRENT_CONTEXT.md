@@ -439,7 +439,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
 - `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
 - `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, implemented branch `product/KAN-35-reviewed-workflow-installation`, and merged PR `#121` as `c60c486`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
-- `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding` and started branch `product/KAN-36-provider-connection-validation`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
+- `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, started branch `product/KAN-36-provider-connection-validation`, and opened PR `#123`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
 
 ## Current Product Roadmap
 
@@ -630,6 +630,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 ## Current KAN-36 Implementation Notes
 
 - Branch: `product/KAN-36-provider-connection-validation`.
+- PR: `#123` - `product(KAN-36): add provider connection validation`.
 - Script: `scripts/control-plane/validate_enterprise_provider_connections.ps1`.
 - Design: `docs/design/provider-connection-validation-mvp.md`.
 - Report: `docs/reports/provider-connection-validation-2026-04-30.md`.
