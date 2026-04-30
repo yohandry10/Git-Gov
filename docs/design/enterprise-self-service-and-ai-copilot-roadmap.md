@@ -84,12 +84,13 @@ This MVP creates a reusable adoption pack from a customer profile, exposes the f
 
 ### 2. Vercel AI SDK Copilot
 
-Status: next major product feature after or alongside the self-service adoption work.
+Status: started in `KAN-38` with a server-side Vercel AI SDK evidence brief route.
 
 Current state:
 
 - GitGov already has enough structured evidence for an assistant to explain risk, readiness, tickets, pipelines, findings, and policy decisions.
 - The product already exposes the core dashboard, exports, and Evidence Packets MVP.
+- KAN-38 adds the first AI SDK route, `POST /api/copilot/governance`, which gathers bounded GitGov evidence and returns a cited governance brief.
 
 Missing product packaging:
 
@@ -105,6 +106,11 @@ Missing product packaging:
   - read evidence packets.
   - read vulnerability trend status.
   - summarize accepted risks.
+- First MVP:
+  - server-side Next.js route.
+  - Vercel AI SDK `generateText()`.
+  - Evidence Packet, ticket coverage, release approval, and adoption profile evidence.
+  - deterministic fallback when AI Gateway/OIDC is not configured.
 - Guardrails:
   - no secret exposure.
   - cite evidence sources.
@@ -124,7 +130,7 @@ The agreed order is:
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
 5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based installation and dashboard approval workflows remain optional future packaging.
-6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state.
+6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. This starts in `KAN-38`.
 
 ## Non-Goals
 
@@ -132,3 +138,4 @@ The agreed order is:
 - Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement exist.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.
+- Do not claim the AI copilot is a full autonomous agent until dashboard UI, streaming, tool-loop behavior, and production AI Gateway validation are complete.
