@@ -37,6 +37,44 @@ Local validation passed:
   - `11` tests passed.
 - `npm run typecheck`
   - passed.
+- `npm run lint`
+  - passed.
+- `npm test -- --run`
+  - `25` files passed.
+  - `274` tests passed.
+- `npm run build`
+  - passed.
+  - Vite reported the existing large chunk warning.
+- `git diff --check`
+  - passed.
+- `.\scripts\security\publication_guard.ps1`
+  - passed.
+
+## PR Validation
+
+- PR: `#115` - `product(KAN-32): add provider health validation`.
+- Merge commit: `1a16d88`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+
+Post-merge `main` checks passed:
+
+- `CI` run `25188414404`.
+- `Release Readiness Gate` run `25188414418`.
+- `Quality Gate Policy Matrix (Optional)` run `25188414443`.
+- `Secret Scan` run `25188414428`.
+- `SonarQube Governance (Non-Blocking)` run `25188414417`.
+- `Public Naming Guard` run `25188414424`.
+- `Governance Correlation Smoke (Optional)` run `25188414421`.
+- `Desktop Updater Readiness (Optional)` run `25188414432`.
 
 ## Remaining Product Work
 
