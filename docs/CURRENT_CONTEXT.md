@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-31`
+Ticket: `KAN-32`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -23,7 +23,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
 - Latest completed follow-up: `KAN-30 - Adoption profile dashboard MVP`.
 - Latest completed follow-up: `KAN-31 - Adoption profile persistence`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-31`.
+- Current implementation branch: `product/KAN-32-provider-health-validation`.
+- Current ticket: `KAN-32 - Enterprise provider health validation MVP`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-32`.
 
 ## Latest Verified GitHub Checks
 
@@ -406,6 +408,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
 - `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
 - `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs. Documentation refresh PR `#113` merged as `171d43d`, and production migration `v23` was applied and validated on 2026-04-30.
+- `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP` and started branch `product/KAN-32-provider-health-validation`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 
 ## Current Product Roadmap
 
@@ -413,7 +416,8 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
-  - Remaining future work: live integration validation, workflow installation, and formal release approval.
+  - KAN-32 adds evidence-based provider health validation in the dashboard.
+  - Remaining future work: direct provider credential checks, workflow installation, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -459,6 +463,21 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - PR `#112` merged this MVP on `main` as `509e2a2`; post-merge `CI` run `25186881414` and `Release Readiness Gate` run `25186881375` passed.
 - PR `#113` recorded KAN-31 validation on `main` as `171d43d`; post-merge `CI` run `25187583892` and `Release Readiness Gate` run `25187583994` passed.
 - Production validation after `v23` migration: `/health` `200`, anonymous adoption-profile GET `401`, authenticated adoption-profile GET `200` with `found=false`.
+
+## Current KAN-32 Implementation Notes
+
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helper: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Tests: `gitgov/src/test/components/dashboard-helpers.test.ts`.
+- Design: `docs/design/provider-health-validation-mvp.md`.
+- Report: `docs/reports/provider-health-validation-2026-04-30.md`.
+- Provider Health status values:
+  - `ready`: selected provider has required adoption intent and observable GitGov evidence.
+  - `needs-evidence`: selected provider is configured in the profile but telemetry has not arrived yet.
+  - `needs-config`: selected provider lacks required profile/module/config intent.
+- Evidence inputs are already-loaded dashboard data: GitHub event totals, Jira ticket coverage, Jenkins pipeline health, Sonar/quality evidence inferred from Jenkins correlations, and active repository count.
+- KAN-32 does not read `.env`, provider tokens, webhook secrets, or raw secret values, and it does not call external provider APIs directly.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, `npm run lint`, full `npm test -- --run`, and `npm run build`.
 
 ## Current KAN-28 Implementation Notes
 
