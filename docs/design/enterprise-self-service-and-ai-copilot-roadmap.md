@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`.
 
 Current state:
 
@@ -64,17 +64,19 @@ First MVP:
 - `scripts/control-plane/generate_enterprise_adoption_pack.ps1`.
 - `scripts/control-plane/generate_enterprise_workflow_templates.ps1`.
 - `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
+- `scripts/control-plane/validate_enterprise_provider_connections.ps1`.
 - `docs/design/enterprise-self-service-adoption-mvp.md`.
 - `docs/design/workflow-template-generation-mvp.md`.
 - `docs/design/dashboard-workflow-template-pack-mvp.md`.
 - `docs/design/reviewed-workflow-installation-mvp.md`.
+- `docs/design/provider-connection-validation-mvp.md`.
 - `docs/examples/enterprise-adoption-profile.example.json`.
 - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
 - `docs/design/adoption-profile-persistence-mvp.md`.
 - `docs/design/provider-health-validation-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, and installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`. It does not yet validate raw provider credentials directly, implement formal enterprise release approval, or mutate remote customer repositories through GitHub APIs.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, and validates explicitly provided provider credentials without printing secret values. It does not yet implement formal enterprise release approval or mutate remote customer repositories through GitHub APIs.
 
 ### 2. Vercel AI SDK Copilot
 
@@ -117,7 +119,7 @@ The agreed order is:
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
-5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot: direct provider checks and formal release approval. Reviewed local workflow installation is covered by `KAN-35`; remote PR-based installation remains optional future packaging.
+5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot: formal release approval. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; remote PR-based installation remains optional future packaging.
 6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state.
 
 ## Non-Goals

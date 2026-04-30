@@ -2,7 +2,7 @@
 
 Updated: 2026-04-30
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`
 
 ## Purpose
 
@@ -111,6 +111,45 @@ Safety boundaries:
 - unsafe paths such as `..`, rooted paths, drive-qualified paths, nested workflow paths, and non-YAML files are rejected.
 - the installer does not read `.env` files, provider tokens, or secret values.
 - the installer does not call GitHub APIs or mutate remote repositories.
+
+## Validate Direct Provider Connections
+
+Use this only when the customer or local operator has explicitly provided provider credentials through ignored env files or process environment variables.
+
+Run a strict validation for selected providers:
+
+```powershell
+.\scripts\control-plane\validate_enterprise_provider_connections.ps1 -Providers github,jira -RepositoryFullName owner/repo -JiraProjectKey EX -OutputPath out/provider-connections.json
+```
+
+Run a non-blocking onboarding report for the current profile:
+
+```powershell
+.\scripts\control-plane\validate_enterprise_provider_connections.ps1 -ProfilePath docs/examples/enterprise-adoption-profile.example.json -ReportOnly -OutputPath out/provider-connections-report-only.json
+```
+
+Status values:
+
+- `ready`: config exists and the provider API probe succeeded.
+- `missing-config`: required variable or auth source is missing.
+- `failed`: config exists, but the provider probe failed.
+
+Provider config names:
+
+- GitHub: `GITHUB_TOKEN`, `GH_TOKEN`, or authenticated `gh` CLI.
+- Jira: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and Jira project key.
+- Jenkins: `JENKINS_SERVER_URL`, `JENKINS_USER`, `JENKINS_API_TOKEN`, and optional `JENKINS_JOB_NAME`.
+- SonarQube: `SONAR_HOST_URL`, `SONAR_TOKEN`, and Sonar project key.
+- Render: `RENDER_API_KEY`.
+- Vercel: `VERCEL_TOKEN`.
+
+Safety boundaries:
+
+- the validator reads provider credentials only from ignored env files or the process environment.
+- the validator reports config names, never secret values.
+- the validator does not mutate provider settings.
+- the validator does not create webhooks.
+- the validator does not create GitHub Actions variables or secrets.
 
 ## Policy Presets
 
