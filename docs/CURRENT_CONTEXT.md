@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-29`
+Ticket: `KAN-30`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -21,7 +21,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-27 - Trend product vulnerability review artifacts`.
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
 - Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-29`.
+- Current in-progress follow-up: `KAN-30 - Adoption profile dashboard MVP`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-30`.
 
 ## Latest Verified GitHub Checks
 
@@ -344,11 +345,14 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-27`: opened Jira issue `KAN-27 - Trend product vulnerability review artifacts` and started branch `security/KAN-27-product-vulnerability-review-trend`. Scope is aggregating recent Product Vulnerability Review artifacts into trend evidence so regressions are visible across runs.
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
+- `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP` and started branch `product/KAN-30-adoption-profile-dashboard`. Scope is moving the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`).
-  - Package the proven GitGov operating model for other companies through provider onboarding, repository selection, workflow templates, policy presets, module toggles, integration health, and formal release approval.
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`).
+  - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
+  - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
+  - Remaining future work: tenant persistence, live integration validation, workflow installation, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -364,6 +368,16 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - The generator supports policy presets `audit-only`, `moderate`, and `strict`.
 - Local validation generated a pack for `ExampleCo` / `example-org/example-repo` with preset `moderate`, `13` workflow recommendations, `3` variable names, `2` secret names, `6` policy rules, and `5` manual setup steps.
 - PR `#108` merged this MVP on `main` as `bf8e378`.
+
+## Current KAN-30 Implementation Notes
+
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helpers: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Design: `docs/design/adoption-profile-dashboard-mvp.md`.
+- Report: `docs/reports/adoption-profile-dashboard-mvp-2026-04-30.md`.
+- The dashboard builder uses the same profile/pack shape as the KAN-29 generator: customer, repository, default branch, Jira key, policy preset, providers, modules, workflow plan, variable names, secret names, policy rules, manual steps, and open product gaps.
+- The JSON export contains secret names only. It does not read local env files or provider tokens.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, and `npm run lint`.
 
 ## Current KAN-28 Implementation Notes
 

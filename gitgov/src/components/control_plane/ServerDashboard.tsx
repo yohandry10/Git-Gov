@@ -16,6 +16,7 @@ import { ConversationalChatPanel } from './ConversationalChatPanel'
 import { PolicyEditorPanel } from './PolicyEditorPanel'
 import { ExportPanel } from './ExportPanel'
 import { EvidencePacketPanel } from './EvidencePacketPanel'
+import { EnterpriseAdoptionPanel } from './EnterpriseAdoptionPanel'
 import { MaintenanceOverlay } from './MaintenanceOverlay'
 import { Modal } from '@/components/shared/Modal'
 import { Badge } from '@/components/shared/Badge'
@@ -383,6 +384,8 @@ export function ServerDashboard() {
           <PolicyEditorPanel />
 
           <EvidencePacketPanel />
+
+          <EnterpriseAdoptionPanel />
 
           <ExportPanel githubByType={githubByType} />
 

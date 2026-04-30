@@ -1,6 +1,10 @@
 import {
+  DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+  buildEnterpriseAdoptionPack,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
+  validateEnterpriseAdoptionProfile,
+  type EnterpriseAdoptionProfile,
   type OperationalPipelineEvidence,
 } from '@/components/control_plane/dashboard-helpers'
 
@@ -140,5 +144,83 @@ describe('dashboard-helpers operational evidence metrics', () => {
       mttrSamples: 0,
     })
     expect(formatOperationalMetricDuration(metrics.mttrMs, metrics.mttrSamples)).toBe('N/A')
+  })
+})
+
+describe('dashboard-helpers enterprise adoption pack', () => {
+  it('builds the default moderate adoption pack without secret values', () => {
+    const pack = buildEnterpriseAdoptionPack(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      '2026-04-30T00:00:00.000Z',
+    )
+
+    expect(pack.workflow_plan).toHaveLength(13)
+    expect(pack.variables.map((variable) => variable.name)).toEqual([
+      'GITGOV_URL',
+      'SONAR_HOST_URL',
+      'SONAR_PROJECT_KEY',
+    ])
+    expect(pack.secrets.map((secret) => secret.name)).toEqual([
+      'GITGOV_API_KEY',
+      'SONAR_TOKEN',
+    ])
+    expect(pack.secrets.every((secret) => !Object.prototype.hasOwnProperty.call(secret, 'value'))).toBe(true)
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Release readiness target',
+      setting: '75',
+    })
+    expect(validateEnterpriseAdoptionProfile(DEFAULT_ENTERPRISE_ADOPTION_PROFILE).valid).toBe(true)
+  })
+
+  it('turns strict preset into PR review and trend enforcement requirements', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      policy_preset: 'strict',
+      modules: DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules.filter((module) => module !== 'trend-enforcement'),
+    }
+
+    const pack = buildEnterpriseAdoptionPack(profile, '2026-04-30T00:00:00.000Z')
+
+    expect(pack.workflow_plan.map((workflow) => workflow.file)).toContain(
+      '.github/workflows/product-vulnerability-review-trend-enforcement.yml',
+    )
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'PR review evidence',
+      setting: 'required',
+    })
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Vulnerability trend enforcement',
+      setting: 'enabled',
+    })
+  })
+
+  it('keeps formal release approval visible as an open product gap', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
+    }
+
+    const pack = buildEnterpriseAdoptionPack(profile, '2026-04-30T00:00:00.000Z')
+
+    expect(pack.open_product_gaps).toEqual([
+      {
+        gap: 'Formal release approval',
+        detail: 'GitGov has PR review evidence and policy decisions, but a full enterprise release approval model still needs approvers, expiration, risk acceptance, and evidence binding.',
+      },
+    ])
+  })
+
+  it('validates customer adoption profile inputs', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      repository_full_name: 'missing-owner',
+      jira_project_key: 'kan',
+    }
+
+    const validation = validateEnterpriseAdoptionProfile(profile)
+
+    expect(validation.valid).toBe(false)
+    expect(validation.errors).toContain('Repository must look like owner/repo.')
+    expect(validation.errors).toContain('Jira project key should be uppercase letters/numbers, like KAN.')
   })
 })
