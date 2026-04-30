@@ -429,7 +429,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
 - `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download`, implemented branch `product/KAN-34-dashboard-workflow-template-pack`, and merged PR `#119` as `31b109d`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
-- `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack` and started branch `product/KAN-35-reviewed-workflow-installation`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
+- `KAN-35`: opened Jira issue `KAN-35 - Reviewed workflow installation from template pack`, started branch `product/KAN-35-reviewed-workflow-installation`, and opened PR `#121`. Scope installs CLI or dashboard workflow template packs into a local customer repository checkout only after dry-run review and explicit `-Apply`; remote GitHub mutation remains out of scope.
 
 ## Current Product Roadmap
 
@@ -594,6 +594,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 ## Current KAN-35 Implementation Notes
 
 - Branch: `product/KAN-35-reviewed-workflow-installation`.
+- PR: `#121` - `product(KAN-35): add reviewed workflow installation`.
 - Script: `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
 - Design: `docs/design/reviewed-workflow-installation-mvp.md`.
 - Report: `docs/reports/reviewed-workflow-installation-2026-04-30.md`.

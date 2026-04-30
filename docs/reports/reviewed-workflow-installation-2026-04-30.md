@@ -18,6 +18,10 @@ This closes the gap between "GitGov can generate workflow templates" and "an ope
 - Added explicit `-Overwrite` for replacing existing workflow files.
 - Added path and pack-safety validation before any write.
 
+## PR
+
+- PR: `#121` - `product(KAN-35): add reviewed workflow installation`.
+
 ## Safety
 
 The installer:
