@@ -103,7 +103,9 @@ The portable vulnerability review template reports dependency findings. It does 
 ## Next Product Steps
 
 1. Add a dashboard action that generates the same workflow template pack from the persisted profile.
-2. Add a reviewed install flow for customer repositories, gated by explicit operator authorization.
-3. Add direct provider credential checks where the customer grants explicit access.
-4. Add formal enterprise release approval records.
-5. Add Vercel AI SDK Copilot over adoption profile, workflow status, provider health, evidence packets, and vulnerability findings.
+2. Add dashboard generation from the persisted/current adoption profile.
+   - Status: implemented by `KAN-34`.
+3. Add a reviewed install flow for customer repositories, gated by explicit operator authorization.
+4. Add direct provider credential checks where the customer grants explicit access.
+5. Add formal enterprise release approval records.
+6. Add Vercel AI SDK Copilot over adoption profile, workflow status, provider health, evidence packets, and vulnerability findings.

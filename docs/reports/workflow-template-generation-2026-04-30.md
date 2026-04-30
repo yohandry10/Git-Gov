@@ -113,6 +113,7 @@ Post-merge `main` checks passed:
 ## Remaining Product Work
 
 - Dashboard-triggered workflow pack generation from the persisted profile.
+  - Implemented by `KAN-34`.
 - Explicitly authorized workflow installation into customer repositories.
 - Direct provider credential/reachability checks.
 - Formal enterprise release approval.

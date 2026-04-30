@@ -51,6 +51,16 @@ out/enterprise-workflow-templates/.github/workflows/*.yml
 
 The workflow template pack is an onboarding artifact. It is meant to be reviewed before copying files into a customer repository.
 
+## Download Workflow Templates From Dashboard
+
+In the GitGov Enterprise Adoption panel:
+
+1. Load or edit the adoption profile.
+2. Save the profile if it should persist for the org.
+3. Use `Workflows` to download the workflow template pack JSON.
+
+The dashboard pack contains a manifest, README text, and generated workflow file contents. It keeps the same safety boundary as the PowerShell generator.
+
 It does not:
 
 - install workflows automatically.

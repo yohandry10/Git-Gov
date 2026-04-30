@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-33`
+Ticket: `KAN-34`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -25,7 +25,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-31 - Adoption profile persistence`.
 - Latest completed follow-up: `KAN-32 - Enterprise provider health validation MVP`.
 - Latest completed follow-up: `KAN-33 - Workflow template generation from adoption profile`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-33`.
+- Active follow-up: `KAN-34 - Dashboard workflow template pack download`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-34`.
 
 ## Latest Verified GitHub Checks
 
@@ -418,15 +419,17 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding`, implemented branch `product/KAN-31-adoption-profile-persistence`, and merged PR `#112` as `509e2a2`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs. Documentation refresh PR `#113` merged as `171d43d`, and production migration `v23` was applied and validated on 2026-04-30.
 - `KAN-32`: opened Jira issue `KAN-32 - Enterprise provider health validation MVP`, implemented branch `product/KAN-32-provider-health-validation`, and merged PR `#115` as `1a16d88`. Scope adds a secret-safe Provider Health section to the Enterprise Adoption dashboard using already-loaded GitGov evidence instead of provider credentials.
 - `KAN-33`: opened Jira issue `KAN-33 - Generate customer workflow templates from adoption profile`, implemented branch `product/KAN-33-workflow-template-generation`, and merged PR `#117` as `62b67e5`. Scope converts the KAN-29/KAN-31 adoption profile into reviewed workflow template packs, manifest, README, variables, secret names, and manual install checklist without mutating customer repositories.
+- `KAN-34`: opened Jira issue `KAN-34 - Dashboard workflow template pack download` and started branch `product/KAN-34-dashboard-workflow-template-pack`. Scope exposes workflow template pack generation in the Enterprise Adoption dashboard using the current/persisted profile, while keeping automatic repository mutation out of scope.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`).
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
   - KAN-32 adds evidence-based provider health validation in the dashboard.
   - KAN-33 generates reviewed workflow template packs from the adoption profile.
+  - KAN-34 adds dashboard download for workflow template packs.
   - Remaining future work: direct provider credential checks, explicit workflow installation, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
@@ -542,6 +545,20 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `Public Naming Guard` - run `25189490343`
   - `Governance Correlation Smoke (Optional)` - run `25189490321`
   - `Desktop Updater Readiness (Optional)` - run `25189490319`
+
+## Current KAN-34 Implementation Notes
+
+- Active branch: `product/KAN-34-dashboard-workflow-template-pack`.
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helpers: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Tests: `gitgov/src/test/components/dashboard-helpers.test.ts`.
+- Design: `docs/design/dashboard-workflow-template-pack-mvp.md`.
+- Report: `docs/reports/dashboard-workflow-template-pack-2026-04-30.md`.
+- Dashboard adds a `Workflows` download action next to existing profile save and adoption-pack JSON download.
+- Helper output shape: one JSON file with `manifest`, `files`, and `readme`.
+- Safety: no `.env` reads, no provider token reads, no secret value display, and no customer repository mutation.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts` (`13` tests), `npm run typecheck`, `npm run lint`, full `npm test -- --run` (`25` files, `276` tests), `npm run build` with the existing Vite large chunk warning, `git diff --check`, targeted secret-pattern scan, and `.\scripts\security\publication_guard.ps1`.
+- Vercel AI SDK Copilot remains pending until onboarding gaps are closed.
 
 ## Current KAN-28 Implementation Notes
 
