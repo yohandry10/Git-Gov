@@ -727,6 +727,74 @@ impl Database {
         }
     }
 
+    pub async fn get_enterprise_adoption_profile(
+        &self,
+        org_id: &str,
+    ) -> Result<Option<EnterpriseAdoptionProfileRecord>, DbError> {
+        let result = sqlx::query(
+            r#"
+            SELECT
+                org_id::text,
+                profile,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            FROM enterprise_adoption_profiles
+            WHERE org_id = $1::uuid
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(result.map(|row| EnterpriseAdoptionProfileRecord {
+            org_id: row.get("org_id"),
+            profile: row.get("profile"),
+            updated_by: row.get("updated_by"),
+            created_at: row.get("created_at_ms"),
+            updated_at: row.get("updated_at_ms"),
+        }))
+    }
+
+    pub async fn upsert_enterprise_adoption_profile(
+        &self,
+        org_id: &str,
+        profile: &serde_json::Value,
+        updated_by: &str,
+    ) -> Result<EnterpriseAdoptionProfileRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO enterprise_adoption_profiles (org_id, profile, updated_by)
+            VALUES ($1::uuid, $2::jsonb, $3)
+            ON CONFLICT (org_id) DO UPDATE SET
+                profile = EXCLUDED.profile,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+            RETURNING
+                org_id::text,
+                profile,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(org_id)
+        .bind(profile)
+        .bind(updated_by)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(EnterpriseAdoptionProfileRecord {
+            org_id: row.get("org_id"),
+            profile: row.get("profile"),
+            updated_by: row.get("updated_by"),
+            created_at: row.get("created_at_ms"),
+            updated_at: row.get("updated_at_ms"),
+        })
+    }
+
     // ========================================================================
     // REPOSITORIES
     // ========================================================================

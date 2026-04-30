@@ -34,11 +34,14 @@ Implemented:
 
 Still future work:
 
-- persisted customer adoption profiles.
 - provider health validation.
 - workflow template installation.
 - formal enterprise release approval.
 - Vercel AI SDK Copilot.
+
+Closed follow-up:
+
+- persisted customer adoption profiles are implemented by `KAN-31`.
 
 ## Validation
 

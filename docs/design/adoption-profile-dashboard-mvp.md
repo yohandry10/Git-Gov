@@ -48,7 +48,7 @@ It does not:
 
 ## Non-Goals
 
-- No backend persistence yet.
+- No backend persistence in `KAN-30`; this follow-up is implemented by `KAN-31`.
 - No automatic workflow installation yet.
 - No provider health validation yet.
 - No full formal release approval engine yet.
@@ -56,7 +56,7 @@ It does not:
 
 ## Follow-Ups
 
-1. Persist adoption profiles per tenant/org.
+1. Persist adoption profiles per tenant/org. Implemented by `KAN-31`.
 2. Add provider health validation endpoints.
 3. Generate or install workflow templates for selected repositories.
 4. Add formal release approval with approvers, expiration, risk acceptance, and evidence binding.

@@ -421,6 +421,31 @@ pub struct EvidencePacketResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseAdoptionProfileRecord {
+    pub org_id: String,
+    #[serde(default)]
+    pub profile: serde_json::Value,
+    pub updated_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseAdoptionProfileResponse {
+    pub found: bool,
+    #[serde(default)]
+    pub profile: Option<EnterpriseAdoptionProfileRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpsertEnterpriseAdoptionProfileRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub profile: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiKeyInfo {
     pub id: String,
     pub client_id: String,
@@ -1567,6 +1592,63 @@ impl ControlPlaneClient {
                 packet: None,
             });
         }
+        if !response.status().is_success() {
+            return Err(ServerError::ServerError(format!(
+                "Server returned status: {}",
+                response.status()
+            )));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_enterprise_adoption_profile(
+        &self,
+        org_name: Option<&str>,
+    ) -> Result<EnterpriseAdoptionProfileResponse, ServerError> {
+        let url = self.endpoint_url(&["enterprise", "adoption-profile"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(ServerError::ServerError(format!(
+                "Server returned status: {}",
+                response.status()
+            )));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn upsert_enterprise_adoption_profile(
+        &self,
+        payload: &UpsertEnterpriseAdoptionProfileRequest,
+    ) -> Result<EnterpriseAdoptionProfileRecord, ServerError> {
+        let url = self.endpoint_url(&["enterprise", "adoption-profile"])?;
+        let mut request = self.client.put(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
         if !response.status().is_success() {
             return Err(ServerError::ServerError(format!(
                 "Server returned status: {}",

@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-30`
+Ticket: `KAN-31`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -22,7 +22,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-28 - Vulnerability trend enforcement gate`.
 - Latest completed follow-up: `KAN-29 - Enterprise self-service adoption MVP`.
 - Latest completed follow-up: `KAN-30 - Adoption profile dashboard MVP`.
-- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-30`.
+- Current implementation follow-up: `KAN-31 - Adoption profile persistence`.
+- Any future branch, commit, and PR title must include a Jira ticket ID such as `KAN-31`.
 
 ## Latest Verified GitHub Checks
 
@@ -321,6 +322,15 @@ KAN-29 enterprise adoption pack generator:
 
 It writes a Markdown/JSON customer adoption pack with providers, modules, policy preset, workflow plan, variable/secret names, and manual setup checklist. It does not read or write secret values.
 
+KAN-31 adoption profile persistence migration postcheck:
+
+```powershell
+psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/supabase_schema_v23.sql
+psql "<DATABASE_URL>" -f gitgov/gitgov-server/supabase/checks/v23_postcheck.sql
+```
+
+Do not print the database URL or credentials.
+
 Provider access smoke test:
 
 ```powershell
@@ -360,13 +370,15 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-28`: opened Jira issue `KAN-28 - Vulnerability trend enforcement gate` and started branch `security/KAN-28-vulnerability-trend-enforcement`. Scope is converting KAN-27 trend evidence into an enforcement workflow and documenting the next two product features: Enterprise Self-Service Adoption and Vercel AI SDK Copilot.
 - `KAN-29`: opened Jira issue `KAN-29 - Enterprise self-service adoption MVP` and started branch `product/KAN-29-enterprise-self-service-adoption`. Scope is creating the first reusable adoption pack generator for customer onboarding.
 - `KAN-30`: opened Jira issue `KAN-30 - Adoption profile dashboard MVP`, implemented branch `product/KAN-30-adoption-profile-dashboard`, and merged PR `#110` as `0412574`. Scope moved the KAN-29 adoption profile into the admin dashboard with validation and secret-safe JSON export.
+- `KAN-31`: opened Jira issue `KAN-31 - Persist adoption profiles for enterprise onboarding` and started branch `product/KAN-31-adoption-profile-persistence`. Scope persists the KAN-30 profile per org with admin get/upsert endpoints, backend validation, Supabase migration `v23`, Tauri commands, dashboard save/load, and secret-safe docs.
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`).
+- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
-  - Remaining future work: tenant persistence, live integration validation, workflow installation, and formal release approval.
+  - KAN-31 persists adoption profiles per org with admin save/load.
+  - Remaining future work: live integration validation, workflow installation, and formal release approval.
 - Next major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
 - Current hardening step before those larger features: KAN-28 vulnerability trend enforcement.
@@ -394,6 +406,21 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, and `npm run lint`.
 - Full local preflight also passed with `npm test -- --run`, `npm run build`, `git diff --check`, `.\scripts\security\publication_guard.ps1`, and a browser smoke at `http://127.0.0.1:5174/` with `0` console errors.
 - PR `#110` merged this MVP on `main` as `0412574`.
+
+## Current KAN-31 Implementation Notes
+
+- Backend routes: `GET /enterprise/adoption-profile` and `PUT /enterprise/adoption-profile`.
+- Backend files: `gitgov/gitgov-server/src/handlers/adoption_profiles.rs`, `models.rs`, `db.rs`, and `main.rs`.
+- Migration: `gitgov/gitgov-server/supabase/supabase_schema_v23.sql`.
+- Postcheck: `gitgov/gitgov-server/supabase/checks/v23_postcheck.sql`.
+- Desktop bridge: `gitgov/src-tauri/src/control_plane/server.rs`, `commands/server_commands.rs`, and command registration in `src-tauri/src/lib.rs`.
+- Dashboard: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx` now loads/saves persisted profiles while preserving JSON export.
+- Store: `gitgov/src/store/useControlPlaneStore.ts` tracks profile load/save state and errors.
+- Design: `docs/design/adoption-profile-persistence-mvp.md`.
+- Report: `docs/reports/adoption-profile-persistence-2026-04-30.md`.
+- Saved profiles contain configuration intent only: no API keys, tokens, webhook secrets, generated secret values, or `.env` values.
+- Apply database migration `v23` before using persisted adoption profiles in production.
+- Local validation passed with `cargo test enterprise_adoption_profile_validation`, backend `cargo check`, backend `cargo clippy -- -D warnings`, Tauri `cargo check`, Tauri `cargo clippy -- -D warnings`, `npm run typecheck`, `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run lint`, `npm run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
 
 ## Current KAN-28 Implementation Notes
 

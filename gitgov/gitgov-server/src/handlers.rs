@@ -11,6 +11,7 @@ include!("handlers/policy_admin.rs");
 include!("handlers/policy_change_requests.rs");
 include!("handlers/org_core.rs");
 include!("handlers/org_users_api_keys.rs");
+include!("handlers/adoption_profiles.rs");
 include!("handlers/audit_stream_governance.rs");
 include!("handlers/jobs_merges_admin_audit.rs");
 include!("handlers/gdpr_clients_identities_scope.rs");
