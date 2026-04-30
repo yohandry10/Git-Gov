@@ -10,6 +10,8 @@ import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
+  buildEnterpriseWorkflowTemplatePack,
+  buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
   validateEnterpriseAdoptionProfile,
   type AdoptionModule,
@@ -140,6 +142,21 @@ export function EnterpriseAdoptionPanel() {
     }
   }
 
+  const downloadWorkflowTemplates = () => {
+    if (!validation.valid) return
+    const workflowTemplatePack = buildEnterpriseWorkflowTemplatePack(profile)
+    const blob = new Blob([JSON.stringify(workflowTemplatePack, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildEnterpriseWorkflowTemplatePackFilename(profile)
+      link.click()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
   const saveProfile = async () => {
     if (!validation.valid) return
     await saveEnterpriseAdoptionProfile(profile, selectedOrgName || undefined)
@@ -181,6 +198,16 @@ export function EnterpriseAdoptionPanel() {
           >
             <Download size={14} />
             JSON
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadWorkflowTemplates}
+            disabled={!validation.valid}
+            title="Download workflow template pack JSON"
+          >
+            <Workflow size={14} />
+            Workflows
           </Button>
         </div>
       </div>

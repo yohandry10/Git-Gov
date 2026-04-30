@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`.
 
 Current state:
 
@@ -63,13 +63,14 @@ First MVP:
 - `scripts/control-plane/generate_enterprise_workflow_templates.ps1`.
 - `docs/design/enterprise-self-service-adoption-mvp.md`.
 - `docs/design/workflow-template-generation-mvp.md`.
+- `docs/design/dashboard-workflow-template-pack-mvp.md`.
 - `docs/examples/enterprise-adoption-profile.example.json`.
 - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
 - `docs/design/adoption-profile-persistence-mvp.md`.
 - `docs/design/provider-health-validation-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, and generates reviewed workflow template packs. It does not yet install workflows automatically, validate raw provider credentials directly, or implement formal enterprise release approval.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, and generates reviewed workflow template packs from both CLI and dashboard. It does not yet install workflows automatically, validate raw provider credentials directly, or implement formal enterprise release approval.
 
 ### 2. Vercel AI SDK Copilot
 
@@ -112,7 +113,8 @@ The agreed order is:
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
-5. Start the Vercel AI SDK Copilot feature when the evidence surfaces and customer-facing workflows are ready.
+5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot: reviewed workflow installation, direct provider checks, and formal release approval.
+6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state.
 
 ## Non-Goals
 

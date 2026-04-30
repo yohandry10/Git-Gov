@@ -1,6 +1,8 @@
 import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
+  buildEnterpriseWorkflowTemplatePack,
+  buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
@@ -223,6 +225,34 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(validation.valid).toBe(false)
     expect(validation.errors).toContain('Repository must look like owner/repo.')
     expect(validation.errors).toContain('Jira project key should be uppercase letters/numbers, like KAN.')
+  })
+
+  it('builds a dashboard workflow template pack without secret values or unresolved tokens', () => {
+    const pack = buildEnterpriseWorkflowTemplatePack(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      '2026-04-30T00:00:00.000Z',
+    )
+
+    expect(pack.files).toHaveLength(13)
+    expect(pack.manifest.workflow_templates).toHaveLength(13)
+    expect(pack.manifest.safety).toEqual({
+      contains_secret_values: false,
+      mutates_customer_repository: false,
+      requires_manual_install_review: true,
+    })
+    expect(pack.files.map((file) => file.file)).toContain('.github/workflows/release-readiness-gate.yml')
+    expect(pack.files.map((file) => file.file)).toContain('.github/workflows/product-vulnerability-review-trend-enforcement.yml')
+    expect(pack.readme).toContain('GitGov Workflow Template Pack')
+    expect(JSON.stringify(pack)).not.toContain('__DEFAULT_BRANCH__')
+    expect(JSON.stringify(pack)).not.toContain('__JIRA_PROJECT_KEY__')
+    expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
+    expect(JSON.stringify(pack)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('builds a stable workflow template pack filename', () => {
+    expect(buildEnterpriseWorkflowTemplatePackFilename(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)).toBe(
+      'exampleco-example-org-example-repo-workflow-template-pack.json',
+    )
   })
 
   it('builds provider health from profile and observable evidence', () => {
