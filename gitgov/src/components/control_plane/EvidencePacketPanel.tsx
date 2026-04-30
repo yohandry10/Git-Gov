@@ -17,6 +17,10 @@ function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url)
 }
 
+function safeDownloadName(value: string): string {
+  return value.trim().replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80) || 'ticket'
+}
+
 function statusLabel(missing: string[]): string {
   if (missing.length === 0) return 'Completo'
   if (missing.length <= 2) return 'Parcial'
@@ -43,7 +47,7 @@ export function EvidencePacketPanel() {
 
   const handleDownload = () => {
     if (!evidencePacket) return
-    downloadJson(`gitgov-evidence-packet-${evidencePacket.subject}.json`, evidencePacket)
+    downloadJson(`gitgov-evidence-packet-${safeDownloadName(evidencePacket.subject)}.json`, evidencePacket)
   }
 
   const completeness = evidencePacket?.completeness

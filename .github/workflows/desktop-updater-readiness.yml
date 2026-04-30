@@ -28,10 +28,14 @@ jobs:
 
       - name: Run updater readiness validator
         shell: pwsh
+        env:
+          RUN_ID: ${{ github.run_id }}
+          PROBE_ENDPOINT: ${{ github.event.inputs.probe_endpoint || '' }}
+          FAIL_ON_WARNINGS: ${{ github.event.inputs.fail_on_warnings || '' }}
         run: |
-          $outputPath = "docs/reports/desktop-updater-readiness-${{ github.run_id }}.md"
-          $probe = "${{ github.event.inputs.probe_endpoint || '' }}"
-          $failOnWarnings = "${{ github.event.inputs.fail_on_warnings || '' }}"
+          $outputPath = "docs/reports/desktop-updater-readiness-$env:RUN_ID.md"
+          $probe = $env:PROBE_ENDPOINT
+          $failOnWarnings = $env:FAIL_ON_WARNINGS
 
           $readinessArgs = @{
             TauriConfigPath = "gitgov/src-tauri/tauri.conf.json"

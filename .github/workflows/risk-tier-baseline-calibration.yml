@@ -75,24 +75,31 @@ jobs:
         env:
           GITGOV_URL: ${{ vars.GITGOV_URL }}
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_TIER: ${{ github.event.inputs.tier }}
+          INPUT_ORG_NAME: ${{ github.event.inputs.org_name }}
+          INPUT_REPO_FULL_NAME: ${{ github.event.inputs.repo_full_name }}
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
+          INPUT_HOURS: ${{ github.event.inputs.hours }}
+          INPUT_CORRELATION_LIMIT: ${{ github.event.inputs.correlation_limit }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          $tier = "${{ github.event.inputs.tier }}"
+          $tier = $env:INPUT_TIER
           if ([string]::IsNullOrWhiteSpace($tier)) { $tier = "standard" }
 
-          $orgName = "${{ github.event.inputs.org_name }}"
-          $repoFullName = "${{ github.event.inputs.repo_full_name }}"
+          $orgName = $env:INPUT_ORG_NAME
+          $repoFullName = $env:INPUT_REPO_FULL_NAME
           if ([string]::IsNullOrWhiteSpace($repoFullName)) { $repoFullName = "yohandry10/Git-Gov" }
 
-          $branch = "${{ github.event.inputs.branch }}"
+          $branch = $env:INPUT_BRANCH
           if ([string]::IsNullOrWhiteSpace($branch)) { $branch = "main" }
 
-          $hours = "${{ github.event.inputs.hours }}"
+          $hours = $env:INPUT_HOURS
           if ([string]::IsNullOrWhiteSpace($hours)) { $hours = "168" }
 
-          $correlationLimit = "${{ github.event.inputs.correlation_limit }}"
+          $correlationLimit = $env:INPUT_CORRELATION_LIMIT
           if ([string]::IsNullOrWhiteSpace($correlationLimit)) { $correlationLimit = "500" }
 
-          $outputPath = "docs/reports/risk-tier-baseline-gh-${{ github.run_id }}.md"
+          $outputPath = "docs/reports/risk-tier-baseline-gh-$env:RUN_ID.md"
 
           $calibrationArgs = @{
             GitGovUrl = $env:GITGOV_URL

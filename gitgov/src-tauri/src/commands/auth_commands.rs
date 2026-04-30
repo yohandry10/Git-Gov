@@ -237,8 +237,8 @@ pub fn cmd_open_external_url(url: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", parsed.as_str()])
+        std::process::Command::new("rundll32.exe")
+            .args(["url.dll,FileProtocolHandler", parsed.as_str()])
             .spawn()
             .map_err(|e| to_command_error(e, "OPEN_URL_ERROR"))?;
         return Ok(());
