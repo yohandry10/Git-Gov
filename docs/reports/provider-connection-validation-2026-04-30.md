@@ -20,6 +20,7 @@ This complements KAN-32 provider health. KAN-32 answers "has GitGov observed evi
 ## PR
 
 - PR: `#123` - `product(KAN-36): add provider connection validation`.
+- Merge commit: `8c075a4`.
 
 ## Safety
 
@@ -84,6 +85,19 @@ Repository guardrails:
 - `git diff --check` passed.
 - `.\scripts\security\publication_guard.ps1` passed.
 - targeted secret-pattern scan over KAN-36 files returned no committed secret-like assignments.
+
+## Post-Merge Validation
+
+Post-merge `main` checks passed for commit `8c075a4`:
+
+- `CI` run `25192626074`.
+- `Release Readiness Gate` run `25192626059`.
+- `Quality Gate Policy Matrix (Optional)` run `25192626048`.
+- `Secret Scan` run `25192626067`.
+- `Public Naming Guard` run `25192626061`.
+- `SonarQube Governance (Non-Blocking)` run `25192626079`.
+- `Governance Correlation Smoke (Optional)` run `25192626054`.
+- `Desktop Updater Readiness (Optional)` run `25192626050`.
 
 ## Remaining Product Work Before AI SDK
 
