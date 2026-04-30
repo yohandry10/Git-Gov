@@ -21,6 +21,7 @@ This closes the gap between "GitGov can generate workflow templates" and "an ope
 ## PR
 
 - PR: `#121` - `product(KAN-35): add reviewed workflow installation`.
+- Merge commit: `c60c486`.
 
 ## Safety
 
@@ -84,6 +85,19 @@ Repository guardrails:
 - `git diff --check` passed.
 - `.\scripts\security\publication_guard.ps1` passed.
 - targeted secret-pattern scan over KAN-35 files returned no committed secret-like assignments.
+
+## Post-Merge Validation
+
+Post-merge `main` checks passed for commit `c60c486`:
+
+- `CI` run `25191857023`.
+- `Release Readiness Gate` run `25191857006`.
+- `Quality Gate Policy Matrix (Optional)` run `25191857008`.
+- `Secret Scan` run `25191856999`.
+- `Public Naming Guard` run `25191857012`.
+- `SonarQube Governance (Non-Blocking)` run `25191857029`.
+- `Governance Correlation Smoke (Optional)` run `25191857024`.
+- `Desktop Updater Readiness (Optional)` run `25191857020`.
 
 ## Remaining Product Work Before AI SDK
 
