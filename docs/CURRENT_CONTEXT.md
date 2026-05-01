@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-49`
+Ticket: `KAN-50`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -41,7 +41,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-47 - Add optional release governance enforcement gate`.
 - Latest completed follow-up: `KAN-48 - Add environment-scoped release governance policy overrides`.
 - Latest completed follow-up: `KAN-49 - Monitor release governance gate artifacts`.
-- Current follow-up: none selected after `KAN-49`.
+- Latest completed follow-up: `KAN-50 - Remote workflow installation PR for customer repositories`.
+- Current follow-up: none selected after `KAN-50`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1286,6 +1287,57 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Run `25209735562`.
   - Artifact `release-governance-gate-artifact-monitor`, ID `6747717581`, not expired.
 - No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change was needed.
+
+## Latest KAN-50 Validation Notes
+
+- Jira: `KAN-50 - Remote workflow installation PR for customer repositories`.
+- Implementation branch: `product/KAN-50-remote-workflow-installation-pr`.
+- Implementation PR: `#154 - product(KAN-50): add remote workflow installation PR flow`.
+- Implementation commit: `eb7482b product(KAN-50): add remote workflow installation PR flow`.
+- Script: `scripts/control-plane/open_enterprise_workflow_template_pr.ps1`.
+- Design: `docs/design/remote-workflow-installation-pr-mvp.md`.
+- Report: `docs/reports/remote-workflow-installation-pr-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add dry-run-first remote PR creation for GitGov enterprise workflow template packs.
+  - support CLI-generated `-PackDir` and dashboard-style `-PackPath`.
+  - infer target repository/default branch from the pack manifest when explicit parameters are omitted.
+  - compare remote `.github/workflows/*.yml` and `.yaml` files against the target base branch.
+  - require `-Apply` before creating a remote branch, single commit, and draft PR.
+  - require `-Overwrite` before replacing differing existing workflow files.
+  - keep PRs draft by default unless `-ReadyForReview` is passed.
+  - avoid GitHub Actions variable/secret creation, branch protection mutation, provider mutation, or automatic merge.
+- Local validation already run:
+  - CLI workflow template generation with `docs/examples/enterprise-adoption-profile.example.json`: passed.
+  - `-PackDir` dry-run against `yohandry10/Git-Gov` on `main`: passed with `create=0`, `update=0`, `skip=0`, `blocked=13`; no remote mutation.
+  - `-PackDir -Overwrite` dry-run against `yohandry10/Git-Gov` on `main`: passed with `create=0`, `update=13`, `skip=0`, `blocked=0`; no remote mutation.
+  - minimal dashboard-style `-PackPath` dry-run: passed with `create=1`, `update=0`, `skip=0`, `blocked=0`; no remote mutation.
+  - PowerShell parse check for `open_enterprise_workflow_template_pr.ps1`: passed.
+  - dry-run plan secret/string scan: passed, no token/Authorization/secret-value assignment patterns found.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#154` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `eb7482b` passed:
+  - `CI` - run `25210329452`.
+  - `Release Readiness Gate` - run `25210329443`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25210329442`.
+  - `Secret Scan` - run `25210329455`.
+  - `Public Naming Guard` - run `25210329454`.
+  - `Governance Correlation Smoke (Optional)` - run `25210329459`.
+  - `Desktop Updater Readiness (Optional)` - run `25210329441`.
+  - `SonarQube Governance (Non-Blocking)` - run `25210329445`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, or remote apply run was needed.
 
 ## Latest KAN-47 Validation Notes
 
