@@ -384,6 +384,65 @@ Trend safety boundaries:
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - this trend reports whether readiness is improving, declining, or stable; it does not make `needs-action` release-blocking by default.
 
+## Monitor Onboarding Readiness Trend
+
+KAN-56 adds a GitHub Actions monitor for the KAN-55 trend artifact.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-onboarding-readiness-trend-monitor.yml
+```
+
+Manual run inputs:
+
+- `max_age_hours`: maximum accepted trend artifact age. Default is `192`.
+- `min_latest_score`: minimum accepted latest onboarding readiness score. Default is `75`.
+- `report_only`: keep the monitor non-blocking. Default is `true`.
+
+The monitor reads this trend artifact:
+
+```text
+enterprise-onboarding-readiness-trend-report
+```
+
+It uploads:
+
+```text
+enterprise-onboarding-readiness-trend-monitor
+```
+
+Run the same monitor locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\validate_enterprise_onboarding_readiness_trend_monitor.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-onboarding-readiness-trend-report.yml `
+  -ArtifactName enterprise-onboarding-readiness-trend-report `
+  -MaxAgeHours 192 `
+  -MinLatestScore 75 `
+  -GitHubToken $token `
+  -ReportOnly `
+  -OutputMarkdownPath out/enterprise-onboarding-readiness-trend-monitor.md `
+  -OutputJsonPath out/enterprise-onboarding-readiness-trend-monitor.json
+```
+
+Monitor status values:
+
+- `ready`: the trend artifact is fresh and no deterioration rule fired.
+- `needs-action`: the trend artifact is parseable, but onboarding readiness changed in a way an operator should review.
+- `blocked`: the trend artifact is missing, stale, expired, or not parseable.
+
+Trend monitor safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- only GitHub Actions artifact metadata and sanitized trend JSON are read.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- `report_only=true` is the default; remove it only when an operator intentionally wants the monitor to fail the calling workflow.
+
 ## Validate Direct Provider Connections
 
 Use this only when the customer or local operator has explicitly provided provider credentials through ignored env files or process environment variables.

@@ -1,0 +1,88 @@
+name: Enterprise Onboarding Readiness Trend Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Maximum accepted age for the latest trend artifact"
+        required: false
+        default: "192"
+        type: string
+      min_latest_score:
+        description: "Minimum accepted latest onboarding readiness score"
+        required: false
+        default: "75"
+        type: string
+      report_only:
+        description: "Keep monitor non-blocking even when it reports findings"
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: "27 14 * * 4"
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+
+jobs:
+  monitor-trend:
+    name: Monitor enterprise onboarding readiness trend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Monitor trend report
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INPUT_MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+          INPUT_MIN_LATEST_SCORE: ${{ inputs.min_latest_score }}
+          INPUT_REPORT_ONLY: ${{ inputs.report_only }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+        run: |
+          $maxAgeHours = $env:INPUT_MAX_AGE_HOURS
+          if ([string]::IsNullOrWhiteSpace($maxAgeHours)) {
+            $maxAgeHours = "192"
+          }
+
+          $minLatestScore = $env:INPUT_MIN_LATEST_SCORE
+          if ([string]::IsNullOrWhiteSpace($minLatestScore)) {
+            $minLatestScore = "75"
+          }
+
+          $reportOnlyValue = $env:INPUT_REPORT_ONLY
+          $reportOnly = [string]::IsNullOrWhiteSpace($reportOnlyValue) -or $reportOnlyValue -eq "true"
+
+          $monitorArgs = @{
+            Repository         = $env:GITHUB_REPOSITORY_NAME
+            WorkflowFile       = "enterprise-onboarding-readiness-trend-report.yml"
+            ArtifactName       = "enterprise-onboarding-readiness-trend-report"
+            MaxAgeHours        = [int]$maxAgeHours
+            MinLatestScore     = [int]$minLatestScore
+            OutputMarkdownPath = "out/enterprise-onboarding-readiness-trend-monitor.md"
+            OutputJsonPath     = "out/enterprise-onboarding-readiness-trend-monitor.json"
+          }
+
+          if ($reportOnly) {
+            $monitorArgs.ReportOnly = $true
+          }
+
+          .\scripts\control-plane\validate_enterprise_onboarding_readiness_trend_monitor.ps1 @monitorArgs
+
+      - name: Upload trend monitor evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: enterprise-onboarding-readiness-trend-monitor
+          path: |
+            out/enterprise-onboarding-readiness-trend-monitor.md
+            out/enterprise-onboarding-readiness-trend-monitor.json
+          if-no-files-found: error
