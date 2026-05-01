@@ -335,6 +335,55 @@ Monitor safety boundaries:
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - this monitor validates artifact freshness only; it does not fail because onboarding readiness is `needs-action`.
 
+## Trend Onboarding Readiness Artifacts
+
+KAN-55 adds a GitHub Actions trend report for recent KAN-53 onboarding readiness artifacts.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-onboarding-readiness-trend-report.yml
+```
+
+Manual run input:
+
+- `max_reports`: maximum parseable onboarding readiness artifacts to include. Default is `12`.
+
+The trend reads artifacts with this prefix:
+
+```text
+enterprise-onboarding-readiness-
+```
+
+It uploads:
+
+```text
+enterprise-onboarding-readiness-trend-report
+```
+
+Run the same trend locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\generate_enterprise_onboarding_readiness_trend_report.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-onboarding-readiness.yml `
+  -ArtifactNamePrefix enterprise-onboarding-readiness- `
+  -MaxReports 12 `
+  -GitHubToken $token `
+  -OutputMarkdownPath out/enterprise-onboarding-readiness-trend-report.md `
+  -OutputJsonPath out/enterprise-onboarding-readiness-trend-report.json
+```
+
+Trend safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- only GitHub Actions artifact metadata and sanitized readiness JSON are read.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- this trend reports whether readiness is improving, declining, or stable; it does not make `needs-action` release-blocking by default.
+
 ## Validate Direct Provider Connections
 
 Use this only when the customer or local operator has explicitly provided provider credentials through ignored env files or process environment variables.

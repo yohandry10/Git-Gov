@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-54`
+Ticket: `KAN-55`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -46,7 +46,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-52 - Enterprise onboarding readiness report`.
 - Latest completed follow-up: `KAN-53 - Automate enterprise onboarding readiness evidence`.
 - Latest completed follow-up: `KAN-54 - Monitor enterprise onboarding readiness evidence artifacts`.
-- Current follow-up: none selected after `KAN-54`.
+- Current follow-up: `KAN-55 - Trend enterprise onboarding readiness evidence artifacts`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1562,6 +1562,32 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Current KAN-55 Work
+
+- Jira: `KAN-55 - Trend enterprise onboarding readiness evidence artifacts`.
+- Branch: `ops/KAN-55-enterprise-onboarding-readiness-trend`.
+- Goal: add a non-mutating trend report that parses recent KAN-53 `enterprise-onboarding-readiness-` artifacts and reports latest status, score, stage counts, and deltas.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_readiness_trend_report.ps1`.
+- Workflow: `.github/workflows/enterprise-onboarding-readiness-trend-report.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-trend-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-trend-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - no release blocking by default.
+- Initial local trend validation passed:
+  - command used `scripts/control-plane/generate_enterprise_onboarding_readiness_trend_report.ps1`.
+  - workflow file: `enterprise-onboarding-readiness.yml`.
+  - artifact prefix: `enterprise-onboarding-readiness-`.
+  - latest successful source run: `25211644692`.
+  - artifact: `enterprise-onboarding-readiness-25211644692`.
+  - result: parsed `1` report, latest status `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages, trend direction `stable`.
 
 ## Latest KAN-47 Validation Notes
 
