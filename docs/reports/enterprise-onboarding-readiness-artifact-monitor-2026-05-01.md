@@ -49,11 +49,44 @@ Local validation before PR:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
-Remaining validation before closure:
+PR `#162` merged on `main` as `ec99b7c`.
 
-- PR checks.
-- first manual monitor workflow run on `main` after merge.
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `ec99b7c` passed:
+
+- `CI` - run `25212018101`.
+- `Release Readiness Gate` - run `25212018102`.
+- `Quality Gate Policy Matrix (Optional)` - run `25212018092`.
+- `Secret Scan` - run `25212018105`.
+- `Public Naming Guard` - run `25212018093`.
+- `Governance Correlation Smoke (Optional)` - run `25212018110`.
+- `Desktop Updater Readiness (Optional)` - run `25212018091`.
+- `SonarQube Governance (Non-Blocking)` - run `25212018095`.
+
+First manual monitor workflow validation passed:
+
+- Workflow: `Enterprise Onboarding Readiness Artifact Monitor`.
+- Run: `25212021793`.
+- Artifact: `enterprise-onboarding-readiness-artifact-monitor`.
+- Artifact ID: `6748551922`.
+- Artifact status: not expired.
+- Artifact expires at `2026-07-30T11:01:29Z`.
 
 ## Current Status
 
-Implementation in progress on branch `ops/KAN-54-enterprise-onboarding-readiness-artifact-monitor`.
+KAN-54 implementation is complete and merged through PR `#162`.
+
+The monitor is operational on `main`: it validates KAN-53 artifact freshness without reading provider secrets, mutating repositories/providers, or treating onboarding `needs-action` as a release-blocking failure.
