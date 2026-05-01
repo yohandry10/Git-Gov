@@ -63,11 +63,45 @@ Local validation:
 - `git diff --check`: passed.
 - `scripts/security/publication_guard.ps1`: passed.
 
-Remaining validation before closure:
+PR `#160` merged on `main` as `027a10f`.
 
-- PR checks.
-- first manual workflow run on `main` after merge.
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `027a10f` passed:
+
+- `CI` - run `25211635818`.
+- `Release Readiness Gate` - run `25211635807`.
+- `Quality Gate Policy Matrix (Optional)` - run `25211636125`.
+- `Secret Scan` - run `25211635809`.
+- `Public Naming Guard` - run `25211635814`.
+- `Governance Correlation Smoke (Optional)` - run `25211635806`.
+- `Desktop Updater Readiness (Optional)` - run `25211635830`.
+- `SonarQube Governance (Non-Blocking)` - run `25211635803`.
+
+First manual workflow validation passed:
+
+- Workflow: `Enterprise Onboarding Readiness`.
+- Run: `25211644692`.
+- Head SHA: `027a10f156333ec66c0328281b58aade535da091`.
+- Artifact: `enterprise-onboarding-readiness-25211644692`.
+- Artifact ID: `6748421926`.
+- Artifact status: not expired.
+- Artifact expires at `2026-07-30T10:46:51Z`.
 
 ## Current Status
 
-Implementation in progress on branch `product/KAN-53-enterprise-onboarding-readiness-automation`.
+KAN-53 implementation is complete and merged through PR `#160`.
+
+The feature is now operational on `main`: the weekly/manual workflow can generate onboarding readiness evidence artifacts without reading provider secrets, mutating customer repositories, or enforcing release blocking unless an operator explicitly changes the workflow inputs.
