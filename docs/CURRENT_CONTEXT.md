@@ -38,7 +38,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
 - Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
-- Current follow-up: `KAN-47 - Add optional release governance enforcement gate`.
+- Latest completed follow-up: `KAN-47 - Add optional release governance enforcement gate`.
+- Current follow-up: none selected after `KAN-47`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1183,10 +1184,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
 - No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
 
-## Current KAN-47 Implementation Notes
+## Latest KAN-47 Validation Notes
 
 - Jira: `KAN-47 - Add optional release governance enforcement gate`.
 - Implementation branch: `ops/KAN-47-release-governance-enforcement-gate`.
+- Implementation PR: `#148 - ops(KAN-47): add release governance enforcement gate`.
+- Implementation commit: `b6b2854 ops(KAN-47): add release governance enforcement gate`.
 - Design: `docs/design/release-governance-enforcement-gate-mvp.md`.
 - Runbook: `docs/runbooks/release-governance-gate.md`.
 - Report: `docs/reports/release-governance-enforcement-gate-2026-05-01.md`.
@@ -1218,6 +1221,33 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Secret safety:
   - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read, printed, or stored by this change.
 - No database migration, backend route change, provider setting change, customer repository mutation, or Vercel production environment change is needed.
+- PR `#148` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `b6b2854` passed:
+  - `CI` - run `25208426343`.
+  - `Release Readiness Gate` - run `25208426384`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25208426354`.
+  - `Secret Scan` - run `25208426359`.
+  - `Public Naming Guard` - run `25208426346`.
+  - `Governance Correlation Smoke (Optional)` - run `25208426363`.
+  - `Desktop Updater Readiness (Optional)` - run `25208426341`.
+  - `SonarQube Governance (Non-Blocking)` - run `25208426365`.
+- First manual `Release Governance Gate` workflow run on `main` passed:
+  - Run `25208470238`.
+  - Head SHA `b6b285403455fc929eff903270bc7725a430628f`.
+  - Inputs used report/non-blocking mode with `enforce_gate=false`, `fail_on_would_block=false`, and `require_policy_satisfied=false`.
+  - Result: `passed=true`, HTTP `200`, `status=recorded`, `policy_mode=record-only`, `policy_enforcement=disabled`, `policy_satisfied=true`, `blocking=false`, `would_block=false`, `valid_approval_count=0`, and `required_approval_count=0`.
+  - Artifact `release-governance-gate-25208470238`, ID `6747272652`, expires `2026-05-31T08:44:26Z`, not expired.
 
 ## Current KAN-28 Implementation Notes
 
