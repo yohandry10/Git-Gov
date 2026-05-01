@@ -84,7 +84,7 @@ This MVP creates a reusable adoption pack from a customer profile, exposes the f
 
 ### 2. Vercel AI SDK Copilot
 
-Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route; dashboard UI added in `KAN-39`; AI/fallback mode validation started in `KAN-40`.
+Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route; dashboard UI added in `KAN-39`; AI/fallback mode validation started in `KAN-40`; direct Google Gemini provider activation started in `KAN-41`.
 
 Current state:
 
@@ -93,7 +93,8 @@ Current state:
 - KAN-38 adds the first AI SDK route, `POST /api/copilot/governance`, which gathers bounded GitGov evidence and returns a cited governance brief.
 - KAN-39 starts the first admin dashboard UI for the copilot route through a secret-safe Tauri desktop proxy.
 - KAN-40 adds a secret-safe validator and GitHub workflow for checking whether the route is healthy, evidence-grounded, and running in `mode=ai` or deterministic `fallback`.
-- Production validation passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` in deterministic fallback mode; production AI Gateway/OIDC still needs to be enabled if the desired runtime is `mode=ai`.
+- KAN-41 selects direct Google Gemini through `@ai-sdk/google` as the practical production AI path because Vercel AI Gateway generation required billing-card activation. AI Gateway remains optional future infrastructure.
+- Production validation passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` in deterministic fallback mode before KAN-41. KAN-41 validation should move production to `mode=ai` after deploy.
 
 Missing product packaging:
 
@@ -114,8 +115,9 @@ Missing product packaging:
   - admin dashboard panel.
   - AI/fallback mode validator.
   - Vercel AI SDK `generateText()`.
+  - direct Google Gemini provider through `@ai-sdk/google`.
   - Evidence Packet, ticket coverage, release approval, and adoption profile evidence.
-  - deterministic fallback when AI Gateway/OIDC is not configured.
+  - deterministic fallback when Google Gemini or AI Gateway is not configured.
 - Guardrails:
   - no secret exposure.
   - cite evidence sources.
@@ -135,7 +137,7 @@ The agreed order is:
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
 5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based installation and dashboard approval workflows remain optional future packaging.
-6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, and AI-mode validation starts in `KAN-40`.
+6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, AI-mode validation starts in `KAN-40`, and direct Google Gemini activation starts in `KAN-41`.
 
 ## Non-Goals
 
@@ -143,4 +145,4 @@ The agreed order is:
 - Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement exist.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.
-- Do not claim the AI copilot is a full autonomous agent until dashboard UI, streaming, tool-loop behavior, and production AI generation mode are complete.
+- Do not claim the AI copilot is a full autonomous agent until streaming, tool-loop behavior, and governed tool approval are complete.

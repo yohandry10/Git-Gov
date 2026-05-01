@@ -1,3 +1,4 @@
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -11,7 +12,21 @@ import {
 export const runtime = 'nodejs';
 
 const MAX_BODY_BYTES = 12 * 1024;
-const DEFAULT_MODEL = 'openai/gpt-5.4';
+const DEFAULT_GATEWAY_MODEL = 'openai/gpt-5.4';
+const DEFAULT_GOOGLE_MODEL = 'gemini-2.5-flash';
+
+type CopilotAiTarget =
+    | {
+        provider: 'google';
+        apiKey: string;
+        model: string;
+        displayModel: string;
+    }
+    | {
+        provider: 'gateway';
+        model: string;
+        displayModel: string;
+    };
 
 function resolveGitGovAuthorization(request: NextRequest) {
     const authorization = request.headers.get('authorization')?.trim();
@@ -52,16 +67,82 @@ function resolveGitGovAuthorization(request: NextRequest) {
     return { authorization: `Bearer ${apiKey}` };
 }
 
-function shouldAttemptAiGeneration() {
+function readCopilotProviderPreference() {
+    const provider = process.env.GITGOV_COPILOT_PROVIDER?.trim().toLowerCase();
+    if (provider === 'google' || provider === 'gateway' || provider === 'disabled') {
+        return provider;
+    }
+    return 'auto';
+}
+
+function normalizeGoogleModel(rawModel: string | undefined) {
+    const model = rawModel?.trim();
+    if (!model) {
+        return DEFAULT_GOOGLE_MODEL;
+    }
+    if (model.startsWith('google/')) {
+        return model.slice('google/'.length) || DEFAULT_GOOGLE_MODEL;
+    }
+    if (model.includes('/')) {
+        return DEFAULT_GOOGLE_MODEL;
+    }
+    return model;
+}
+
+function resolveAiGenerationTarget(): { target?: CopilotAiTarget; warning?: string } {
     if (process.env.GITGOV_COPILOT_DISABLE_AI === 'true') {
-        return false;
+        return { warning: 'AI generation skipped because GITGOV_COPILOT_DISABLE_AI is enabled.' };
     }
 
-    return Boolean(
+    const provider = readCopilotProviderPreference();
+    if (provider === 'disabled') {
+        return { warning: 'AI generation skipped because GITGOV_COPILOT_PROVIDER is disabled.' };
+    }
+
+    const googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    if ((provider === 'google' || provider === 'auto') && googleApiKey) {
+        const model = normalizeGoogleModel(
+            process.env.GITGOV_COPILOT_GOOGLE_MODEL
+            || process.env.GEMINI_MODEL
+            || process.env.GITGOV_COPILOT_MODEL,
+        );
+        return {
+            target: {
+                provider: 'google',
+                apiKey: googleApiKey,
+                model,
+                displayModel: `google/${model}`,
+            },
+        };
+    }
+
+    if (provider === 'google') {
+        return { warning: 'AI generation skipped because Google Gemini API key is not configured.' };
+    }
+
+    const gatewayReady = Boolean(
         process.env.VERCEL
         || process.env.VERCEL_OIDC_TOKEN
         || process.env.AI_GATEWAY_API_KEY
     );
+    if ((provider === 'gateway' || provider === 'auto') && gatewayReady) {
+        const model = process.env.GITGOV_COPILOT_GATEWAY_MODEL
+            || process.env.GITGOV_COPILOT_MODEL
+            || DEFAULT_GATEWAY_MODEL;
+        return {
+            target: {
+                provider: 'gateway',
+                model,
+                displayModel: model,
+            },
+        };
+    }
+
+    if (provider === 'gateway') {
+        return { warning: 'AI generation skipped because AI Gateway/OIDC is not configured.' };
+    }
+
+    return { warning: 'AI generation skipped because no configured AI provider is available.' };
 }
 
 export async function POST(request: NextRequest) {
@@ -95,31 +176,36 @@ export async function POST(request: NextRequest) {
         );
 
         const warnings = [...evidence.warnings];
-        const model = process.env.GITGOV_COPILOT_MODEL || DEFAULT_MODEL;
+        const generation = resolveAiGenerationTarget();
         let mode: 'ai' | 'fallback' = 'fallback';
         let answer = buildDeterministicCopilotBrief(input, evidence.sources);
+        let model: string | undefined;
 
-        if (shouldAttemptAiGeneration()) {
+        if (generation.target) {
             try {
+                const aiModel = generation.target.provider === 'google'
+                    ? createGoogleGenerativeAI({ apiKey: generation.target.apiKey })(generation.target.model)
+                    : generation.target.model;
                 const result = await generateText({
-                    model,
+                    model: aiModel,
                     prompt: buildGovernanceCopilotPrompt(input, evidence.sources),
                     maxOutputTokens: 900,
                     temperature: 0.2,
                 });
                 answer = result.text.trim() || answer;
                 mode = 'ai';
+                model = generation.target.displayModel;
             } catch {
                 warnings.push('AI generation was unavailable; returned deterministic evidence brief.');
             }
         } else {
-            warnings.push('AI generation skipped because AI Gateway/OIDC is not configured.');
+            warnings.push(generation.warning || 'AI generation skipped because no configured AI provider is available.');
         }
 
         return NextResponse.json({
             success: true,
             mode,
-            model: mode === 'ai' ? model : undefined,
+            model,
             answer,
             citations: buildSourceCitations(evidence.sources),
             sources: evidence.sources,

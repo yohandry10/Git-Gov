@@ -444,7 +444,7 @@ export function buildDeterministicCopilotBrief(input: GovernanceCopilotInput, so
         }
     }
 
-    lines.push('', 'Next action: configure Vercel AI Gateway/OIDC for generated narrative answers.');
+    lines.push('', 'Next action: configure Google Gemini or Vercel AI Gateway for generated narrative answers.');
     return lines.join('\n');
 }
 
