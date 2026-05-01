@@ -46,6 +46,15 @@ Local validation completed on 2026-05-01:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
+GitHub validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#156` | Merged into `main` as `dcfb529`. |
+| PR checks | PASS: Security Guard, Server Clippy + Check, Desktop Rust Clippy, Frontend Lint + Typecheck, Website Lint + Typecheck + Build, Workflow Lint, quality gate matrix, Sonar Scan + Quality Gate, internal marker guard, Vercel, and Vercel Preview Comments. |
+| Post-merge `CI` | PASS, run `25210718116`. |
+| Post-merge `Release Readiness Gate` | PASS, run `25210718113`. |
+
 Reference commands:
 
 ```powershell
