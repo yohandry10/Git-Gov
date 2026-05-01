@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-39`
+Ticket: `KAN-40`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -31,6 +31,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
+- Current in-progress follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -404,6 +405,14 @@ KAN-36 provider connection validator:
 ```
 
 Use strict mode without `-ReportOnly` when every selected provider must be ready. The validator reports sanitized statuses only and does not print secret values.
+
+KAN-40 governance copilot AI mode validator:
+
+```powershell
+.\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 -TicketId KAN-39 -ReleaseId KAN-39 -OutputPath out\governance-copilot-ai-mode-validation.json
+```
+
+Use `-RequireAiMode` only after Vercel AI Gateway/OIDC is enabled and production should fail if the copilot returns deterministic `fallback`.
 
 KAN-31 adoption profile persistence migration postcheck:
 
@@ -818,6 +827,26 @@ Latest KAN-39 governance copilot dashboard baseline:
   - `Desktop Updater Readiness (Optional)` run `25195469496`: passed.
   - `SonarQube Governance (Non-Blocking)` run `25195469502`: passed.
   - `Public Naming Guard` run `25195469507`: passed.
+
+## Current KAN-40 Implementation Notes
+
+- Jira: `KAN-40 - Governance copilot AI mode validation`.
+- Implementation branch: `product/KAN-40-governance-copilot-ai-validation`.
+- Script: `scripts/control-plane/validate_governance_copilot_ai_mode.ps1`.
+- Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
+- Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
+- Report: `docs/reports/governance-copilot-ai-mode-validation-2026-04-30.md`.
+- Scope:
+  - validate the production copilot route without printing secrets.
+  - record HTTP status, response mode, source count, ok-source count, citation count, warning count, answer length, and answer SHA-256 hash.
+  - support `-RequireAiMode` for post-AI-Gateway/OIDC enforcement.
+  - add a weekly/manual GitHub Actions workflow that uploads sanitized validation evidence.
+- Local production validation already run:
+  - non-strict command returned `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, and `4` ok sources.
+  - strict mode returned the expected controlled failure because production still reports `mode=fallback`.
+- Current interpretation:
+  - the copilot route is healthy and evidence-grounded.
+  - production AI generation mode is still pending Vercel AI Gateway/OIDC activation.
 
 ## Current KAN-28 Implementation Notes
 

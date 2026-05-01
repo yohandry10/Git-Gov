@@ -1,0 +1,95 @@
+name: Governance Copilot AI Mode Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_ai_mode:
+        description: "Fail unless the copilot route returns mode=ai"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      ticket_id:
+        description: "Ticket used for evidence packet validation"
+        required: false
+        default: "KAN-39"
+        type: string
+  schedule:
+    - cron: "31 13 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+
+jobs:
+  validate:
+    name: Validate governance copilot mode
+    runs-on: ubuntu-latest
+    env:
+      GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+      CONFIGURED_COPILOT_URL: ${{ vars.GITGOV_COPILOT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Validate copilot route
+        shell: pwsh
+        env:
+          INPUT_REQUIRE_AI_MODE: ${{ inputs.require_ai_mode }}
+          INPUT_TICKET_ID: ${{ inputs.ticket_id }}
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+
+          if ([string]::IsNullOrWhiteSpace($env:GITGOV_API_KEY)) {
+            [ordered]@{
+              generated_at = (Get-Date).ToUniversalTime().ToString("o")
+              status = "skipped"
+              ok = $true
+              reason = "GITGOV_API_KEY secret is not configured."
+            } | ConvertTo-Json -Depth 5 | Set-Content -Path "out/governance-copilot-ai-mode-validation.json" -Encoding UTF8
+            Write-Warning "Skipping copilot validation because GITGOV_API_KEY is missing."
+            exit 0
+          }
+
+          $requireAiMode = $env:INPUT_REQUIRE_AI_MODE -eq "true"
+          $ticketId = $env:INPUT_TICKET_ID
+          if ([string]::IsNullOrWhiteSpace($ticketId)) {
+            $ticketId = "KAN-39"
+          }
+
+          $copilotUrl = $env:CONFIGURED_COPILOT_URL
+          if ([string]::IsNullOrWhiteSpace($copilotUrl)) {
+            $copilotUrl = "https://www.gitgov.cloud/api/copilot/governance"
+          }
+
+          $args = @{
+            CopilotUrl = $copilotUrl
+            TicketId = $ticketId
+            ReleaseId = $ticketId
+            OrgName = "yohandry10"
+            RepositoryFullName = "yohandry10/Git-Gov"
+            Branch = "main"
+            Environment = "production"
+            OutputPath = "out/governance-copilot-ai-mode-validation.json"
+          }
+
+          if ($requireAiMode) {
+            .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 @args -RequireAiMode
+          } else {
+            .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 @args
+          }
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: governance-copilot-ai-mode-validation
+          path: out/governance-copilot-ai-mode-validation.json
+          if-no-files-found: error
