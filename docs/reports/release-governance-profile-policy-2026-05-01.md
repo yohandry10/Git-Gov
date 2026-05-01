@@ -12,6 +12,8 @@ The important product rule is preserved: GitGov defaults to `record-only`. Block
 
 - Jira issue: `KAN-45 - Add configurable release governance profile policy`.
 - Branch: `product/KAN-45-release-governance-profile-policy`.
+- PR: `#144 - product(KAN-45): add release governance profile policy`.
+- Merge commit: `dc37e9286d0be7159d3b6fb4c799e42862b22f3a`.
 - Design: `docs/design/release-governance-profile-policy-mvp.md`.
 
 ## Changes
@@ -56,6 +58,41 @@ Generated output confirmed:
 
 - Adoption pack Markdown/JSON: `record-only`, `disabled`, quorum `disabled`.
 - Workflow template README/manifest: `record-only`, `disabled`, quorum `disabled`.
+
+## GitHub Validation
+
+PR `#144` checks passed before merge:
+
+- `Security Guard`.
+- `Server Clippy + Check`.
+- `Desktop Rust Clippy`.
+- `Frontend Lint + Typecheck`.
+- `Website Lint + Typecheck + Build`.
+- `Workflow Lint`.
+- `Validate quality_gates warn/block matrix`.
+- `Sonar Scan + Quality Gate`.
+- `Block internal-assistant markers in branch/commits`.
+- `Vercel`.
+- `Vercel Preview Comments`.
+
+Post-merge checks passed on `main` commit `dc37e9286d0be7159d3b6fb4c799e42862b22f3a`:
+
+- `CI` run `25203785504`.
+- `Release Readiness Gate` run `25203785499`.
+- `Quality Gate Policy Matrix (Optional)` run `25203785520`.
+- `Secret Scan` run `25203785497`.
+- `SonarQube Governance (Non-Blocking)` run `25203785527`.
+- `Public Naming Guard` run `25203785483`.
+- `Governance Correlation Smoke (Optional)` run `25203785490`.
+- `Desktop Updater Readiness (Optional)` run `25203785503`.
+
+## Deployment
+
+- No database migration was needed.
+- No Render deploy validation was needed.
+- No Vercel production environment change was needed.
+- No provider setting changed.
+- No customer workflow installation was triggered.
 
 ## Residual Work
 
