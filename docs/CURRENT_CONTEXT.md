@@ -37,7 +37,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
-- Current follow-up: `KAN-46 - Add release governance evaluator`.
+- Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
+- Current follow-up: none selected after KAN-46.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1113,11 +1114,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Desktop Updater Readiness (Optional)` - run `25203785503`.
 - No database migration, Render deploy, Vercel production env change, provider setting change, or customer workflow installation was needed.
 
-## Current KAN-46 Implementation Notes
+## Latest KAN-46 Validation Notes
 
 - Jira: `KAN-46 - Add release governance evaluator`.
 - Implementation branch: `product/KAN-46-release-governance-evaluator`.
 - Implementation PR: `#146 - product(KAN-46): add release governance evaluator`.
+- Implementation commit: `0252432 product(KAN-46): add release governance evaluator`.
 - Design: `docs/design/release-governance-evaluator-mvp.md`.
 - Report: `docs/reports/release-governance-evaluator-2026-05-01.md`.
 - Scope:
@@ -1153,7 +1155,33 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `.\scripts\security\publication_guard.ps1`: passed.
 - Secret safety:
   - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read or printed by this change.
-- No database migration, provider setting change, customer workflow installation, or Vercel production environment change is needed.
+- PR `#146` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `0252432` passed:
+  - `CI` - run `25207328590`.
+  - `Release Readiness Gate` - run `25207328587`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25207328585`.
+  - `Secret Scan` - run `25207328605`.
+  - `SonarQube Governance (Non-Blocking)` - run `25207328608`.
+  - `Public Naming Guard` - run `25207328592`.
+  - `Governance Correlation Smoke (Optional)` - run `25207328584`.
+  - `Desktop Updater Readiness (Optional)` - run `25207328581`.
+- Production validation:
+  - Render deploy `dep-d7q5qmkvikkc73cmfg0g` reached `live` for commit `025243214639757e901830d958e60e2ba3eb55cd`.
+  - `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
+  - Anonymous `GET /enterprise/release-governance/evaluate?...` returned `401`.
+  - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
+- No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
 
 ## Current KAN-28 Implementation Notes
 
