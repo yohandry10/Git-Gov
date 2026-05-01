@@ -345,6 +345,39 @@ export interface ChatMessage {
   timestamp: number
 }
 
+export interface GovernanceCopilotAskRequest {
+  question: string
+  org_name?: string | null
+  repository_full_name?: string | null
+  branch?: string | null
+  ticket_id?: string | null
+  release_id?: string | null
+  environment?: string | null
+  hours?: number | null
+}
+
+export interface GovernanceCopilotCitation {
+  id: string
+  label: string
+  endpoint: string
+  status: 'ok' | 'missing' | 'error' | 'skipped' | string
+  httpStatus?: number | null
+}
+
+export interface GovernanceCopilotSource extends GovernanceCopilotCitation {
+  summary?: unknown
+}
+
+export interface GovernanceCopilotResponse {
+  success: boolean
+  mode?: 'ai' | 'fallback' | string | null
+  model?: string | null
+  answer: string
+  citations: GovernanceCopilotCitation[]
+  sources: GovernanceCopilotSource[]
+  warnings: string[]
+}
+
 export interface ChatSession {
   id: string
   title: string
@@ -425,6 +458,9 @@ interface ControlPlaneState {
   activeChatSessionId: string | null
   chatMessages: ChatMessage[]
   isChatLoading: boolean
+  governanceCopilotResponse: GovernanceCopilotResponse | null
+  isGovernanceCopilotLoading: boolean
+  governanceCopilotError: string | null
   displayTimezone: string
   policyData: PolicyResponseData | null
   policyHistory: PolicyHistoryEntry[]
@@ -496,6 +532,7 @@ interface ControlPlaneActions {
   clearError: () => void
   disconnect: () => void
   chatAsk: (question: string, orgName?: string) => Promise<ChatAskResponse | null>
+  askGovernanceCopilot: (request: GovernanceCopilotAskRequest) => Promise<GovernanceCopilotResponse | null>
   reportFeature: (question: string, missingCapability?: string) => Promise<boolean>
   clearChatMessages: () => void
   createChatSession: () => void
@@ -1205,6 +1242,9 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   activeChatSessionId: initialChatState.activeSessionId,
   chatMessages: deriveActiveChatMessages(initialChatState.sessions, initialChatState.activeSessionId),
   isChatLoading: false,
+  governanceCopilotResponse: null,
+  isGovernanceCopilotLoading: false,
+  governanceCopilotError: null,
   displayTimezone: readStoredTimezone() || detectBrowserTimezone(),
   policyData: null,
   policyHistory: [],
@@ -2266,6 +2306,9 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       isRefreshingDashboard: false,
       error: null,
       isChatLoading: false,
+      governanceCopilotResponse: null,
+      isGovernanceCopilotLoading: false,
+      governanceCopilotError: null,
     })
   },
 
@@ -2375,6 +2418,51 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
           chatMessages: s.activeChatSessionId === nextSession.id ? nextSession.messages : s.chatMessages,
           isChatLoading: false,
         }
+      })
+      return null
+    }
+  },
+
+  askGovernanceCopilot: async (request) => {
+    const { serverConfig, selectedOrgName } = get()
+    const question = request.question.trim()
+    if (!serverConfig) {
+      set({ governanceCopilotError: 'Conecta el Control Plane antes de usar el copilot.' })
+      return null
+    }
+    if (!question) {
+      set({ governanceCopilotError: 'Escribe una pregunta para el copilot.' })
+      return null
+    }
+
+    const effectiveOrgName = request.org_name?.trim() || selectedOrgName.trim() || undefined
+    set({ isGovernanceCopilotLoading: true, governanceCopilotError: null })
+    try {
+      const response = await tauriInvoke<GovernanceCopilotResponse>('cmd_server_governance_copilot_ask', {
+        config: serverConfig,
+        request: {
+          question,
+          org_name: effectiveOrgName ?? null,
+          repository_full_name: request.repository_full_name?.trim() || null,
+          branch: request.branch?.trim() || null,
+          ticket_id: request.ticket_id?.trim() || null,
+          release_id: request.release_id?.trim() || null,
+          environment: request.environment?.trim() || null,
+          hours: request.hours ?? null,
+        },
+      })
+      set({
+        governanceCopilotResponse: response,
+        isGovernanceCopilotLoading: false,
+        governanceCopilotError: null,
+      })
+      return response
+    } catch (e) {
+      const parsedError = parseCommandError(String(e))
+      set({
+        governanceCopilotResponse: null,
+        isGovernanceCopilotLoading: false,
+        governanceCopilotError: parsedError.message,
       })
       return null
     }

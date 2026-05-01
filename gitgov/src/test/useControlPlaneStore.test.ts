@@ -62,6 +62,9 @@ describe('useControlPlaneStore', () => {
       activeChatSessionId: null,
       chatMessages: [],
       isChatLoading: false,
+      governanceCopilotResponse: null,
+      isGovernanceCopilotLoading: false,
+      governanceCopilotError: null,
       displayTimezone: 'UTC',
       sseConnected: false,
       policyData: null,
@@ -271,6 +274,67 @@ describe('useControlPlaneStore', () => {
     it('sets selected org name', () => {
       useControlPlaneStore.getState().setSelectedOrgName('my-org')
       expect(useControlPlaneStore.getState().selectedOrgName).toBe('my-org')
+    })
+  })
+
+  describe('askGovernanceCopilot', () => {
+    it('calls the desktop copilot proxy with selected org and context', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        success: true,
+        mode: 'fallback',
+        answer: 'Ready with evidence.',
+        citations: [{ id: 'evidence-packet', label: 'Evidence Packet', endpoint: '/evidence', status: 'ok' }],
+        sources: [{ id: 'evidence-packet', label: 'Evidence Packet', endpoint: '/evidence', status: 'ok' }],
+        warnings: [],
+      })
+
+      const response = await useControlPlaneStore.getState().askGovernanceCopilot({
+        question: 'Is KAN-39 ready?',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+        ticket_id: 'KAN-39',
+        release_id: 'KAN-39-smoke',
+        environment: 'production',
+        hours: 720,
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_governance_copilot_ask', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        request: {
+          question: 'Is KAN-39 ready?',
+          org_name: 'yohandry10',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          ticket_id: 'KAN-39',
+          release_id: 'KAN-39-smoke',
+          environment: 'production',
+          hours: 720,
+        },
+      })
+      expect(response?.mode).toBe('fallback')
+      expect(useControlPlaneStore.getState().governanceCopilotResponse?.answer).toBe('Ready with evidence.')
+      expect(useControlPlaneStore.getState().governanceCopilotError).toBeNull()
+    })
+
+    it('keeps copilot errors separate from the main dashboard error', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        error: 'existing dashboard error',
+      })
+      mockInvoke.mockRejectedValueOnce(JSON.stringify({ code: 'COPILOT_HTTP_ERROR', message: 'Unauthorized' }))
+
+      const response = await useControlPlaneStore.getState().askGovernanceCopilot({
+        question: 'Check release',
+      })
+
+      expect(response).toBeNull()
+      expect(useControlPlaneStore.getState().error).toBe('existing dashboard error')
+      expect(useControlPlaneStore.getState().governanceCopilotError).toBe('Unauthorized')
+      expect(useControlPlaneStore.getState().isGovernanceCopilotLoading).toBe(false)
     })
   })
 })

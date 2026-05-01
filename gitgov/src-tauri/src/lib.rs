@@ -270,6 +270,7 @@ pub fn run() {
             commands::cmd_server_export,
             commands::cmd_server_list_exports,
             commands::cmd_server_chat_ask,
+            commands::cmd_server_governance_copilot_ask,
             commands::cmd_server_create_feature_request,
             commands::cmd_server_get_policy,
             commands::cmd_server_override_policy,

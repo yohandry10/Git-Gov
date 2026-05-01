@@ -19,11 +19,14 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{Emitter, State};
 
 const KEYRING_SERVICE: &str = "gitgov";
 const CONTROL_PLANE_API_KEY_ACCOUNT: &str = "control_plane_api_key";
 const LOCAL_PIN_ACCOUNT: &str = "local_pin";
+const DEFAULT_GOVERNANCE_COPILOT_URL: &str = "https://www.gitgov.cloud/api/copilot/governance";
+const MAX_COPILOT_QUESTION_CHARS: usize = 2000;
 
 /// Monotonic generation counter for SSE connections.
 /// Each new connection increments the counter; a stream loop only
@@ -35,6 +38,32 @@ pub struct SseGeneration(pub Arc<AtomicU64>);
 pub struct ServerConnectionConfig {
     pub url: String,
     pub api_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GovernanceCopilotRequest {
+    pub question: String,
+    pub org_name: Option<String>,
+    pub repository_full_name: Option<String>,
+    pub branch: Option<String>,
+    pub ticket_id: Option<String>,
+    pub release_id: Option<String>,
+    pub environment: Option<String>,
+    pub hours: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GovernanceCopilotResponse {
+    pub success: bool,
+    pub mode: Option<String>,
+    pub model: Option<String>,
+    pub answer: String,
+    #[serde(default)]
+    pub citations: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub sources: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +108,69 @@ fn to_command_error(e: impl std::fmt::Display, code: &str) -> String {
         "message": e.to_string()
     }))
     .unwrap_or_else(|_| format!("{{\"code\":\"{}\",\"message\":\"{}\"}}", code, e))
+}
+
+fn resolve_governance_copilot_url() -> Result<reqwest::Url, String> {
+    let raw = std::env::var("GITGOV_COPILOT_URL")
+        .unwrap_or_else(|_| DEFAULT_GOVERNANCE_COPILOT_URL.to_string());
+    let trimmed = raw.trim();
+    let parsed =
+        reqwest::Url::parse(trimmed).map_err(|e| to_command_error(e, "INVALID_COPILOT_URL"))?;
+
+    if parsed.scheme() != "https" && parsed.scheme() != "http" {
+        return Err(to_command_error(
+            "Copilot URL must use http or https.",
+            "INVALID_COPILOT_URL",
+        ));
+    }
+
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(to_command_error(
+            "Copilot URL must not contain credentials.",
+            "INVALID_COPILOT_URL",
+        ));
+    }
+
+    let host = parsed.host_str().unwrap_or_default();
+    let is_loopback = matches!(host, "127.0.0.1" | "localhost" | "::1");
+    let is_allowed_production_host = matches!(
+        host,
+        "www.gitgov.cloud" | "gitgov.cloud" | "git-gov.vercel.app" | "git-gov-trivia1.vercel.app"
+    );
+    if !is_loopback && !is_allowed_production_host {
+        return Err(to_command_error(
+            "Copilot URL host is not allowed.",
+            "INVALID_COPILOT_URL",
+        ));
+    }
+
+    if parsed.scheme() == "http" && !is_loopback {
+        return Err(to_command_error(
+            "Non-loopback copilot URL must use https.",
+            "INVALID_COPILOT_URL",
+        ));
+    }
+
+    Ok(parsed)
+}
+
+fn validate_governance_copilot_request(request: &GovernanceCopilotRequest) -> Result<(), String> {
+    let question = request.question.trim();
+    if question.is_empty() {
+        return Err(to_command_error(
+            "Copilot question is required.",
+            "INVALID_COPILOT_REQUEST",
+        ));
+    }
+
+    if question.chars().count() > MAX_COPILOT_QUESTION_CHARS {
+        return Err(to_command_error(
+            "Copilot question is too long.",
+            "INVALID_COPILOT_REQUEST",
+        ));
+    }
+
+    Ok(())
 }
 
 async fn run_blocking_command<T, F>(task_name: &'static str, f: F) -> Result<T, String>
@@ -909,6 +1001,64 @@ pub async fn cmd_server_chat_ask(
     .await
     .map_err(|e| to_command_error(format!("CHAT_THREAD_JOIN_ERROR: {}", e), "SERVER_ERROR"))?
     .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+}
+
+#[tauri::command]
+pub async fn cmd_server_governance_copilot_ask(
+    config: ServerConnectionConfig,
+    request: GovernanceCopilotRequest,
+) -> Result<GovernanceCopilotResponse, String> {
+    validate_governance_copilot_request(&request)?;
+
+    let Some(api_key) = config
+        .api_key
+        .as_ref()
+        .map(|key| key.trim())
+        .filter(|key| !key.is_empty())
+        .map(ToOwned::to_owned)
+    else {
+        return Err(to_command_error(
+            "GitGov API key is required for governance copilot evidence access.",
+            "MISSING_API_KEY",
+        ));
+    };
+
+    let url = resolve_governance_copilot_url()?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(90))
+        .build()
+        .map_err(|e| to_command_error(e, "COPILOT_REQUEST_ERROR"))?;
+
+    let response = client
+        .post(url)
+        .header("Accept", "application/json")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| to_command_error(e, "COPILOT_REQUEST_ERROR"))?;
+
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| to_command_error(e, "COPILOT_RESPONSE_ERROR"))?;
+
+    if !status.is_success() {
+        let message = serde_json::from_str::<serde_json::Value>(&body)
+            .ok()
+            .and_then(|value| {
+                value
+                    .get("error")
+                    .and_then(|error| error.as_str())
+                    .map(|error| error.to_string())
+            })
+            .unwrap_or_else(|| format!("Governance copilot returned HTTP {}", status.as_u16()));
+        return Err(to_command_error(message, "COPILOT_HTTP_ERROR"));
+    }
+
+    serde_json::from_str::<GovernanceCopilotResponse>(&body)
+        .map_err(|e| to_command_error(e, "COPILOT_RESPONSE_ERROR"))
 }
 
 #[tauri::command]

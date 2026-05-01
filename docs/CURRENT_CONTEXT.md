@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-04-30
-Ticket: `KAN-38`
+Ticket: `KAN-39`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -30,6 +30,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-36 - Direct provider connection validation for enterprise onboarding`.
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
+- Current active implementation: `KAN-39 - Governance copilot dashboard UI MVP` on branch `product/KAN-39-governance-copilot-dashboard`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -461,6 +462,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, implemented branch `product/KAN-36-provider-connection-validation`, and merged PR `#123` as `8c075a4`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
 - `KAN-37`: opened Jira issue `KAN-37 - Formal enterprise release approval MVP`, implemented branch `product/KAN-37-formal-release-approval`, and merged PR `#125` as `d7ae92e`. Scope is append-only formal release approvals with admin-only org scope, evidence packet hash binding, risk acceptance expiration, audit logging, Supabase migration `v24`, and backend validation tests. Production migration `v24` was applied and validated on 2026-04-30; Render deploy `dep-d7ptsvhoagis738cj88g` reached `live`.
 - `KAN-38`: implemented `KAN-38 - Vercel AI SDK governance copilot MVP` on branch `product/KAN-38-ai-sdk-copilot`; PR `#127` merged as `9742472`. Scope is the first server-side Next.js AI SDK copilot route over bounded GitGov evidence with citations and fallback when AI Gateway/OIDC is unavailable.
+- `KAN-39`: opened Jira issue `KAN-39 - Governance copilot dashboard UI MVP` and started branch `product/KAN-39-governance-copilot-dashboard`. Scope is the first admin dashboard UI for the KAN-38 copilot route, using a secret-safe Tauri proxy command and displaying cited answers, source statuses, and warnings.
 
 ## Current Product Roadmap
 
@@ -477,6 +479,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - Current major AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
+  - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
@@ -758,6 +761,36 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `POST https://git-gov.vercel.app/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
   - Direct deployment URL returned `401` HTML and apex `https://gitgov.cloud/api/copilot/governance` returned `401`; canonical `www` and Vercel production aliases are the validated paths.
 - Production AI Gateway/OIDC was not active during validation, so the route used deterministic fallback mode. Enable and validate production AI Gateway/OIDC if `mode=ai` is required.
+
+## Current KAN-39 Implementation Notes
+
+- Jira: `KAN-39 - Governance copilot dashboard UI MVP`.
+- Active branch: `product/KAN-39-governance-copilot-dashboard`.
+- Design: `docs/design/governance-copilot-dashboard-mvp.md`.
+- Report: `docs/reports/governance-copilot-dashboard-2026-04-30.md`.
+- Scope:
+  - Tauri command `cmd_server_governance_copilot_ask`.
+  - dashboard store action `askGovernanceCopilot`.
+  - admin dashboard component `GovernanceCopilotPanel`.
+  - citations, source statuses, warnings, answer mode, and response text.
+- Security defaults:
+  - dashboard browser does not call the public copilot endpoint directly.
+  - desktop command forwards the configured GitGov API key only as a Bearer token.
+  - default copilot URL is `https://www.gitgov.cloud/api/copilot/governance`.
+  - optional `GITGOV_COPILOT_URL` is process-env controlled, host allowlisted, and must not contain embedded credentials.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: passed.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - local Vite smoke `GET http://127.0.0.1:5174/`: returned `200`.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
 
 ## Current KAN-28 Implementation Notes
 
