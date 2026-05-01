@@ -39,7 +39,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
 - Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
 - Latest completed follow-up: `KAN-47 - Add optional release governance enforcement gate`.
-- Current follow-up: `KAN-48 - Add environment-scoped release governance policy overrides`.
+- Latest completed follow-up: `KAN-48 - Add environment-scoped release governance policy overrides`.
+- Current follow-up: none selected after `KAN-48`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1184,10 +1185,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
 - No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
 
-## Current KAN-48 Implementation Notes
+## Latest KAN-48 Validation Notes
 
 - Jira: `KAN-48 - Add environment-scoped release governance policy overrides`.
 - Implementation branch: `product/KAN-48-environment-release-governance-policy`.
+- Implementation PR: `#150 - product(KAN-48): add environment release governance overrides`.
+- Implementation commit: `cba3f9d product(KAN-48): add environment release governance overrides`.
 - Design: `docs/design/environment-scoped-release-governance-policy-mvp.md`.
 - Report: `docs/reports/environment-scoped-release-governance-policy-2026-05-01.md`.
 - Scope:
@@ -1216,6 +1219,21 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Remaining local validation before PR:
   - none.
 - No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change is expected for KAN-48.
+- PR `#150` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `cba3f9d` passed:
+  - `CI` - run `25209198316`.
+  - `Release Readiness Gate` - run `25209198277`.
 
 ## Latest KAN-47 Validation Notes
 
