@@ -116,6 +116,6 @@ Production validation passed after Render deploy:
 
 ## Residual Work
 
-- Add a future workflow gate that consumes `blocking=true` only when the customer has opted into release enforcement.
+- KAN-47 adds the optional workflow gate that consumes `blocking=true` only when the customer has opted into release enforcement.
 - Add richer approval role management if customers need roles as first-class database fields.
 - Add per-environment policy expansion after the current profile shape has enough usage evidence.

@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-46`
+Ticket: `KAN-47`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -38,7 +38,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
 - Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
-- Current follow-up: none selected after KAN-46.
+- Current follow-up: `KAN-47 - Add optional release governance enforcement gate`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1182,6 +1182,42 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Anonymous `GET /enterprise/release-governance/evaluate?...` returned `401`.
   - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
 - No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
+
+## Current KAN-47 Implementation Notes
+
+- Jira: `KAN-47 - Add optional release governance enforcement gate`.
+- Implementation branch: `ops/KAN-47-release-governance-enforcement-gate`.
+- Design: `docs/design/release-governance-enforcement-gate-mvp.md`.
+- Runbook: `docs/runbooks/release-governance-gate.md`.
+- Report: `docs/reports/release-governance-enforcement-gate-2026-05-01.md`.
+- Scope:
+  - add `scripts/control-plane/validate_release_governance_gate.ps1`.
+  - add manual workflow `.github/workflows/release-governance-gate.yml`.
+  - keep workflow `workflow_dispatch` only; no push, PR, or scheduled blocking by default.
+  - fail only when `-Enforce` is set and the KAN-46 evaluator returns `blocking=true`.
+  - support optional stricter switches `-FailOnWouldBlock` and `-RequirePolicySatisfied`.
+  - update CLI workflow template generation to include `release-governance-gate.yml` only for `formal-approval` plus non-`record-only` release governance.
+  - update dashboard workflow template pack generation with the same inclusion rule.
+- Product rule:
+  - KAN-47 supplies an opt-in enforcement mechanism, not a default release blocker.
+  - record-only customer profiles do not get the generated release governance gate template.
+  - approval-required and quorum-required profiles can get a manual gate that defaults to enforcement because the customer explicitly selected blocking policy.
+- Local validation already run:
+  - report-only release governance gate script smoke against production: passed with `status=recorded`, `policy_mode=record-only`, `blocking=false`, and `would_block=false`.
+  - enforced release governance gate script smoke against production: passed because current profile is `record-only`.
+  - CLI workflow template generation with ExampleCo record-only profile: passed with `13` templates and no release governance gate.
+  - CLI workflow template generation with quorum opt-in profile: passed with `14` templates including `.github/workflows/release-governance-gate.yml`.
+  - YAML parse validation for repo workflow and generated gate template: passed.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `16` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - `npm test -- --run`: passed, `25` test files and `284` tests.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read, printed, or stored by this change.
+- No database migration, backend route change, provider setting change, customer repository mutation, or Vercel production environment change is needed.
 
 ## Current KAN-28 Implementation Notes
 
