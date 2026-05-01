@@ -134,12 +134,16 @@ First manual workflow validation passed:
 - Artifact expiry: `2026-07-30T00:21:30Z`.
 - Artifact result: `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, `4` ok sources, `1` warning.
 
-## Residual Work
+## KAN-42 Enforcement Update
 
-- KAN-41 changes the production activation path from Vercel AI Gateway/OIDC to direct Google Gemini through `@ai-sdk/google`, because Vercel AI Gateway generation requires a billing card and the project already has a Gemini API integration.
+- KAN-41 changed the production activation path from Vercel AI Gateway/OIDC to direct Google Gemini through `@ai-sdk/google`, because Vercel AI Gateway generation requires a billing card and the project already has a Gemini API integration.
 - Vercel production environment variables were configured without printing secret values:
   - `GOOGLE_GENERATIVE_AI_API_KEY`.
   - `GITGOV_COPILOT_PROVIDER=google`.
   - `GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash`.
-- Re-run the validator with `-RequireAiMode` after the KAN-41 deployment reaches production.
-- Consider making strict AI mode a release gate only after the team decides that deterministic fallback is no longer acceptable.
+- KAN-41 strict production validation passed with `mode=ai`.
+- KAN-42 makes strict AI mode the default workflow behavior:
+  - scheduled runs require `mode=ai`;
+  - manual dispatch defaults to `require_ai_mode=true`;
+  - manual `require_ai_mode=false` remains available only for fallback diagnostics;
+  - missing `GITGOV_API_KEY` fails strict runs instead of silently skipping.

@@ -1,6 +1,6 @@
 # Governance Copilot AI Mode Validation
 
-Updated: 2026-04-30
+Updated: 2026-05-01
 
 ## Purpose
 
@@ -12,7 +12,7 @@ The check answers three operational questions:
 - Did it load enough GitGov evidence sources and citations?
 - Is it running in `mode=ai`, or is it still using the deterministic `fallback` brief?
 
-`fallback` is acceptable while no production AI provider is active. Once Google Gemini or AI Gateway is enabled for production, run the validator with `-RequireAiMode` or dispatch the workflow with `require_ai_mode=true`.
+After KAN-41, production uses direct Google Gemini through `@ai-sdk/google`. That makes `mode=ai` the expected production state. `fallback` is now acceptable only for an explicit manual diagnostic run with `require_ai_mode=false`.
 
 ## Local Command
 
@@ -22,16 +22,16 @@ Run from the repository root:
 .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
   -TicketId KAN-39 `
   -ReleaseId KAN-39 `
+  -RequireAiMode `
   -OutputPath out\governance-copilot-ai-mode-validation.json
 ```
 
-Strict mode after AI provider activation:
+Non-strict diagnostic mode:
 
 ```powershell
 .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
   -TicketId KAN-39 `
   -ReleaseId KAN-39 `
-  -RequireAiMode `
   -OutputPath out\governance-copilot-ai-mode-validation.json
 ```
 
@@ -53,7 +53,9 @@ Workflow:
 Default behavior:
 
 - scheduled weekly on Monday at `13:31 UTC`;
-- manual dispatch supports `require_ai_mode=false|true`;
+- scheduled runs require `mode=ai`;
+- manual dispatch defaults to `require_ai_mode=true`;
+- manual dispatch can set `require_ai_mode=false` only for fallback diagnostics;
 - uses `secrets.GITGOV_API_KEY`;
 - optionally uses repository variable `GITGOV_COPILOT_URL`;
 - uploads artifact `governance-copilot-ai-mode-validation`.
@@ -62,10 +64,10 @@ Default behavior:
 
 | State | Meaning | Action |
 | --- | --- | --- |
-| `ai` | Copilot used AI generation and evidence citations were present. | Target production state after Google Gemini or AI Gateway is active. |
-| `fallback` | Copilot route worked, but AI generation was skipped or unavailable. | Acceptable before AI provider activation; investigate if strict mode was expected. |
+| `ai` | Copilot used AI generation and evidence citations were present. | Expected production state. |
+| `fallback` | Copilot route worked, but AI generation was skipped or unavailable. | Investigate unless this was an explicit non-strict diagnostic run. |
 | `failed` | Route, evidence thresholds, or strict AI requirement failed. | Review artifact and route configuration. |
-| `skipped` | Workflow secret was not configured. | Add `GITGOV_API_KEY` if this validation should run in GitHub Actions. |
+| `skipped` | Workflow secret was not configured during a non-strict diagnostic run. | Add `GITGOV_API_KEY` if validation should run in GitHub Actions. Strict runs fail instead of skipping. |
 
 ## Activation Notes
 
@@ -89,6 +91,7 @@ Operational sequence:
 4. Keep `GITGOV_COPILOT_DISABLE_AI` unset or not equal to `true`.
 5. Deploy a build that includes `@ai-sdk/google` support.
 6. Run this validator with `-RequireAiMode`.
+7. Keep the weekly workflow strict so production fallback regressions are visible.
 
 AI Gateway remains an optional future provider path. If using Gateway instead, set `GITGOV_COPILOT_PROVIDER=gateway` and configure Vercel AI Gateway/OIDC or `AI_GATEWAY_API_KEY`.
 
