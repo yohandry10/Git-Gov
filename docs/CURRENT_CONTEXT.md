@@ -36,7 +36,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
-- Current follow-up: `KAN-45 - Add configurable release governance profile policy`.
+- Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
+- Current follow-up: none selected after KAN-45.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1059,10 +1060,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Desktop Updater Readiness (Optional)` - run `25203116657`.
 - No code, database, Render, Vercel, provider, or customer workflow behavior changed; KAN-44 is documentation/product-default memory only.
 
-## Current KAN-45 Implementation Notes
+## Latest KAN-45 Validation Notes
 
 - Jira: `KAN-45 - Add configurable release governance profile policy`.
 - Implementation branch: `product/KAN-45-release-governance-profile-policy`.
+- Implementation PR: `#144 - product(KAN-45): add release governance profile policy`.
+- Implementation commit: `dc37e92 product(KAN-45): add release governance profile policy`.
 - Design: `docs/design/release-governance-profile-policy-mvp.md`.
 - Report: `docs/reports/release-governance-profile-policy-2026-05-01.md`.
 - Scope:
@@ -1087,6 +1090,28 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\KAN-45-enterprise-workflow-templates -Force`: passed.
 - Secret safety:
   - no provider token, `.env` value, Authorization header, or raw secret payload is read or printed by this change.
+- PR `#144` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `dc37e92` passed:
+  - `CI` - run `25203785504`.
+  - `Release Readiness Gate` - run `25203785499`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25203785520`.
+  - `Secret Scan` - run `25203785497`.
+  - `SonarQube Governance (Non-Blocking)` - run `25203785527`.
+  - `Public Naming Guard` - run `25203785483`.
+  - `Governance Correlation Smoke (Optional)` - run `25203785490`.
+  - `Desktop Updater Readiness (Optional)` - run `25203785503`.
+- No database migration, Render deploy, Vercel production env change, provider setting change, or customer workflow installation was needed.
 
 ## Current KAN-28 Implementation Notes
 
