@@ -24,6 +24,7 @@ interface ApprovalForm {
   environment: string
   decision: EnterpriseReleaseApprovalDecision
   approver: string
+  approverRole: string
   ticketId: string
   evidencePacketHash: string
   evidencePacketUri: string
@@ -37,6 +38,14 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
   if (decision === 'approved') return 'success'
   if (decision === 'accepted-risk') return 'warning'
   if (decision === 'rejected') return 'danger'
+  return 'neutral'
+}
+
+function governanceStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (status === 'approved') return 'success'
+  if (status === 'blocked') return 'danger'
+  if (status === 'advisory-warning' || status === 'would-block') return 'warning'
+  if (status === 'recorded') return 'info'
   return 'neutral'
 }
 
@@ -63,6 +72,9 @@ function validateApprovalForm(form: ApprovalForm): string[] {
   if (!isValidRepo(form.repositoryFullName)) errors.push('Repository must look like owner/repo.')
   if (!form.environment.trim()) errors.push('Environment is required.')
   if (!form.approver.trim()) errors.push('Approver is required.')
+  if (form.approverRole.trim() && !/^[A-Za-z0-9_.-]{1,64}$/.test(form.approverRole.trim())) {
+    errors.push('Approver role must be 1 to 64 letters, numbers, dots, underscores, or dashes.')
+  }
   if (!HEX_64_RE.test(form.evidencePacketHash.trim())) errors.push('Evidence hash must be a 64 character SHA-256 hex value.')
   if (form.targetSha.trim() && !SHA_RE.test(form.targetSha.trim())) errors.push('Target SHA must be 7 to 64 hex characters.')
   if (form.ticketId.trim() && !TICKET_RE.test(form.ticketId.trim().toUpperCase())) errors.push('Ticket must look like KAN-43.')
@@ -103,6 +115,7 @@ function toCreatePayload(form: ApprovalForm, orgName: string): CreateEnterpriseR
     evidence_packet_uri: sanitizeOptional(form.evidencePacketUri),
     evidence_summary: {
       source: 'dashboard-release-approval-wizard',
+      approver_role: sanitizeOptional(form.approverRole.toLowerCase()),
       ticket_id: sanitizeOptional(form.ticketId.toUpperCase()),
       evidence_packet_uri: sanitizeOptional(form.evidencePacketUri),
     },
@@ -122,9 +135,12 @@ export function ReleaseApprovalPanel() {
   const approvalsTotal = useControlPlaneStore((state) => state.releaseApprovalsTotal)
   const isLoading = useControlPlaneStore((state) => state.isReleaseApprovalsLoading)
   const isSubmitting = useControlPlaneStore((state) => state.isReleaseApprovalSubmitting)
+  const isEvaluating = useControlPlaneStore((state) => state.isReleaseGovernanceEvaluating)
   const error = useControlPlaneStore((state) => state.releaseApprovalError)
+  const governanceEvaluation = useControlPlaneStore((state) => state.releaseGovernanceEvaluation)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const loadApprovals = useControlPlaneStore((state) => state.loadEnterpriseReleaseApprovals)
+  const evaluateGovernance = useControlPlaneStore((state) => state.evaluateEnterpriseReleaseGovernance)
   const createApproval = useControlPlaneStore((state) => state.createEnterpriseReleaseApproval)
 
   const defaultRepository =
@@ -146,6 +162,7 @@ export function ReleaseApprovalPanel() {
     environment: 'production',
     decision: 'approved',
     approver: '',
+    approverRole: 'engineering',
     ticketId: defaultTicket,
     evidencePacketHash: evidencePacket?.content_hash ?? '',
     evidencePacketUri: defaultEvidenceUri,
@@ -166,6 +183,7 @@ export function ReleaseApprovalPanel() {
 
   const validationErrors = useMemo(() => validateApprovalForm(form), [form])
   const canSubmit = validationErrors.length === 0 && !isSubmitting
+  const canEvaluate = Boolean(isValidRepo(form.repositoryFullName) && form.releaseId.trim() && form.environment.trim())
 
   const updateForm = <K extends keyof ApprovalForm>(field: K, value: ApprovalForm[K]) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -185,10 +203,22 @@ export function ReleaseApprovalPanel() {
     }))
   }
 
+  const evaluateCurrentRelease = async () => {
+    if (!canEvaluate) return
+    await evaluateGovernance({
+      org_name: selectedOrgName || null,
+      repository_full_name: form.repositoryFullName,
+      release_id: form.releaseId,
+      environment: form.environment,
+      evidence_packet_hash: HEX_64_RE.test(form.evidencePacketHash.trim()) ? form.evidencePacketHash.trim() : null,
+    })
+  }
+
   const handleSubmit = async () => {
     if (!canSubmit) return
     const created = await createApproval(toCreatePayload(form, selectedOrgName))
     if (!created) return
+    await evaluateCurrentRelease()
     setForm((current) => ({
       ...current,
       operatorConfirmed: false,
@@ -269,6 +299,10 @@ export function ReleaseApprovalPanel() {
               <input value={form.approver} onChange={(event) => updateForm('approver', event.target.value)} placeholder="release.manager@example.com" className="rounded border border-surface-600 bg-surface-800 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-surface-500 md:col-span-2">
+              Approver role
+              <input value={form.approverRole} onChange={(event) => updateForm('approverRole', event.target.value.toLowerCase())} placeholder="engineering" className="rounded border border-surface-600 bg-surface-800 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none" />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-surface-500 md:col-span-2">
               Evidence hash
               <input value={form.evidencePacketHash} onChange={(event) => updateForm('evidencePacketHash', event.target.value)} className="font-mono rounded border border-surface-600 bg-surface-800 px-2 py-1.5 text-[11px] text-surface-200 focus:border-surface-400 focus:outline-none" />
             </label>
@@ -282,6 +316,49 @@ export function ReleaseApprovalPanel() {
             <ClipboardCheck size={14} />
             Use current packet
           </Button>
+
+          <Button size="sm" variant="outline" loading={isEvaluating} disabled={!canEvaluate} onClick={() => void evaluateCurrentRelease()} title="Evaluate release governance">
+            <ShieldAlert size={14} />
+            Evaluate governance
+          </Button>
+
+          {governanceEvaluation && (
+            <div className="rounded border border-white/8 bg-white/[0.03] p-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={governanceStatusVariant(governanceEvaluation.status)}>{governanceEvaluation.status}</Badge>
+                <span className="text-surface-300">
+                  {governanceEvaluation.policy.mode} / {governanceEvaluation.policy.enforcement}
+                </span>
+                <span className="text-surface-500">
+                  {governanceEvaluation.valid_approval_count}/{governanceEvaluation.required_approval_count} approvals
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-surface-400">
+                <span>Applies: <span className="text-surface-200">{governanceEvaluation.policy.policy_applies ? 'yes' : 'no'}</span></span>
+                <span>Blocking: <span className="text-surface-200">{governanceEvaluation.blocking ? 'yes' : 'no'}</span></span>
+                <span>Would block: <span className="text-surface-200">{governanceEvaluation.would_block ? 'yes' : 'no'}</span></span>
+              </div>
+              {governanceEvaluation.policy.quorum_rules.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {governanceEvaluation.policy.quorum_rules.map((rule) => (
+                    <Badge key={rule.role} variant={rule.satisfied ? 'success' : 'warning'}>
+                      {rule.role} {rule.observed}/{rule.required}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {governanceEvaluation.issues.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-warning-100">
+                  {governanceEvaluation.issues.slice(0, 4).map((issue) => <li key={issue}>{issue}</li>)}
+                </ul>
+              )}
+              {governanceEvaluation.next_steps.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-surface-400">
+                  {governanceEvaluation.next_steps.slice(0, 3).map((step) => <li key={step}>{step}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
 
           {form.decision === 'accepted-risk' && (
             <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-2 rounded border border-warning-500/20 bg-warning-500/8 p-3">

@@ -1506,6 +1506,70 @@ pub struct EnterpriseReleaseApprovalQuery {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceEvaluationQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub repository_full_name: String,
+    pub release_id: String,
+    pub environment: String,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceQuorumRuleSummary {
+    pub role: String,
+    pub required: i64,
+    pub observed: i64,
+    pub satisfied: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernancePolicySummary {
+    pub mode: String,
+    pub environment: String,
+    pub approval_required: bool,
+    pub enforcement: String,
+    pub policy_applies: bool,
+    pub quorum_enabled: bool,
+    #[serde(default)]
+    pub quorum_rules: Vec<EnterpriseReleaseGovernanceQuorumRuleSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceApprovalSummary {
+    pub id: String,
+    pub decision: String,
+    pub approver: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approver_role: Option<String>,
+    pub risk_severity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    pub created_at: i64,
+    pub counts_toward_policy: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceEvaluationResponse {
+    pub status: String,
+    pub policy_satisfied: bool,
+    pub blocking: bool,
+    pub would_block: bool,
+    pub valid_approval_count: i64,
+    pub required_approval_count: i64,
+    pub policy: EnterpriseReleaseGovernancePolicySummary,
+    #[serde(default)]
+    pub approvals: Vec<EnterpriseReleaseGovernanceApprovalSummary>,
+    #[serde(default)]
+    pub issues: Vec<String>,
+    #[serde(default)]
+    pub next_steps: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnterpriseReleaseApprovalListResponse {
     #[serde(default)]
     pub items: Vec<EnterpriseReleaseApprovalRecord>,

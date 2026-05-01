@@ -7,9 +7,10 @@ use crate::control_plane::{
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
     EnterpriseReleaseApprovalListResponse, EnterpriseReleaseApprovalQuery,
-    EnterpriseReleaseApprovalRecord, EventPayload, EvidencePacketQuery, EvidencePacketResponse,
-    ExportLogEntry, ExportResponse, FeatureRequestCreated, FeatureRequestInput,
-    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
+    EnterpriseReleaseApprovalRecord, EnterpriseReleaseGovernanceEvaluationQuery,
+    EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
+    EvidencePacketResponse, ExportLogEntry, ExportResponse, FeatureRequestCreated,
+    FeatureRequestInput, JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
     JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgUser,
     OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
     PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
@@ -692,6 +693,23 @@ pub async fn cmd_server_list_enterprise_release_approvals(
         });
         client
             .list_enterprise_release_approvals(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_evaluate_enterprise_release_governance(
+    config: ServerConnectionConfig,
+    query: EnterpriseReleaseGovernanceEvaluationQuery,
+) -> Result<EnterpriseReleaseGovernanceEvaluationResponse, String> {
+    run_blocking_command("EVALUATE_ENTERPRISE_RELEASE_GOVERNANCE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .evaluate_enterprise_release_governance(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

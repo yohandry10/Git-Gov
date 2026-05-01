@@ -6,6 +6,22 @@ const RELEASE_APPROVAL_EVIDENCE_SUMMARY_MAX_BYTES: usize = 16 * 1024;
 const RELEASE_APPROVAL_DECISIONS: &[&str] = &["approved", "rejected", "accepted-risk"];
 const RELEASE_APPROVAL_RISK_SEVERITIES: &[&str] =
     &["none", "low", "medium", "high", "critical"];
+const RELEASE_GOVERNANCE_MODES: &[&str] = &[
+    "record-only",
+    "advisory",
+    "approval-required",
+    "quorum-required",
+];
+const RELEASE_GOVERNANCE_ENFORCEMENT: &[&str] = &["disabled", "advisory", "blocking"];
+
+#[derive(Debug, Clone)]
+struct ReleaseGovernancePolicy {
+    mode: String,
+    environment: String,
+    approval_required: bool,
+    enforcement: String,
+    quorum_rules: Vec<(String, i64)>,
+}
 
 fn release_approval_scope_error_message(error: OrgScopeError) -> &'static str {
     match error {
@@ -239,6 +255,366 @@ fn normalize_release_approval_query(
     }
 }
 
+fn normalize_release_governance_evaluation_query(
+    query: &mut EnterpriseReleaseGovernanceEvaluationQuery,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    normalize_release_approval_optional_text(&mut query.org_name);
+    query.repository_full_name = query.repository_full_name.trim().to_string();
+    query.release_id = query.release_id.trim().to_string();
+    query.environment = query.environment.trim().to_ascii_lowercase();
+    normalize_release_approval_optional_text(&mut query.evidence_packet_hash);
+
+    if !is_valid_release_approval_repo(&query.repository_full_name) {
+        errors.push("repository_full_name must look like owner/repo.".to_string());
+    }
+    if query.release_id.is_empty()
+        || query.release_id.len() > 120
+        || has_control_chars(&query.release_id)
+    {
+        errors.push("release_id is required and must be valid.".to_string());
+    }
+    if query.environment.is_empty()
+        || query.environment.len() > 80
+        || has_control_chars(&query.environment)
+    {
+        errors.push("environment is required and must be valid.".to_string());
+    }
+    if let Some(hash) = query.evidence_packet_hash.as_deref() {
+        if !is_valid_release_approval_hex_hash(hash) {
+            errors.push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string());
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn release_governance_default_policy(environment: &str) -> ReleaseGovernancePolicy {
+    ReleaseGovernancePolicy {
+        mode: "record-only".to_string(),
+        environment: environment.to_string(),
+        approval_required: false,
+        enforcement: "disabled".to_string(),
+        quorum_rules: Vec::new(),
+    }
+}
+
+fn release_governance_policy_from_profile(
+    profile: Option<&serde_json::Value>,
+    environment: &str,
+) -> ReleaseGovernancePolicy {
+    let Some(policy) = profile
+        .and_then(|profile| profile.get("release_governance"))
+        .and_then(|value| value.as_object())
+    else {
+        return release_governance_default_policy(environment);
+    };
+
+    let mode = policy
+        .get("mode")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|mode| RELEASE_GOVERNANCE_MODES.contains(mode))
+        .unwrap_or("record-only")
+        .to_string();
+
+    let policy_environment = policy
+        .get("environment")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(environment)
+        .to_ascii_lowercase();
+
+    let expected_approval_required = matches!(mode.as_str(), "approval-required" | "quorum-required");
+    let expected_enforcement = match mode.as_str() {
+        "advisory" => "advisory",
+        "approval-required" | "quorum-required" => "blocking",
+        _ => "disabled",
+    };
+
+    let approval_required = policy
+        .get("approval_required")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(expected_approval_required);
+    let enforcement = policy
+        .get("enforcement")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| RELEASE_GOVERNANCE_ENFORCEMENT.contains(value))
+        .unwrap_or(expected_enforcement)
+        .to_string();
+
+    let quorum_rules = policy
+        .get("quorum")
+        .and_then(|value| value.as_object())
+        .and_then(|quorum| quorum.get("rules"))
+        .and_then(|value| value.as_array())
+        .map(|rules| {
+            rules
+                .iter()
+                .filter_map(|rule| {
+                    let role = rule
+                        .get("role")
+                        .and_then(|value| value.as_str())
+                        .map(str::trim)
+                        .filter(|value| !value.is_empty())?
+                        .to_ascii_lowercase();
+                    let required = rule
+                        .get("required")
+                        .and_then(|value| value.as_i64())
+                        .unwrap_or(1)
+                        .clamp(1, 20);
+                    Some((role, required))
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    ReleaseGovernancePolicy {
+        mode,
+        environment: policy_environment,
+        approval_required,
+        enforcement,
+        quorum_rules,
+    }
+}
+
+fn release_approval_role(record: &EnterpriseReleaseApprovalRecord) -> Option<String> {
+    ["approver_role", "approval_role", "role"]
+        .iter()
+        .find_map(|key| {
+            record
+                .evidence_summary
+                .get(key)
+                .and_then(|value| value.as_str())
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(|value| value.to_ascii_lowercase())
+        })
+}
+
+fn release_approval_counts_toward_policy(
+    record: &EnterpriseReleaseApprovalRecord,
+    expected_hash: Option<&str>,
+    now_ms: i64,
+) -> bool {
+    let positive_decision = matches!(record.decision.as_str(), "approved" | "accepted-risk");
+    if !positive_decision {
+        return false;
+    }
+    if record.expires_at.is_some_and(|expires_at| expires_at <= now_ms) {
+        return false;
+    }
+    if let Some(expected_hash) = expected_hash {
+        return record
+            .evidence_packet_hash
+            .as_deref()
+            .is_some_and(|hash| hash.eq_ignore_ascii_case(expected_hash));
+    }
+    true
+}
+
+fn evaluate_release_governance_policy(
+    query: &EnterpriseReleaseGovernanceEvaluationQuery,
+    policy: ReleaseGovernancePolicy,
+    approvals: &[EnterpriseReleaseApprovalRecord],
+    now_ms: i64,
+) -> EnterpriseReleaseGovernanceEvaluationResponse {
+    let expected_hash = query.evidence_packet_hash.as_deref();
+    let policy_applies = policy.environment.eq_ignore_ascii_case(&query.environment);
+    let mut issues = Vec::new();
+    let mut next_steps = Vec::new();
+    let mut role_counts: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut valid_approval_count = 0_i64;
+    let mut rejected_count = 0_i64;
+    let mut expired_count = 0_i64;
+    let mut hash_mismatch_count = 0_i64;
+
+    let approval_summaries = approvals
+        .iter()
+        .map(|approval| {
+            let role = release_approval_role(approval);
+            let expired = approval.expires_at.is_some_and(|expires_at| expires_at <= now_ms);
+            if expired {
+                expired_count += 1;
+            }
+            if approval.decision == "rejected" {
+                rejected_count += 1;
+            }
+            if let Some(expected_hash) = expected_hash {
+                if !approval
+                    .evidence_packet_hash
+                    .as_deref()
+                    .is_some_and(|hash| hash.eq_ignore_ascii_case(expected_hash))
+                {
+                    hash_mismatch_count += 1;
+                }
+            }
+            let counts_toward_policy =
+                release_approval_counts_toward_policy(approval, expected_hash, now_ms);
+            if counts_toward_policy {
+                valid_approval_count += 1;
+                if let Some(role) = role.as_deref() {
+                    role_counts
+                        .entry(role.to_string())
+                        .or_default()
+                        .insert(approval.approver.to_ascii_lowercase());
+                }
+            }
+
+            EnterpriseReleaseGovernanceApprovalSummary {
+                id: approval.id.clone(),
+                decision: approval.decision.clone(),
+                approver: approval.approver.clone(),
+                approver_role: role,
+                risk_severity: approval.risk_severity.clone(),
+                evidence_packet_hash: approval.evidence_packet_hash.clone(),
+                expires_at: approval.expires_at,
+                created_at: approval.created_at,
+                counts_toward_policy,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if rejected_count > 0 && valid_approval_count == 0 {
+        issues.push("A rejected release approval exists and no valid positive approval was found.".to_string());
+    }
+    if expired_count > 0 {
+        issues.push("One or more matching release approval records are expired.".to_string());
+    }
+    if hash_mismatch_count > 0 && expected_hash.is_some() {
+        issues.push("One or more release approval records do not match the requested evidence packet hash.".to_string());
+    }
+    if !policy_applies {
+        issues.push(format!(
+            "Release governance policy is configured for '{}' and does not apply to '{}'.",
+            policy.environment, query.environment
+        ));
+    }
+
+    let mut quorum_rules = policy
+        .quorum_rules
+        .iter()
+        .map(|(role, required)| {
+            let observed = role_counts
+                .get(role)
+                .map(|approvers| approvers.len() as i64)
+                .unwrap_or(0);
+            EnterpriseReleaseGovernanceQuorumRuleSummary {
+                role: role.clone(),
+                required: *required,
+                observed,
+                satisfied: observed >= *required,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let advisory_approval_expected = policy.mode == "advisory" && policy_applies;
+    let required_approval_count = if policy.mode == "quorum-required" && policy_applies {
+        policy.quorum_rules.iter().map(|(_, required)| *required).sum()
+    } else if policy_applies
+        && policy.mode != "record-only"
+        && (policy.approval_required || advisory_approval_expected)
+    {
+        1
+    } else {
+        0
+    };
+
+    let quorum_satisfied = policy.mode != "quorum-required"
+        || !policy_applies
+        || (!quorum_rules.is_empty() && quorum_rules.iter().all(|rule| rule.satisfied));
+    if policy.mode == "quorum-required" && policy_applies && quorum_rules.is_empty() {
+        issues.push("Quorum-required release governance has no quorum rules configured.".to_string());
+        next_steps.push("Add quorum role rules to the release governance profile.".to_string());
+    }
+    if policy.mode == "quorum-required" && policy_applies {
+        for rule in quorum_rules.iter().filter(|rule| !rule.satisfied) {
+            issues.push(format!(
+                "Missing quorum for role '{}': observed {}, required {}.",
+                rule.role, rule.observed, rule.required
+            ));
+            next_steps.push(format!(
+                "Create a valid release approval with evidence_summary.approver_role='{}'.",
+                rule.role
+            ));
+        }
+    }
+
+    let approval_requirement_satisfied = if required_approval_count == 0 {
+        true
+    } else if policy.mode == "quorum-required" {
+        quorum_satisfied
+    } else {
+        valid_approval_count >= required_approval_count
+    };
+
+    if policy_applies
+        && matches!(policy.mode.as_str(), "advisory" | "approval-required")
+        && valid_approval_count == 0
+    {
+        issues.push("No valid release approval or accepted-risk record was found.".to_string());
+        next_steps.push("Create a release approval bound to the current evidence packet hash.".to_string());
+    }
+    if policy.mode == "record-only" && valid_approval_count == 0 {
+        next_steps.push("Create an optional release approval to strengthen audit evidence.".to_string());
+    }
+    if !policy_applies {
+        next_steps.push("Use record-only behavior for this environment or configure a policy for it explicitly.".to_string());
+    }
+
+    let blocking = policy_applies && policy.enforcement == "blocking" && !approval_requirement_satisfied;
+    let would_block = policy_applies
+        && matches!(policy.mode.as_str(), "advisory" | "approval-required" | "quorum-required")
+        && !approval_requirement_satisfied;
+    let status = if !policy_applies || policy.mode == "record-only" {
+        "recorded"
+    } else if approval_requirement_satisfied {
+        "approved"
+    } else if policy.enforcement == "blocking" {
+        "blocked"
+    } else if policy.enforcement == "advisory" {
+        "advisory-warning"
+    } else {
+        "would-block"
+    }
+    .to_string();
+
+    if approval_requirement_satisfied && next_steps.is_empty() {
+        next_steps.push("No release governance action required for the current policy.".to_string());
+    }
+
+    if policy.mode != "quorum-required" {
+        quorum_rules.clear();
+    }
+
+    EnterpriseReleaseGovernanceEvaluationResponse {
+        status,
+        policy_satisfied: approval_requirement_satisfied,
+        blocking,
+        would_block,
+        valid_approval_count,
+        required_approval_count,
+        policy: EnterpriseReleaseGovernancePolicySummary {
+            mode: policy.mode,
+            environment: policy.environment,
+            approval_required: policy.approval_required,
+            enforcement: policy.enforcement,
+            policy_applies,
+            quorum_enabled: !quorum_rules.is_empty(),
+            quorum_rules,
+        },
+        approvals: approval_summaries,
+        issues,
+        next_steps,
+    }
+}
+
 fn compute_release_approval_hash(
     approval_id: &str,
     org_id: &str,
@@ -340,6 +716,99 @@ pub async fn list_enterprise_release_approvals(
                 .into_response()
         }
     }
+}
+
+pub async fn evaluate_enterprise_release_governance(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Query(mut query): Query<EnterpriseReleaseGovernanceEvaluationQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+
+    if let Err(errors) = normalize_release_governance_evaluation_query(&mut query) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Invalid release governance evaluation query", "details": errors })),
+        )
+            .into_response();
+    }
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        query.org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "org_name is required for global admin keys" })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(json!({ "error": release_approval_scope_error_message(err) })),
+            )
+                .into_response();
+        }
+    };
+
+    let profile = match state.db.get_enterprise_adoption_profile(&org_id).await {
+        Ok(profile) => profile,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to load release governance profile");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let approval_query = EnterpriseReleaseApprovalQuery {
+        org_name: None,
+        repository_full_name: Some(query.repository_full_name.clone()),
+        release_id: Some(query.release_id.clone()),
+        environment: Some(query.environment.clone()),
+        decision: None,
+        limit: Some(100),
+        offset: Some(0),
+    };
+    let approvals = match state
+        .db
+        .list_enterprise_release_approvals(&org_id, &approval_query, 100, 0)
+        .await
+    {
+        Ok((items, _)) => items,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to load release governance approvals");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let policy = release_governance_policy_from_profile(
+        profile.as_ref().map(|record| &record.profile),
+        &query.environment,
+    );
+    let evaluation = evaluate_release_governance_policy(
+        &query,
+        policy,
+        &approvals,
+        chrono::Utc::now().timestamp_millis(),
+    );
+
+    (StatusCode::OK, Json(evaluation)).into_response()
 }
 
 pub async fn create_enterprise_release_approval(
@@ -522,5 +991,138 @@ mod release_approval_tests {
         assert!(errors.contains(
             &"evidence_packet_uri must be a relative API path or http(s) URL.".to_string()
         ));
+    }
+
+    fn approval_record(
+        decision: &str,
+        approver: &str,
+        role: Option<&str>,
+    ) -> EnterpriseReleaseApprovalRecord {
+        EnterpriseReleaseApprovalRecord {
+            id: Uuid::new_v4().to_string(),
+            org_id: Uuid::new_v4().to_string(),
+            release_id: "release-2026.05.01".to_string(),
+            repository_full_name: "yohandry10/Git-Gov".to_string(),
+            branch: Some("main".to_string()),
+            target_sha: Some("abcdef1234567890".to_string()),
+            environment: "production".to_string(),
+            decision: decision.to_string(),
+            approver: approver.to_string(),
+            ticket_id: Some("KAN-46".to_string()),
+            evidence_packet_hash: Some(
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                    .to_string(),
+            ),
+            evidence_packet_uri: Some("/evidence/packets/tickets/KAN-46".to_string()),
+            evidence_summary: role
+                .map(|role| json!({ "approver_role": role }))
+                .unwrap_or_else(|| json!({})),
+            risk_severity: "none".to_string(),
+            risk_acceptance_reason: None,
+            expires_at: None,
+            approval_hash: "approval-hash".to_string(),
+            created_by: "admin".to_string(),
+            created_at: chrono::Utc::now().timestamp_millis(),
+        }
+    }
+
+    fn evaluation_query() -> EnterpriseReleaseGovernanceEvaluationQuery {
+        EnterpriseReleaseGovernanceEvaluationQuery {
+            org_name: Some("yohandry10".to_string()),
+            repository_full_name: "yohandry10/Git-Gov".to_string(),
+            release_id: "release-2026.05.01".to_string(),
+            environment: "production".to_string(),
+            evidence_packet_hash: Some(
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                    .to_string(),
+            ),
+        }
+    }
+
+    #[test]
+    fn release_governance_record_only_never_blocks_without_approval() {
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            release_governance_default_policy("production"),
+            &[],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.status, "recorded");
+        assert!(evaluation.policy_satisfied);
+        assert!(!evaluation.blocking);
+        assert_eq!(evaluation.required_approval_count, 0);
+    }
+
+    #[test]
+    fn release_governance_advisory_warns_without_blocking() {
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            ReleaseGovernancePolicy {
+                mode: "advisory".to_string(),
+                environment: "production".to_string(),
+                approval_required: false,
+                enforcement: "advisory".to_string(),
+                quorum_rules: Vec::new(),
+            },
+            &[],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.status, "advisory-warning");
+        assert!(!evaluation.policy_satisfied);
+        assert!(!evaluation.blocking);
+        assert!(evaluation.would_block);
+        assert_eq!(evaluation.required_approval_count, 1);
+    }
+
+    #[test]
+    fn release_governance_approval_required_blocks_without_valid_approval() {
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            ReleaseGovernancePolicy {
+                mode: "approval-required".to_string(),
+                environment: "production".to_string(),
+                approval_required: true,
+                enforcement: "blocking".to_string(),
+                quorum_rules: Vec::new(),
+            },
+            &[],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.status, "blocked");
+        assert!(!evaluation.policy_satisfied);
+        assert!(evaluation.blocking);
+        assert_eq!(evaluation.required_approval_count, 1);
+    }
+
+    #[test]
+    fn release_governance_quorum_required_counts_approver_roles() {
+        let approvals = vec![
+            approval_record("approved", "eng@example.com", Some("engineering")),
+            approval_record("approved", "sec@example.com", Some("security")),
+        ];
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            ReleaseGovernancePolicy {
+                mode: "quorum-required".to_string(),
+                environment: "production".to_string(),
+                approval_required: true,
+                enforcement: "blocking".to_string(),
+                quorum_rules: vec![
+                    ("engineering".to_string(), 1),
+                    ("security".to_string(), 1),
+                ],
+            },
+            &approvals,
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.status, "approved");
+        assert!(evaluation.policy_satisfied);
+        assert!(!evaluation.blocking);
+        assert_eq!(evaluation.valid_approval_count, 2);
+        assert!(evaluation.policy.quorum_rules.iter().all(|rule| rule.satisfied));
     }
 }

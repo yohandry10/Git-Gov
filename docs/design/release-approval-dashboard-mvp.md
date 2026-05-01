@@ -15,9 +15,11 @@ KAN-37 created the backend approval record. KAN-43 makes that record usable from
 - Tauri commands:
   - `cmd_server_list_enterprise_release_approvals`.
   - `cmd_server_create_enterprise_release_approval`.
+  - `cmd_server_evaluate_enterprise_release_governance` added in KAN-46.
 - Backend routes reused:
   - `GET /enterprise/release-approvals`.
   - `POST /enterprise/release-approvals`.
+  - `GET /enterprise/release-governance/evaluate` added in KAN-46.
 
 ## User Flow
 
@@ -27,6 +29,7 @@ KAN-37 created the backend approval record. KAN-43 makes that record usable from
 4. For accepted risk, admin must provide risk severity, reason, and expiration.
 5. Admin must confirm the evidence and decision before submit.
 6. GitGov creates an append-only approval record and prepends it to the recent approvals list.
+7. In KAN-46, the admin can evaluate the current release form against the selected release governance policy and see whether the release is recorded, advisory, approved, would-block, or blocked.
 
 ## Client Validation
 
@@ -36,6 +39,7 @@ The dashboard validates before submit:
 - repository must look like `owner/repo`.
 - environment is required.
 - approver is required.
+- approver role is optional, but when present must be a bounded role identifier such as `engineering` or `security`.
 - evidence hash must be a 64-character SHA-256 hex value.
 - target SHA, when present, must be 7 to 64 hex characters.
 - ticket, when present, must look like `KAN-43`.
@@ -68,6 +72,8 @@ Default behavior remains `record-only`:
 
 Future quorum and release gate enforcement must be customer-configurable opt-in behavior.
 
+KAN-46 adds the first dashboard evaluation view for those opt-in policies. It still keeps `record-only` as the default and only reports blocking status when the customer profile selects blocking release governance.
+
 Examples:
 
 - A customer can keep `record-only` mode for audit history.
@@ -83,5 +89,5 @@ See `docs/design/configurable-release-governance-defaults.md`.
 
 - No default multi-approver quorum.
 - No cryptographic human signature.
-- No automatic release gate enforcement from approval state unless a future customer policy explicitly enables it.
+- No automatic release gate enforcement from approval state unless a customer policy explicitly enables it and a caller chooses to use the evaluator as a gate.
 - No remote customer repository mutation.

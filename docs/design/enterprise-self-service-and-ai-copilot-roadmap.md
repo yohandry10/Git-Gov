@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`.
 
 Current state:
 
@@ -58,6 +58,7 @@ Missing product packaging:
   - dashboard create/list workflow now exists through `KAN-43`.
   - KAN-44 clarifies that quorum and release-blocking enforcement are opt-in customer policy choices, not defaults.
   - KAN-45 adds the first `release_governance` policy field to the adoption profile, dashboard, backend validation, adoption pack, and workflow template manifest.
+  - KAN-46 adds the first evaluator that compares release policy with approval evidence and reports `recorded`, `advisory-warning`, `approved`, `would-block`, or `blocked`.
 
 Customer-facing value:
 
@@ -72,6 +73,7 @@ First MVP:
 - `GET /enterprise/release-approvals`.
 - `POST /enterprise/release-approvals`.
 - `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
+- `GET /enterprise/release-governance/evaluate`.
 - `docs/design/enterprise-self-service-adoption-mvp.md`.
 - `docs/design/workflow-template-generation-mvp.md`.
 - `docs/design/dashboard-workflow-template-pack-mvp.md`.
@@ -79,6 +81,7 @@ First MVP:
 - `docs/design/provider-connection-validation-mvp.md`.
 - `docs/design/formal-release-approval-mvp.md`.
 - `docs/design/release-approval-dashboard-mvp.md`.
+- `docs/design/release-governance-evaluator-mvp.md`.
 - `docs/examples/enterprise-adoption-profile.example.json`.
 - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
@@ -86,7 +89,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, and carries explicit release governance policy through the adoption profile and generated packs. It does not yet mutate remote customer repositories through GitHub APIs, enforce multi-approver quorum/signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, and evaluates a release against that policy when an admin asks. It does not yet mutate remote customer repositories through GitHub APIs, require cryptographic signatures, or block releases from approval state by default.
 
 Release governance default:
 
@@ -94,6 +97,7 @@ Release governance default:
 - `record-only` means approvals and evidence can be saved and reported, but customer pipelines are not blocked by default.
 - Multi-approver quorum must be explicitly enabled by customer policy.
 - Blocking release enforcement must be explicitly enabled by customer policy.
+- KAN-46 can report a blocking result for an explicitly blocking policy, but a workflow must still opt in to treating that result as a deployment gate.
 - Generated workflows should remain non-blocking unless the adoption profile clearly selects advisory or blocking enforcement.
 - Adoption profile validation now rejects accidental blocking `record-only` configurations and requires `formal-approval` before non-`record-only` governance modes.
 

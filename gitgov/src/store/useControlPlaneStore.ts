@@ -183,6 +183,64 @@ export interface EnterpriseReleaseApprovalQuery {
   offset?: number | null
 }
 
+export type EnterpriseReleaseGovernanceEvaluationStatus =
+  | 'recorded'
+  | 'advisory-warning'
+  | 'approved'
+  | 'would-block'
+  | 'blocked'
+  | string
+
+export interface EnterpriseReleaseGovernanceEvaluationQuery {
+  org_name?: string | null
+  repository_full_name: string
+  release_id: string
+  environment: string
+  evidence_packet_hash?: string | null
+}
+
+export interface EnterpriseReleaseGovernanceQuorumRuleSummary {
+  role: string
+  required: number
+  observed: number
+  satisfied: boolean
+}
+
+export interface EnterpriseReleaseGovernancePolicySummary {
+  mode: string
+  environment: string
+  approval_required: boolean
+  enforcement: string
+  policy_applies: boolean
+  quorum_enabled: boolean
+  quorum_rules: EnterpriseReleaseGovernanceQuorumRuleSummary[]
+}
+
+export interface EnterpriseReleaseGovernanceApprovalSummary {
+  id: string
+  decision: string
+  approver: string
+  approver_role?: string | null
+  risk_severity: string
+  evidence_packet_hash?: string | null
+  expires_at?: number | null
+  created_at: number
+  counts_toward_policy: boolean
+}
+
+export interface EnterpriseReleaseGovernanceEvaluationResponse {
+  status: EnterpriseReleaseGovernanceEvaluationStatus
+  policy_satisfied: boolean
+  blocking: boolean
+  would_block: boolean
+  valid_approval_count: number
+  required_approval_count: number
+  policy: EnterpriseReleaseGovernancePolicySummary
+  approvals: EnterpriseReleaseGovernanceApprovalSummary[]
+  issues: string[]
+  next_steps: string[]
+}
+
 export interface CreateEnterpriseReleaseApprovalRequest {
   org_name?: string | null
   release_id: string
@@ -491,6 +549,8 @@ interface ControlPlaneState {
   releaseApprovals: EnterpriseReleaseApprovalRecord[]
   releaseApprovalsTotal: number
   releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
+  releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
+  isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
@@ -562,6 +622,7 @@ interface ControlPlaneActions {
   loadEnterpriseAdoptionProfile: (orgName?: string) => Promise<EnterpriseAdoptionProfile | null>
   saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
+  evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
   loadMe: () => Promise<boolean>
   createOrg: (payload: { login: string; name?: string }) => Promise<CreateOrgResponse | null>
@@ -1283,6 +1344,8 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   releaseApprovals: [],
   releaseApprovalsTotal: 0,
   releaseApprovalsFilters: { limit: 10, offset: 0 },
+  releaseGovernanceEvaluation: null,
+  isReleaseGovernanceEvaluating: false,
   isReleaseApprovalsLoading: false,
   isReleaseApprovalSubmitting: false,
   releaseApprovalError: null,
@@ -1936,6 +1999,40 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
   },
 
+  evaluateEnterpriseReleaseGovernance: async (query) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: EnterpriseReleaseGovernanceEvaluationQuery = {
+      org_name: orgName ?? null,
+      repository_full_name: query.repository_full_name.trim(),
+      release_id: query.release_id.trim(),
+      environment: query.environment.trim(),
+      evidence_packet_hash: query.evidence_packet_hash?.trim() || null,
+    }
+
+    set({ isReleaseGovernanceEvaluating: true, releaseApprovalError: null })
+    try {
+      const response = await tauriInvoke<EnterpriseReleaseGovernanceEvaluationResponse>('cmd_server_evaluate_enterprise_release_governance', {
+        config: serverConfig,
+        query: nextQuery,
+      })
+      set({
+        releaseGovernanceEvaluation: response,
+        isReleaseGovernanceEvaluating: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        releaseApprovalError: message,
+        releaseGovernanceEvaluation: null,
+        isReleaseGovernanceEvaluating: false,
+      })
+      return null
+    }
+  },
+
   createEnterpriseReleaseApproval: async (payload) => {
     const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return null
@@ -2443,6 +2540,8 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       releaseApprovals: [],
       releaseApprovalsTotal: 0,
       releaseApprovalsFilters: { limit: 10, offset: 0 },
+      releaseGovernanceEvaluation: null,
+      isReleaseGovernanceEvaluating: false,
       isReleaseApprovalsLoading: false,
       isReleaseApprovalSubmitting: false,
       releaseApprovalError: null,
