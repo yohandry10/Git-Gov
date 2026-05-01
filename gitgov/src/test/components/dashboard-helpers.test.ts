@@ -273,9 +273,16 @@ describe('dashboard-helpers enterprise adoption pack', () => {
       setting: 'blocking',
     })
     expect(pack.policy_rules).toContainEqual({
+      rule: 'Release governance gate',
+      setting: 'manual opt-in workflow',
+    })
+    expect(pack.policy_rules).toContainEqual({
       rule: 'Release approval quorum',
       setting: 'engineering:1, security:1',
     })
+    expect(pack.workflow_plan.map((workflow) => workflow.file)).toContain(
+      '.github/workflows/release-governance-gate.yml',
+    )
     expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
   })
 
@@ -315,6 +322,32 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(JSON.stringify(pack)).not.toContain('__JIRA_PROJECT_KEY__')
     expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
     expect(JSON.stringify(pack)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('adds release governance gate template only after customer opt-in', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
+      release_governance: {
+        mode: 'approval-required',
+        environment: 'production',
+        approval_required: true,
+        enforcement: 'blocking',
+        quorum: { enabled: false, rules: [] },
+      },
+    }
+
+    const pack = buildEnterpriseWorkflowTemplatePack(profile, '2026-05-01T00:00:00.000Z')
+    const gate = pack.files.find((file) => file.file === '.github/workflows/release-governance-gate.yml')
+
+    expect(gate).toBeDefined()
+    expect(gate?.content).toContain('name: GitGov Release Governance Gate')
+    expect(gate?.content).toContain('default: true')
+    expect(gate?.content).toContain('/enterprise/release-governance/evaluate')
+    expect(pack.manifest.workflow_templates.map((workflow) => workflow.file)).toContain(
+      '.github/workflows/release-governance-gate.yml',
+    )
+    expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
   })
 
   it('builds a stable workflow template pack filename', () => {

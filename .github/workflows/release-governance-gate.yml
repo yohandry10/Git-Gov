@@ -1,0 +1,159 @@
+name: Release Governance Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      org_name:
+        description: "GitGov organization scope"
+        required: false
+        default: "yohandry10"
+        type: string
+      repository_full_name:
+        description: "Repository full name (owner/repo); blank uses this repository"
+        required: false
+        default: ""
+        type: string
+      release_id:
+        description: "Release identifier to evaluate; blank uses the current ref"
+        required: false
+        default: ""
+        type: string
+      environment:
+        description: "Release environment"
+        required: false
+        default: "production"
+        type: string
+      evidence_packet_hash:
+        description: "Optional SHA-256 evidence packet hash"
+        required: false
+        default: ""
+        type: string
+      enforce_gate:
+        description: "Fail only when the evaluated customer policy is blocking and not satisfied"
+        required: false
+        default: false
+        type: boolean
+      fail_on_would_block:
+        description: "Also fail on advisory/would-block results"
+        required: false
+        default: false
+        type: boolean
+      require_policy_satisfied:
+        description: "Fail whenever the evaluated policy is not satisfied"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release-governance-gate:
+    name: Validate release governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Precheck required configuration
+        id: precheck
+        shell: bash
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_ENFORCE_GATE: ${{ inputs.enforce_gate }}
+          INPUT_FAIL_ON_WOULD_BLOCK: ${{ inputs.fail_on_would_block }}
+          INPUT_REQUIRE_POLICY_SATISFIED: ${{ inputs.require_policy_satisfied }}
+        run: |
+          set -euo pipefail
+          strict_requested="false"
+          if [[ "${INPUT_ENFORCE_GATE}" == "true" || "${INPUT_FAIL_ON_WOULD_BLOCK}" == "true" || "${INPUT_REQUIRE_POLICY_SATISFIED}" == "true" ]]; then
+            strict_requested="true"
+          fi
+
+          if [[ -z "${GITGOV_URL:-}" || -z "${GITGOV_API_KEY:-}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing_gitgov_url_or_api_key" >> "$GITHUB_OUTPUT"
+            if [[ "$strict_requested" == "true" ]]; then
+              echo "Missing GITGOV_URL or GITGOV_API_KEY for strict release governance gate." >&2
+              exit 1
+            fi
+            echo "Release governance gate skipped: missing GITGOV_URL or GITGOV_API_KEY."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "reason=config_present" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run release governance gate
+        if: ${{ steps.precheck.outputs.enabled == 'true' }}
+        shell: pwsh
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_ORG_NAME: ${{ inputs.org_name }}
+          INPUT_REPOSITORY_FULL_NAME: ${{ inputs.repository_full_name }}
+          INPUT_RELEASE_ID: ${{ inputs.release_id }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_EVIDENCE_PACKET_HASH: ${{ inputs.evidence_packet_hash }}
+          INPUT_ENFORCE_GATE: ${{ inputs.enforce_gate }}
+          INPUT_FAIL_ON_WOULD_BLOCK: ${{ inputs.fail_on_would_block }}
+          INPUT_REQUIRE_POLICY_SATISFIED: ${{ inputs.require_policy_satisfied }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+          GITHUB_REF_NAME_VALUE: ${{ github.ref_name }}
+          RUN_ID_VALUE: ${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $repoFullName = $env:INPUT_REPOSITORY_FULL_NAME
+          if ([string]::IsNullOrWhiteSpace($repoFullName)) {
+            $repoFullName = $env:GITHUB_REPOSITORY_NAME
+          }
+
+          $releaseId = $env:INPUT_RELEASE_ID
+          if ([string]::IsNullOrWhiteSpace($releaseId)) {
+            $releaseId = $env:GITHUB_REF_NAME_VALUE
+          }
+          if ([string]::IsNullOrWhiteSpace($releaseId)) {
+            $releaseId = "manual-$env:RUN_ID_VALUE"
+          }
+
+          $environment = $env:INPUT_ENVIRONMENT
+          if ([string]::IsNullOrWhiteSpace($environment)) {
+            $environment = "production"
+          }
+
+          $outputPath = "docs/reports/release-governance-gate-$env:RUN_ID_VALUE.json"
+          $gateArgs = @{
+            GitGovUrl = $env:GITGOV_URL
+            ApiKey = $env:GITGOV_API_KEY
+            OrgName = $env:INPUT_ORG_NAME
+            RepositoryFullName = $repoFullName
+            ReleaseId = $releaseId
+            Environment = $environment
+            EvidencePacketHash = $env:INPUT_EVIDENCE_PACKET_HASH
+            OutputPath = $outputPath
+          }
+
+          if ($env:INPUT_ENFORCE_GATE -eq "true") {
+            $gateArgs.Enforce = $true
+          }
+          if ($env:INPUT_FAIL_ON_WOULD_BLOCK -eq "true") {
+            $gateArgs.FailOnWouldBlock = $true
+          }
+          if ($env:INPUT_REQUIRE_POLICY_SATISFIED -eq "true") {
+            $gateArgs.RequirePolicySatisfied = $true
+          }
+
+          & ./scripts/control-plane/validate_release_governance_gate.ps1 @gateArgs
+
+      - name: Upload release governance gate artifact
+        if: ${{ always() && steps.precheck.outputs.enabled == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-governance-gate-${{ github.run_id }}
+          path: docs/reports/release-governance-gate-${{ github.run_id }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Skip notice
+        if: ${{ steps.precheck.outputs.enabled != 'true' }}
+        run: echo "Release governance gate skipped (reason=${{ steps.precheck.outputs.reason }})."

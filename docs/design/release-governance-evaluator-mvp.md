@@ -83,6 +83,10 @@ The Release Approval dashboard now includes:
 
 After a new approval is created, the dashboard refreshes the governance evaluation for the current release form.
 
+## Enforcement Follow-Up
+
+KAN-47 consumes this evaluator through an optional workflow gate. The KAN-47 gate remains manual/report-only by default and fails only when enforcement is explicitly requested and this evaluator returns `blocking=true`.
+
 ## Security Notes
 
 - The evaluator reuses admin auth and org-scope rules.
@@ -97,6 +101,6 @@ After a new approval is created, the dashboard refreshes the governance evaluati
 - No customer workflow is mutated.
 - No remote provider state is changed.
 - No database migration is added.
-- No release is blocked unless a future workflow or caller explicitly treats `blocking=true` as a gate.
+- No release is blocked unless an explicit workflow or caller, such as the KAN-47 optional gate, treats `blocking=true` as a gate.
 - No cryptographic human signature model is added.
 - No default multi-approver requirement is introduced.

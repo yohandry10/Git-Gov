@@ -47,7 +47,7 @@ It contains:
 - `files`: `{ file, reason, content }` entries for each generated workflow.
 - `readme`: operator-facing install notes.
 
-The ExampleCo profile generates `13` workflow template files.
+The ExampleCo profile generates `13` workflow template files because it remains `record-only` for release governance. If a customer enables `formal-approval` and selects `approval-required` or `quorum-required`, the dashboard pack adds `.github/workflows/release-governance-gate.yml` as a reviewed manual workflow.
 
 ## Safety Model
 
@@ -59,6 +59,7 @@ KAN-34 keeps the KAN-33 safety boundary:
 - no secret value display.
 - no GitHub repository mutation.
 - no automatic workflow installation.
+- no release governance blocking unless the customer profile explicitly selects non-`record-only` governance and an operator installs/runs the gate.
 
 The pack uses GitHub Actions secret references such as `${{ secrets.GITGOV_API_KEY }}` by name only.
 

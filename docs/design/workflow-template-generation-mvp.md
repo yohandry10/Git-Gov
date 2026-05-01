@@ -47,6 +47,7 @@ The generator emits templates according to the selected adoption modules and pro
 - `github-evidence-artifact-monitor.yml`
 - `github-evidence-trend-report.yml`
 - `release-readiness-gate.yml`
+- `release-governance-gate.yml` when release governance is explicitly non-`record-only`
 - `quality-gate-policy-matrix.yml`
 - `sonar-governance.yml`
 - `product-vulnerability-review.yml`
@@ -54,7 +55,7 @@ The generator emits templates according to the selected adoption modules and pro
 - `product-vulnerability-review-trend-report.yml`
 - `product-vulnerability-review-trend-enforcement.yml`
 
-For the ExampleCo profile, the current generator writes `13` templates.
+For the ExampleCo profile, the current generator writes `13` templates because the example profile remains `record-only`. A customer profile with `formal-approval` plus `approval-required` or `quorum-required` release governance writes `14` templates, including the optional release governance gate.
 
 ## Safety Model
 
@@ -68,6 +69,7 @@ The generator is intentionally conservative:
 - It records secret names only, such as `GITGOV_API_KEY` and `SONAR_TOKEN`.
 - It records variable names only, such as `GITGOV_URL`, `SONAR_HOST_URL`, and `SONAR_PROJECT_KEY`.
 - It marks generated workflows as requiring customer review before install.
+- It includes release-governance enforcement only after the customer profile explicitly selects non-`record-only` governance.
 
 ## Policy Presets
 
@@ -90,6 +92,12 @@ The generator is intentionally conservative:
 - expects stronger review and risk-acceptance process around findings.
 
 The portable vulnerability review template reports dependency findings. It does not claim to prove reachability by itself. Customers should add product-specific reachability triage before using dependency findings as a release blocker.
+
+Release governance:
+
+- `record-only` does not generate a release governance gate.
+- `advisory` can generate a manual gate when `formal-approval` is enabled, but does not default to blocking.
+- `approval-required` and `quorum-required` generate a manual gate that defaults to enforcement because the customer explicitly selected a blocking release governance policy.
 
 ## Non-Goals
 
