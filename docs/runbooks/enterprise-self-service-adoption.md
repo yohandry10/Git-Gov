@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`
 
 ## Purpose
 
@@ -203,6 +203,52 @@ Readiness safety boundaries:
 - no secret values are read; GitHub Actions secrets are checked by name only.
 - no GitHub Actions variables or secrets are created.
 - no branch, file, PR, branch protection, workflow dispatch, or provider mutation.
+
+## Generate Enterprise Onboarding Readiness
+
+KAN-52 consolidates the adoption profile, provider connection report, workflow template plan, remote workflow readiness, GitHub Actions configuration names, and release governance posture into one Markdown/JSON readiness report.
+
+Generate a non-blocking report from only the profile:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_onboarding_readiness_report.ps1 `
+  -ProfilePath docs/examples/enterprise-adoption-profile.example.json `
+  -OutputDir out/enterprise-onboarding-readiness `
+  -ReportOnly
+```
+
+Generate a fuller report after running provider and workflow readiness checks:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_onboarding_readiness_report.ps1 `
+  -AdoptionPackPath out/enterprise-adoption-pack/enterprise-adoption-pack.json `
+  -ProviderConnectionsPath out/provider-connections-report-only.json `
+  -WorkflowReadinessPath out/workflow-readiness.json `
+  -OutputDir out/enterprise-onboarding-readiness `
+  -ReportOnly
+```
+
+Expected outputs:
+
+```text
+out/enterprise-onboarding-readiness/enterprise-onboarding-readiness.md
+out/enterprise-onboarding-readiness/enterprise-onboarding-readiness.json
+```
+
+Status values:
+
+- `ready`: all readiness stages are ready.
+- `needs-action`: at least one stage needs configuration, evidence, or validation.
+- `blocked`: the profile is invalid or internally inconsistent.
+
+Remove `-ReportOnly` only when the caller should fail if onboarding is not fully ready.
+
+Onboarding readiness safety boundaries:
+
+- no secret values are read or printed.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- release blocking remains customer opt-in only; record-only remains the safe default.
 
 ## Validate Direct Provider Connections
 

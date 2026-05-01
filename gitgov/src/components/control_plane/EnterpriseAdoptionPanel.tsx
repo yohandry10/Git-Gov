@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, Download, KeyRound, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, ClipboardCheck, Download, KeyRound, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -12,6 +12,8 @@ import {
   buildReleaseGovernancePolicy,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
+  buildEnterpriseOnboardingReadinessReport,
+  buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
@@ -22,6 +24,7 @@ import {
   type AdoptionProvider,
   type AdoptionReleaseGovernanceMode,
   type EnterpriseAdoptionProfile,
+  type EnterpriseOnboardingReadinessStatus,
   type EnterpriseReleaseGovernancePolicy,
   type EnterpriseProviderHealthStatus,
 } from './dashboard-helpers'
@@ -52,6 +55,18 @@ function providerHealthLabel(status: EnterpriseProviderHealthStatus): string {
   if (status === 'ready') return 'Ready'
   if (status === 'needs-config') return 'Config'
   return 'Evidence'
+}
+
+function onboardingReadinessBadgeVariant(status: EnterpriseOnboardingReadinessStatus): 'success' | 'warning' | 'info' {
+  if (status === 'ready') return 'success'
+  if (status === 'blocked') return 'warning'
+  return 'info'
+}
+
+function onboardingReadinessLabel(status: EnterpriseOnboardingReadinessStatus): string {
+  if (status === 'ready') return 'Ready'
+  if (status === 'blocked') return 'Blocked'
+  return 'Action'
 }
 
 export function EnterpriseAdoptionPanel() {
@@ -90,6 +105,10 @@ export function EnterpriseAdoptionPanel() {
     sonarSuccessful,
     activeRepos: serverStats?.active_repos,
   }, pack), [pack, profile, serverStats, sonarRuns, sonarSuccessful, ticketCoverage])
+  const onboardingReadiness = useMemo(
+    () => buildEnterpriseOnboardingReadinessReport(profile, providerHealth),
+    [profile, providerHealth],
+  )
   const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
   const trendRule = pack.policy_rules.find((rule) => rule.rule === 'Vulnerability trend enforcement')?.setting ?? 'informational'
@@ -244,6 +263,19 @@ export function EnterpriseAdoptionPanel() {
     }
   }
 
+  const downloadOnboardingReadiness = () => {
+    const blob = new Blob([JSON.stringify(onboardingReadiness, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildEnterpriseOnboardingReadinessReportFilename(profile)
+      link.click()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
   const saveProfile = async () => {
     if (!validation.valid) return
     await saveEnterpriseAdoptionProfile(profile, selectedOrgName || undefined)
@@ -295,6 +327,15 @@ export function EnterpriseAdoptionPanel() {
           >
             <Workflow size={14} />
             Workflows
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadOnboardingReadiness}
+            title="Download onboarding readiness JSON"
+          >
+            <ClipboardCheck size={14} />
+            Readiness
           </Button>
         </div>
       </div>
@@ -518,6 +559,27 @@ export function EnterpriseAdoptionPanel() {
         </div>
 
         <div className="space-y-4">
+          <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
+                <ClipboardCheck size={13} />
+                Onboarding
+              </div>
+              <Badge variant={onboardingReadinessBadgeVariant(onboardingReadiness.status)}>
+                {onboardingReadinessLabel(onboardingReadiness.status)}
+              </Badge>
+            </div>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <div className="mono-data text-2xl text-surface-100">{onboardingReadiness.readiness_score}</div>
+              <div className="text-right text-[11px] text-surface-500">
+                {onboardingReadiness.stage_counts.ready}/{onboardingReadiness.stages.length} stages ready
+              </div>
+            </div>
+            <div className="mt-2 text-[11px] leading-5 text-surface-400">
+              {onboardingReadiness.next_actions[0] ?? 'Onboarding evidence is ready for customer review.'}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded border border-white/8 bg-white/[0.03] p-3">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">

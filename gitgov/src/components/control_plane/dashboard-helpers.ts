@@ -367,6 +367,57 @@ export interface EnterpriseProviderHealthCheck {
   next_step: string
 }
 
+export type EnterpriseOnboardingReadinessStatus = 'ready' | 'needs-action' | 'blocked'
+export type EnterpriseOnboardingReadinessStageId =
+  | 'profile'
+  | 'providers'
+  | 'workflow-pack'
+  | 'remote-workflows'
+  | 'actions-config'
+  | 'release-governance'
+
+export interface EnterpriseWorkflowInstallationReadinessInput {
+  status?: string
+  totals?: {
+    workflows_missing?: number
+    workflows_different?: number
+    variables_missing?: number
+    secrets_missing?: number
+  }
+}
+
+export interface EnterpriseOnboardingReadinessStage {
+  id: EnterpriseOnboardingReadinessStageId
+  label: string
+  status: EnterpriseOnboardingReadinessStatus
+  summary: string
+  next_action: string
+}
+
+export interface EnterpriseOnboardingReadinessReport {
+  generated_at: string
+  customer_name: string
+  repository_full_name: string
+  default_branch: string
+  jira_project_key: string
+  policy_preset: AdoptionPolicyPreset
+  status: EnterpriseOnboardingReadinessStatus
+  readiness_score: number
+  stage_counts: Record<EnterpriseOnboardingReadinessStatus, number>
+  release_governance: EnterpriseReleaseGovernancePolicy
+  providers: AdoptionProvider[]
+  modules: AdoptionModule[]
+  stages: EnterpriseOnboardingReadinessStage[]
+  next_actions: string[]
+  safety: {
+    contains_secret_values: false
+    reads_secret_values: false
+    mutates_customer_repository: false
+    mutates_provider_state: false
+    release_blocking_default: false
+  }
+}
+
 const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
 const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
@@ -1599,6 +1650,153 @@ export function buildEnterpriseProviderHealth(
   return checks
 }
 
+function readinessStageWeight(status: EnterpriseOnboardingReadinessStatus): number {
+  if (status === 'ready') return 1
+  if (status === 'needs-action') return 0.5
+  return 0
+}
+
+function numericReadinessTotal(value?: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value ?? 0)) : 0
+}
+
+function workflowReadinessStatus(
+  workflowReadiness?: EnterpriseWorkflowInstallationReadinessInput | null,
+): EnterpriseOnboardingReadinessStatus {
+  if (!workflowReadiness) return 'needs-action'
+  return workflowReadiness.status === 'ready' ? 'ready' : 'needs-action'
+}
+
+function workflowReadinessTotals(workflowReadiness?: EnterpriseWorkflowInstallationReadinessInput | null) {
+  return {
+    workflowsMissing: numericReadinessTotal(workflowReadiness?.totals?.workflows_missing),
+    workflowsDifferent: numericReadinessTotal(workflowReadiness?.totals?.workflows_different),
+    variablesMissing: numericReadinessTotal(workflowReadiness?.totals?.variables_missing),
+    secretsMissing: numericReadinessTotal(workflowReadiness?.totals?.secrets_missing),
+  }
+}
+
+export function buildEnterpriseOnboardingReadinessReport(
+  profile: EnterpriseAdoptionProfile,
+  providerHealth: EnterpriseProviderHealthCheck[] = buildEnterpriseProviderHealth(profile),
+  workflowReadiness?: EnterpriseWorkflowInstallationReadinessInput | null,
+  generatedAt = new Date().toISOString(),
+): EnterpriseOnboardingReadinessReport {
+  const normalizedProfile = normalizeEnterpriseAdoptionProfile(profile)
+  const validation = validateEnterpriseAdoptionProfile(normalizedProfile)
+  const pack = buildEnterpriseAdoptionPack(normalizedProfile, generatedAt)
+  const workflowTotals = workflowReadinessTotals(workflowReadiness)
+  const actionConfigMissing = workflowTotals.variablesMissing + workflowTotals.secretsMissing
+  const hasRequiredActionConfig = pack.variables.length + pack.secrets.length > 0
+  const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
+  const providerConfigIssues = providerHealth.filter((check) => check.status === 'needs-config').length
+  const providerEvidenceIssues = providerHealth.filter((check) => check.status === 'needs-evidence').length
+  const releaseGovernance = pack.release_governance
+  const stages: EnterpriseOnboardingReadinessStage[] = [
+    {
+      id: 'profile',
+      label: 'Adoption profile',
+      status: validation.valid ? 'ready' : 'blocked',
+      summary: validation.valid
+        ? `${pack.customer_name} profile targets ${pack.repository_full_name}:${pack.default_branch}`
+        : `${validation.errors.length} profile validation issue(s)`,
+      next_action: validation.valid ? 'Keep profile saved before generating customer artifacts.' : validation.errors.join(' '),
+    },
+    {
+      id: 'providers',
+      label: 'Provider evidence',
+      status: providerHealth.length > 0 && readyProviders === providerHealth.length ? 'ready' : 'needs-action',
+      summary: `${readyProviders}/${providerHealth.length} selected provider(s) ready`,
+      next_action: providerConfigIssues > 0
+        ? 'Complete required provider configuration names and connection setup.'
+        : providerEvidenceIssues > 0
+          ? 'Run provider validation and wait for GitGov evidence ingestion.'
+          : 'Select at least one provider for onboarding validation.',
+    },
+    {
+      id: 'workflow-pack',
+      label: 'Workflow template pack',
+      status: pack.workflow_plan.length > 0 ? 'ready' : 'needs-action',
+      summary: `${pack.workflow_plan.length} workflow template(s), ${pack.variables.length} variable name(s), ${pack.secrets.length} secret name(s)`,
+      next_action: pack.workflow_plan.length > 0
+        ? 'Review the generated workflow pack before installation.'
+        : 'Enable at least one governance module that generates workflow evidence.',
+    },
+    {
+      id: 'remote-workflows',
+      label: 'Remote workflow readiness',
+      status: workflowReadinessStatus(workflowReadiness),
+      summary: workflowReadiness
+        ? `${workflowTotals.workflowsMissing} missing, ${workflowTotals.workflowsDifferent} different workflow file(s)`
+        : 'No remote workflow readiness report attached',
+      next_action: workflowReadiness?.status === 'ready'
+        ? 'Keep workflow readiness evidence with the customer onboarding record.'
+        : 'Run the read-only remote workflow readiness validator after install or PR merge.',
+    },
+    {
+      id: 'actions-config',
+      label: 'GitHub Actions configuration',
+      status: workflowReadiness
+        ? actionConfigMissing === 0 ? 'ready' : 'needs-action'
+        : hasRequiredActionConfig ? 'needs-action' : 'ready',
+      summary: workflowReadiness
+        ? `${workflowTotals.variablesMissing} missing variable name(s), ${workflowTotals.secretsMissing} missing secret name(s)`
+        : `${pack.variables.length} variable name(s), ${pack.secrets.length} secret name(s) required by the pack`,
+      next_action: workflowReadiness && actionConfigMissing === 0
+        ? 'Required GitHub Actions configuration names are present.'
+        : 'Create required GitHub Actions variables/secrets outside GitGov and re-run readiness validation.',
+    },
+    {
+      id: 'release-governance',
+      label: 'Release governance policy',
+      status: validation.valid ? 'ready' : 'blocked',
+      summary: `${releaseGovernance.mode} for ${releaseGovernance.environment}, enforcement ${releaseGovernance.enforcement}`,
+      next_action: releaseGovernance.enforcement === 'disabled'
+        ? 'Record-only remains the safe default and does not block releases.'
+        : 'Confirm the customer explicitly selected this policy before treating it as release blocking.',
+    },
+  ]
+  const stageCounts = {
+    ready: stages.filter((stage) => stage.status === 'ready').length,
+    'needs-action': stages.filter((stage) => stage.status === 'needs-action').length,
+    blocked: stages.filter((stage) => stage.status === 'blocked').length,
+  }
+  const score = Math.round(
+    (stages.reduce((total, stage) => total + readinessStageWeight(stage.status), 0) / stages.length) * 100,
+  )
+  const status: EnterpriseOnboardingReadinessStatus = stageCounts.blocked > 0
+    ? 'blocked'
+    : stageCounts['needs-action'] > 0
+      ? 'needs-action'
+      : 'ready'
+
+  return {
+    generated_at: generatedAt,
+    customer_name: pack.customer_name,
+    repository_full_name: pack.repository_full_name,
+    default_branch: pack.default_branch,
+    jira_project_key: pack.jira_project_key,
+    policy_preset: pack.policy_preset,
+    status,
+    readiness_score: score,
+    stage_counts: stageCounts,
+    release_governance: releaseGovernance,
+    providers: pack.providers,
+    modules: pack.modules,
+    stages,
+    next_actions: stages
+      .filter((stage) => stage.status !== 'ready')
+      .map((stage) => `${stage.label}: ${stage.next_action}`),
+    safety: {
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      release_blocking_default: false,
+    },
+  }
+}
+
 export function buildEnterpriseAdoptionPackFilename(profile: EnterpriseAdoptionProfile): string {
   const basis = `${profile.customer_name}-${profile.repository_full_name}`
     .toLowerCase()
@@ -1613,6 +1811,14 @@ export function buildEnterpriseWorkflowTemplatePackFilename(profile: EnterpriseA
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return `${basis || 'enterprise-adoption'}-workflow-template-pack.json`
+}
+
+export function buildEnterpriseOnboardingReadinessReportFilename(profile: EnterpriseAdoptionProfile): string {
+  const basis = `${profile.customer_name}-${profile.repository_full_name}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${basis || 'enterprise-adoption'}-onboarding-readiness.json`
 }
 
 export function readDetailFiles(log: CombinedEvent): string[] {
