@@ -91,6 +91,7 @@ Current state:
 - GitGov already has enough structured evidence for an assistant to explain risk, readiness, tickets, pipelines, findings, and policy decisions.
 - The product already exposes the core dashboard, exports, and Evidence Packets MVP.
 - KAN-38 adds the first AI SDK route, `POST /api/copilot/governance`, which gathers bounded GitGov evidence and returns a cited governance brief.
+- KAN-39 starts the first admin dashboard UI for the copilot route through a secret-safe Tauri desktop proxy.
 - Production validation passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` in deterministic fallback mode; production AI Gateway/OIDC still needs to be enabled if the desired runtime is `mode=ai`.
 
 Missing product packaging:
@@ -109,6 +110,7 @@ Missing product packaging:
   - summarize accepted risks.
 - First MVP:
   - server-side Next.js route.
+  - admin dashboard panel.
   - Vercel AI SDK `generateText()`.
   - Evidence Packet, ticket coverage, release approval, and adoption profile evidence.
   - deterministic fallback when AI Gateway/OIDC is not configured.

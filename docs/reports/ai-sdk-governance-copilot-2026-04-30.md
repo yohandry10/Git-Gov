@@ -145,7 +145,7 @@ Interpretation:
 
 ## Remaining Work
 
-- Dashboard UI for governance copilot.
+- Dashboard UI for governance copilot is started in `KAN-39`.
 - Streaming chat UI using `@ai-sdk/react`.
 - AI SDK `ToolLoopAgent` once tool-calling behavior is explicitly needed.
 - MCP integration.
