@@ -30,7 +30,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-36 - Direct provider connection validation for enterprise onboarding`.
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
-- Current active implementation: `KAN-39 - Governance copilot dashboard UI MVP` on branch `product/KAN-39-governance-copilot-dashboard`.
+- Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -462,7 +462,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 - `KAN-36`: opened Jira issue `KAN-36 - Direct provider connection validation for enterprise onboarding`, implemented branch `product/KAN-36-provider-connection-validation`, and merged PR `#123` as `8c075a4`. Scope validates explicitly provided provider credentials/reachability for GitHub, Jira, Jenkins, SonarQube, Render, and Vercel without printing secrets or mutating provider state.
 - `KAN-37`: opened Jira issue `KAN-37 - Formal enterprise release approval MVP`, implemented branch `product/KAN-37-formal-release-approval`, and merged PR `#125` as `d7ae92e`. Scope is append-only formal release approvals with admin-only org scope, evidence packet hash binding, risk acceptance expiration, audit logging, Supabase migration `v24`, and backend validation tests. Production migration `v24` was applied and validated on 2026-04-30; Render deploy `dep-d7ptsvhoagis738cj88g` reached `live`.
 - `KAN-38`: implemented `KAN-38 - Vercel AI SDK governance copilot MVP` on branch `product/KAN-38-ai-sdk-copilot`; PR `#127` merged as `9742472`. Scope is the first server-side Next.js AI SDK copilot route over bounded GitGov evidence with citations and fallback when AI Gateway/OIDC is unavailable.
-- `KAN-39`: opened Jira issue `KAN-39 - Governance copilot dashboard UI MVP` and started branch `product/KAN-39-governance-copilot-dashboard`. Scope is the first admin dashboard UI for the KAN-38 copilot route, using a secret-safe Tauri proxy command and displaying cited answers, source statuses, and warnings.
+- `KAN-39`: implemented `KAN-39 - Governance copilot dashboard UI MVP` on branch `product/KAN-39-governance-copilot-dashboard`; PR `#129` merged as `eda2f13`. Scope is the first admin dashboard UI for the KAN-38 copilot route, using a secret-safe Tauri proxy command and displaying cited answers, source statuses, and warnings.
 
 ## Current Product Roadmap
 
@@ -762,10 +762,28 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - Direct deployment URL returned `401` HTML and apex `https://gitgov.cloud/api/copilot/governance` returned `401`; canonical `www` and Vercel production aliases are the validated paths.
 - Production AI Gateway/OIDC was not active during validation, so the route used deterministic fallback mode. Enable and validate production AI Gateway/OIDC if `mode=ai` is required.
 
-## Current KAN-39 Implementation Notes
+Latest KAN-39 governance copilot dashboard baseline:
+
+- Implementation commit: `eda2f13 product(KAN-39): add governance copilot dashboard`.
+- PR: `#129` - `product(KAN-39): add governance copilot dashboard`.
+- Jira final comment: `10198`.
+- Post-merge checks passed:
+  - `CI` - run `25195469511`
+  - `Release Readiness Gate` - run `25195469482`
+  - `Quality Gate Policy Matrix (Optional)` - run `25195469485`
+  - `Secret Scan` - run `25195469486`
+  - `Governance Correlation Smoke (Optional)` - run `25195469490`
+  - `Desktop Updater Readiness (Optional)` - run `25195469496`
+  - `SonarQube Governance (Non-Blocking)` - run `25195469502`
+  - `Public Naming Guard` - run `25195469507`
+
+## Latest KAN-39 Validation Notes
 
 - Jira: `KAN-39 - Governance copilot dashboard UI MVP`.
-- Active branch: `product/KAN-39-governance-copilot-dashboard`.
+- Implementation branch: `product/KAN-39-governance-copilot-dashboard`.
+- Implementation PR: `#129 - product(KAN-39): add governance copilot dashboard`.
+- Implementation commit: `eda2f13 product(KAN-39): add governance copilot dashboard`.
+- Jira final comment: `10198`.
 - Design: `docs/design/governance-copilot-dashboard-mvp.md`.
 - Report: `docs/reports/governance-copilot-dashboard-2026-04-30.md`.
 - Scope:
@@ -791,6 +809,15 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - local Vite smoke `GET http://127.0.0.1:5174/`: returned `200`.
   - `git diff --check`: passed.
   - `.\scripts\security\publication_guard.ps1`: passed.
+- Post-merge validation:
+  - `CI` run `25195469511`: passed.
+  - `Release Readiness Gate` run `25195469482`: passed.
+  - `Quality Gate Policy Matrix (Optional)` run `25195469485`: passed.
+  - `Secret Scan` run `25195469486`: passed.
+  - `Governance Correlation Smoke (Optional)` run `25195469490`: passed.
+  - `Desktop Updater Readiness (Optional)` run `25195469496`: passed.
+  - `SonarQube Governance (Non-Blocking)` run `25195469502`: passed.
+  - `Public Naming Guard` run `25195469507`: passed.
 
 ## Current KAN-28 Implementation Notes
 
