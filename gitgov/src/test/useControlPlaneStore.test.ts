@@ -452,5 +452,52 @@ describe('useControlPlaneStore', () => {
       expect(response?.id).toBe('approval-2')
       expect(useControlPlaneStore.getState().releaseApprovals[0].id).toBe('approval-2')
     })
+
+    it('evaluates release governance with selected org scope', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        status: 'recorded',
+        policy_satisfied: true,
+        blocking: false,
+        would_block: false,
+        valid_approval_count: 0,
+        required_approval_count: 0,
+        policy: {
+          mode: 'record-only',
+          environment: 'production',
+          approval_required: false,
+          enforcement: 'disabled',
+          policy_applies: true,
+          quorum_enabled: false,
+          quorum_rules: [],
+        },
+        approvals: [],
+        issues: [],
+        next_steps: ['Create an optional release approval to strengthen audit evidence.'],
+      })
+
+      const response = await useControlPlaneStore.getState().evaluateEnterpriseReleaseGovernance({
+        repository_full_name: ' yohandry10/Git-Gov ',
+        release_id: ' KAN-46 ',
+        environment: ' production ',
+        evidence_packet_hash: 'd'.repeat(64),
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_evaluate_enterprise_release_governance', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          repository_full_name: 'yohandry10/Git-Gov',
+          release_id: 'KAN-46',
+          environment: 'production',
+          evidence_packet_hash: 'd'.repeat(64),
+        },
+      })
+      expect(response?.status).toBe('recorded')
+      expect(useControlPlaneStore.getState().releaseGovernanceEvaluation?.policy.mode).toBe('record-only')
+    })
   })
 })

@@ -489,6 +489,69 @@ pub struct EnterpriseReleaseApprovalQuery {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EnterpriseReleaseGovernanceEvaluationQuery {
+    pub org_name: Option<String>,
+    pub repository_full_name: String,
+    pub release_id: String,
+    pub environment: String,
+    pub evidence_packet_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceQuorumRuleSummary {
+    pub role: String,
+    pub required: i64,
+    pub observed: i64,
+    pub satisfied: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernancePolicySummary {
+    pub mode: String,
+    pub environment: String,
+    pub approval_required: bool,
+    pub enforcement: String,
+    pub policy_applies: bool,
+    pub quorum_enabled: bool,
+    #[serde(default)]
+    pub quorum_rules: Vec<EnterpriseReleaseGovernanceQuorumRuleSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceApprovalSummary {
+    pub id: String,
+    pub decision: String,
+    pub approver: String,
+    #[serde(default)]
+    pub approver_role: Option<String>,
+    pub risk_severity: String,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(default)]
+    pub expires_at: Option<i64>,
+    pub created_at: i64,
+    pub counts_toward_policy: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EnterpriseReleaseGovernanceEvaluationResponse {
+    pub status: String,
+    pub policy_satisfied: bool,
+    pub blocking: bool,
+    pub would_block: bool,
+    pub valid_approval_count: i64,
+    pub required_approval_count: i64,
+    pub policy: EnterpriseReleaseGovernancePolicySummary,
+    #[serde(default)]
+    pub approvals: Vec<EnterpriseReleaseGovernanceApprovalSummary>,
+    #[serde(default)]
+    pub issues: Vec<String>,
+    #[serde(default)]
+    pub next_steps: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnterpriseReleaseApprovalListResponse {
     #[serde(default)]
     pub items: Vec<EnterpriseReleaseApprovalRecord>,
@@ -1762,6 +1825,49 @@ impl ControlPlaneClient {
         }
         if let Some(offset) = query.offset {
             query_params.push(("offset".to_string(), offset.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(ServerError::ServerError(format!(
+                "Server returned status: {}",
+                response.status()
+            )));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn evaluate_enterprise_release_governance(
+        &self,
+        query: &EnterpriseReleaseGovernanceEvaluationQuery,
+    ) -> Result<EnterpriseReleaseGovernanceEvaluationResponse, ServerError> {
+        let url = self.endpoint_url(&["enterprise", "release-governance", "evaluate"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        query_params.push((
+            "repository_full_name".to_string(),
+            query.repository_full_name.clone(),
+        ));
+        query_params.push(("release_id".to_string(), query.release_id.clone()));
+        query_params.push(("environment".to_string(), query.environment.clone()));
+        if let Some(evidence_packet_hash) = &query.evidence_packet_hash {
+            query_params.push((
+                "evidence_packet_hash".to_string(),
+                evidence_packet_hash.clone(),
+            ));
         }
 
         let mut request = self.client.get(url).query(&query_params);

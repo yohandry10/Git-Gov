@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-45`
+Ticket: `KAN-46`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -37,7 +37,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
-- Current follow-up: none selected after KAN-45.
+- Current follow-up: `KAN-46 - Add release governance evaluator`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1112,6 +1112,47 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Governance Correlation Smoke (Optional)` - run `25203785490`.
   - `Desktop Updater Readiness (Optional)` - run `25203785503`.
 - No database migration, Render deploy, Vercel production env change, provider setting change, or customer workflow installation was needed.
+
+## Current KAN-46 Implementation Notes
+
+- Jira: `KAN-46 - Add release governance evaluator`.
+- Implementation branch: `product/KAN-46-release-governance-evaluator`.
+- Design: `docs/design/release-governance-evaluator-mvp.md`.
+- Report: `docs/reports/release-governance-evaluator-2026-05-01.md`.
+- Scope:
+  - add admin endpoint `GET /enterprise/release-governance/evaluate`.
+  - evaluate KAN-45 `release_governance` policy against KAN-37 formal release approval records.
+  - keep `record-only` non-blocking by default.
+  - return `recorded`, `advisory-warning`, `approved`, `would-block`, or `blocked`.
+  - include `blocking` and `would_block` booleans for future customer-selected workflow gates.
+  - count quorum roles through `evidence_summary.approver_role` without adding a database migration.
+  - add Tauri control-plane client structs, method, command, and registration.
+  - add dashboard release governance evaluation state, action, button, result panel, and approver role field.
+  - include `/enterprise/release-governance/evaluate` in the stale-auth-cache sensitive admin path set.
+- Product rule:
+  - KAN-46 reports release governance status; it does not mutate customer workflows or block deployments by itself.
+  - blocking status can only appear when the customer-selected profile policy is explicitly blocking.
+  - future workflow enforcement must opt in to consuming `blocking=true`.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo test release_approval_tests` from `gitgov/gitgov-server`: passed, `9` tests.
+  - `cargo test sensitive_admin_path_detection_matches_expected_routes` from `gitgov/gitgov-server`: passed, `1` test.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: passed, `23` tests.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: passed, `22` tests.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed, `25` test files and `283` tests.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read or printed by this change.
+- No database migration, provider setting change, customer workflow installation, or Vercel production environment change is needed.
 
 ## Current KAN-28 Implementation Notes
 

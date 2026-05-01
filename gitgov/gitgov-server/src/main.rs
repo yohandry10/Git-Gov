@@ -1588,6 +1588,10 @@ async fn main() {
                 .post(handlers::create_enterprise_release_approval),
         )
         .route(
+            "/enterprise/release-governance/evaluate",
+            get(handlers::evaluate_enterprise_release_governance),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )

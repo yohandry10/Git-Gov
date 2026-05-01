@@ -92,7 +92,9 @@ It only makes the customer's intended policy explicit and portable across:
 - generated workflow template pack.
 - backend validation.
 
-Actual release gate enforcement remains a future customer-selected feature. It should read this policy before deciding whether a workflow may fail a release.
+KAN-46 adds the first evaluator that reads this policy and compares it with formal release approval evidence. The evaluator returns `recorded`, `advisory-warning`, `approved`, `would-block`, or `blocked`, but it still does not mutate customer workflows or block deployments by itself.
+
+Actual release gate enforcement remains a customer-selected feature. A future workflow gate can consume the KAN-46 evaluator result and fail only when the customer explicitly configured blocking enforcement.
 
 ## Secret Safety
 
@@ -105,5 +107,5 @@ Generated packs mention variable and secret names only.
 - No production release gate is blocked by this change.
 - No customer repository is mutated remotely.
 - No provider secret is read or written.
-- No quorum approval evaluation engine is added here.
+- Quorum approval evaluation is added later in KAN-46 without changing this default.
 - No workflow auto-install is triggered.
