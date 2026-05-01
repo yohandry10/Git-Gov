@@ -141,6 +141,66 @@ interface EnterpriseAdoptionProfileResponse {
   profile?: EnterpriseAdoptionProfileRecord | null
 }
 
+export type EnterpriseReleaseApprovalDecision = 'approved' | 'rejected' | 'accepted-risk'
+export type EnterpriseReleaseApprovalRiskSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical'
+
+export interface EnterpriseReleaseApprovalRecord {
+  id: string
+  org_id: string
+  release_id: string
+  repository_full_name: string
+  branch?: string | null
+  target_sha?: string | null
+  environment: string
+  decision: EnterpriseReleaseApprovalDecision
+  approver: string
+  ticket_id?: string | null
+  evidence_packet_hash?: string | null
+  evidence_packet_uri?: string | null
+  evidence_summary: Record<string, unknown>
+  risk_severity: EnterpriseReleaseApprovalRiskSeverity
+  risk_acceptance_reason?: string | null
+  expires_at?: number | null
+  approval_hash: string
+  created_by: string
+  created_at: number
+}
+
+interface EnterpriseReleaseApprovalListResponse {
+  items: EnterpriseReleaseApprovalRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface EnterpriseReleaseApprovalQuery {
+  org_name?: string | null
+  repository_full_name?: string | null
+  release_id?: string | null
+  environment?: string | null
+  decision?: EnterpriseReleaseApprovalDecision | '' | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface CreateEnterpriseReleaseApprovalRequest {
+  org_name?: string | null
+  release_id: string
+  repository_full_name: string
+  branch?: string | null
+  target_sha?: string | null
+  environment: string
+  decision: EnterpriseReleaseApprovalDecision
+  approver: string
+  ticket_id?: string | null
+  evidence_packet_hash?: string | null
+  evidence_packet_uri?: string | null
+  evidence_summary?: Record<string, unknown>
+  risk_severity?: EnterpriseReleaseApprovalRiskSeverity | null
+  risk_acceptance_reason?: string | null
+  expires_at?: number | null
+}
+
 interface JiraCoverageFilters {
   hours: number
   repo_full_name: string
@@ -428,6 +488,12 @@ interface ControlPlaneState {
   isEnterpriseAdoptionProfileLoading: boolean
   isEnterpriseAdoptionProfileSaving: boolean
   enterpriseAdoptionProfileError: string | null
+  releaseApprovals: EnterpriseReleaseApprovalRecord[]
+  releaseApprovalsTotal: number
+  releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
+  isReleaseApprovalsLoading: boolean
+  isReleaseApprovalSubmitting: boolean
+  releaseApprovalError: string | null
   userRole: string | null
   userClientId: string | null
   userOrgId: string | null
@@ -495,6 +561,8 @@ interface ControlPlaneActions {
   loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; org_name?: string }) => Promise<EvidencePacket | null>
   loadEnterpriseAdoptionProfile: (orgName?: string) => Promise<EnterpriseAdoptionProfile | null>
   saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
+  loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
+  createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
   loadMe: () => Promise<boolean>
   createOrg: (payload: { login: string; name?: string }) => Promise<CreateOrgResponse | null>
   setSelectedOrgName: (orgName: string) => void
@@ -1212,6 +1280,12 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   isEnterpriseAdoptionProfileLoading: false,
   isEnterpriseAdoptionProfileSaving: false,
   enterpriseAdoptionProfileError: null,
+  releaseApprovals: [],
+  releaseApprovalsTotal: 0,
+  releaseApprovalsFilters: { limit: 10, offset: 0 },
+  isReleaseApprovalsLoading: false,
+  isReleaseApprovalSubmitting: false,
+  releaseApprovalError: null,
   userRole: null,
   userClientId: null,
   userOrgId: null,
@@ -1824,6 +1898,89 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
   },
 
+  loadEnterpriseReleaseApprovals: async (query = {}) => {
+    const { serverConfig, selectedOrgName, releaseApprovalsFilters } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: EnterpriseReleaseApprovalQuery = {
+      ...releaseApprovalsFilters,
+      ...query,
+      org_name: orgName ?? null,
+      repository_full_name: query.repository_full_name?.trim() || releaseApprovalsFilters.repository_full_name || null,
+      release_id: query.release_id?.trim() || releaseApprovalsFilters.release_id || null,
+      environment: query.environment?.trim() || releaseApprovalsFilters.environment || null,
+      decision: query.decision ?? releaseApprovalsFilters.decision ?? null,
+      limit: query.limit ?? releaseApprovalsFilters.limit ?? 10,
+      offset: query.offset ?? releaseApprovalsFilters.offset ?? 0,
+    }
+
+    set({ isReleaseApprovalsLoading: true, releaseApprovalError: null, releaseApprovalsFilters: nextQuery })
+    try {
+      const response = await tauriInvoke<EnterpriseReleaseApprovalListResponse>('cmd_server_list_enterprise_release_approvals', {
+        config: serverConfig,
+        query: nextQuery,
+      })
+      set({
+        releaseApprovals: response.items,
+        releaseApprovalsTotal: response.total,
+        isReleaseApprovalsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        releaseApprovalError: message,
+        isReleaseApprovalsLoading: false,
+      })
+      return null
+    }
+  },
+
+  createEnterpriseReleaseApproval: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const effectiveOrgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+
+    set({ isReleaseApprovalSubmitting: true, releaseApprovalError: null })
+    try {
+      const record = await tauriInvoke<EnterpriseReleaseApprovalRecord>('cmd_server_create_enterprise_release_approval', {
+        config: serverConfig,
+        payload: {
+          ...payload,
+          org_name: effectiveOrgName ?? null,
+          release_id: payload.release_id.trim(),
+          repository_full_name: payload.repository_full_name.trim(),
+          branch: payload.branch?.trim() || null,
+          target_sha: payload.target_sha?.trim() || null,
+          environment: payload.environment.trim(),
+          decision: payload.decision,
+          approver: payload.approver.trim(),
+          ticket_id: payload.ticket_id?.trim() || null,
+          evidence_packet_hash: payload.evidence_packet_hash?.trim() || null,
+          evidence_packet_uri: payload.evidence_packet_uri?.trim() || null,
+          evidence_summary: payload.evidence_summary ?? {},
+          risk_severity: payload.risk_severity ?? 'none',
+          risk_acceptance_reason: payload.risk_acceptance_reason?.trim() || null,
+          expires_at: payload.expires_at ?? null,
+        },
+      })
+      set((state) => ({
+        releaseApprovals: [record, ...state.releaseApprovals].slice(0, state.releaseApprovalsFilters.limit ?? 10),
+        releaseApprovalsTotal: state.releaseApprovalsTotal + 1,
+        isReleaseApprovalSubmitting: false,
+        releaseApprovalError: null,
+      }))
+      return record
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        releaseApprovalError: message,
+        isReleaseApprovalSubmitting: false,
+      })
+      return null
+    }
+  },
+
   exportAuditData: async (params) => {
     const { serverConfig } = get()
     if (!serverConfig) return null
@@ -2283,6 +2440,12 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       isEnterpriseAdoptionProfileLoading: false,
       isEnterpriseAdoptionProfileSaving: false,
       enterpriseAdoptionProfileError: null,
+      releaseApprovals: [],
+      releaseApprovalsTotal: 0,
+      releaseApprovalsFilters: { limit: 10, offset: 0 },
+      isReleaseApprovalsLoading: false,
+      isReleaseApprovalSubmitting: false,
+      releaseApprovalError: null,
       userRole: null,
       userClientId: null,
       userOrgId: null,

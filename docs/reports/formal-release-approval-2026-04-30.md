@@ -158,14 +158,14 @@ Production smoke results:
 - The returned `approval_hash` was 64 hex characters.
 - Authenticated follow-up list for `KAN-37-runtime-smoke` returned `total=1`.
 
-## Remaining Work
+## KAN-43 Follow-Up
 
-KAN-37 intentionally does not include:
+KAN-43 adds the dashboard approval wizard that KAN-37 intentionally left out.
 
-- dashboard approval wizard.
+Still remaining after KAN-43:
+
 - multi-approver release quorum.
 - external signing workflow.
 - release gate enforcement based on approval state.
-- AI SDK Copilot.
 
-The next major product feature remains Vercel AI SDK Copilot after KAN-37 is merged and validated.
+Vercel AI SDK Copilot was implemented separately through KAN-38 through KAN-42.

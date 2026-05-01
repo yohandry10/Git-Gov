@@ -115,9 +115,20 @@ The table is append-only in this MVP. There is no update or delete endpoint. A c
 - The admin audit entry stores only release metadata, decision, risk level, ticket ID and approval hash.
 - Evidence URIs deliberately reject `file://` and custom protocol values.
 
-## Non-Goals
+## KAN-43 Dashboard Follow-Up
 
-- No dashboard approval wizard in this ticket.
+KAN-43 adds the first dashboard release approval wizard on top of this backend API.
+
+The follow-up adds:
+
+- recent approval list in the admin dashboard.
+- create approval form with evidence hash, approver, decision, risk, expiration and explicit operator confirmation.
+- Tauri client commands for the existing list/create backend routes.
+
+The server-side validation and append-only data model remain owned by KAN-37.
+
+## Remaining Non-Goals
+
 - No multi-approver quorum engine.
 - No cryptographic human signature.
 - No automatic release gate enforcement from approval state.

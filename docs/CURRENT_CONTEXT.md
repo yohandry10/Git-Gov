@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-42`
+Ticket: `KAN-43`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -34,6 +34,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
+- Current follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -954,6 +955,38 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Head SHA `7ad1c9dc947a2ff50e451f4caacc8125874527aa`.
   - Result: `status=ai`, `ok=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
   - Artifact `governance-copilot-ai-mode-validation`, ID `6744359123`, expires `2026-07-30T02:58:40Z`.
+
+## Current KAN-43 Implementation Notes
+
+- Jira: `KAN-43 - Dashboard release approval wizard MVP`.
+- Implementation branch: `product/KAN-43-release-approval-dashboard`.
+- Implementation PR: `#140 - product(KAN-43): add release approval dashboard`.
+- Design: `docs/design/release-approval-dashboard-mvp.md`.
+- Report: `docs/reports/release-approval-dashboard-2026-05-01.md`.
+- Scope:
+  - add `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
+  - add admin dashboard create/list UI for formal release approvals.
+  - add Zustand release approval state and list/create actions.
+  - add Tauri client structs, methods, commands and command registration for `GET /enterprise/release-approvals` and `POST /enterprise/release-approvals`.
+  - reuse the existing KAN-37 backend API and validation.
+- Client validation:
+  - release, repository, environment, approver and evidence hash are required.
+  - repository must look like `owner/repo`.
+  - evidence hash must be 64 hex characters.
+  - optional target SHA, ticket ID, and evidence URI are shape-validated.
+  - high/critical risk cannot be approved directly.
+  - accepted-risk requires non-`none` severity, reason and 1-366 day expiration.
+  - operator confirmation is required before submit.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: `23` passed.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: `21` passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: `25` test files passed, `280` tests passed.
+  - `npm run build` from `gitgov`: passed with existing Vite large chunk warning.
 
 ## Current KAN-28 Implementation Notes
 

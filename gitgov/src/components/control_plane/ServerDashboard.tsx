@@ -17,6 +17,7 @@ import { PolicyEditorPanel } from './PolicyEditorPanel'
 import { ExportPanel } from './ExportPanel'
 import { EvidencePacketPanel } from './EvidencePacketPanel'
 import { EnterpriseAdoptionPanel } from './EnterpriseAdoptionPanel'
+import { ReleaseApprovalPanel } from './ReleaseApprovalPanel'
 import { GovernanceCopilotPanel } from './GovernanceCopilotPanel'
 import { MaintenanceOverlay } from './MaintenanceOverlay'
 import { Modal } from '@/components/shared/Modal'
@@ -387,6 +388,8 @@ export function ServerDashboard() {
           <EvidencePacketPanel />
 
           <EnterpriseAdoptionPanel />
+
+          <ReleaseApprovalPanel />
 
           <GovernanceCopilotPanel />
 
