@@ -303,17 +303,10 @@ fn release_governance_default_policy(environment: &str) -> ReleaseGovernancePoli
     }
 }
 
-fn release_governance_policy_from_profile(
-    profile: Option<&serde_json::Value>,
+fn release_governance_policy_from_object(
+    policy: &serde_json::Map<String, serde_json::Value>,
     environment: &str,
 ) -> ReleaseGovernancePolicy {
-    let Some(policy) = profile
-        .and_then(|profile| profile.get("release_governance"))
-        .and_then(|value| value.as_object())
-    else {
-        return release_governance_default_policy(environment);
-    };
-
     let mode = policy
         .get("mode")
         .and_then(|value| value.as_str())
@@ -382,6 +375,44 @@ fn release_governance_policy_from_profile(
         enforcement,
         quorum_rules,
     }
+}
+
+fn release_governance_policy_from_profile(
+    profile: Option<&serde_json::Value>,
+    environment: &str,
+) -> ReleaseGovernancePolicy {
+    let Some(policy) = profile
+        .and_then(|profile| profile.get("release_governance"))
+        .and_then(|value| value.as_object())
+    else {
+        return release_governance_default_policy(environment);
+    };
+
+    let requested_environment = environment.trim().to_ascii_lowercase();
+    if let Some(override_policy) = policy
+        .get("environment_overrides")
+        .and_then(|value| value.as_array())
+        .and_then(|overrides| {
+            overrides.iter().find_map(|candidate| {
+                let object = candidate.as_object()?;
+                let candidate_environment = object
+                    .get("environment")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())?
+                    .to_ascii_lowercase();
+                if candidate_environment == requested_environment {
+                    Some(object)
+                } else {
+                    None
+                }
+            })
+        })
+    {
+        return release_governance_policy_from_object(override_policy, environment);
+    }
+
+    release_governance_policy_from_object(policy, environment)
 }
 
 fn release_approval_role(record: &EnterpriseReleaseApprovalRecord) -> Option<String> {
@@ -1095,6 +1126,88 @@ mod release_approval_tests {
         assert!(!evaluation.policy_satisfied);
         assert!(evaluation.blocking);
         assert_eq!(evaluation.required_approval_count, 1);
+    }
+
+    #[test]
+    fn release_governance_profile_uses_matching_environment_override() {
+        let profile = json!({
+            "release_governance": {
+                "mode": "record-only",
+                "environment": "staging",
+                "approval_required": false,
+                "enforcement": "disabled",
+                "quorum": {
+                    "enabled": false,
+                    "rules": []
+                },
+                "environment_overrides": [
+                    {
+                        "mode": "approval-required",
+                        "environment": "production",
+                        "approval_required": true,
+                        "enforcement": "blocking",
+                        "quorum": {
+                            "enabled": false,
+                            "rules": []
+                        }
+                    }
+                ]
+            }
+        });
+        let policy = release_governance_policy_from_profile(Some(&profile), "production");
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            policy,
+            &[],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.policy.mode, "approval-required");
+        assert_eq!(evaluation.policy.environment, "production");
+        assert_eq!(evaluation.status, "blocked");
+        assert!(evaluation.blocking);
+    }
+
+    #[test]
+    fn release_governance_profile_falls_back_when_environment_override_does_not_match() {
+        let profile = json!({
+            "release_governance": {
+                "mode": "record-only",
+                "environment": "staging",
+                "approval_required": false,
+                "enforcement": "disabled",
+                "quorum": {
+                    "enabled": false,
+                    "rules": []
+                },
+                "environment_overrides": [
+                    {
+                        "mode": "approval-required",
+                        "environment": "production",
+                        "approval_required": true,
+                        "enforcement": "blocking",
+                        "quorum": {
+                            "enabled": false,
+                            "rules": []
+                        }
+                    }
+                ]
+            }
+        });
+        let mut query = evaluation_query();
+        query.environment = "staging".to_string();
+        let policy = release_governance_policy_from_profile(Some(&profile), "staging");
+        let evaluation = evaluate_release_governance_policy(
+            &query,
+            policy,
+            &[],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.policy.mode, "record-only");
+        assert_eq!(evaluation.policy.environment, "staging");
+        assert_eq!(evaluation.status, "recorded");
+        assert!(!evaluation.blocking);
     }
 
     #[test]

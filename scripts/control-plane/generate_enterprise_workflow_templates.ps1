@@ -65,6 +65,7 @@ function New-ReleaseGovernancePolicy {
       approval_required = $false
       enforcement = "advisory"
       quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+      environment_overrides = @()
     }
   }
   if ($Mode -eq "approval-required") {
@@ -74,6 +75,7 @@ function New-ReleaseGovernancePolicy {
       approval_required = $true
       enforcement = "blocking"
       quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+      environment_overrides = @()
     }
   }
   if ($Mode -eq "quorum-required") {
@@ -89,6 +91,7 @@ function New-ReleaseGovernancePolicy {
           [pscustomobject]@{ role = "security"; required = 1 }
         )
       }
+      environment_overrides = @()
     }
   }
   return [pscustomobject]@{
@@ -97,6 +100,7 @@ function New-ReleaseGovernancePolicy {
     approval_required = $false
     enforcement = "disabled"
     quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+    environment_overrides = @()
   }
 }
 
@@ -120,28 +124,77 @@ function Normalize-ReleaseGovernancePolicy {
   }
 
   $normalized = New-ReleaseGovernancePolicy -Mode $mode -Environment $environment
-  if ($mode -ne "quorum-required") {
-    return $normalized
+  if ($mode -eq "quorum-required") {
+    $quorumProperty = $Policy.PSObject.Properties["quorum"]
+    $rulesProperty = if ($quorumProperty -and $null -ne $quorumProperty.Value) { $quorumProperty.Value.PSObject.Properties["rules"] } else { $null }
+    $rules = New-Object System.Collections.Generic.List[object]
+    if ($rulesProperty -and $rulesProperty.Value) {
+      foreach ($rule in @($rulesProperty.Value)) {
+        $roleProperty = $rule.PSObject.Properties["role"]
+        $requiredProperty = $rule.PSObject.Properties["required"]
+        $role = if ($roleProperty) { ([string]$roleProperty.Value).Trim().ToLowerInvariant() } else { "" }
+        $required = if ($requiredProperty) { [int]$requiredProperty.Value } else { 1 }
+        if (-not [string]::IsNullOrWhiteSpace($role)) {
+          $rules.Add([pscustomobject]@{ role = $role; required = [Math]::Max(1, [Math]::Min(20, $required)) }) | Out-Null
+        }
+      }
+    }
+    if ($rules.Count -gt 0) {
+      $normalized.quorum = [pscustomobject]@{ enabled = $true; rules = @($rules.ToArray()) }
+    }
   }
 
-  $quorumProperty = $Policy.PSObject.Properties["quorum"]
-  $rulesProperty = if ($quorumProperty -and $null -ne $quorumProperty.Value) { $quorumProperty.Value.PSObject.Properties["rules"] } else { $null }
-  $rules = New-Object System.Collections.Generic.List[object]
-  if ($rulesProperty -and $rulesProperty.Value) {
-    foreach ($rule in @($rulesProperty.Value)) {
-      $roleProperty = $rule.PSObject.Properties["role"]
-      $requiredProperty = $rule.PSObject.Properties["required"]
-      $role = if ($roleProperty) { ([string]$roleProperty.Value).Trim().ToLowerInvariant() } else { "" }
-      $required = if ($requiredProperty) { [int]$requiredProperty.Value } else { 1 }
-      if (-not [string]::IsNullOrWhiteSpace($role)) {
-        $rules.Add([pscustomobject]@{ role = $role; required = [Math]::Max(1, [Math]::Min(20, $required)) }) | Out-Null
+  $overrides = New-Object System.Collections.Generic.List[object]
+  $seenOverrideEnvironments = New-Object 'System.Collections.Generic.HashSet[string]'
+  $overridesProperty = $Policy.PSObject.Properties["environment_overrides"]
+  if ($overridesProperty -and $overridesProperty.Value) {
+    foreach ($override in @($overridesProperty.Value)) {
+      $overridePolicy = Normalize-ReleaseGovernancePolicy $override
+      $overridePolicy.environment_overrides = @()
+      $environmentKey = ([string]$overridePolicy.environment).Trim().ToLowerInvariant()
+      if (-not [string]::IsNullOrWhiteSpace($environmentKey) -and $seenOverrideEnvironments.Add($environmentKey)) {
+        $overrides.Add($overridePolicy) | Out-Null
       }
     }
   }
-  if ($rules.Count -gt 0) {
-    $normalized.quorum = [pscustomobject]@{ enabled = $true; rules = @($rules.ToArray()) }
-  }
+  $normalized.environment_overrides = @($overrides.ToArray())
   return $normalized
+}
+
+function Get-ReleaseGovernancePolicies {
+  param($Policy)
+  $policies = New-Object System.Collections.Generic.List[object]
+  $policies.Add($Policy) | Out-Null
+  $overridesProperty = $Policy.PSObject.Properties["environment_overrides"]
+  if ($overridesProperty -and $overridesProperty.Value) {
+    foreach ($override in @($overridesProperty.Value)) {
+      $policies.Add($override) | Out-Null
+    }
+  }
+  return @($policies.ToArray())
+}
+
+function Test-ReleaseGovernanceRequiresFormalApproval {
+  param($Policy)
+  return @(Get-ReleaseGovernancePolicies $Policy | Where-Object { $_.mode -ne "record-only" }).Count -gt 0
+}
+
+function Get-ReleaseGovernanceGatePolicy {
+  param($Policy)
+  $blocking = @(Get-ReleaseGovernancePolicies $Policy | Where-Object { $_.mode -in @("approval-required", "quorum-required") } | Select-Object -First 1)
+  if ($blocking.Count -gt 0) { return $blocking[0] }
+  $nonRecord = @(Get-ReleaseGovernancePolicies $Policy | Where-Object { $_.mode -ne "record-only" } | Select-Object -First 1)
+  if ($nonRecord.Count -gt 0) { return $nonRecord[0] }
+  return $Policy
+}
+
+function Get-ReleaseGovernanceOverrideSummary {
+  param($Policy)
+  $overridesProperty = $Policy.PSObject.Properties["environment_overrides"]
+  if (-not $overridesProperty -or -not $overridesProperty.Value -or @($overridesProperty.Value).Count -eq 0) {
+    return "none"
+  }
+  return ((@($overridesProperty.Value) | ForEach-Object { "$($_.environment):$($_.mode)" }) -join ", ")
 }
 
 function Add-UniqueObject {
@@ -1238,6 +1291,8 @@ if ($null -eq $Modules -or $Modules.Count -eq 0) {
 $providersNormalized = Normalize-List $Providers
 $modulesNormalized = Normalize-List $Modules
 $releaseGovernance = Normalize-ReleaseGovernancePolicy $profileReleaseGovernance
+$releaseGovernanceRequiresFormalApproval = Test-ReleaseGovernanceRequiresFormalApproval $releaseGovernance
+$releaseGovernanceGatePolicy = Get-ReleaseGovernanceGatePolicy $releaseGovernance
 
 $unknownProviders = @($providersNormalized | Where-Object { $_ -notin $knownProviders })
 if ($unknownProviders.Count -gt 0) {
@@ -1249,8 +1304,8 @@ if ($unknownModules.Count -gt 0) {
   Fail-Templates "Unknown module(s): $($unknownModules -join ', '). Known modules: $($knownModules -join ', ')."
 }
 
-if ($releaseGovernance.mode -ne "record-only" -and $modulesNormalized -notcontains "formal-approval") {
-  Fail-Templates "Release governance mode '$($releaseGovernance.mode)' requires the formal-approval module. Use record-only for non-blocking defaults."
+if ($releaseGovernanceRequiresFormalApproval -and $modulesNormalized -notcontains "formal-approval") {
+  Fail-Templates "Non-record-only release governance requires the formal-approval module. Use record-only for non-blocking defaults."
 }
 
 if (($modulesNormalized -contains "traceability") -and [string]::IsNullOrWhiteSpace($JiraProjectKey)) {
@@ -1278,8 +1333,8 @@ $reviewMode = if ($PolicyPreset -eq "strict") { "StaticOnly" } else { "Dependenc
 $blockReachableFindings = "false"
 $acceptedFindingBaseline = if ($PolicyPreset -eq "audit-only") { "999" } else { "1" }
 $trendEnforcementRequired = $PolicyPreset -eq "strict" -or ($modulesNormalized -contains "trend-enforcement")
-$releaseGovernanceGateRequired = $releaseGovernance.mode -ne "record-only" -and ($modulesNormalized -contains "formal-approval")
-$releaseGovernanceEnforceGate = if ($releaseGovernance.mode -in @("approval-required", "quorum-required")) { "true" } else { "false" }
+$releaseGovernanceGateRequired = $releaseGovernanceRequiresFormalApproval -and ($modulesNormalized -contains "formal-approval")
+$releaseGovernanceEnforceGate = if ($releaseGovernanceGatePolicy.mode -in @("approval-required", "quorum-required")) { "true" } else { "false" }
 $releaseGovernanceFailOnWouldBlock = "false"
 
 $tokens = @{
@@ -1291,7 +1346,7 @@ $tokens = @{
   REVIEW_MODE = $reviewMode
   BLOCK_REACHABLE_FINDINGS = $blockReachableFindings
   ACCEPTED_FINDING_BASELINE = $acceptedFindingBaseline
-  RELEASE_GOVERNANCE_ENVIRONMENT = $releaseGovernance.environment
+  RELEASE_GOVERNANCE_ENVIRONMENT = $releaseGovernanceGatePolicy.environment
   RELEASE_GOVERNANCE_ENFORCE_GATE = $releaseGovernanceEnforceGate
   RELEASE_GOVERNANCE_FAIL_ON_WOULD_BLOCK = $releaseGovernanceFailOnWouldBlock
 }
@@ -1409,13 +1464,13 @@ if ($modulesNormalized -contains "evidence-packets") {
 
 if ($modulesNormalized -contains "formal-approval") {
   $releasePolicyDetail = if ($releaseGovernance.mode -eq "record-only") {
-    "Default record-only mode stores release approval evidence and does not block customer releases."
+    "Default record-only mode stores release approval evidence and does not block customer releases. Environment overrides: $(Get-ReleaseGovernanceOverrideSummary $releaseGovernance)."
   } else {
     "Customer selected $($releaseGovernance.mode) for $($releaseGovernance.environment); review this explicit opt-in policy before installing any blocking workflow."
   }
   Add-UniqueObject $manualSteps ([pscustomobject]@{ step = "Review release approval policy"; detail = $releasePolicyDetail }) "step"
   if ($releaseGovernanceGateRequired) {
-    Add-UniqueObject $manualSteps ([pscustomobject]@{ step = "Validate release governance gate manually"; detail = "Run release-governance-gate.yml with workflow_dispatch before using it as a blocking release check. Default enforcement follows the selected release_governance mode." }) "step"
+    Add-UniqueObject $manualSteps ([pscustomobject]@{ step = "Validate release governance gate manually"; detail = "Run release-governance-gate.yml with workflow_dispatch before using it as a blocking release check. Default enforcement follows the selected release_governance mode or matching environment override." }) "step"
   }
 }
 
@@ -1477,6 +1532,7 @@ $readme.Add(('Default branch: `{0}`' -f $DefaultBranch)) | Out-Null
 $readme.Add(('Policy preset: `{0}`' -f $PolicyPreset)) | Out-Null
 $readme.Add(('Release governance: `{0}`' -f $releaseGovernance.mode)) | Out-Null
 $readme.Add(('Release enforcement: `{0}`' -f $releaseGovernance.enforcement)) | Out-Null
+$readme.Add(('Release environment overrides: `{0}`' -f (Get-ReleaseGovernanceOverrideSummary $releaseGovernance))) | Out-Null
 if (-not [string]::IsNullOrWhiteSpace($JiraProjectKey)) {
   $readme.Add(('Jira project key: `{0}`' -f $JiraProjectKey)) | Out-Null
 }
@@ -1486,6 +1542,7 @@ $readme.Add("") | Out-Null
 $readme.Add(('- Mode: `{0}`' -f $releaseGovernance.mode)) | Out-Null
 $readme.Add(('- Environment: `{0}`' -f $releaseGovernance.environment)) | Out-Null
 $readme.Add(('- Enforcement: `{0}`' -f $releaseGovernance.enforcement)) | Out-Null
+$readme.Add(('- Environment overrides: `{0}`' -f (Get-ReleaseGovernanceOverrideSummary $releaseGovernance))) | Out-Null
 if ($releaseGovernance.quorum.enabled) {
   foreach ($rule in $releaseGovernance.quorum.rules) {
     $readme.Add(('- Quorum `{0}`: `{1}` required' -f $rule.role, $rule.required)) | Out-Null

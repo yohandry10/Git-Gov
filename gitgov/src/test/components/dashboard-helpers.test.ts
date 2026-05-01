@@ -181,6 +181,7 @@ describe('dashboard-helpers enterprise adoption pack', () => {
         enabled: false,
         rules: [],
       },
+      environment_overrides: [],
     })
     expect(pack.policy_rules).toContainEqual({
       rule: 'Release approval governance',
@@ -222,7 +223,7 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(pack.open_product_gaps).toEqual([])
     expect(pack.manual_steps).toContainEqual({
       step: 'Review release approval policy',
-      detail: 'Default record-only mode stores release approval evidence and does not block customer releases.',
+      detail: 'Default record-only mode stores release approval evidence and does not block customer releases. Environment overrides: none.',
     })
   })
 
@@ -277,6 +278,10 @@ describe('dashboard-helpers enterprise adoption pack', () => {
       setting: 'manual opt-in workflow',
     })
     expect(pack.policy_rules).toContainEqual({
+      rule: 'Release governance environment overrides',
+      setting: 'none',
+    })
+    expect(pack.policy_rules).toContainEqual({
       rule: 'Release approval quorum',
       setting: 'engineering:1, security:1',
     })
@@ -284,6 +289,44 @@ describe('dashboard-helpers enterprise adoption pack', () => {
       '.github/workflows/release-governance-gate.yml',
     )
     expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
+  })
+
+  it('generates release governance gate from environment override opt-in', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
+      release_governance: {
+        mode: 'record-only',
+        environment: 'staging',
+        approval_required: false,
+        enforcement: 'disabled',
+        quorum: { enabled: false, rules: [] },
+        environment_overrides: [
+          {
+            mode: 'approval-required',
+            environment: 'production',
+            approval_required: true,
+            enforcement: 'blocking',
+            quorum: { enabled: false, rules: [] },
+          },
+        ],
+      },
+    }
+
+    const pack = buildEnterpriseAdoptionPack(profile, '2026-05-01T00:00:00.000Z')
+    const workflowPack = buildEnterpriseWorkflowTemplatePack(profile, '2026-05-01T00:00:00.000Z')
+    const gate = workflowPack.files.find((file) => file.file === '.github/workflows/release-governance-gate.yml')
+
+    expect(pack.release_governance.mode).toBe('record-only')
+    expect(pack.release_governance.environment_overrides).toHaveLength(1)
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Release governance environment overrides',
+      setting: 'production:approval-required',
+    })
+    expect(pack.workflow_plan.map((workflow) => workflow.file)).toContain('.github/workflows/release-governance-gate.yml')
+    expect(gate?.content).toContain('default: "production"')
+    expect(gate?.content).toContain('default: true')
+    expect(JSON.stringify(workflowPack)).not.toContain('GITGOV_API_KEY=')
   })
 
   it('validates customer adoption profile inputs', () => {
