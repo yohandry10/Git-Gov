@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`
 
 ## Purpose
 
@@ -162,6 +162,47 @@ Remote PR safety boundaries:
 - the script does not modify branch protection or required checks.
 - the script does not merge the PR.
 - token values are never printed.
+
+## Validate Remote Workflow Readiness
+
+KAN-51 adds a read-only validator for checking whether the target GitHub repository has the expected workflow files and required GitHub Actions configuration names after local install or remote PR merge.
+
+Run in report-only mode first:
+
+```powershell
+.\scripts\control-plane\validate_enterprise_workflow_installation_readiness.ps1 `
+  -PackDir out/enterprise-workflow-templates `
+  -Repository owner/repo `
+  -Ref main `
+  -ReportOnly `
+  -OutputPath out/workflow-readiness.json
+```
+
+Use the dashboard pack JSON if the templates came from the UI:
+
+```powershell
+.\scripts\control-plane\validate_enterprise_workflow_installation_readiness.ps1 `
+  -PackPath C:\path\to\workflow-template-pack.json `
+  -Repository owner/repo `
+  -Ref main `
+  -ReportOnly `
+  -OutputPath out/workflow-readiness.json
+```
+
+Remove `-ReportOnly` only when the validation should fail the calling process if anything is missing or different.
+
+Status values:
+
+- `ready`: all workflows match and all required variable/secret names are present.
+- `needs-action`: at least one workflow is missing/different, or a required variable/secret name is missing.
+
+Readiness safety boundaries:
+
+- read-only GitHub API calls only.
+- no `.env` reads.
+- no secret values are read; GitHub Actions secrets are checked by name only.
+- no GitHub Actions variables or secrets are created.
+- no branch, file, PR, branch protection, workflow dispatch, or provider mutation.
 
 ## Validate Direct Provider Connections
 
