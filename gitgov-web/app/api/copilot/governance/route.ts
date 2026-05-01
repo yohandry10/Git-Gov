@@ -89,6 +89,10 @@ function normalizeGoogleModel(rawModel: string | undefined) {
     return model;
 }
 
+function cleanServerEnvValue(value: string | undefined) {
+    return value?.replace(/^\uFEFF/, '').trim();
+}
+
 function resolveAiGenerationTarget(): { target?: CopilotAiTarget; warning?: string } {
     if (process.env.GITGOV_COPILOT_DISABLE_AI === 'true') {
         return { warning: 'AI generation skipped because GITGOV_COPILOT_DISABLE_AI is enabled.' };
@@ -99,7 +103,9 @@ function resolveAiGenerationTarget(): { target?: CopilotAiTarget; warning?: stri
         return { warning: 'AI generation skipped because GITGOV_COPILOT_PROVIDER is disabled.' };
     }
 
-    const googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    const googleApiKey = cleanServerEnvValue(
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY,
+    );
     if ((provider === 'google' || provider === 'auto') && googleApiKey) {
         const model = normalizeGoogleModel(
             process.env.GITGOV_COPILOT_GOOGLE_MODEL
