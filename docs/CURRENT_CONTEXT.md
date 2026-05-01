@@ -32,7 +32,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
-- Current active follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
+- Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -869,24 +869,38 @@ Latest KAN-39 governance copilot dashboard baseline:
 ## Current KAN-41 Implementation Notes
 
 - Jira: `KAN-41 - Activate governance copilot AI mode on Vercel`.
-- Implementation branch: `product/KAN-41-google-ai-sdk-copilot`.
+- Implementation PRs:
+  - `#133 - product(KAN-41): add Google AI SDK copilot provider`.
+  - `#134 - fix(KAN-41): add sanitized copilot AI failure diagnostics`.
+  - `#135 - fix(KAN-41): include sanitized copilot AI runtime cause`.
+  - `#136 - fix(KAN-41): sanitize Google AI env key`.
+- Final implementation commit: `ba61d16 fix(KAN-41): sanitize Google AI env key`.
 - Report: `docs/reports/google-ai-sdk-copilot-provider-2026-05-01.md`.
 - Scope:
   - add direct Google Gemini support to `POST /api/copilot/governance` through `@ai-sdk/google`.
   - keep AI Gateway as an optional provider path.
   - keep deterministic fallback if no provider is configured or generation fails.
   - do not change the existing Rust `/chat/ask` Gemini bot path.
+  - strip leading UTF-8 BOM and surrounding whitespace from server-side Google/Gemini env values before using them as provider keys.
 - Vercel production env configuration was updated without printing secret values:
   - `GOOGLE_GENERATIVE_AI_API_KEY`.
   - `GITGOV_COPILOT_PROVIDER=google`.
   - `GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash`.
+- Production env correction:
+  - first strict validation showed an invisible BOM in the uploaded Google key value.
+  - after the code stripped BOM/whitespace, strict validation showed the first local Gemini key was expired.
+  - the production secret was reconfigured from the effective local Gemini key used by the working local/server bot path.
+  - Vercel redeploy `https://git-8gwowu155-trivia1.vercel.app` reached `Ready` and is aliased to `https://www.gitgov.cloud`.
 - Preview remains fallback-only unless explicitly configured later.
 - Local validation already run:
   - `pnpm run typecheck` from `gitgov-web`: passed.
   - `pnpm run lint` from `gitgov-web`: passed.
   - `pnpm run build` from `gitgov-web`: passed.
+  - `pnpm audit --prod` from `gitgov-web`: no known vulnerabilities.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
   - local route smoke with `GITGOV_COPILOT_PROVIDER=google` and Google key mapped from ignored local `GEMINI_API_KEY`: HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
-- After merge and Vercel production deploy, run:
+- Final production strict validation passed:
 
 ```powershell
 .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
@@ -895,6 +909,18 @@ Latest KAN-39 governance copilot dashboard baseline:
   -RequireAiMode `
   -OutputPath out\KAN-41-governance-copilot-google-ai-mode-validation.json
 ```
+
+Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, `0` warnings, and no raw answer or secrets stored.
+
+- Post-merge checks for final commit `ba61d16` passed:
+  - `CI` - run `25199526039`.
+  - `Release Readiness Gate` - run `25199526047`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25199526028`.
+  - `Secret Scan` - run `25199526038`.
+  - `Governance Correlation Smoke (Optional)` - run `25199526055`.
+  - `SonarQube Governance (Non-Blocking)` - run `25199526033`.
+  - `Public Naming Guard` - run `25199526037`.
+  - `Desktop Updater Readiness (Optional)` - run `25199526031`.
 
 ## Current KAN-28 Implementation Notes
 

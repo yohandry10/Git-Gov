@@ -28,6 +28,13 @@ GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash
 
 The key value was loaded from ignored local env files and was not printed.
 
+Configuration correction:
+
+- The first production validation attempt showed the initial uploaded key value contained an invisible UTF-8 BOM character, which made the Google provider reject the header before reaching Gemini.
+- After stripping BOM/whitespace in code, production validation showed the first local env file contained an expired Gemini key.
+- The production Vercel secret was reconfigured from the effective local Gemini key used by the working local/server bot path, without printing the value.
+- `POST /api/copilot/governance` now strips a leading BOM and surrounding whitespace from server-side Google/Gemini env values before creating the provider client.
+
 Preview remains unconfigured for Gemini so PR deployments continue to use fallback unless a preview-specific decision is made later.
 
 ## Implementation
@@ -39,6 +46,8 @@ Preview remains unconfigured for Gemini so PR deployments continue to use fallba
   - `disabled` skips generation.
   - `auto` chooses Google when a Google key is available, otherwise Gateway if configured, otherwise fallback.
 - Updated fallback text and runbook language to mention Google Gemini and AI Gateway.
+- Added sanitized AI generation diagnostics that expose only safe error class/code/status/message fragments after redacting known secrets, bearer tokens, and `key=` query values.
+- Added server-side cleanup for Google/Gemini env values before using them as provider keys.
 
 ## Local Validation
 
@@ -76,9 +85,9 @@ Sanitized result:
 - warnings: `0`.
 - raw answer was not stored in this report.
 
-## Production Validation Plan
+## Production Validation
 
-After merge and Vercel production deploy:
+Command:
 
 ```powershell
 .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
@@ -88,14 +97,36 @@ After merge and Vercel production deploy:
   -OutputPath out\KAN-41-governance-copilot-google-ai-mode-validation.json
 ```
 
-Expected result:
+Final production deployment:
+
+- URL: `https://git-8gwowu155-trivia1.vercel.app`.
+- Aliased to `https://www.gitgov.cloud`.
+- Trigger: Vercel redeploy after correcting `GOOGLE_GENERATIVE_AI_API_KEY`.
+
+Final sanitized result:
 
 - HTTP `200`.
 - `success=true`.
 - `mode=ai`.
 - `model=google/gemini-2.5-flash`.
-- evidence thresholds pass.
-- no provider secrets printed or stored.
+- citations: `4`.
+- sources: `4`.
+- ok sources: `4`.
+- warnings: `0`.
+- answer length: `419`.
+- answer SHA-256: `dcfc9ec8f49a5c91ccd0e0fafc0df4bef1903c9704a7349b7d27c5c8bd2f72d3`.
+- no provider secrets, Authorization headers, or raw answer text were printed or stored.
+
+Post-merge checks for implementation commit `ba61d16` passed:
+
+- `CI` - run `25199526039`.
+- `Release Readiness Gate` - run `25199526047`.
+- `Quality Gate Policy Matrix (Optional)` - run `25199526028`.
+- `Secret Scan` - run `25199526038`.
+- `Governance Correlation Smoke (Optional)` - run `25199526055`.
+- `SonarQube Governance (Non-Blocking)` - run `25199526033`.
+- `Public Naming Guard` - run `25199526037`.
+- `Desktop Updater Readiness (Optional)` - run `25199526031`.
 
 ## Residual Risk
 
