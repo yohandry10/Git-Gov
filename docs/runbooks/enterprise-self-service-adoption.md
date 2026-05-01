@@ -287,6 +287,54 @@ Automation safety boundaries:
 - no branch, PR, provider, workflow dispatch, or branch-protection mutation occurs.
 - not-ready output is non-blocking by default through `report_only=true`.
 
+## Monitor Onboarding Readiness Artifacts
+
+KAN-54 adds a GitHub Actions monitor that validates the latest KAN-53 onboarding readiness artifact is still present, fresh, and not expired.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-onboarding-readiness-artifact-monitor.yml
+```
+
+Manual run input:
+
+- `max_age_hours`: maximum accepted artifact age. Default is `192`.
+
+The monitor checks for artifacts with this prefix:
+
+```text
+enterprise-onboarding-readiness-
+```
+
+It uploads:
+
+```text
+enterprise-onboarding-readiness-artifact-monitor
+```
+
+Run the same check locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-onboarding-readiness.yml `
+  -ArtifactNamePrefix enterprise-onboarding-readiness- `
+  -MaxAgeHours 192 `
+  -GitHubToken $token `
+  -OutputPath out/enterprise-onboarding-readiness-artifact-monitor.json
+```
+
+Monitor safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- GitHub artifact metadata is read only through the GitHub token available to the caller.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- this monitor validates artifact freshness only; it does not fail because onboarding readiness is `needs-action`.
+
 ## Validate Direct Provider Connections
 
 Use this only when the customer or local operator has explicitly provided provider credentials through ignored env files or process environment variables.

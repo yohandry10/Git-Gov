@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-53`
+Ticket: `KAN-54`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -45,7 +45,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-51 - Remote workflow installation readiness validation`.
 - Latest completed follow-up: `KAN-52 - Enterprise onboarding readiness report`.
 - Latest completed follow-up: `KAN-53 - Automate enterprise onboarding readiness evidence`.
-- Current follow-up: none selected after `KAN-53`.
+- Current follow-up: `KAN-54 - Monitor enterprise onboarding readiness evidence artifacts`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1499,6 +1499,31 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748421926`.
   - Artifact status: not expired, expires at `2026-07-30T10:46:51Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, or provider webhook mutation was needed.
+
+## Current KAN-54 Work
+
+- Jira: `KAN-54 - Monitor enterprise onboarding readiness evidence artifacts`.
+- Branch: `ops/KAN-54-enterprise-onboarding-readiness-artifact-monitor`.
+- Goal: add a non-mutating GitHub Actions monitor that validates the latest KAN-53 `enterprise-onboarding-readiness-` artifact exists, is fresh, and is not expired.
+- Planned workflow: `.github/workflows/enterprise-onboarding-readiness-artifact-monitor.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-artifact-monitor-2026-05-01.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - no release blocking by default.
+- Initial local artifact validation passed:
+  - command used existing `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+  - workflow file: `enterprise-onboarding-readiness.yml`.
+  - artifact prefix: `enterprise-onboarding-readiness-`.
+  - latest successful source run: `25211644692`.
+  - artifact: `enterprise-onboarding-readiness-25211644692`.
+  - artifact ID: `6748421926`.
+  - result: `PASS`, artifact age `0.19h`, not expired.
 
 ## Latest KAN-47 Validation Notes
 
