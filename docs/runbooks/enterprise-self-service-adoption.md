@@ -1,8 +1,8 @@
 # Enterprise Self-Service Adoption
 
-Updated: 2026-04-30
+Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`
 
 ## Purpose
 
@@ -111,6 +111,57 @@ Safety boundaries:
 - unsafe paths such as `..`, rooted paths, drive-qualified paths, nested workflow paths, and non-YAML files are rejected.
 - the installer does not read `.env` files, provider tokens, or secret values.
 - the installer does not call GitHub APIs or mutate remote repositories.
+
+## Open A Remote Workflow Installation PR
+
+KAN-50 adds the remote PR path for customers who want GitGov to prepare the workflow installation change directly in GitHub.
+
+Dry-run first:
+
+```powershell
+.\scripts\control-plane\open_enterprise_workflow_template_pr.ps1 `
+  -PackDir out/enterprise-workflow-templates `
+  -Repository owner/repo `
+  -TicketId EX-123 `
+  -OutputPlanPath out/remote-workflow-pr-plan.json
+```
+
+Open a draft PR after reviewing the plan:
+
+```powershell
+.\scripts\control-plane\open_enterprise_workflow_template_pr.ps1 `
+  -PackDir out/enterprise-workflow-templates `
+  -Repository owner/repo `
+  -TicketId EX-123 `
+  -Apply `
+  -OutputPlanPath out/remote-workflow-pr-apply.json
+```
+
+Use `-Overwrite` only after reviewing differing existing workflow files:
+
+```powershell
+.\scripts\control-plane\open_enterprise_workflow_template_pr.ps1 `
+  -PackDir out/enterprise-workflow-templates `
+  -Repository owner/repo `
+  -TicketId EX-123 `
+  -Apply `
+  -Overwrite `
+  -OutputPlanPath out/remote-workflow-pr-overwrite.json
+```
+
+Use `-ReadyForReview` only when the PR should be opened as a normal non-draft PR.
+
+Remote PR safety boundaries:
+
+- dry-run is the default.
+- remote branch, commit, and PR creation require `-Apply`.
+- PRs are draft by default.
+- writes are limited to workflow files directly under `.github/workflows`.
+- existing differing workflow files are `blocked` unless `-Overwrite` is passed.
+- the script does not create GitHub Actions variables or secrets.
+- the script does not modify branch protection or required checks.
+- the script does not merge the PR.
+- token values are never printed.
 
 ## Validate Direct Provider Connections
 
