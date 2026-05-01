@@ -96,7 +96,7 @@ The installer copies reviewed template content. It does not certify that every c
 ## Non-Goals
 
 - No direct GitHub remote write or GitHub App installation.
-- No automatic PR creation in customer repositories.
+- No automatic PR creation in customer repositories inside KAN-35; follow-up KAN-50 adds an explicit dry-run-first remote PR script.
 - No direct provider credential/reachability checks.
 - No formal enterprise release approval model.
 - No Vercel AI SDK Copilot.
@@ -107,3 +107,4 @@ The installer copies reviewed template content. It does not certify that every c
 2. Start Vercel AI SDK Copilot after onboarding has enough complete evidence to explain.
 
 Follow-up `KAN-36` adds direct provider credential/reachability checks where a customer explicitly grants access.
+Follow-up `KAN-50` adds remote PR creation for reviewed workflow templates, still requiring explicit operator action before any remote mutation.

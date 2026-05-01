@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`; remote workflow installation PRs start in `KAN-50`.
 
 Current state:
 
@@ -32,7 +32,8 @@ Missing product packaging:
   - generate recommended workflows.
   - install recommended workflows after review.
     - local checkout installation now exists through `KAN-35`.
-    - direct GitHub App or PR-based remote installation remains future optional packaging.
+    - PR-based remote installation starts in `KAN-50`.
+    - direct GitHub App installation remains future optional packaging.
 - Configurable workflow templates:
   - audit-only.
   - moderate enforcement.
@@ -71,6 +72,7 @@ First MVP:
 - `scripts/control-plane/generate_enterprise_adoption_pack.ps1`.
 - `scripts/control-plane/generate_enterprise_workflow_templates.ps1`.
 - `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
+- `scripts/control-plane/open_enterprise_workflow_template_pr.ps1`.
 - `scripts/control-plane/validate_enterprise_provider_connections.ps1`.
 - `GET /enterprise/release-approvals`.
 - `POST /enterprise/release-approvals`.
@@ -82,6 +84,7 @@ First MVP:
 - `docs/design/workflow-template-generation-mvp.md`.
 - `docs/design/dashboard-workflow-template-pack-mvp.md`.
 - `docs/design/reviewed-workflow-installation-mvp.md`.
+- `docs/design/remote-workflow-installation-pr-mvp.md`.
 - `docs/design/provider-connection-validation-mvp.md`.
 - `docs/design/formal-release-approval-mvp.md`.
 - `docs/design/release-approval-dashboard-mvp.md`.
@@ -94,7 +97,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet mutate remote customer repositories through GitHub APIs, require cryptographic signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or block releases from approval state by default.
 
 Release governance default:
 
@@ -162,13 +165,13 @@ The agreed order is:
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
-5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based installation and dashboard approval workflows remain optional future packaging.
+5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based workflow installation starts in `KAN-50`; direct GitHub App installation remains optional future packaging.
 6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, AI-mode validation starts in `KAN-40`, and direct Google Gemini activation starts in `KAN-41`.
 
 ## Non-Goals
 
 - Do not claim GitGov removes all vulnerabilities.
-- Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement exist.
+- Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement are productionized for customer-selected policies.
 - Do not make multi-approver quorum or release-blocking enforcement default behavior; both must be explicit customer choices.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.
