@@ -2,16 +2,19 @@ use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
     AuditFilter, ChatAskRequest, ChatAskResponse, CliCommandInput, CliCommandListResponse,
     CliCommandResponse, CombinedEvent, CommitPipelineCorrelation, ControlPlaneClient,
-    CreateOrgInvitationRequest, CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse,
-    CreateOrgUserRequest, CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
-    EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse, EventPayload,
-    EvidencePacketQuery, EvidencePacketResponse, ExportLogEntry, ExportResponse,
-    FeatureRequestCreated, FeatureRequestInput, JenkinsCorrelationFilter, JiraCorrelateRequest,
-    JiraCorrelateResponse, JiraTicketDetailResponse, MeResponse, OrgInvitation,
-    OrgInvitationsResponse, OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry,
-    PolicyResponse, PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest,
-    RevokeApiKeyResponse, ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse,
-    TicketCoverageQuery, TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
+    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
+    CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
+    EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
+    EnterpriseReleaseApprovalListResponse, EnterpriseReleaseApprovalQuery,
+    EnterpriseReleaseApprovalRecord, EventPayload, EvidencePacketQuery, EvidencePacketResponse,
+    ExportLogEntry, ExportResponse, FeatureRequestCreated, FeatureRequestInput,
+    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
+    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgUser,
+    OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
+    PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
+    ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
+    TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::Outbox;
@@ -672,6 +675,40 @@ pub async fn cmd_server_upsert_enterprise_adoption_profile(
         });
         client
             .upsert_enterprise_adoption_profile(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_enterprise_release_approvals(
+    config: ServerConnectionConfig,
+    query: EnterpriseReleaseApprovalQuery,
+) -> Result<EnterpriseReleaseApprovalListResponse, String> {
+    run_blocking_command("LIST_ENTERPRISE_RELEASE_APPROVALS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_enterprise_release_approvals(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_enterprise_release_approval(
+    config: ServerConnectionConfig,
+    payload: CreateEnterpriseReleaseApprovalRequest,
+) -> Result<EnterpriseReleaseApprovalRecord, String> {
+    run_blocking_command("CREATE_ENTERPRISE_RELEASE_APPROVAL", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_enterprise_release_approval(&payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

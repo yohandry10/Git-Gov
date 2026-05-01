@@ -65,6 +65,12 @@ describe('useControlPlaneStore', () => {
       governanceCopilotResponse: null,
       isGovernanceCopilotLoading: false,
       governanceCopilotError: null,
+      releaseApprovals: [],
+      releaseApprovalsTotal: 0,
+      releaseApprovalsFilters: { limit: 10, offset: 0 },
+      isReleaseApprovalsLoading: false,
+      isReleaseApprovalSubmitting: false,
+      releaseApprovalError: null,
       displayTimezone: 'UTC',
       sseConnected: false,
       policyData: null,
@@ -335,6 +341,116 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().error).toBe('existing dashboard error')
       expect(useControlPlaneStore.getState().governanceCopilotError).toBe('Unauthorized')
       expect(useControlPlaneStore.getState().isGovernanceCopilotLoading).toBe(false)
+    })
+  })
+
+  describe('enterprise release approvals', () => {
+    it('loads release approvals with selected org scope', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        items: [{
+          id: 'approval-1',
+          org_id: 'org-1',
+          release_id: 'KAN-43',
+          repository_full_name: 'yohandry10/Git-Gov',
+          environment: 'production',
+          decision: 'approved',
+          approver: 'release.manager@example.com',
+          evidence_summary: {},
+          risk_severity: 'none',
+          approval_hash: 'a'.repeat(64),
+          created_by: 'admin',
+          created_at: 1,
+        }],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      })
+
+      const response = await useControlPlaneStore.getState().loadEnterpriseReleaseApprovals({
+        repository_full_name: 'yohandry10/Git-Gov',
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_enterprise_release_approvals', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          repository_full_name: 'yohandry10/Git-Gov',
+          release_id: null,
+          environment: null,
+          decision: null,
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(response?.total).toBe(1)
+      expect(useControlPlaneStore.getState().releaseApprovals[0].release_id).toBe('KAN-43')
+    })
+
+    it('creates release approval and prepends it to state', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const approval = {
+        id: 'approval-2',
+        org_id: 'org-1',
+        release_id: 'KAN-43',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+        environment: 'production',
+        decision: 'approved',
+        approver: 'release.manager@example.com',
+        ticket_id: 'KAN-43',
+        evidence_packet_hash: 'b'.repeat(64),
+        evidence_packet_uri: '/evidence/packets/tickets/KAN-43',
+        evidence_summary: {},
+        risk_severity: 'none',
+        approval_hash: 'c'.repeat(64),
+        created_by: 'admin',
+        created_at: 2,
+      }
+      mockInvoke.mockResolvedValueOnce(approval)
+
+      const response = await useControlPlaneStore.getState().createEnterpriseReleaseApproval({
+        release_id: ' KAN-43 ',
+        repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        environment: ' production ',
+        decision: 'approved',
+        approver: ' release.manager@example.com ',
+        ticket_id: ' KAN-43 ',
+        evidence_packet_hash: 'b'.repeat(64),
+        evidence_packet_uri: ' /evidence/packets/tickets/KAN-43 ',
+        evidence_summary: {},
+        risk_severity: 'none',
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_create_enterprise_release_approval', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          release_id: 'KAN-43',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          target_sha: null,
+          environment: 'production',
+          decision: 'approved',
+          approver: 'release.manager@example.com',
+          ticket_id: 'KAN-43',
+          evidence_packet_hash: 'b'.repeat(64),
+          evidence_packet_uri: '/evidence/packets/tickets/KAN-43',
+          evidence_summary: {},
+          risk_severity: 'none',
+          risk_acceptance_reason: null,
+          expires_at: null,
+        },
+      })
+      expect(response?.id).toBe('approval-2')
+      expect(useControlPlaneStore.getState().releaseApprovals[0].id).toBe('approval-2')
     })
   })
 })

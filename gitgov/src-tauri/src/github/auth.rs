@@ -1107,4 +1107,3 @@ mod tests {
         assert!(cache_get_token_json("yohandry10").is_none());
     }
 }
-
