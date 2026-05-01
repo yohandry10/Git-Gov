@@ -49,11 +49,44 @@ Local validation before PR:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
-Remaining validation before closure:
+PR `#164` merged on `main` as `e5c259d`.
 
-- PR checks.
-- first manual trend workflow run on `main` after merge.
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `e5c259d` passed:
+
+- `CI` - run `25212383270`.
+- `Release Readiness Gate` - run `25212383263`.
+- `Quality Gate Policy Matrix (Optional)` - run `25212383274`.
+- `Secret Scan` - run `25212383265`.
+- `Public Naming Guard` - run `25212383284`.
+- `Governance Correlation Smoke (Optional)` - run `25212383273`.
+- `Desktop Updater Readiness (Optional)` - run `25212383275`.
+- `SonarQube Governance (Non-Blocking)` - run `25212383279`.
+
+First manual trend workflow validation passed:
+
+- Workflow: `Enterprise Onboarding Readiness Trend Report`.
+- Run: `25212387234`.
+- Artifact: `enterprise-onboarding-readiness-trend-report`.
+- Artifact ID: `6748686954`.
+- Artifact status: not expired.
+- Artifact expires at `2026-07-30T11:15:52Z`.
 
 ## Current Status
 
-Implementation in progress on branch `ops/KAN-55-enterprise-onboarding-readiness-trend`.
+KAN-55 implementation is complete and merged through PR `#164`.
+
+The trend report is operational on `main`: it parses recent KAN-53 readiness artifacts and reports score/status deltas without reading provider secrets, mutating repositories/providers, or treating onboarding `needs-action` as a release-blocking failure.
