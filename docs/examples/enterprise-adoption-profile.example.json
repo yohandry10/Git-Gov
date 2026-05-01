@@ -12,7 +12,8 @@
     "quorum": {
       "enabled": false,
       "rules": []
-    }
+    },
+    "environment_overrides": []
   },
   "providers": [
     "github",

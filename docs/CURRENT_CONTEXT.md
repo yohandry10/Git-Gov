@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-47`
+Ticket: `KAN-48`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -39,7 +39,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-45 - Add configurable release governance profile policy`.
 - Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
 - Latest completed follow-up: `KAN-47 - Add optional release governance enforcement gate`.
-- Current follow-up: none selected after `KAN-47`.
+- Current follow-up: `KAN-48 - Add environment-scoped release governance policy overrides`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1183,6 +1183,39 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Anonymous `GET /enterprise/release-governance/evaluate?...` returned `401`.
   - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
 - No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
+
+## Current KAN-48 Implementation Notes
+
+- Jira: `KAN-48 - Add environment-scoped release governance policy overrides`.
+- Implementation branch: `product/KAN-48-environment-release-governance-policy`.
+- Design: `docs/design/environment-scoped-release-governance-policy-mvp.md`.
+- Report: `docs/reports/environment-scoped-release-governance-policy-2026-05-01.md`.
+- Scope:
+  - add optional `release_governance.environment_overrides` to enterprise adoption profiles.
+  - keep base/default release governance `record-only` and non-blocking.
+  - allow explicit per-environment opt-in policy, for example `production: approval-required` while `staging` remains record-only.
+  - make the KAN-46 evaluator resolve matching environment override first, then fall back to base policy.
+  - make adoption pack and workflow template generation include the release governance gate when any override is non-`record-only` and `formal-approval` is enabled.
+  - expose environment overrides in the Enterprise Adoption dashboard without reading `.env` or provider secrets.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo test release_governance` from `gitgov/gitgov-server`: passed, `6` tests.
+  - `cargo test enterprise_adoption_profile_validation` from `gitgov/gitgov-server`: passed, `8` tests.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `cargo test` from `gitgov/gitgov-server`: passed, `189` tests.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts` from `gitgov`: passed, `17` tests.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed, `25` test files and `285` tests.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - CLI adoption pack generation with a production `approval-required` override: passed with `14` workflows and release governance gate included.
+  - CLI workflow template generation with a production `approval-required` override: passed with `14` templates; generated release governance gate defaulted to `production` and `enforce_gate=true`.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Remaining local validation before PR:
+  - none.
+- No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change is expected for KAN-48.
 
 ## Latest KAN-47 Validation Notes
 

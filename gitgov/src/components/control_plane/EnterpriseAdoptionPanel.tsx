@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, Download, KeyRound, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, Download, KeyRound, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -22,6 +22,7 @@ import {
   type AdoptionProvider,
   type AdoptionReleaseGovernanceMode,
   type EnterpriseAdoptionProfile,
+  type EnterpriseReleaseGovernancePolicy,
   type EnterpriseProviderHealthStatus,
 } from './dashboard-helpers'
 
@@ -146,6 +147,64 @@ export function EnterpriseAdoptionPanel() {
         },
       }
     })
+  }
+
+  const updateReleaseGovernanceOverrides = (
+    updater: (overrides: EnterpriseReleaseGovernancePolicy[]) => EnterpriseReleaseGovernancePolicy[],
+  ) => {
+    setProfile((current) => {
+      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
+      return {
+        ...current,
+        release_governance: {
+          ...currentGovernance,
+          environment_overrides: updater(currentGovernance.environment_overrides ?? []),
+        },
+      }
+    })
+  }
+
+  const addReleaseGovernanceOverride = () => {
+    setProfile((current) => {
+      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
+      const usedEnvironments = new Set(
+        [currentGovernance.environment, ...(currentGovernance.environment_overrides ?? []).map((override) => override.environment)]
+          .map((environment) => environment.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      const environment = ['production', 'staging', 'development'].find((candidate) => !usedEnvironments.has(candidate)) ?? `environment-${(currentGovernance.environment_overrides ?? []).length + 1}`
+      return {
+        ...current,
+        modules: current.modules.includes('formal-approval') ? current.modules : [...current.modules, 'formal-approval'],
+        release_governance: {
+          ...currentGovernance,
+          environment_overrides: [
+            ...(currentGovernance.environment_overrides ?? []),
+            buildReleaseGovernancePolicy('approval-required', environment),
+          ],
+        },
+      }
+    })
+  }
+
+  const updateReleaseGovernanceOverrideEnvironment = (index: number, environment: string) => {
+    updateReleaseGovernanceOverrides((overrides) => overrides.map((override, overrideIndex) => (
+      overrideIndex === index
+        ? { ...override, environment: environment.trim() || 'production' }
+        : override
+    )))
+  }
+
+  const updateReleaseGovernanceOverrideMode = (index: number, mode: AdoptionReleaseGovernanceMode) => {
+    updateReleaseGovernanceOverrides((overrides) => overrides.map((override, overrideIndex) => (
+      overrideIndex === index
+        ? buildReleaseGovernancePolicy(mode, override.environment || 'production')
+        : override
+    )))
+  }
+
+  const removeReleaseGovernanceOverride = (index: number) => {
+    updateReleaseGovernanceOverrides((overrides) => overrides.filter((_, overrideIndex) => overrideIndex !== index))
   }
 
   const toggleProvider = (provider: AdoptionProvider) => {
@@ -341,6 +400,61 @@ export function EnterpriseAdoptionPanel() {
                   {releaseGovernance.quorum.enabled ? `${releaseGovernance.quorum.rules.length} rules` : 'Off'}
                 </div>
               </div>
+            </div>
+            <div className="space-y-2 rounded border border-white/8 bg-white/[0.02] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-surface-500 uppercase tracking-widest">Environment overrides</span>
+                <button
+                  type="button"
+                  onClick={addReleaseGovernanceOverride}
+                  className="inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 text-[11px] text-surface-200 hover:border-white/20 hover:bg-white/[0.05]"
+                  title="Add environment override"
+                >
+                  <Plus size={13} />
+                  Add
+                </button>
+              </div>
+              {(releaseGovernance.environment_overrides ?? []).length === 0 ? (
+                <div className="text-[11px] text-surface-500">None</div>
+              ) : (
+                <div className="space-y-2">
+                  {(releaseGovernance.environment_overrides ?? []).map((override, index) => (
+                    <div key={`${override.environment}-${index}`} className="rounded border border-white/8 bg-surface-900/40 p-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        <input
+                          value={override.environment}
+                          onChange={(event) => updateReleaseGovernanceOverrideEnvironment(index, event.target.value)}
+                          className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1.5 text-xs text-surface-200 focus:outline-none focus:border-surface-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeReleaseGovernanceOverride(index)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-white/[0.03] text-surface-300 hover:border-warning-500/30 hover:text-warning-200"
+                          title="Remove environment override"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => {
+                          const selected = override.mode === option.id
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => updateReleaseGovernanceOverrideMode(index, option.id)}
+                              className={`rounded border px-2 py-1.5 text-[11px] font-medium transition-colors ${selectedClass(selected)}`}
+                            >
+                              {option.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -233,6 +233,7 @@ export interface EnterpriseReleaseGovernancePolicy {
     enabled: boolean
     rules: EnterpriseReleaseGovernanceQuorumRule[]
   }
+  environment_overrides?: EnterpriseReleaseGovernancePolicy[]
 }
 
 export interface EnterpriseAdoptionProfile {
@@ -389,6 +390,7 @@ export function buildReleaseGovernancePolicy(
       approval_required: false,
       enforcement: 'advisory',
       quorum: { enabled: false, rules: [] },
+      environment_overrides: [],
     }
   }
   if (mode === 'approval-required') {
@@ -398,6 +400,7 @@ export function buildReleaseGovernancePolicy(
       approval_required: true,
       enforcement: 'blocking',
       quorum: { enabled: false, rules: [] },
+      environment_overrides: [],
     }
   }
   if (mode === 'quorum-required') {
@@ -407,6 +410,7 @@ export function buildReleaseGovernancePolicy(
       approval_required: true,
       enforcement: 'blocking',
       quorum: { enabled: true, rules: defaultQuorumRules() },
+      environment_overrides: [],
     }
   }
   return {
@@ -415,6 +419,7 @@ export function buildReleaseGovernancePolicy(
     approval_required: false,
     enforcement: 'disabled',
     quorum: { enabled: false, rules: [] },
+    environment_overrides: [],
   }
 }
 
@@ -425,7 +430,7 @@ function normalizeReleaseGovernanceRule(rule: EnterpriseReleaseGovernanceQuorumR
   return { role, required }
 }
 
-export function normalizeReleaseGovernancePolicy(
+function normalizeReleaseGovernancePolicyCore(
   policy?: EnterpriseReleaseGovernancePolicy | null,
 ): EnterpriseReleaseGovernancePolicy {
   const requestedMode = policy?.mode
@@ -449,6 +454,63 @@ export function normalizeReleaseGovernancePolicy(
       rules: rules.length > 0 ? rules : normalized.quorum.rules,
     },
   }
+}
+
+export function normalizeReleaseGovernancePolicy(
+  policy?: EnterpriseReleaseGovernancePolicy | null,
+): EnterpriseReleaseGovernancePolicy {
+  const normalized = normalizeReleaseGovernancePolicyCore(policy)
+  const overrides = Array.isArray(policy?.environment_overrides)
+    ? policy.environment_overrides
+      .map((override) => normalizeReleaseGovernancePolicyCore(override))
+      .filter((override) => override.environment.trim().length > 0)
+    : []
+  const seen = new Set<string>()
+  const uniqueOverrides: EnterpriseReleaseGovernancePolicy[] = []
+  for (const override of overrides) {
+    const environmentKey = override.environment.trim().toLowerCase()
+    if (seen.has(environmentKey)) continue
+    seen.add(environmentKey)
+    uniqueOverrides.push({
+      ...override,
+      environment: override.environment.trim(),
+      environment_overrides: [],
+    })
+  }
+  return {
+    ...normalized,
+    environment_overrides: uniqueOverrides,
+  }
+}
+
+function releaseGovernancePolicies(policy: EnterpriseReleaseGovernancePolicy): EnterpriseReleaseGovernancePolicy[] {
+  return [policy, ...(policy.environment_overrides ?? [])]
+}
+
+function releaseGovernanceRequiresFormalApproval(policy: EnterpriseReleaseGovernancePolicy): boolean {
+  return releaseGovernancePolicies(policy).some((candidate) => candidate.mode !== 'record-only')
+}
+
+function releaseGovernanceGateRequired(policy: EnterpriseReleaseGovernancePolicy, modules: AdoptionModule[]): boolean {
+  return modules.includes('formal-approval') && releaseGovernanceRequiresFormalApproval(policy)
+}
+
+function releaseGovernanceGatePolicy(policy: EnterpriseReleaseGovernancePolicy): EnterpriseReleaseGovernancePolicy {
+  return releaseGovernancePolicies(policy).find((candidate) => (
+    candidate.mode === 'approval-required' || candidate.mode === 'quorum-required'
+  )) ?? releaseGovernancePolicies(policy).find((candidate) => candidate.mode !== 'record-only') ?? policy
+}
+
+function releaseGovernanceOverrideSummary(policy: EnterpriseReleaseGovernancePolicy): string {
+  const overrides = policy.environment_overrides ?? []
+  if (overrides.length === 0) return 'none'
+  return overrides.map((override) => `${override.environment}:${override.mode}`).join(', ')
+}
+
+function releaseGovernanceQuorumSummary(policy: EnterpriseReleaseGovernancePolicy): string {
+  return policy.quorum.enabled
+    ? policy.quorum.rules.map((rule) => `${rule.role}:${rule.required}`).join(', ')
+    : 'disabled'
 }
 
 export function normalizeEnterpriseAdoptionProfile(profile: EnterpriseAdoptionProfile): EnterpriseAdoptionProfile {
@@ -540,10 +602,27 @@ export function validateEnterpriseAdoptionProfile(profile: EnterpriseAdoptionPro
   if (!releaseGovernance.environment.trim()) {
     errors.push('Release governance environment is required.')
   }
-  if (releaseGovernance.mode !== 'record-only' && !profile.modules.includes('formal-approval')) {
+  const rawEnvironmentOverrides = Array.isArray(profile.release_governance?.environment_overrides)
+    ? profile.release_governance.environment_overrides
+    : []
+  for (const override of releaseGovernance.environment_overrides ?? []) {
+    if (!override.environment.trim()) {
+      errors.push('Release governance override environment is required.')
+    }
+  }
+  const duplicateOverrideEnvironments = new Set<string>()
+  for (const override of rawEnvironmentOverrides) {
+    const environmentKey = override.environment.trim().toLowerCase()
+    if (!environmentKey) continue
+    if (duplicateOverrideEnvironments.has(environmentKey)) {
+      errors.push(`Release governance override environment '${override.environment}' is duplicated.`)
+    }
+    duplicateOverrideEnvironments.add(environmentKey)
+  }
+  if (releaseGovernanceRequiresFormalApproval(releaseGovernance) && !profile.modules.includes('formal-approval')) {
     errors.push('Enable the Formal approval module before choosing advisory, approval-required, or quorum-required release governance.')
   }
-  if (releaseGovernance.mode === 'quorum-required' && releaseGovernance.quorum.rules.length === 0) {
+  if (releaseGovernancePolicies(releaseGovernance).some((policy) => policy.mode === 'quorum-required' && policy.quorum.rules.length === 0)) {
     errors.push('Quorum-required release governance needs at least one approver role.')
   }
 
@@ -564,7 +643,7 @@ export function buildEnterpriseAdoptionPack(
   const jiraKey = profile.jira_project_key.trim()
   const ticketPrefix = jiraKey || 'KAN'
   const releaseGovernance = normalizeReleaseGovernancePolicy(profile.release_governance)
-  const releaseGovernanceGateRequired = releaseGovernance.mode !== 'record-only' && modules.includes('formal-approval')
+  const releaseGovernanceGateNeeded = releaseGovernanceGateRequired(releaseGovernance, modules)
 
   const workflowPlan: EnterpriseAdoptionWorkflowPlan[] = []
   const variables: EnterpriseAdoptionVariable[] = []
@@ -593,7 +672,7 @@ export function buildEnterpriseAdoptionPack(
     addUniqueByKey(workflowPlan, { file: '.github/workflows/release-readiness-gate.yml', reason: 'release readiness score and evidence artifact' }, 'file')
   }
 
-  if (releaseGovernanceGateRequired) {
+  if (releaseGovernanceGateNeeded) {
     addUniqueByKey(workflowPlan, { file: '.github/workflows/release-governance-gate.yml', reason: 'optional release governance policy evaluator for customer-selected enforcement' }, 'file')
     addUniqueByKey(variables, { name: 'GITGOV_URL', scope: 'GitHub Actions variable', purpose: 'GitGov API base URL', example: 'https://gitgov-api.example.com' }, 'name')
     addUniqueByKey(secrets, { name: 'GITGOV_API_KEY', scope: 'GitHub Actions secret', purpose: 'GitGov API authentication for release governance evaluation', value_policy: 'secret value only, never committed' }, 'name')
@@ -623,13 +702,13 @@ export function buildEnterpriseAdoptionPack(
     addUniqueByKey(manualSteps, {
       step: 'Review release approval policy',
       detail: releaseGovernance.mode === 'record-only'
-        ? 'Default record-only mode stores release approval evidence and does not block customer releases.'
+        ? `Default record-only mode stores release approval evidence and does not block customer releases. Environment overrides: ${releaseGovernanceOverrideSummary(releaseGovernance)}.`
         : `Customer selected ${releaseGovernance.mode} for ${releaseGovernance.environment}; review this explicit opt-in policy before installing any blocking workflow.`,
     }, 'step')
-    if (releaseGovernanceGateRequired) {
+    if (releaseGovernanceGateNeeded) {
       addUniqueByKey(manualSteps, {
         step: 'Validate release governance gate manually',
-        detail: 'Run release-governance-gate.yml with workflow_dispatch before using it as a blocking release check. Default enforcement follows the selected release_governance mode.',
+        detail: 'Run release-governance-gate.yml with workflow_dispatch before using it as a blocking release check. Default enforcement follows the selected release_governance mode or matching environment override.',
       }, 'step')
     }
   }
@@ -668,12 +747,11 @@ export function buildEnterpriseAdoptionPack(
     { rule: 'Release readiness target', setting: String(readinessTarget) },
     { rule: 'Release approval governance', setting: releaseGovernance.mode },
     { rule: 'Release approval enforcement', setting: releaseGovernance.enforcement },
-    { rule: 'Release governance gate', setting: releaseGovernanceGateRequired ? 'manual opt-in workflow' : 'not generated for record-only' },
+    { rule: 'Release governance gate', setting: releaseGovernanceGateNeeded ? 'manual opt-in workflow' : 'not generated for record-only' },
+    { rule: 'Release governance environment overrides', setting: releaseGovernanceOverrideSummary(releaseGovernance) },
     {
       rule: 'Release approval quorum',
-      setting: releaseGovernance.quorum.enabled
-        ? releaseGovernance.quorum.rules.map((rule) => `${rule.role}:${rule.required}`).join(', ')
-        : 'disabled',
+      setting: releaseGovernanceQuorumSummary(releaseGovernance),
     },
     { rule: 'Critical/high vulnerability policy', setting: criticalHighPolicy(profile.policy_preset) },
     { rule: 'PR review evidence', setting: prReviewRequired ? 'required' : 'recommended' },
@@ -1007,7 +1085,8 @@ function buildReleaseReadinessWorkflowTemplate(profile: EnterpriseAdoptionProfil
 
 function buildReleaseGovernanceGateWorkflowTemplate(profile: EnterpriseAdoptionProfile): string {
   const releaseGovernance = normalizeReleaseGovernancePolicy(profile.release_governance)
-  const enforce = releaseGovernance.mode === 'approval-required' || releaseGovernance.mode === 'quorum-required'
+  const gatePolicy = releaseGovernanceGatePolicy(releaseGovernance)
+  const enforce = gatePolicy.mode === 'approval-required' || gatePolicy.mode === 'quorum-required'
     ? 'true'
     : 'false'
   return joinWorkflow([
@@ -1031,7 +1110,7 @@ function buildReleaseGovernanceGateWorkflowTemplate(profile: EnterpriseAdoptionP
     '      environment:',
     '        description: "Release environment"',
     '        required: false',
-    `        default: ${yamlQuoted(releaseGovernance.environment)}`,
+    `        default: ${yamlQuoted(gatePolicy.environment)}`,
     '        type: string',
     '      evidence_packet_hash:',
     '        description: "Optional SHA-256 evidence packet hash"',
@@ -1076,7 +1155,7 @@ function buildReleaseGovernanceGateWorkflowTemplate(profile: EnterpriseAdoptionP
     '          $releaseId = $env:INPUT_RELEASE_ID',
     '          if ([string]::IsNullOrWhiteSpace($releaseId)) { $releaseId = $env:REF_NAME_VALUE }',
     '          $environment = $env:INPUT_ENVIRONMENT',
-    `          if ([string]::IsNullOrWhiteSpace($environment)) { $environment = ${yamlQuoted(releaseGovernance.environment)} }`,
+    `          if ([string]::IsNullOrWhiteSpace($environment)) { $environment = ${yamlQuoted(gatePolicy.environment)} }`,
     '          $query = New-Object System.Collections.Generic.List[string]',
     '          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_ORG_NAME)) { $query.Add("org_name=$([Uri]::EscapeDataString($env:INPUT_ORG_NAME))") | Out-Null }',
     '          $query.Add("repository_full_name=$([Uri]::EscapeDataString($env:REPOSITORY_NAME))") | Out-Null',
@@ -1296,6 +1375,7 @@ function buildWorkflowTemplateReadme(pack: EnterpriseAdoptionPack): string {
     `Policy preset: \`${pack.policy_preset}\``,
     `Release governance: \`${pack.release_governance.mode}\``,
     `Release enforcement: \`${pack.release_governance.enforcement}\``,
+    `Release environment overrides: \`${releaseGovernanceOverrideSummary(pack.release_governance)}\``,
     pack.jira_project_key ? `Jira project key: \`${pack.jira_project_key}\`` : '',
     '',
     '## Generated Templates',

@@ -81,6 +81,183 @@ fn adoption_profile_string_array(
     result
 }
 
+fn validate_release_governance_policy_object(
+    policy: &serde_json::Map<String, serde_json::Value>,
+    modules: &[String],
+    errors: &mut Vec<String>,
+    prefix: &str,
+    require_environment: bool,
+) -> Option<String> {
+    let mode = match policy.get("mode") {
+        Some(value) => match value.as_str().map(str::trim).filter(|item| !item.is_empty()) {
+            Some(mode) if ADOPTION_RELEASE_GOVERNANCE_MODES.contains(&mode) => mode,
+            Some(_) | None => {
+                errors.push(format!("{prefix}.mode must be one of record-only, advisory, approval-required, quorum-required."));
+                return None;
+            }
+        },
+        None => "record-only",
+    };
+
+    let mut normalized_environment = None;
+    if let Some(value) = policy.get("environment") {
+        match value.as_str().map(str::trim) {
+            Some(environment) if !environment.is_empty() && environment.len() <= 64 => {
+                normalized_environment = Some(environment.to_ascii_lowercase());
+            }
+            Some(_) => errors.push(format!("{prefix}.environment is required and must be 64 characters or fewer.")),
+            None => errors.push(format!("{prefix}.environment must be a string.")),
+        }
+    } else if require_environment {
+        errors.push(format!("{prefix}.environment is required and must be 64 characters or fewer."));
+    }
+
+    let expected_enforcement = match mode {
+        "advisory" => "advisory",
+        "approval-required" | "quorum-required" => "blocking",
+        _ => "disabled",
+    };
+    let enforcement = match policy.get("enforcement") {
+        Some(value) => match value.as_str().map(str::trim).filter(|item| !item.is_empty()) {
+            Some(enforcement) if ADOPTION_RELEASE_GOVERNANCE_ENFORCEMENT.contains(&enforcement) => enforcement,
+            Some(_) | None => {
+                errors.push(format!("{prefix}.enforcement must be one of disabled, advisory, blocking."));
+                expected_enforcement
+            }
+        },
+        None => expected_enforcement,
+    };
+
+    let expected_approval_required = matches!(mode, "approval-required" | "quorum-required");
+    let approval_required = match policy.get("approval_required") {
+        Some(value) => match value.as_bool() {
+            Some(value) => value,
+            None => {
+                errors.push(format!("{prefix}.approval_required must be boolean."));
+                expected_approval_required
+            }
+        },
+        None => expected_approval_required,
+    };
+
+    let mut quorum_enabled = false;
+    let mut valid_quorum_rule_count = 0usize;
+    if let Some(quorum_value) = policy.get("quorum") {
+        let Some(quorum) = quorum_value.as_object() else {
+            errors.push(format!("{prefix}.quorum must be an object."));
+            return normalized_environment;
+        };
+
+        if let Some(enabled_value) = quorum.get("enabled") {
+            match enabled_value.as_bool() {
+                Some(value) => quorum_enabled = value,
+                None => errors.push(format!("{prefix}.quorum.enabled must be boolean.")),
+            }
+        }
+
+        if let Some(rules_value) = quorum.get("rules") {
+            let Some(rules) = rules_value.as_array() else {
+                errors.push(format!("{prefix}.quorum.rules must be an array."));
+                return normalized_environment;
+            };
+            if rules.len() > 10 {
+                errors.push(format!("{prefix}.quorum.rules has too many values."));
+            }
+            for rule in rules {
+                let Some(rule_object) = rule.as_object() else {
+                    errors.push(format!("{prefix}.quorum.rules values must be objects."));
+                    continue;
+                };
+
+                let valid_role = rule_object
+                    .get("role")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|role| !role.is_empty() && role.len() <= 64)
+                    .is_some();
+                if !valid_role {
+                    errors.push(format!("{prefix}.quorum.rules.role is required and must be 64 characters or fewer."));
+                }
+
+                let valid_required = rule_object
+                    .get("required")
+                    .and_then(|value| value.as_i64())
+                    .map(|required| (1..=20).contains(&required))
+                    .unwrap_or(false);
+                if !valid_required {
+                    errors.push(format!("{prefix}.quorum.rules.required must be an integer from 1 to 20."));
+                }
+
+                if valid_role && valid_required {
+                    valid_quorum_rule_count += 1;
+                }
+            }
+        }
+    }
+
+    if mode != "record-only" && !modules.iter().any(|module| module == "formal-approval") {
+        if prefix == "release_governance" {
+            errors.push("release_governance mode requires the formal-approval module unless it is record-only.".to_string());
+        } else {
+            errors.push(format!("{prefix} mode requires the formal-approval module unless it is record-only."));
+        }
+    }
+
+    match mode {
+        "record-only" => {
+            if approval_required {
+                errors.push(format!("{prefix} record-only release governance cannot require approval."));
+            }
+            if enforcement != "disabled" {
+                if prefix == "release_governance" {
+                    errors.push("record-only release governance must use disabled enforcement.".to_string());
+                } else {
+                    errors.push(format!("{prefix} record-only release governance must use disabled enforcement."));
+                }
+            }
+            if quorum_enabled || valid_quorum_rule_count > 0 {
+                errors.push(format!("{prefix} record-only release governance cannot enable quorum."));
+            }
+        }
+        "advisory" => {
+            if approval_required {
+                errors.push(format!("{prefix} advisory release governance cannot require approval."));
+            }
+            if enforcement != "advisory" {
+                errors.push(format!("{prefix} advisory release governance must use advisory enforcement."));
+            }
+            if quorum_enabled || valid_quorum_rule_count > 0 {
+                errors.push(format!("{prefix} advisory release governance cannot enable quorum."));
+            }
+        }
+        "approval-required" => {
+            if !approval_required {
+                errors.push(format!("{prefix} approval-required release governance must require approval."));
+            }
+            if enforcement != "blocking" {
+                errors.push(format!("{prefix} approval-required release governance must use blocking enforcement."));
+            }
+            if quorum_enabled || valid_quorum_rule_count > 0 {
+                errors.push(format!("{prefix} approval-required release governance cannot enable quorum; use quorum-required."));
+            }
+        }
+        "quorum-required" => {
+            if !approval_required {
+                errors.push(format!("{prefix} quorum-required release governance must require approval."));
+            }
+            if enforcement != "blocking" {
+                errors.push(format!("{prefix} quorum-required release governance must use blocking enforcement."));
+            }
+            if !quorum_enabled || valid_quorum_rule_count == 0 {
+                errors.push(format!("{prefix} quorum-required release governance needs at least one quorum rule."));
+            }
+        }
+        _ => {}
+    }
+
+    normalized_environment
+}
+
 fn validate_release_governance_policy(
     profile: &serde_json::Value,
     modules: &[String],
@@ -98,158 +275,45 @@ fn validate_release_governance_policy(
         return;
     };
 
-    let mode = match policy.get("mode") {
-        Some(value) => match value.as_str().map(str::trim).filter(|item| !item.is_empty()) {
-            Some(mode) if ADOPTION_RELEASE_GOVERNANCE_MODES.contains(&mode) => mode,
-            Some(_) | None => {
-                errors.push("release_governance.mode must be one of record-only, advisory, approval-required, quorum-required.".to_string());
-                return;
-            }
-        },
-        None => "record-only",
-    };
+    validate_release_governance_policy_object(
+        policy,
+        modules,
+        errors,
+        "release_governance",
+        false,
+    );
 
-    if let Some(value) = policy.get("environment") {
-        match value.as_str().map(str::trim) {
-            Some(environment) if !environment.is_empty() && environment.len() <= 64 => {}
-            Some(_) => errors.push("release_governance.environment is required and must be 64 characters or fewer.".to_string()),
-            None => errors.push("release_governance.environment must be a string.".to_string()),
-        }
+    let Some(overrides_value) = policy.get("environment_overrides") else {
+        return;
+    };
+    let Some(overrides) = overrides_value.as_array() else {
+        errors.push("release_governance.environment_overrides must be an array.".to_string());
+        return;
+    };
+    if overrides.len() > 10 {
+        errors.push("release_governance.environment_overrides has too many values.".to_string());
     }
 
-    let expected_enforcement = match mode {
-        "advisory" => "advisory",
-        "approval-required" | "quorum-required" => "blocking",
-        _ => "disabled",
-    };
-    let enforcement = match policy.get("enforcement") {
-        Some(value) => match value.as_str().map(str::trim).filter(|item| !item.is_empty()) {
-            Some(enforcement) if ADOPTION_RELEASE_GOVERNANCE_ENFORCEMENT.contains(&enforcement) => enforcement,
-            Some(_) | None => {
-                errors.push("release_governance.enforcement must be one of disabled, advisory, blocking.".to_string());
-                expected_enforcement
-            }
-        },
-        None => expected_enforcement,
-    };
-
-    let expected_approval_required = matches!(mode, "approval-required" | "quorum-required");
-    let approval_required = match policy.get("approval_required") {
-        Some(value) => match value.as_bool() {
-            Some(value) => value,
-            None => {
-                errors.push("release_governance.approval_required must be boolean.".to_string());
-                expected_approval_required
-            }
-        },
-        None => expected_approval_required,
-    };
-
-    let mut quorum_enabled = false;
-    let mut valid_quorum_rule_count = 0usize;
-    if let Some(quorum_value) = policy.get("quorum") {
-        let Some(quorum) = quorum_value.as_object() else {
-            errors.push("release_governance.quorum must be an object.".to_string());
-            return;
+    let mut seen_environments = HashSet::new();
+    for (index, override_value) in overrides.iter().enumerate() {
+        let prefix = format!("release_governance.environment_overrides[{index}]");
+        let Some(override_policy) = override_value.as_object() else {
+            errors.push(format!("{prefix} must be an object."));
+            continue;
         };
-
-        if let Some(enabled_value) = quorum.get("enabled") {
-            match enabled_value.as_bool() {
-                Some(value) => quorum_enabled = value,
-                None => errors.push("release_governance.quorum.enabled must be boolean.".to_string()),
+        if let Some(environment) = validate_release_governance_policy_object(
+            override_policy,
+            modules,
+            errors,
+            &prefix,
+            true,
+        ) {
+            if !seen_environments.insert(environment.clone()) {
+                errors.push(format!(
+                    "release_governance.environment_overrides contains duplicate environment '{environment}'."
+                ));
             }
         }
-
-        if let Some(rules_value) = quorum.get("rules") {
-            let Some(rules) = rules_value.as_array() else {
-                errors.push("release_governance.quorum.rules must be an array.".to_string());
-                return;
-            };
-            if rules.len() > 10 {
-                errors.push("release_governance.quorum.rules has too many values.".to_string());
-            }
-            for rule in rules {
-                let Some(rule_object) = rule.as_object() else {
-                    errors.push("release_governance.quorum.rules values must be objects.".to_string());
-                    continue;
-                };
-
-                let valid_role = rule_object
-                    .get("role")
-                    .and_then(|value| value.as_str())
-                    .map(str::trim)
-                    .filter(|role| !role.is_empty() && role.len() <= 64)
-                    .is_some();
-                if !valid_role {
-                    errors.push("release_governance.quorum.rules.role is required and must be 64 characters or fewer.".to_string());
-                }
-
-                let valid_required = rule_object
-                    .get("required")
-                    .and_then(|value| value.as_i64())
-                    .map(|required| (1..=20).contains(&required))
-                    .unwrap_or(false);
-                if !valid_required {
-                    errors.push("release_governance.quorum.rules.required must be an integer from 1 to 20.".to_string());
-                }
-
-                if valid_role && valid_required {
-                    valid_quorum_rule_count += 1;
-                }
-            }
-        }
-    }
-
-    if mode != "record-only" && !modules.iter().any(|module| module == "formal-approval") {
-        errors.push("release_governance mode requires the formal-approval module unless it is record-only.".to_string());
-    }
-
-    match mode {
-        "record-only" => {
-            if approval_required {
-                errors.push("record-only release governance cannot require approval.".to_string());
-            }
-            if enforcement != "disabled" {
-                errors.push("record-only release governance must use disabled enforcement.".to_string());
-            }
-            if quorum_enabled || valid_quorum_rule_count > 0 {
-                errors.push("record-only release governance cannot enable quorum.".to_string());
-            }
-        }
-        "advisory" => {
-            if approval_required {
-                errors.push("advisory release governance cannot require approval.".to_string());
-            }
-            if enforcement != "advisory" {
-                errors.push("advisory release governance must use advisory enforcement.".to_string());
-            }
-            if quorum_enabled || valid_quorum_rule_count > 0 {
-                errors.push("advisory release governance cannot enable quorum.".to_string());
-            }
-        }
-        "approval-required" => {
-            if !approval_required {
-                errors.push("approval-required release governance must require approval.".to_string());
-            }
-            if enforcement != "blocking" {
-                errors.push("approval-required release governance must use blocking enforcement.".to_string());
-            }
-            if quorum_enabled || valid_quorum_rule_count > 0 {
-                errors.push("approval-required release governance cannot enable quorum; use quorum-required.".to_string());
-            }
-        }
-        "quorum-required" => {
-            if !approval_required {
-                errors.push("quorum-required release governance must require approval.".to_string());
-            }
-            if enforcement != "blocking" {
-                errors.push("quorum-required release governance must use blocking enforcement.".to_string());
-            }
-            if !quorum_enabled || valid_quorum_rule_count == 0 {
-                errors.push("quorum-required release governance needs at least one quorum rule.".to_string());
-            }
-        }
-        _ => {}
     }
 }
 
@@ -560,6 +624,81 @@ mod adoption_profile_tests {
         });
 
         assert!(validate_enterprise_adoption_profile(&profile).is_ok());
+    }
+
+    #[test]
+    fn enterprise_adoption_profile_validation_accepts_environment_overrides_when_opted_in() {
+        let mut profile = valid_profile();
+        profile["modules"] = json!(["traceability", "release-readiness", "formal-approval"]);
+        profile["release_governance"] = json!({
+            "mode": "record-only",
+            "environment": "staging",
+            "approval_required": false,
+            "enforcement": "disabled",
+            "quorum": {
+                "enabled": false,
+                "rules": []
+            },
+            "environment_overrides": [
+                {
+                    "mode": "approval-required",
+                    "environment": "production",
+                    "approval_required": true,
+                    "enforcement": "blocking",
+                    "quorum": {
+                        "enabled": false,
+                        "rules": []
+                    }
+                }
+            ]
+        });
+
+        assert!(validate_enterprise_adoption_profile(&profile).is_ok());
+    }
+
+    #[test]
+    fn enterprise_adoption_profile_validation_rejects_duplicate_environment_overrides() {
+        let mut profile = valid_profile();
+        profile["modules"] = json!(["traceability", "release-readiness", "formal-approval"]);
+        profile["release_governance"] = json!({
+            "mode": "record-only",
+            "environment": "staging",
+            "approval_required": false,
+            "enforcement": "disabled",
+            "quorum": {
+                "enabled": false,
+                "rules": []
+            },
+            "environment_overrides": [
+                {
+                    "mode": "advisory",
+                    "environment": "Production",
+                    "approval_required": false,
+                    "enforcement": "advisory",
+                    "quorum": {
+                        "enabled": false,
+                        "rules": []
+                    }
+                },
+                {
+                    "mode": "approval-required",
+                    "environment": "production",
+                    "approval_required": true,
+                    "enforcement": "blocking",
+                    "quorum": {
+                        "enabled": false,
+                        "rules": []
+                    }
+                }
+            ]
+        });
+
+        let errors = validate_enterprise_adoption_profile(&profile).unwrap_err();
+
+        assert!(errors.contains(
+            &"release_governance.environment_overrides contains duplicate environment 'production'."
+                .to_string()
+        ));
     }
 
     #[test]
