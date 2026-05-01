@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-44`
+Ticket: `KAN-45`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -36,7 +36,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
 - Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
-- Current follow-up: none selected after KAN-44.
+- Current follow-up: `KAN-45 - Add configurable release governance profile policy`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1058,6 +1058,35 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Governance Correlation Smoke (Optional)` - run `25203116650`.
   - `Desktop Updater Readiness (Optional)` - run `25203116657`.
 - No code, database, Render, Vercel, provider, or customer workflow behavior changed; KAN-44 is documentation/product-default memory only.
+
+## Current KAN-45 Implementation Notes
+
+- Jira: `KAN-45 - Add configurable release governance profile policy`.
+- Implementation branch: `product/KAN-45-release-governance-profile-policy`.
+- Design: `docs/design/release-governance-profile-policy-mvp.md`.
+- Report: `docs/reports/release-governance-profile-policy-2026-05-01.md`.
+- Scope:
+  - add explicit `release_governance` to the Enterprise Adoption profile shape.
+  - preserve `record-only` / `disabled` as the default release governance mode.
+  - expose release governance mode and environment controls in the Enterprise Adoption dashboard.
+  - include release governance in dashboard adoption pack and workflow template pack exports.
+  - include release governance in the CLI adoption pack Markdown/JSON output.
+  - include release governance in the CLI workflow template README/manifest output.
+  - validate `release_governance` in `PUT /enterprise/adoption-profile` before persistence.
+  - keep non-`record-only` modes gated on the `formal-approval` module.
+- Product rule:
+  - default behavior remains non-blocking.
+  - `advisory`, `approval-required`, and `quorum-required` are customer-selected modes.
+  - KAN-45 stores and carries policy intent; it does not add active release blocking by itself.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo test adoption_profile_tests` from `gitgov/gitgov-server`: passed, `6` tests.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts` from `gitgov`: passed, `15` tests.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `.\scripts\control-plane\generate_enterprise_adoption_pack.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\KAN-45-enterprise-adoption-pack`: passed.
+  - `.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\KAN-45-enterprise-workflow-templates -Force`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, or raw secret payload is read or printed by this change.
 
 ## Current KAN-28 Implementation Notes
 

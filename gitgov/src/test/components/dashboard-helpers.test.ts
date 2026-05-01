@@ -172,6 +172,20 @@ describe('dashboard-helpers enterprise adoption pack', () => {
       rule: 'Release readiness target',
       setting: '75',
     })
+    expect(pack.release_governance).toEqual({
+      mode: 'record-only',
+      environment: 'production',
+      approval_required: false,
+      enforcement: 'disabled',
+      quorum: {
+        enabled: false,
+        rules: [],
+      },
+    })
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Release approval governance',
+      setting: 'record-only',
+    })
     expect(validateEnterpriseAdoptionProfile(DEFAULT_ENTERPRISE_ADOPTION_PROFILE).valid).toBe(true)
   })
 
@@ -197,7 +211,7 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     })
   })
 
-  it('keeps formal release approval visible as an open product gap', () => {
+  it('keeps formal release approval as non-blocking record-only by default', () => {
     const profile: EnterpriseAdoptionProfile = {
       ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
       modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
@@ -205,12 +219,64 @@ describe('dashboard-helpers enterprise adoption pack', () => {
 
     const pack = buildEnterpriseAdoptionPack(profile, '2026-04-30T00:00:00.000Z')
 
-    expect(pack.open_product_gaps).toEqual([
-      {
-        gap: 'Formal release approval',
-        detail: 'GitGov has PR review evidence and policy decisions, but a full enterprise release approval model still needs approvers, expiration, risk acceptance, and evidence binding.',
+    expect(pack.open_product_gaps).toEqual([])
+    expect(pack.manual_steps).toContainEqual({
+      step: 'Review release approval policy',
+      detail: 'Default record-only mode stores release approval evidence and does not block customer releases.',
+    })
+  })
+
+  it('requires formal approval module before opt-in release governance modes', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      release_governance: {
+        mode: 'approval-required',
+        environment: 'production',
+        approval_required: true,
+        enforcement: 'blocking',
+        quorum: { enabled: false, rules: [] },
       },
-    ])
+    }
+
+    const validation = validateEnterpriseAdoptionProfile(profile)
+
+    expect(validation.valid).toBe(false)
+    expect(validation.errors).toContain(
+      'Enable the Formal approval module before choosing advisory, approval-required, or quorum-required release governance.',
+    )
+  })
+
+  it('exports explicit quorum release governance without changing secret policy', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
+      release_governance: {
+        mode: 'quorum-required',
+        environment: 'production',
+        approval_required: true,
+        enforcement: 'blocking',
+        quorum: {
+          enabled: true,
+          rules: [
+            { role: 'engineering', required: 1 },
+            { role: 'security', required: 1 },
+          ],
+        },
+      },
+    }
+
+    const pack = buildEnterpriseAdoptionPack(profile, '2026-04-30T00:00:00.000Z')
+
+    expect(pack.release_governance.mode).toBe('quorum-required')
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Release approval enforcement',
+      setting: 'blocking',
+    })
+    expect(pack.policy_rules).toContainEqual({
+      rule: 'Release approval quorum',
+      setting: 'engineering:1, security:1',
+    })
+    expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')
   })
 
   it('validates customer adoption profile inputs', () => {
@@ -243,6 +309,8 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(pack.files.map((file) => file.file)).toContain('.github/workflows/release-readiness-gate.yml')
     expect(pack.files.map((file) => file.file)).toContain('.github/workflows/product-vulnerability-review-trend-enforcement.yml')
     expect(pack.readme).toContain('GitGov Workflow Template Pack')
+    expect(pack.readme).toContain('Release governance: `record-only`')
+    expect(pack.manifest.release_governance.mode).toBe('record-only')
     expect(JSON.stringify(pack)).not.toContain('__DEFAULT_BRANCH__')
     expect(JSON.stringify(pack)).not.toContain('__JIRA_PROJECT_KEY__')
     expect(JSON.stringify(pack)).not.toContain('GITGOV_API_KEY=')

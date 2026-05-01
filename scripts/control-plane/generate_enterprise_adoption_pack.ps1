@@ -61,7 +61,102 @@ function Get-ProfileProperty {
   return $property.Value
 }
 
+function New-ReleaseGovernancePolicy {
+  param(
+    [ValidateSet("record-only", "advisory", "approval-required", "quorum-required")]
+    [string]$Mode = "record-only",
+    [string]$Environment = "production"
+  )
+
+  $normalizedEnvironment = if ([string]::IsNullOrWhiteSpace($Environment)) { "production" } else { $Environment.Trim() }
+  if ($Mode -eq "advisory") {
+    return [pscustomobject]@{
+      mode = "advisory"
+      environment = $normalizedEnvironment
+      approval_required = $false
+      enforcement = "advisory"
+      quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+    }
+  }
+  if ($Mode -eq "approval-required") {
+    return [pscustomobject]@{
+      mode = "approval-required"
+      environment = $normalizedEnvironment
+      approval_required = $true
+      enforcement = "blocking"
+      quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+    }
+  }
+  if ($Mode -eq "quorum-required") {
+    return [pscustomobject]@{
+      mode = "quorum-required"
+      environment = $normalizedEnvironment
+      approval_required = $true
+      enforcement = "blocking"
+      quorum = [pscustomobject]@{
+        enabled = $true
+        rules = @(
+          [pscustomobject]@{ role = "engineering"; required = 1 },
+          [pscustomobject]@{ role = "security"; required = 1 }
+        )
+      }
+    }
+  }
+  return [pscustomobject]@{
+    mode = "record-only"
+    environment = $normalizedEnvironment
+    approval_required = $false
+    enforcement = "disabled"
+    quorum = [pscustomobject]@{ enabled = $false; rules = @() }
+  }
+}
+
+function Normalize-ReleaseGovernancePolicy {
+  param($Policy)
+
+  if ($null -eq $Policy) {
+    return New-ReleaseGovernancePolicy
+  }
+
+  $mode = "record-only"
+  $modeProperty = $Policy.PSObject.Properties["mode"]
+  if ($modeProperty -and $modeProperty.Value -in @("record-only", "advisory", "approval-required", "quorum-required")) {
+    $mode = [string]$modeProperty.Value
+  }
+
+  $environment = "production"
+  $environmentProperty = $Policy.PSObject.Properties["environment"]
+  if ($environmentProperty -and -not [string]::IsNullOrWhiteSpace([string]$environmentProperty.Value)) {
+    $environment = [string]$environmentProperty.Value
+  }
+
+  $normalized = New-ReleaseGovernancePolicy -Mode $mode -Environment $environment
+  if ($mode -ne "quorum-required") {
+    return $normalized
+  }
+
+  $quorumProperty = $Policy.PSObject.Properties["quorum"]
+  $rulesProperty = if ($quorumProperty -and $null -ne $quorumProperty.Value) { $quorumProperty.Value.PSObject.Properties["rules"] } else { $null }
+  $rules = New-Object System.Collections.Generic.List[object]
+  if ($rulesProperty -and $rulesProperty.Value) {
+    foreach ($rule in @($rulesProperty.Value)) {
+      $roleProperty = $rule.PSObject.Properties["role"]
+      $requiredProperty = $rule.PSObject.Properties["required"]
+      $role = if ($roleProperty) { ([string]$roleProperty.Value).Trim().ToLowerInvariant() } else { "" }
+      $required = if ($requiredProperty) { [int]$requiredProperty.Value } else { 1 }
+      if (-not [string]::IsNullOrWhiteSpace($role)) {
+        $rules.Add([pscustomobject]@{ role = $role; required = [Math]::Max(1, [Math]::Min(20, $required)) }) | Out-Null
+      }
+    }
+  }
+  if ($rules.Count -gt 0) {
+    $normalized.quorum = [pscustomobject]@{ enabled = $true; rules = @($rules.ToArray()) }
+  }
+  return $normalized
+}
+
 $profile = $null
+$profileReleaseGovernance = $null
 if (-not [string]::IsNullOrWhiteSpace($ProfilePath)) {
   if (-not (Test-Path -LiteralPath $ProfilePath)) {
     Fail-Pack "Profile file not found: $ProfilePath"
@@ -77,6 +172,7 @@ if ($null -ne $profile) {
   $profileJiraProjectKey = Get-ProfileProperty -Profile $profile -Name "jira_project_key"
   $profileProviders = Get-ProfileProperty -Profile $profile -Name "providers"
   $profileModules = Get-ProfileProperty -Profile $profile -Name "modules"
+  $profileReleaseGovernance = Get-ProfileProperty -Profile $profile -Name "release_governance"
 
   if ([string]::IsNullOrWhiteSpace($CustomerName) -and $profileCustomerName) {
     $CustomerName = [string]$profileCustomerName
@@ -140,6 +236,7 @@ if ($null -eq $Modules -or $Modules.Count -eq 0) {
 
 $providersNormalized = Normalize-List $Providers
 $modulesNormalized = Normalize-List $Modules
+$releaseGovernance = Normalize-ReleaseGovernancePolicy $profileReleaseGovernance
 
 $unknownProviders = @($providersNormalized | Where-Object { $_ -notin $knownProviders })
 if ($unknownProviders.Count -gt 0) {
@@ -149,6 +246,10 @@ if ($unknownProviders.Count -gt 0) {
 $unknownModules = @($modulesNormalized | Where-Object { $_ -notin $knownModules })
 if ($unknownModules.Count -gt 0) {
   Fail-Pack "Unknown module(s): $($unknownModules -join ', '). Known modules: $($knownModules -join ', ')."
+}
+
+if ($releaseGovernance.mode -ne "record-only" -and $modulesNormalized -notcontains "formal-approval") {
+  Fail-Pack "Release governance mode '$($releaseGovernance.mode)' requires the formal-approval module. Use record-only for non-blocking defaults."
 }
 
 $readinessTarget = switch ($PolicyPreset) {
@@ -215,7 +316,12 @@ if ($trendEnforcementRequired) {
 }
 
 if ($modulesNormalized -contains "formal-approval") {
-  Add-Unique $openProductGaps ([pscustomobject]@{ gap = "Formal release approval"; detail = "GitGov has PR review evidence and policy decisions, but a full enterprise release approval model still needs approvers, expiration, risk acceptance, and evidence binding." }) "gap"
+  $releasePolicyDetail = if ($releaseGovernance.mode -eq "record-only") {
+    "Default record-only mode stores release approval evidence and does not block customer releases."
+  } else {
+    "Customer selected $($releaseGovernance.mode) for $($releaseGovernance.environment); review this explicit opt-in policy before installing any blocking workflow."
+  }
+  Add-Unique $manualSteps ([pscustomobject]@{ step = "Review release approval policy"; detail = $releasePolicyDetail }) "step"
 }
 
 if ($providersNormalized -contains "github") {
@@ -250,6 +356,9 @@ if ($providersNormalized -contains "vercel") {
 $policyRules = @(
   [pscustomobject]@{ rule = "Ticket traceability"; setting = if ($modulesNormalized -contains "traceability") { "required" } else { "optional" } },
   [pscustomobject]@{ rule = "Release readiness target"; setting = [string]$readinessTarget },
+  [pscustomobject]@{ rule = "Release approval governance"; setting = $releaseGovernance.mode },
+  [pscustomobject]@{ rule = "Release approval enforcement"; setting = $releaseGovernance.enforcement },
+  [pscustomobject]@{ rule = "Release approval quorum"; setting = if ($releaseGovernance.quorum.enabled) { (($releaseGovernance.quorum.rules | ForEach-Object { "$($_.role):$($_.required)" }) -join ", ") } else { "disabled" } },
   [pscustomobject]@{ rule = "Critical/high vulnerability policy"; setting = $criticalHighPolicy },
   [pscustomobject]@{ rule = "PR review evidence"; setting = if ($prReviewRequired) { "required" } else { "recommended" } },
   [pscustomobject]@{ rule = "Fresh evidence artifacts"; setting = if ($freshArtifactRequired) { "required" } else { "report-only" } },
@@ -264,6 +373,7 @@ $output = [pscustomobject]@{
   default_branch = $DefaultBranch
   jira_project_key = $JiraProjectKey
   policy_preset = $PolicyPreset
+  release_governance = $releaseGovernance
   providers = @($providersNormalized)
   modules = @($modulesNormalized)
   workflow_plan = @($workflowPlan.ToArray())
@@ -289,6 +399,8 @@ $markdown.Add(('Customer: `{0}`' -f $CustomerName)) | Out-Null
 $markdown.Add(('Repository: `{0}`' -f $RepositoryFullName)) | Out-Null
 $markdown.Add(('Default branch: `{0}`' -f $DefaultBranch)) | Out-Null
 $markdown.Add(('Policy preset: `{0}`' -f $PolicyPreset)) | Out-Null
+$markdown.Add(('Release governance: `{0}`' -f $releaseGovernance.mode)) | Out-Null
+$markdown.Add(('Release enforcement: `{0}`' -f $releaseGovernance.enforcement)) | Out-Null
 if (-not [string]::IsNullOrWhiteSpace($JiraProjectKey)) {
   $markdown.Add(('Jira project key: `{0}`' -f $JiraProjectKey)) | Out-Null
 }
@@ -303,6 +415,19 @@ $markdown.Add("## Providers") | Out-Null
 $markdown.Add("") | Out-Null
 foreach ($provider in $providersNormalized) {
   $markdown.Add(('- `{0}`' -f $provider)) | Out-Null
+}
+$markdown.Add("") | Out-Null
+$markdown.Add("## Release Governance") | Out-Null
+$markdown.Add("") | Out-Null
+$markdown.Add(('- Mode: `{0}`' -f $releaseGovernance.mode)) | Out-Null
+$markdown.Add(('- Environment: `{0}`' -f $releaseGovernance.environment)) | Out-Null
+$markdown.Add(('- Enforcement: `{0}`' -f $releaseGovernance.enforcement)) | Out-Null
+if ($releaseGovernance.quorum.enabled) {
+  foreach ($rule in $releaseGovernance.quorum.rules) {
+    $markdown.Add(('- Quorum `{0}`: `{1}` required' -f $rule.role, $rule.required)) | Out-Null
+  }
+} else {
+  $markdown.Add('- Quorum: `disabled`') | Out-Null
 }
 $markdown.Add("") | Out-Null
 $markdown.Add("## Workflow Plan") | Out-Null

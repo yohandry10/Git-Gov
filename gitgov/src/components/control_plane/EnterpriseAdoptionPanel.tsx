@@ -7,26 +7,26 @@ import {
   ADOPTION_MODULE_OPTIONS,
   ADOPTION_POLICY_PRESET_OPTIONS,
   ADOPTION_PROVIDER_OPTIONS,
+  ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS,
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+  buildReleaseGovernancePolicy,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
+  normalizeEnterpriseAdoptionProfile,
   validateEnterpriseAdoptionProfile,
   type AdoptionModule,
   type AdoptionPolicyPreset,
   type AdoptionProvider,
+  type AdoptionReleaseGovernanceMode,
   type EnterpriseAdoptionProfile,
   type EnterpriseProviderHealthStatus,
 } from './dashboard-helpers'
 
 function cloneDefaultProfile(): EnterpriseAdoptionProfile {
-  return {
-    ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
-    providers: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.providers],
-    modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules],
-  }
+  return normalizeEnterpriseAdoptionProfile(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
 }
 
 function toggleValue<T extends string>(values: T[], value: T): T[] {
@@ -92,6 +92,12 @@ export function EnterpriseAdoptionPanel() {
   const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
   const trendRule = pack.policy_rules.find((rule) => rule.rule === 'Vulnerability trend enforcement')?.setting ?? 'informational'
+  const releaseGovernance = pack.release_governance
+  const releaseGovernanceBadgeVariant = releaseGovernance.enforcement === 'blocking'
+    ? 'warning'
+    : releaseGovernance.enforcement === 'advisory'
+      ? 'info'
+      : 'neutral'
   const savedAtLabel = persistedProfileUpdatedAt
     ? new Date(persistedProfileUpdatedAt).toLocaleString()
     : null
@@ -102,11 +108,7 @@ export function EnterpriseAdoptionPanel() {
 
   useEffect(() => {
     if (!persistedProfile) return
-    setProfile({
-      ...persistedProfile,
-      providers: [...persistedProfile.providers],
-      modules: [...persistedProfile.modules],
-    })
+    setProfile(normalizeEnterpriseAdoptionProfile(persistedProfile))
   }, [persistedProfile])
 
   const updateText = (
@@ -118,6 +120,32 @@ export function EnterpriseAdoptionPanel() {
 
   const updatePolicyPreset = (policyPreset: AdoptionPolicyPreset) => {
     setProfile((current) => ({ ...current, policy_preset: policyPreset }))
+  }
+
+  const updateReleaseGovernanceMode = (mode: AdoptionReleaseGovernanceMode) => {
+    setProfile((current) => ({
+      ...current,
+      release_governance: buildReleaseGovernancePolicy(
+        mode,
+        current.release_governance?.environment ?? 'production',
+      ),
+      modules: mode === 'record-only' || current.modules.includes('formal-approval')
+        ? current.modules
+        : [...current.modules, 'formal-approval'],
+    }))
+  }
+
+  const updateReleaseGovernanceEnvironment = (environment: string) => {
+    setProfile((current) => {
+      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
+      return {
+        ...current,
+        release_governance: {
+          ...currentGovernance,
+          environment: environment.trim() || 'production',
+        },
+      }
+    })
   }
 
   const toggleProvider = (provider: AdoptionProvider) => {
@@ -272,6 +300,47 @@ export function EnterpriseAdoptionPanel() {
                   </button>
                 )
               })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-surface-500 uppercase tracking-widest">Release governance</span>
+              <Badge variant={releaseGovernanceBadgeVariant}>
+                {releaseGovernance.enforcement}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => {
+                const selected = releaseGovernance.mode === option.id
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => updateReleaseGovernanceMode(option.id)}
+                    className={`rounded border px-3 py-2 text-xs font-medium transition-colors ${selectedClass(selected)}`}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.55fr)] gap-2">
+              <label className="space-y-1">
+                <span className="text-[10px] text-surface-500 uppercase tracking-widest">Environment</span>
+                <input
+                  value={releaseGovernance.environment}
+                  onChange={(event) => updateReleaseGovernanceEnvironment(event.target.value)}
+                  className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1.5 text-xs text-surface-200 focus:outline-none focus:border-surface-400"
+                />
+              </label>
+              <div className="rounded border border-white/8 bg-white/[0.03] p-2">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Quorum</div>
+                <div className="mt-1 text-xs font-medium text-surface-100">
+                  {releaseGovernance.quorum.enabled ? `${releaseGovernance.quorum.rules.length} rules` : 'Off'}
+                </div>
+              </div>
             </div>
           </div>
 
