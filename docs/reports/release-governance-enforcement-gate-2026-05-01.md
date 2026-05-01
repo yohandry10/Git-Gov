@@ -12,6 +12,8 @@ The gate is intentionally not default release blocking. It can fail only when en
 
 - Jira issue: `KAN-47 - Add optional release governance enforcement gate`.
 - Branch: `ops/KAN-47-release-governance-enforcement-gate`.
+- PR: `#148 - ops(KAN-47): add release governance enforcement gate`.
+- Merge commit: `b6b2854`.
 - Design: `docs/design/release-governance-enforcement-gate-mvp.md`.
 - Runbook: `docs/runbooks/release-governance-gate.md`.
 
@@ -49,6 +51,64 @@ Completed locally so far:
 - `git diff --check`: passed.
 - `.\scripts\security\publication_guard.ps1`: passed.
 
+## GitHub Validation
+
+PR `#148` passed required review checks before merge:
+
+- `Security Guard`
+- `Server Clippy + Check`
+- `Desktop Rust Clippy`
+- `Frontend Lint + Typecheck`
+- `Website Lint + Typecheck + Build`
+- `Workflow Lint`
+- `Validate quality_gates warn/block matrix`
+- `Sonar Scan + Quality Gate`
+- `Block internal-assistant markers in branch/commits`
+- `Vercel`
+- `Vercel Preview Comments`
+
+Post-merge validation for commit `b6b2854` passed:
+
+- `CI` - run `25208426343`
+- `Release Readiness Gate` - run `25208426384`
+- `Quality Gate Policy Matrix (Optional)` - run `25208426354`
+- `Secret Scan` - run `25208426359`
+- `Public Naming Guard` - run `25208426346`
+- `Governance Correlation Smoke (Optional)` - run `25208426363`
+- `Desktop Updater Readiness (Optional)` - run `25208426341`
+- `SonarQube Governance (Non-Blocking)` - run `25208426365`
+
+First manual `Release Governance Gate` workflow validation passed:
+
+- Run: `25208470238`
+- Head SHA: `b6b285403455fc929eff903270bc7725a430628f`
+- Artifact: `release-governance-gate-25208470238`
+- Artifact ID: `6747272652`
+- Artifact expiry: `2026-05-31T08:44:26Z`
+- Artifact expired: `false`
+
+Sanitized gate result:
+
+```json
+{
+  "passed": true,
+  "enforce": false,
+  "fail_on_would_block": false,
+  "require_policy_satisfied": false,
+  "evaluation": {
+    "http_status": 200,
+    "status": "recorded",
+    "policy_mode": "record-only",
+    "policy_enforcement": "disabled",
+    "policy_satisfied": true,
+    "blocking": false,
+    "would_block": false,
+    "valid_approval_count": 0,
+    "required_approval_count": 0
+  }
+}
+```
+
 ## Secret Safety
 
 - No token values, Authorization headers, provider credentials, or `.env` values are printed.
@@ -58,5 +118,5 @@ Completed locally so far:
 
 ## Residual Work
 
-- Validate the workflow manually on GitHub after PR merge.
 - If customers need stricter policy semantics, add per-environment/per-release profile settings instead of changing default behavior.
+- The pasted Jira token used during this session should still be rotated after the test period because it appeared in chat, even though repo docs and command output did not print it.
