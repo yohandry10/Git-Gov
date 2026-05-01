@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-48`
+Ticket: `KAN-49`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -40,7 +40,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-46 - Add release governance evaluator`.
 - Latest completed follow-up: `KAN-47 - Add optional release governance enforcement gate`.
 - Latest completed follow-up: `KAN-48 - Add environment-scoped release governance policy overrides`.
-- Current follow-up: none selected after `KAN-48`.
+- Latest completed follow-up: `KAN-49 - Monitor release governance gate artifacts`.
+- Current follow-up: none selected after `KAN-49`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1234,6 +1235,57 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Post-merge checks for commit `cba3f9d` passed:
   - `CI` - run `25209198316`.
   - `Release Readiness Gate` - run `25209198277`.
+
+## Latest KAN-49 Validation Notes
+
+- Jira: `KAN-49 - Monitor release governance gate artifacts`.
+- Implementation branch: `ops/KAN-49-release-governance-gate-artifact-monitor`.
+- Implementation PR: `#152 - ops(KAN-49): monitor release governance gate artifacts`.
+- Implementation commit: `4257a95 ops(KAN-49): monitor release governance gate artifacts`.
+- Design: `docs/design/release-governance-gate-artifact-monitor-mvp.md`.
+- Report: `docs/reports/release-governance-gate-artifact-monitor-2026-05-01.md`.
+- Runbook: `docs/runbooks/release-governance-gate.md`.
+- Scope:
+  - add manual workflow `.github/workflows/release-governance-gate-artifact-monitor.yml`.
+  - reuse `scripts/control-plane/validate_github_evidence_report_artifact.ps1` against `release-governance-gate.yml` artifacts named `release-governance-gate-*`.
+  - add CLI and dashboard workflow template support for `.github/workflows/release-governance-gate-artifact-monitor.yml`.
+  - generate the enterprise monitor only when `formal-approval`, non-`record-only` release governance, and `artifact-monitoring` are selected.
+  - keep `record-only` release approval evidence non-blocking and without generated release governance gate/monitor templates by default.
+- Local validation already run:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile release-governance-gate.yml -ArtifactNamePrefix release-governance-gate- -MaxAgeHours 720 -OutputPath out\release-governance-gate-artifact-monitor.json`: passed against run `25208470238`, artifact `release-governance-gate-25208470238`, ID `6747272652`.
+  - CLI workflow template generation with a production environment override profile: passed; generated both release governance gate and artifact monitor templates, with monitor max age `720`.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `18` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `286` tests.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#152` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `4257a95` passed:
+  - `CI` - run `25209672506`.
+  - `Release Readiness Gate` - run `25209672484`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25209672487`.
+  - `Secret Scan` - run `25209672489`.
+  - `Public Naming Guard` - run `25209672473`.
+  - `Governance Correlation Smoke (Optional)` - run `25209672471`.
+  - `Desktop Updater Readiness (Optional)` - run `25209672476`.
+  - `SonarQube Governance (Non-Blocking)` - run `25209672492`.
+- First manual `Release Governance Gate Artifact Monitor` workflow run on `main` passed:
+  - Run `25209735562`.
+  - Artifact `release-governance-gate-artifact-monitor`, ID `6747717581`, not expired.
+- No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change was needed.
 
 ## Latest KAN-47 Validation Notes
 
