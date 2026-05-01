@@ -1,0 +1,195 @@
+name: Enterprise Onboarding Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer_name:
+        description: "Customer or tenant name for the readiness report"
+        required: false
+        default: "GitGov"
+        type: string
+      repository_full_name:
+        description: "Repository to use in the temporary adoption profile"
+        required: false
+        default: ""
+        type: string
+      default_branch:
+        description: "Default branch to use in the temporary adoption profile"
+        required: false
+        default: "main"
+        type: string
+      jira_project_key:
+        description: "Jira project key for traceability examples"
+        required: false
+        default: "KAN"
+        type: string
+      policy_preset:
+        description: "Adoption policy preset"
+        required: false
+        default: "moderate"
+        type: choice
+        options:
+          - audit-only
+          - moderate
+          - strict
+      providers:
+        description: "Comma-separated provider ids"
+        required: false
+        default: "github,jira,jenkins,sonarqube"
+        type: string
+      modules:
+        description: "Comma-separated module ids"
+        required: false
+        default: "traceability,github-evidence,release-readiness,quality-gates,evidence-packets,vulnerability-review,artifact-monitoring,trend-enforcement"
+        type: string
+      include_remote_workflow_readiness:
+        description: "Also run the read-only remote workflow readiness check"
+        required: false
+        default: false
+        type: boolean
+      report_only:
+        description: "Do not fail when onboarding status is needs-action"
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: "37 13 * * 3"
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+  ONBOARDING_OUTPUT_DIR: docs/reports/enterprise-onboarding-readiness-ci
+
+jobs:
+  enterprise-onboarding-readiness:
+    name: Generate enterprise onboarding readiness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Generate onboarding readiness
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+          INPUT_CUSTOMER_NAME: ${{ inputs.customer_name }}
+          INPUT_REPOSITORY_FULL_NAME: ${{ inputs.repository_full_name }}
+          INPUT_DEFAULT_BRANCH: ${{ inputs.default_branch }}
+          INPUT_JIRA_PROJECT_KEY: ${{ inputs.jira_project_key }}
+          INPUT_POLICY_PRESET: ${{ inputs.policy_preset }}
+          INPUT_PROVIDERS: ${{ inputs.providers }}
+          INPUT_MODULES: ${{ inputs.modules }}
+          INPUT_INCLUDE_REMOTE_WORKFLOW_READINESS: ${{ inputs.include_remote_workflow_readiness }}
+          INPUT_REPORT_ONLY: ${{ inputs.report_only }}
+        run: |
+          $customerName = $env:INPUT_CUSTOMER_NAME
+          if ([string]::IsNullOrWhiteSpace($customerName)) {
+            $customerName = "GitGov"
+          }
+
+          $repositoryFullName = $env:INPUT_REPOSITORY_FULL_NAME
+          if ([string]::IsNullOrWhiteSpace($repositoryFullName)) {
+            $repositoryFullName = $env:GITHUB_REPOSITORY_NAME
+          }
+
+          $defaultBranch = $env:INPUT_DEFAULT_BRANCH
+          if ([string]::IsNullOrWhiteSpace($defaultBranch)) {
+            $defaultBranch = "main"
+          }
+
+          $jiraProjectKey = $env:INPUT_JIRA_PROJECT_KEY
+          if ([string]::IsNullOrWhiteSpace($jiraProjectKey)) {
+            $jiraProjectKey = "KAN"
+          }
+
+          $policyPreset = $env:INPUT_POLICY_PRESET
+          if ([string]::IsNullOrWhiteSpace($policyPreset)) {
+            $policyPreset = "moderate"
+          }
+
+          $providers = $env:INPUT_PROVIDERS
+          if ([string]::IsNullOrWhiteSpace($providers)) {
+            $providers = "github,jira,jenkins,sonarqube"
+          }
+
+          $modules = $env:INPUT_MODULES
+          if ([string]::IsNullOrWhiteSpace($modules)) {
+            $modules = "traceability,github-evidence,release-readiness,quality-gates,evidence-packets,vulnerability-review,artifact-monitoring,trend-enforcement"
+          }
+
+          $profile = [ordered]@{
+            customer_name = $customerName
+            repository_full_name = $repositoryFullName
+            default_branch = $defaultBranch
+            jira_project_key = $jiraProjectKey
+            policy_preset = $policyPreset
+            release_governance = [ordered]@{
+              mode = "record-only"
+              environment = "production"
+              approval_required = $false
+              enforcement = "disabled"
+              quorum = [ordered]@{
+                enabled = $false
+                rules = @()
+              }
+              environment_overrides = @()
+            }
+            providers = @($providers.Split(",") | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            modules = @($modules.Split(",") | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+          }
+
+          $profilePath = Join-Path $env:RUNNER_TEMP "enterprise-adoption-profile.json"
+          $packDir = Join-Path $env:RUNNER_TEMP "enterprise-adoption-pack"
+          $templateDir = Join-Path $env:RUNNER_TEMP "enterprise-workflow-templates"
+          $workflowReadinessPath = Join-Path $env:RUNNER_TEMP "workflow-readiness.json"
+          $profile | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $profilePath -Encoding UTF8
+
+          ./scripts/control-plane/generate_enterprise_adoption_pack.ps1 `
+            -ProfilePath $profilePath `
+            -OutputDir $packDir
+
+          $includeRemoteReadiness = $env:INPUT_INCLUDE_REMOTE_WORKFLOW_READINESS -eq "true"
+          if ($includeRemoteReadiness) {
+            ./scripts/control-plane/generate_enterprise_workflow_templates.ps1 `
+              -ProfilePath $profilePath `
+              -OutputDir $templateDir `
+              -Force
+
+            ./scripts/control-plane/validate_enterprise_workflow_installation_readiness.ps1 `
+              -PackDir $templateDir `
+              -Repository $repositoryFullName `
+              -Ref $defaultBranch `
+              -GitHubToken $env:GITHUB_TOKEN `
+              -ReportOnly `
+              -OutputPath $workflowReadinessPath
+          }
+
+          $readinessParams = @{
+            AdoptionPackPath = (Join-Path $packDir "enterprise-adoption-pack.json")
+            OutputDir = $env:ONBOARDING_OUTPUT_DIR
+          }
+          if ($includeRemoteReadiness) {
+            $readinessParams.WorkflowReadinessPath = $workflowReadinessPath
+          }
+
+          $reportOnly = $env:INPUT_REPORT_ONLY
+          if ([string]::IsNullOrWhiteSpace($reportOnly) -or $reportOnly -eq "true") {
+            ./scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1 @readinessParams -ReportOnly
+          } else {
+            ./scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1 @readinessParams
+          }
+
+      - name: Upload onboarding readiness evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: enterprise-onboarding-readiness-${{ github.run_id }}
+          path: docs/reports/enterprise-onboarding-readiness-ci
+          if-no-files-found: error

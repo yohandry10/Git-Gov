@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`, `KAN-53`
 
 ## Purpose
 
@@ -249,6 +249,43 @@ Onboarding readiness safety boundaries:
 - no GitHub Actions variables or secrets are created.
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - release blocking remains customer opt-in only; record-only remains the safe default.
+
+## Automate Onboarding Readiness Evidence
+
+KAN-53 adds a GitHub Actions workflow that generates the KAN-52 readiness report as a reusable evidence artifact.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-onboarding-readiness.yml
+```
+
+Manual run defaults:
+
+- customer name: `GitGov`.
+- repository: current GitHub repository.
+- branch: `main`.
+- Jira key: `KAN`.
+- policy preset: `moderate`.
+- report-only: enabled.
+- remote workflow readiness: disabled unless explicitly selected.
+
+The workflow uploads:
+
+```text
+enterprise-onboarding-readiness-{run_id}
+```
+
+Use `include_remote_workflow_readiness=true` only when the workflow should also run the KAN-51 read-only repository comparison with the GitHub Actions run token.
+
+Automation safety boundaries:
+
+- scheduled/default runs do not require provider secrets.
+- no `.env` files are read.
+- no secret values are printed.
+- no GitHub Actions variables or secrets are created.
+- no branch, PR, provider, workflow dispatch, or branch-protection mutation occurs.
+- not-ready output is non-blocking by default through `report_only=true`.
 
 ## Validate Direct Provider Connections
 
