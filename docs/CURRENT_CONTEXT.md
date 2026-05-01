@@ -34,7 +34,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
-- Current follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
+- Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
+- Current follow-up: none selected after KAN-43.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -956,11 +957,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Result: `status=ai`, `ok=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
   - Artifact `governance-copilot-ai-mode-validation`, ID `6744359123`, expires `2026-07-30T02:58:40Z`.
 
-## Current KAN-43 Implementation Notes
+## Latest KAN-43 Validation Notes
 
 - Jira: `KAN-43 - Dashboard release approval wizard MVP`.
 - Implementation branch: `product/KAN-43-release-approval-dashboard`.
 - Implementation PR: `#140 - product(KAN-43): add release approval dashboard`.
+- Implementation commit: `10d0c4b product(KAN-43): add release approval dashboard`.
 - Design: `docs/design/release-approval-dashboard-mvp.md`.
 - Report: `docs/reports/release-approval-dashboard-2026-05-01.md`.
 - Scope:
@@ -987,6 +989,28 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `npm run typecheck` from `gitgov`: passed.
   - `npm test -- --run` from `gitgov`: `25` test files passed, `280` tests passed.
   - `npm run build` from `gitgov`: passed with existing Vite large chunk warning.
+- PR `#140` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `10d0c4b` passed:
+  - `CI` - run `25202577666`.
+  - `Release Readiness Gate` - run `25202577665`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25202577671`.
+  - `Secret Scan` - run `25202577668`.
+  - `SonarQube Governance (Non-Blocking)` - run `25202577669`.
+  - `Public Naming Guard` - run `25202577675`.
+  - `Governance Correlation Smoke (Optional)` - run `25202577688`.
+  - `Desktop Updater Readiness (Optional)` - run `25202577680`.
+- No new backend route, database migration, Render deploy, or Vercel production env change was needed; KAN-43 reuses the existing KAN-37 backend API.
 
 ## Current KAN-28 Implementation Notes
 

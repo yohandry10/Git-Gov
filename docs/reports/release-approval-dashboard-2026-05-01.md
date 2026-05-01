@@ -13,6 +13,7 @@ This closes the main KAN-37 non-goal around dashboard usability: admins can now 
 - Jira issue: `KAN-43 - Dashboard release approval wizard MVP`.
 - Implementation branch: `product/KAN-43-release-approval-dashboard`.
 - Implementation PR: `#140 - product(KAN-43): add release approval dashboard`.
+- Implementation commit: `10d0c4b290231103d580a37c2e800eac7f29b07a`.
 - Design: `docs/design/release-approval-dashboard-mvp.md`.
 
 ## Implementation
@@ -50,6 +51,42 @@ Tauri:
 - `cargo check`: passed.
 - `cargo clippy -- -D warnings`: passed.
 - `cargo test`: `23` tests passed.
+
+Repository guards:
+
+- `git diff --check`: passed.
+- `.\scripts\security\publication_guard.ps1`: passed.
+- Local Vite smoke `GET http://127.0.0.1:5174/`: returned HTTP `200`.
+
+GitHub:
+
+- PR `#140` merged into `main` as `10d0c4b290231103d580a37c2e800eac7f29b07a`.
+- PR checks passed before merge:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Block internal-assistant markers in branch/commits`.
+  - `Vercel`.
+  - `Vercel Preview Comments`.
+- Post-merge checks passed on `main`:
+  - `CI` run `25202577666`.
+  - `Release Readiness Gate` run `25202577665`.
+  - `Quality Gate Policy Matrix (Optional)` run `25202577671`.
+  - `Secret Scan` run `25202577668`.
+  - `SonarQube Governance (Non-Blocking)` run `25202577669`.
+  - `Public Naming Guard` run `25202577675`.
+  - `Governance Correlation Smoke (Optional)` run `25202577688`.
+  - `Desktop Updater Readiness (Optional)` run `25202577680`.
+
+Deployment:
+
+- No Render backend deployment, database migration, or production env change was required for KAN-43.
+- The dashboard reuses the existing KAN-37 `GET/POST /enterprise/release-approvals` backend API.
 
 ## Security Notes
 
