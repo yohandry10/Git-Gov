@@ -54,6 +54,17 @@ Local validation completed on 2026-05-01:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
+GitHub validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#152` | Merged into `main` as `4257a95`. |
+| PR checks | PASS: Security Guard, Server Clippy + Check, Desktop Rust Clippy, Frontend Lint + Typecheck, Website Lint + Typecheck + Build, Workflow Lint, quality gate matrix, Sonar Scan + Quality Gate, internal marker guard, Vercel, and Vercel Preview Comments. |
+| Post-merge `CI` | PASS, run `25209672506`. |
+| Post-merge `Release Readiness Gate` | PASS, run `25209672484`. |
+| Manual `Release Governance Gate Artifact Monitor` | PASS, run `25209735562`. |
+| Monitor artifact | `release-governance-gate-artifact-monitor`, ID `6747717581`, not expired. |
+
 Reference commands:
 
 ```powershell
