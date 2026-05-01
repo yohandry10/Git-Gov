@@ -14,6 +14,8 @@ Default behavior remains evidence capture and approval recordkeeping. Blocking r
 
 - Jira issue: `KAN-44 - Document configurable release governance defaults`.
 - Branch: `docs/KAN-44-configurable-release-governance`.
+- PR: `#142 - docs(KAN-44): clarify release governance defaults`.
+- Commit: `eb15b084124a85b16a384c651dde61dbef4f3e2f`.
 - Design: `docs/design/configurable-release-governance-defaults.md`.
 
 ## Documentation Changes
@@ -59,6 +61,38 @@ Completed locally:
 
 - `git diff --check`: passed.
 - `.\scripts\security\publication_guard.ps1`: passed.
+
+## GitHub Validation
+
+PR `#142` checks passed before merge:
+
+- `Security Guard`.
+- `Server Clippy + Check`.
+- `Desktop Rust Clippy`.
+- `Frontend Lint + Typecheck`.
+- `Website Lint + Typecheck + Build`.
+- `Workflow Lint`.
+- `Validate quality_gates warn/block matrix`.
+- `Sonar Scan + Quality Gate`.
+- `Block internal-assistant markers in branch/commits`.
+- `Vercel`.
+- `Vercel Preview Comments`.
+
+Post-merge checks passed on `main` commit `eb15b084124a85b16a384c651dde61dbef4f3e2f`:
+
+- `CI` run `25203116708`.
+- `Release Readiness Gate` run `25203116684`.
+- `Quality Gate Policy Matrix (Optional)` run `25203116644`.
+- `Secret Scan` run `25203116635`.
+- `SonarQube Governance (Non-Blocking)` run `25203116668`.
+- `Public Naming Guard` run `25203116673`.
+- `Governance Correlation Smoke (Optional)` run `25203116650`.
+- `Desktop Updater Readiness (Optional)` run `25203116657`.
+
+## Deployment
+
+- No code, database, Render, Vercel, provider, or customer workflow behavior changed.
+- KAN-44 is documentation/product-default memory only.
 
 ## Residual Work
 
