@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-41`
+Ticket: `KAN-42`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -33,6 +33,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
+- Current follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -407,13 +408,13 @@ KAN-36 provider connection validator:
 
 Use strict mode without `-ReportOnly` when every selected provider must be ready. The validator reports sanitized statuses only and does not print secret values.
 
-KAN-40 governance copilot AI mode validator:
+KAN-40/KAN-42 governance copilot AI mode validator:
 
 ```powershell
-.\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 -TicketId KAN-39 -ReleaseId KAN-39 -OutputPath out\governance-copilot-ai-mode-validation.json
+.\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 -TicketId KAN-39 -ReleaseId KAN-39 -RequireAiMode -OutputPath out\governance-copilot-ai-mode-validation.json
 ```
 
-Use `-RequireAiMode` only after Google Gemini or AI Gateway is enabled and production should fail if the copilot returns deterministic `fallback`.
+Google Gemini is active in production after KAN-41. Use `-RequireAiMode` for normal production validation. Non-strict validation is only for explicit fallback diagnostics.
 
 KAN-31 adoption profile persistence migration postcheck:
 
@@ -921,6 +922,23 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `SonarQube Governance (Non-Blocking)` - run `25199526033`.
   - `Public Naming Guard` - run `25199526037`.
   - `Desktop Updater Readiness (Optional)` - run `25199526031`.
+
+## Current KAN-42 Implementation Notes
+
+- Jira: `KAN-42 - Enforce governance copilot AI mode validation`.
+- Implementation branch: `ops/KAN-42-enforce-copilot-ai-validation`.
+- Implementation PR: `#138 - ops(KAN-42): enforce governance copilot AI validation`.
+- Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
+- Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
+- Report: `docs/reports/governance-copilot-ai-mode-enforcement-2026-05-01.md`.
+- Scope:
+  - scheduled Governance Copilot AI Mode Validation runs now require `mode=ai`.
+  - manual dispatch defaults to `require_ai_mode=true`.
+  - manual `require_ai_mode=false` remains available only for fallback diagnostics.
+  - missing `GITGOV_API_KEY` fails strict runs instead of silently skipping.
+- Local validation already run:
+  - workflow YAML parsed successfully.
+  - strict production validator passed with HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
 
 ## Current KAN-28 Implementation Notes
 

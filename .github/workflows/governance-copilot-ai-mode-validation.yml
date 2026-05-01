@@ -6,11 +6,11 @@ on:
       require_ai_mode:
         description: "Fail unless the copilot route returns mode=ai"
         required: false
-        default: "false"
+        default: "true"
         type: choice
         options:
-          - "false"
           - "true"
+          - "false"
       ticket_id:
         description: "Ticket used for evidence packet validation"
         required: false
@@ -47,18 +47,28 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path out | Out-Null
 
+          $requireAiMode = $true
+          if ($env:INPUT_REQUIRE_AI_MODE -eq "false") {
+            $requireAiMode = $false
+          }
+
           if ([string]::IsNullOrWhiteSpace($env:GITGOV_API_KEY)) {
+            $status = if ($requireAiMode) { "failed" } else { "skipped" }
             [ordered]@{
               generated_at = (Get-Date).ToUniversalTime().ToString("o")
-              status = "skipped"
-              ok = $true
+              status = $status
+              ok = -not $requireAiMode
+              require_ai_mode = $requireAiMode
               reason = "GITGOV_API_KEY secret is not configured."
             } | ConvertTo-Json -Depth 5 | Set-Content -Path "out/governance-copilot-ai-mode-validation.json" -Encoding UTF8
-            Write-Warning "Skipping copilot validation because GITGOV_API_KEY is missing."
+            if ($requireAiMode) {
+              Write-Error "GITGOV_API_KEY is required when governance copilot AI mode enforcement is enabled."
+              exit 1
+            }
+            Write-Warning "Skipping copilot validation because GITGOV_API_KEY is missing and strict AI mode is disabled."
             exit 0
           }
 
-          $requireAiMode = $env:INPUT_REQUIRE_AI_MODE -eq "true"
           $ticketId = $env:INPUT_TICKET_ID
           if ([string]::IsNullOrWhiteSpace($ticketId)) {
             $ticketId = "KAN-39"
