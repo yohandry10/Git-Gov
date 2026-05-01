@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`.
 
 Current state:
 
@@ -60,6 +60,7 @@ Missing product packaging:
   - KAN-45 adds the first `release_governance` policy field to the adoption profile, dashboard, backend validation, adoption pack, and workflow template manifest.
   - KAN-46 adds the first evaluator that compares release policy with approval evidence and reports `recorded`, `advisory-warning`, `approved`, `would-block`, or `blocked`.
   - KAN-47 adds the first optional workflow gate that can consume `blocking=true` only when enforcement is explicitly requested.
+  - KAN-49 adds an opt-in monitor for the evidence artifact emitted by that gate.
 
 Customer-facing value:
 
@@ -93,7 +94,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, and starts per-environment overrides so production can be stricter than staging without changing the safe default. It does not yet mutate remote customer repositories through GitHub APIs, require cryptographic signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet mutate remote customer repositories through GitHub APIs, require cryptographic signatures, or block releases from approval state by default.
 
 Release governance default:
 
@@ -103,6 +104,7 @@ Release governance default:
 - Blocking release enforcement must be explicitly enabled by customer policy.
 - KAN-46 can report a blocking result for an explicitly blocking policy, but a workflow must still opt in to treating that result as a deployment gate.
 - KAN-47 supplies that opt-in workflow gate, still manual/report-only unless enforcement is selected.
+- KAN-49 monitors the gate artifact only when release governance and artifact monitoring are both selected; it is not generated for default `record-only`.
 - Generated workflows should remain non-blocking unless the adoption profile clearly selects advisory or blocking enforcement.
 - Adoption profile validation now rejects accidental blocking `record-only` configurations and requires `formal-approval` before non-`record-only` governance modes.
 
