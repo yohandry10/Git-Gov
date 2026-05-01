@@ -15,6 +15,7 @@ Default behavior remains non-blocking. A customer must explicitly configure bloc
 - Jira issue: `KAN-46 - Add release governance evaluator`.
 - Branch: `product/KAN-46-release-governance-evaluator`.
 - PR: `#146 - product(KAN-46): add release governance evaluator`.
+- Merge commit: `025243214639757e901830d958e60e2ba3eb55cd`.
 - Design: `docs/design/release-governance-evaluator-mvp.md`.
 
 ## Changes
@@ -75,7 +76,43 @@ Completed locally:
 - No database migration is required.
 - No provider setting is changed.
 - No customer workflow installation is triggered.
-- Render production route validation should be performed after the backend deploy reaches `live` on `main`.
+- Render deploy `dep-d7q5qmkvikkc73cmfg0g` reached `live` on commit `025243214639757e901830d958e60e2ba3eb55cd`.
+
+## GitHub Validation
+
+PR `#146` checks passed before merge:
+
+- `Security Guard`.
+- `Server Clippy + Check`.
+- `Desktop Rust Clippy`.
+- `Frontend Lint + Typecheck`.
+- `Website Lint + Typecheck + Build`.
+- `Workflow Lint`.
+- `Validate quality_gates warn/block matrix`.
+- `Sonar Scan + Quality Gate`.
+- `Block internal-assistant markers in branch/commits`.
+- `Vercel`.
+- `Vercel Preview Comments`.
+
+Post-merge checks passed on `main` commit `025243214639757e901830d958e60e2ba3eb55cd`:
+
+- `CI` run `25207328590`.
+- `Release Readiness Gate` run `25207328587`.
+- `Quality Gate Policy Matrix (Optional)` run `25207328585`.
+- `Secret Scan` run `25207328605`.
+- `SonarQube Governance (Non-Blocking)` run `25207328608`.
+- `Public Naming Guard` run `25207328592`.
+- `Governance Correlation Smoke (Optional)` run `25207328584`.
+- `Desktop Updater Readiness (Optional)` run `25207328581`.
+
+## Production Smoke
+
+Production validation passed after Render deploy:
+
+- `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
+- Anonymous `GET /enterprise/release-governance/evaluate?...` returned `401`.
+- Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200`.
+- The authenticated evaluator response returned `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
 
 ## Residual Work
 
