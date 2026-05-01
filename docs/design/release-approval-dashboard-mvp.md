@@ -54,9 +54,34 @@ Backend KAN-37 validation remains the source of truth. Client validation is an o
 - The UI requires explicit confirmation before creating a formal decision.
 - The API remains admin-only.
 
+## Configurable Governance Defaults
+
+The KAN-43 dashboard creates and lists approval records. It does not silently turn release approvals into a blocking deployment gate.
+
+Default behavior remains `record-only`:
+
+- admins can create approval evidence.
+- operators can review approval status.
+- reports can include formal release decision evidence.
+- pipelines are not failed by default because an approval is missing.
+- multiple approvers are not required by default.
+
+Future quorum and release gate enforcement must be customer-configurable opt-in behavior.
+
+Examples:
+
+- A customer can keep `record-only` mode for audit history.
+- A customer can choose advisory mode to show warnings without blocking deploys.
+- A customer can later choose blocking enforcement for production only.
+- A customer can later choose quorum rules such as one engineering approval and one security approval.
+
+Those choices must be explicit. GitGov should not surprise a customer by blocking releases just because the release approval dashboard exists.
+
+See `docs/design/configurable-release-governance-defaults.md`.
+
 ## Non-Goals
 
-- No multi-approver quorum.
+- No default multi-approver quorum.
 - No cryptographic human signature.
-- No automatic release gate enforcement from approval state.
+- No automatic release gate enforcement from approval state unless a future customer policy explicitly enables it.
 - No remote customer repository mutation.

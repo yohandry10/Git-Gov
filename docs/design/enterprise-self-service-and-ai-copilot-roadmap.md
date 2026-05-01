@@ -56,6 +56,7 @@ Missing product packaging:
   - which evidence packet supported the decision.
   - backend persistence and validation now exist through `KAN-37`.
   - dashboard create/list workflow now exists through `KAN-43`.
+  - KAN-44 clarifies that quorum and release-blocking enforcement are opt-in customer policy choices, not defaults.
 
 Customer-facing value:
 
@@ -83,7 +84,15 @@ First MVP:
 - `docs/design/adoption-profile-persistence-mvp.md`.
 - `docs/design/provider-health-validation-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, and provides a dashboard wizard for create/list approval workflows. It does not yet mutate remote customer repositories through GitHub APIs or enforce multi-approver quorum/signatures.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, and provides a dashboard wizard for create/list approval workflows. It does not yet mutate remote customer repositories through GitHub APIs, enforce multi-approver quorum/signatures, or block releases from approval state by default.
+
+Release governance default:
+
+- GitGov defaults to `record-only` release approval behavior.
+- `record-only` means approvals and evidence can be saved and reported, but customer pipelines are not blocked by default.
+- Multi-approver quorum must be explicitly enabled by customer policy.
+- Blocking release enforcement must be explicitly enabled by customer policy.
+- Generated workflows should remain non-blocking unless the adoption profile clearly selects advisory or blocking enforcement.
 
 ### 2. Vercel AI SDK Copilot
 
@@ -146,6 +155,7 @@ The agreed order is:
 
 - Do not claim GitGov removes all vulnerabilities.
 - Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement exist.
+- Do not make multi-approver quorum or release-blocking enforcement default behavior; both must be explicit customer choices.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.
 - Do not claim the AI copilot is a full autonomous agent until streaming, tool-loop behavior, and governed tool approval are complete.

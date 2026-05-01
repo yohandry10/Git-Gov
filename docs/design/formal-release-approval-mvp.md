@@ -127,11 +127,29 @@ The follow-up adds:
 
 The server-side validation and append-only data model remain owned by KAN-37.
 
+## KAN-44 Configurable Governance Defaults
+
+KAN-44 clarifies the default product behavior for future quorum and release gate enforcement.
+
+The KAN-37 backend stores formal release approval records. It does not mean every customer release is automatically blocked when an approval is missing.
+
+Default behavior is `record-only`:
+
+- approval records can be stored.
+- evidence hashes can be bound to approval decisions.
+- dashboards and reports can show approval status.
+- GitGov does not block a release by default.
+- GitGov does not require multiple approvers by default.
+
+Future multi-approver quorum and release-blocking enforcement must be explicit customer choices. They should be configured through customer policy, adoption profile, workflow template settings, or an equivalent future product surface.
+
+See `docs/design/configurable-release-governance-defaults.md`.
+
 ## Remaining Non-Goals
 
-- No multi-approver quorum engine.
+- No default multi-approver quorum engine.
 - No cryptographic human signature.
-- No automatic release gate enforcement from approval state.
+- No automatic release gate enforcement from approval state unless a future customer policy explicitly enables it.
 - No Vercel AI SDK Copilot work.
 
 Those are follow-ups after the formal approval record exists.

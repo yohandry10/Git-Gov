@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-43`
+Ticket: `KAN-44`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -35,7 +35,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
-- Current follow-up: none selected after KAN-43.
+- Current follow-up: `KAN-44 - Document configurable release governance defaults`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1011,6 +1011,25 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Governance Correlation Smoke (Optional)` - run `25202577688`.
   - `Desktop Updater Readiness (Optional)` - run `25202577680`.
 - No new backend route, database migration, Render deploy, or Vercel production env change was needed; KAN-43 reuses the existing KAN-37 backend API.
+
+## Current KAN-44 Implementation Notes
+
+- Jira: `KAN-44 - Document configurable release governance defaults`.
+- Implementation branch: `docs/KAN-44-configurable-release-governance`.
+- Design: `docs/design/configurable-release-governance-defaults.md`.
+- Report: `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
+- Product decision:
+  - default release governance behavior remains `record-only`.
+  - release approval records can be stored, displayed and reported by default.
+  - release-blocking enforcement must be explicitly selected by customer policy.
+  - multi-approver quorum must be explicitly selected by customer policy.
+  - generated workflows should not block customer releases unless the adoption profile or equivalent policy clearly enables blocking behavior.
+- Current docs updated:
+  - `docs/design/configurable-release-governance-defaults.md`.
+  - `docs/design/formal-release-approval-mvp.md`.
+  - `docs/design/release-approval-dashboard-mvp.md`.
+  - `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+  - `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
 
 ## Current KAN-28 Implementation Notes
 
