@@ -1,8 +1,8 @@
 # Enterprise Self-Service Adoption MVP
 
-Updated: 2026-04-30
+Updated: 2026-05-01
 
-Ticket: `KAN-29`
+Ticket: `KAN-45`
 
 ## Goal
 
@@ -14,8 +14,9 @@ The MVP is intentionally not a full UI wizard yet. It is a reproducible adoption
 - required variables and secrets by name.
 - selected GitGov modules.
 - policy preset and evidence rules.
+- release governance policy.
 - manual setup checklist.
-- known product gaps, especially formal enterprise release approval.
+- known product gaps and manual setup steps.
 
 ## Why This Comes Before The AI Copilot
 
@@ -42,6 +43,7 @@ Core profile fields:
 - `policy_preset`: `audit-only`, `moderate`, or `strict`.
 - `providers`: `github`, `jira`, `jenkins`, `sonarqube`, `render`, `vercel`.
 - `modules`: `traceability`, `github-evidence`, `release-readiness`, `quality-gates`, `evidence-packets`, `vulnerability-review`, `artifact-monitoring`, `trend-enforcement`, `formal-approval`.
+- `release_governance`: default `record-only` policy, or explicit customer-selected `advisory`, `approval-required`, or `quorum-required`.
 
 ### Outputs
 
@@ -51,6 +53,27 @@ The generator writes:
 - `enterprise-adoption-pack.json`.
 
 The pack contains no secret values.
+
+### Release Governance
+
+KAN-45 adds the first release governance policy field to the adoption profile.
+
+Default:
+
+```text
+mode: record-only
+enforcement: disabled
+quorum: disabled
+```
+
+Meaning:
+
+- GitGov can record release approval evidence.
+- GitGov can include release approval state in generated packs and dashboard exports.
+- GitGov does not block releases by default.
+- GitGov does not require multiple approvers by default.
+
+Stricter modes require explicit customer configuration and the `formal-approval` module.
 
 ### Policy Presets
 
@@ -106,9 +129,16 @@ For future product work:
 1. Add a dashboard onboarding view that writes the same profile shape.
    - Status: implemented as the KAN-30 Adoption Profile Dashboard MVP.
 2. Add backend persistence for tenant adoption profiles.
+   - Status: implemented by `KAN-31`.
 3. Add validation endpoints that compare expected modules against real provider evidence.
+   - Status: provider health evidence implemented by `KAN-32`; direct provider connection validation implemented by `KAN-36`.
 4. Generate workflow templates for selected modules and providers.
    - Status: implemented by `KAN-33`.
 5. Add a reviewed workflow installation flow for customer repositories.
+   - Status: implemented by `KAN-35` for local checkout installation after dry-run review.
 6. Add formal release approval records with approver, expiration, risk acceptance, and linked evidence packet.
+   - Status: backend implemented by `KAN-37`; dashboard wizard implemented by `KAN-43`.
 7. Add Vercel AI SDK Copilot on top of the adoption profile and evidence APIs.
+   - Status: first MVP implemented by `KAN-38`; dashboard UI and AI mode validation/activation completed through `KAN-39` to `KAN-42`.
+8. Carry explicit release governance policy through the profile, generated packs, and backend validation.
+   - Status: implemented by `KAN-45`.

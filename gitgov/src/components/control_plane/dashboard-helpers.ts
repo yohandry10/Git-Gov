@@ -166,6 +166,8 @@ export function buildOperationalEvidenceMetrics(
 }
 
 export type AdoptionPolicyPreset = 'audit-only' | 'moderate' | 'strict'
+export type AdoptionReleaseGovernanceMode = 'record-only' | 'advisory' | 'approval-required' | 'quorum-required'
+export type AdoptionReleaseGovernanceEnforcement = 'disabled' | 'advisory' | 'blocking'
 export type AdoptionProvider = 'github' | 'jira' | 'jenkins' | 'sonarqube' | 'render' | 'vercel'
 export type AdoptionModule =
   | 'traceability'
@@ -210,6 +212,29 @@ export const ADOPTION_POLICY_PRESET_OPTIONS: AdoptionOption<AdoptionPolicyPreset
   { id: 'strict', label: 'Strict' },
 ]
 
+export const ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS: AdoptionOption<AdoptionReleaseGovernanceMode>[] = [
+  { id: 'record-only', label: 'Record only' },
+  { id: 'advisory', label: 'Advisory' },
+  { id: 'approval-required', label: 'Approval required' },
+  { id: 'quorum-required', label: 'Quorum required' },
+]
+
+export interface EnterpriseReleaseGovernanceQuorumRule {
+  role: string
+  required: number
+}
+
+export interface EnterpriseReleaseGovernancePolicy {
+  mode: AdoptionReleaseGovernanceMode
+  environment: string
+  approval_required: boolean
+  enforcement: AdoptionReleaseGovernanceEnforcement
+  quorum: {
+    enabled: boolean
+    rules: EnterpriseReleaseGovernanceQuorumRule[]
+  }
+}
+
 export interface EnterpriseAdoptionProfile {
   customer_name: string
   repository_full_name: string
@@ -218,6 +243,7 @@ export interface EnterpriseAdoptionProfile {
   policy_preset: AdoptionPolicyPreset
   providers: AdoptionProvider[]
   modules: AdoptionModule[]
+  release_governance?: EnterpriseReleaseGovernancePolicy
 }
 
 export interface EnterpriseAdoptionWorkflowPlan {
@@ -261,6 +287,7 @@ export interface EnterpriseAdoptionPack {
   default_branch: string
   jira_project_key: string
   policy_preset: AdoptionPolicyPreset
+  release_governance: EnterpriseReleaseGovernancePolicy
   providers: AdoptionProvider[]
   modules: AdoptionModule[]
   workflow_plan: EnterpriseAdoptionWorkflowPlan[]
@@ -284,6 +311,7 @@ export interface EnterpriseWorkflowTemplateManifest {
   default_branch: string
   jira_project_key: string
   policy_preset: AdoptionPolicyPreset
+  release_governance: EnterpriseReleaseGovernancePolicy
   providers: AdoptionProvider[]
   modules: AdoptionModule[]
   workflow_templates: EnterpriseWorkflowTemplateSummary[]
@@ -338,12 +366,111 @@ export interface EnterpriseProviderHealthCheck {
   next_step: string
 }
 
+const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
+const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
+const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
+
+function defaultQuorumRules(): EnterpriseReleaseGovernanceQuorumRule[] {
+  return [
+    { role: 'engineering', required: 1 },
+    { role: 'security', required: 1 },
+  ]
+}
+
+export function buildReleaseGovernancePolicy(
+  mode: AdoptionReleaseGovernanceMode,
+  environment = 'production',
+): EnterpriseReleaseGovernancePolicy {
+  const normalizedEnvironment = environment.trim() || 'production'
+  if (mode === 'advisory') {
+    return {
+      mode,
+      environment: normalizedEnvironment,
+      approval_required: false,
+      enforcement: 'advisory',
+      quorum: { enabled: false, rules: [] },
+    }
+  }
+  if (mode === 'approval-required') {
+    return {
+      mode,
+      environment: normalizedEnvironment,
+      approval_required: true,
+      enforcement: 'blocking',
+      quorum: { enabled: false, rules: [] },
+    }
+  }
+  if (mode === 'quorum-required') {
+    return {
+      mode,
+      environment: normalizedEnvironment,
+      approval_required: true,
+      enforcement: 'blocking',
+      quorum: { enabled: true, rules: defaultQuorumRules() },
+    }
+  }
+  return {
+    mode: 'record-only',
+    environment: normalizedEnvironment,
+    approval_required: false,
+    enforcement: 'disabled',
+    quorum: { enabled: false, rules: [] },
+  }
+}
+
+function normalizeReleaseGovernanceRule(rule: EnterpriseReleaseGovernanceQuorumRule): EnterpriseReleaseGovernanceQuorumRule | null {
+  const role = typeof rule.role === 'string' ? rule.role.trim().toLowerCase() : ''
+  const required = Number.isFinite(rule.required) ? Math.max(1, Math.min(20, Math.trunc(rule.required))) : 1
+  if (!role) return null
+  return { role, required }
+}
+
+export function normalizeReleaseGovernancePolicy(
+  policy?: EnterpriseReleaseGovernancePolicy | null,
+): EnterpriseReleaseGovernancePolicy {
+  const requestedMode = policy?.mode
+  const mode = ADOPTION_RELEASE_GOVERNANCE_MODE_IDS.includes(requestedMode as AdoptionReleaseGovernanceMode)
+    ? requestedMode as AdoptionReleaseGovernanceMode
+    : 'record-only'
+  const normalized = buildReleaseGovernancePolicy(mode, policy?.environment ?? 'production')
+
+  if (mode !== 'quorum-required') return normalized
+
+  const rules = Array.isArray(policy?.quorum?.rules)
+    ? policy.quorum.rules
+      .map((rule) => normalizeReleaseGovernanceRule(rule))
+      .filter((rule): rule is EnterpriseReleaseGovernanceQuorumRule => rule !== null)
+    : []
+
+  return {
+    ...normalized,
+    quorum: {
+      enabled: true,
+      rules: rules.length > 0 ? rules : normalized.quorum.rules,
+    },
+  }
+}
+
+export function normalizeEnterpriseAdoptionProfile(profile: EnterpriseAdoptionProfile): EnterpriseAdoptionProfile {
+  return {
+    customer_name: profile.customer_name ?? DEFAULT_ENTERPRISE_ADOPTION_PROFILE.customer_name,
+    repository_full_name: profile.repository_full_name ?? DEFAULT_ENTERPRISE_ADOPTION_PROFILE.repository_full_name,
+    default_branch: profile.default_branch ?? DEFAULT_ENTERPRISE_ADOPTION_PROFILE.default_branch,
+    jira_project_key: profile.jira_project_key ?? DEFAULT_ENTERPRISE_ADOPTION_PROFILE.jira_project_key,
+    policy_preset: profile.policy_preset ?? DEFAULT_ENTERPRISE_ADOPTION_PROFILE.policy_preset,
+    providers: Array.isArray(profile.providers) ? [...profile.providers] : [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.providers],
+    modules: Array.isArray(profile.modules) ? [...profile.modules] : [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules],
+    release_governance: normalizeReleaseGovernancePolicy(profile.release_governance),
+  }
+}
+
 export const DEFAULT_ENTERPRISE_ADOPTION_PROFILE: EnterpriseAdoptionProfile = {
   customer_name: 'ExampleCo',
   repository_full_name: 'example-org/example-repo',
   default_branch: 'main',
   jira_project_key: 'EX',
   policy_preset: 'moderate',
+  release_governance: buildReleaseGovernancePolicy('record-only'),
   providers: ['github', 'jira', 'jenkins', 'sonarqube'],
   modules: [
     'traceability',
@@ -356,9 +483,6 @@ export const DEFAULT_ENTERPRISE_ADOPTION_PROFILE: EnterpriseAdoptionProfile = {
     'trend-enforcement',
   ],
 }
-
-const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
-const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 
 function uniqueKnownValues<T extends string>(values: readonly T[], knownValues: readonly T[]): T[] {
   const known = new Set(knownValues)
@@ -396,6 +520,7 @@ export function validateEnterpriseAdoptionProfile(profile: EnterpriseAdoptionPro
   const repo = profile.repository_full_name.trim()
   const branch = profile.default_branch.trim()
   const jiraKey = profile.jira_project_key.trim()
+  const releaseGovernance = normalizeReleaseGovernancePolicy(profile.release_governance)
 
   if (!profile.customer_name.trim()) errors.push('Customer name is required.')
   if (!repo) {
@@ -412,6 +537,15 @@ export function validateEnterpriseAdoptionProfile(profile: EnterpriseAdoptionPro
   }
   if (profile.providers.length === 0) errors.push('Select at least one provider.')
   if (profile.modules.length === 0) errors.push('Select at least one module.')
+  if (!releaseGovernance.environment.trim()) {
+    errors.push('Release governance environment is required.')
+  }
+  if (releaseGovernance.mode !== 'record-only' && !profile.modules.includes('formal-approval')) {
+    errors.push('Enable the Formal approval module before choosing advisory, approval-required, or quorum-required release governance.')
+  }
+  if (releaseGovernance.mode === 'quorum-required' && releaseGovernance.quorum.rules.length === 0) {
+    errors.push('Quorum-required release governance needs at least one approver role.')
+  }
 
   return { valid: errors.length === 0, errors }
 }
@@ -429,6 +563,7 @@ export function buildEnterpriseAdoptionPack(
   const freshArtifactRequired = profile.policy_preset !== 'audit-only'
   const jiraKey = profile.jira_project_key.trim()
   const ticketPrefix = jiraKey || 'KAN'
+  const releaseGovernance = normalizeReleaseGovernancePolicy(profile.release_governance)
 
   const workflowPlan: EnterpriseAdoptionWorkflowPlan[] = []
   const variables: EnterpriseAdoptionVariable[] = []
@@ -478,10 +613,12 @@ export function buildEnterpriseAdoptionPack(
   }
 
   if (modules.includes('formal-approval')) {
-    addUniqueByKey(openProductGaps, {
-      gap: 'Formal release approval',
-      detail: 'GitGov has PR review evidence and policy decisions, but a full enterprise release approval model still needs approvers, expiration, risk acceptance, and evidence binding.',
-    }, 'gap')
+    addUniqueByKey(manualSteps, {
+      step: 'Review release approval policy',
+      detail: releaseGovernance.mode === 'record-only'
+        ? 'Default record-only mode stores release approval evidence and does not block customer releases.'
+        : `Customer selected ${releaseGovernance.mode} for ${releaseGovernance.environment}; review this explicit opt-in policy before installing any blocking workflow.`,
+    }, 'step')
   }
 
   if (providers.includes('github')) {
@@ -516,6 +653,14 @@ export function buildEnterpriseAdoptionPack(
   const policyRules: EnterpriseAdoptionPolicyRule[] = [
     { rule: 'Ticket traceability', setting: modules.includes('traceability') ? 'required' : 'optional' },
     { rule: 'Release readiness target', setting: String(readinessTarget) },
+    { rule: 'Release approval governance', setting: releaseGovernance.mode },
+    { rule: 'Release approval enforcement', setting: releaseGovernance.enforcement },
+    {
+      rule: 'Release approval quorum',
+      setting: releaseGovernance.quorum.enabled
+        ? releaseGovernance.quorum.rules.map((rule) => `${rule.role}:${rule.required}`).join(', ')
+        : 'disabled',
+    },
     { rule: 'Critical/high vulnerability policy', setting: criticalHighPolicy(profile.policy_preset) },
     { rule: 'PR review evidence', setting: prReviewRequired ? 'required' : 'recommended' },
     { rule: 'Fresh evidence artifacts', setting: freshArtifactRequired ? 'required' : 'report-only' },
@@ -529,6 +674,7 @@ export function buildEnterpriseAdoptionPack(
     default_branch: profile.default_branch.trim() || 'main',
     jira_project_key: jiraKey,
     policy_preset: profile.policy_preset,
+    release_governance: releaseGovernance,
     providers,
     modules,
     workflow_plan: workflowPlan,
@@ -1039,6 +1185,8 @@ function buildWorkflowTemplateReadme(pack: EnterpriseAdoptionPack): string {
     `Repository: \`${pack.repository_full_name}\``,
     `Default branch: \`${pack.default_branch}\``,
     `Policy preset: \`${pack.policy_preset}\``,
+    `Release governance: \`${pack.release_governance.mode}\``,
+    `Release enforcement: \`${pack.release_governance.enforcement}\``,
     pack.jira_project_key ? `Jira project key: \`${pack.jira_project_key}\`` : '',
     '',
     '## Generated Templates',
@@ -1080,6 +1228,7 @@ export function buildEnterpriseWorkflowTemplatePack(
       ...profile,
       default_branch: pack.default_branch,
       jira_project_key: pack.jira_project_key,
+      release_governance: pack.release_governance,
     }),
   }))
 
@@ -1092,6 +1241,7 @@ export function buildEnterpriseWorkflowTemplatePack(
       default_branch: pack.default_branch,
       jira_project_key: pack.jira_project_key,
       policy_preset: pack.policy_preset,
+      release_governance: pack.release_governance,
       providers: pack.providers,
       modules: pack.modules,
       workflow_templates: files.map((file) => ({

@@ -131,27 +131,50 @@ It should not feel like:
 
 ## Configuration Shape
 
-A future policy can be represented at a high level like this:
+KAN-45 implements the first profile-level policy shape like this:
 
 ```json
 {
   "release_governance": {
     "mode": "record-only",
-    "environments": {
-      "production": {
-        "approval_required": false,
-        "enforcement": "disabled",
-        "quorum": {
-          "enabled": false,
-          "rules": []
-        }
-      }
+    "environment": "production",
+    "approval_required": false,
+    "enforcement": "disabled",
+    "quorum": {
+      "enabled": false,
+      "rules": []
     }
   }
 }
 ```
 
-An enforcement customer could later choose:
+An enforcement customer can explicitly choose:
+
+```json
+{
+  "release_governance": {
+    "mode": "quorum-required",
+    "environment": "production",
+    "approval_required": true,
+    "enforcement": "blocking",
+    "quorum": {
+      "enabled": true,
+      "rules": [
+        {
+          "role": "engineering",
+          "required": 1
+        },
+        {
+          "role": "security",
+          "required": 1
+        }
+      ]
+    }
+  }
+}
+```
+
+The profile-level shape is deliberately small. A later version can expand it to per-environment or per-risk-level policy, for example:
 
 ```json
 {
@@ -174,7 +197,7 @@ An enforcement customer could later choose:
 }
 ```
 
-These examples describe product intent. They are not yet a committed API contract.
+The first shape is now used by adoption profile validation, dashboard exports, adoption packs, and workflow template manifests.
 
 ## UI Requirements
 
@@ -294,6 +317,7 @@ KAN-44 clarifies future defaults:
 - Future quorum support must be opt-in.
 - Future release gate enforcement must be opt-in.
 - Adoption profile and workflow template work must preserve non-blocking defaults unless customer policy says otherwise.
+- KAN-45 adds the first explicit `release_governance` profile policy so customer intent can travel with adoption packs and generated workflow templates.
 
 ## Non-Goals
 

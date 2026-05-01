@@ -1,8 +1,8 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-04-30
+Updated: 2026-05-01
 
-Ticket: `KAN-28`
+Ticket: `KAN-45`
 
 ## Decision
 
@@ -14,7 +14,7 @@ The next product work is not to invent a new category. It is to package the prov
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`.
 
 Current state:
 
@@ -57,6 +57,7 @@ Missing product packaging:
   - backend persistence and validation now exist through `KAN-37`.
   - dashboard create/list workflow now exists through `KAN-43`.
   - KAN-44 clarifies that quorum and release-blocking enforcement are opt-in customer policy choices, not defaults.
+  - KAN-45 adds the first `release_governance` policy field to the adoption profile, dashboard, backend validation, adoption pack, and workflow template manifest.
 
 Customer-facing value:
 
@@ -83,8 +84,9 @@ First MVP:
 - `docs/design/adoption-profile-dashboard-mvp.md`.
 - `docs/design/adoption-profile-persistence-mvp.md`.
 - `docs/design/provider-health-validation-mvp.md`.
+- `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, and provides a dashboard wizard for create/list approval workflows. It does not yet mutate remote customer repositories through GitHub APIs, enforce multi-approver quorum/signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, and carries explicit release governance policy through the adoption profile and generated packs. It does not yet mutate remote customer repositories through GitHub APIs, enforce multi-approver quorum/signatures, or block releases from approval state by default.
 
 Release governance default:
 
@@ -93,6 +95,7 @@ Release governance default:
 - Multi-approver quorum must be explicitly enabled by customer policy.
 - Blocking release enforcement must be explicitly enabled by customer policy.
 - Generated workflows should remain non-blocking unless the adoption profile clearly selects advisory or blocking enforcement.
+- Adoption profile validation now rejects accidental blocking `record-only` configurations and requires `formal-approval` before non-`record-only` governance modes.
 
 ### 2. Vercel AI SDK Copilot
 
