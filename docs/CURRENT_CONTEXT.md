@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-01
-Ticket: `KAN-51`
+Ticket: `KAN-52`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -43,7 +43,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-49 - Monitor release governance gate artifacts`.
 - Latest completed follow-up: `KAN-50 - Remote workflow installation PR for customer repositories`.
 - Latest completed follow-up: `KAN-51 - Remote workflow installation readiness validation`.
-- Current follow-up: none selected after `KAN-51`.
+- Latest completed follow-up: `KAN-52 - Enterprise onboarding readiness report`.
+- Current follow-up: none selected after `KAN-52`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1389,6 +1390,60 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Desktop Updater Readiness (Optional)` - run `25210718096`.
   - `SonarQube Governance (Non-Blocking)` - run `25210718107`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, or remote apply run was needed.
+
+## Latest KAN-52 Validation Notes
+
+- Jira: `KAN-52 - Enterprise onboarding readiness report`.
+- Implementation branch: `product/KAN-52-enterprise-onboarding-readiness`.
+- Implementation PR: `#158 - product(KAN-52): add onboarding readiness report`.
+- Implementation commit: `a64bb30 product(KAN-52): add onboarding readiness report`.
+- Main merge commit: `268770a product(KAN-52): add onboarding readiness report`.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1`.
+- Dashboard helper: `buildEnterpriseOnboardingReadinessReport`.
+- Dashboard UI: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Design: `docs/design/enterprise-onboarding-readiness-report-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-report-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add a consolidated Enterprise Self-Service Adoption readiness snapshot.
+  - combine adoption profile validity, provider readiness, workflow pack status, remote workflow readiness, GitHub Actions config-name readiness, and release governance posture.
+  - add dashboard `Onboarding` readiness card and `Readiness` JSON export.
+  - add CLI Markdown/JSON generator that can consume KAN-36 provider reports and KAN-51 workflow readiness reports.
+  - keep report generation read-only and secret-safe.
+- Local validation already run:
+  - PowerShell parse check for `generate_enterprise_onboarding_readiness_report.ps1`: passed.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `22` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `290` tests.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - profile-only readiness report: `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages.
+  - provider/workflow-input readiness report: `needs-action`, score `83`, `4` ready stages, `2` needs-action stages, `0` blocked stages.
+  - generated output scan for `Authorization`, `Bearer`, `GITGOV_API_KEY=`, `SONAR_TOKEN=`, `ATATT`, and `vck_`: passed with no matches.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#158` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `268770a` passed:
+  - `CI` - run `25211254174`.
+  - `Release Readiness Gate` - run `25211254160`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25211254185`.
+  - `Secret Scan` - run `25211254159`.
+  - `Public Naming Guard` - run `25211254165`.
+  - `Governance Correlation Smoke (Optional)` - run `25211254168`.
+  - `Desktop Updater Readiness (Optional)` - run `25211254172`.
+  - `SonarQube Governance (Non-Blocking)` - run `25211254202`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, remote apply run, or workflow dispatch was needed.
 
 ## Latest KAN-47 Validation Notes
 
