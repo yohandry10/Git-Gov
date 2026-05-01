@@ -143,6 +143,19 @@ Interpretation:
 - AI generation did not run in production during this validation because AI Gateway/OIDC was not available to the route, so the expected fallback mode was used.
 - No secret values, Authorization headers, or provider credentials were printed during validation.
 
+## KAN-41 Provider Update
+
+KAN-41 selects direct Google Gemini through `@ai-sdk/google` as the production activation path for generated answers.
+
+Reason:
+
+- Vercel AI Gateway generation required billing-card activation.
+- GitGov already has a Gemini API integration.
+- The copilot can keep the AI SDK interface while using Google directly.
+- deterministic fallback remains available if Gemini is missing, quota-limited, or unavailable.
+
+The production Vercel project was configured with server-side Google provider variables without printing secret values. Preview remains fallback-only unless explicitly configured later.
+
 ## Remaining Work
 
 - Dashboard UI for governance copilot is started in `KAN-39`.
@@ -150,4 +163,4 @@ Interpretation:
 - AI SDK `ToolLoopAgent` once tool-calling behavior is explicitly needed.
 - MCP integration.
 - Persisted copilot transcripts or evidence-linked explanations.
-- Enable and validate production AI Gateway/OIDC if the desired production behavior is `mode=ai` instead of deterministic `mode=fallback`.
+- Validate KAN-41 in production with strict `mode=ai` after the Vercel deployment reaches production.

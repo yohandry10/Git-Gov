@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-04-30
-Ticket: `KAN-40`
+Updated: 2026-05-01
+Ticket: `KAN-41`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -32,6 +32,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
+- Current active follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -412,7 +413,7 @@ KAN-40 governance copilot AI mode validator:
 .\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 -TicketId KAN-39 -ReleaseId KAN-39 -OutputPath out\governance-copilot-ai-mode-validation.json
 ```
 
-Use `-RequireAiMode` only after Vercel AI Gateway/OIDC is enabled and production should fail if the copilot returns deterministic `fallback`.
+Use `-RequireAiMode` only after Google Gemini or AI Gateway is enabled and production should fail if the copilot returns deterministic `fallback`.
 
 KAN-31 adoption profile persistence migration postcheck:
 
@@ -769,7 +770,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - `POST https://www.gitgov.cloud/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
   - `POST https://git-gov.vercel.app/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
   - Direct deployment URL returned `401` HTML and apex `https://gitgov.cloud/api/copilot/governance` returned `401`; canonical `www` and Vercel production aliases are the validated paths.
-- Production AI Gateway/OIDC was not active during validation, so the route used deterministic fallback mode. Enable and validate production AI Gateway/OIDC if `mode=ai` is required.
+- Production AI Gateway/OIDC was not active during KAN-38 validation, so the route used deterministic fallback mode. KAN-41 changes the selected production activation path to direct Google Gemini through `@ai-sdk/google`.
 
 Latest KAN-39 governance copilot dashboard baseline:
 
@@ -863,7 +864,37 @@ Latest KAN-39 governance copilot dashboard baseline:
   - Result: `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, `4` ok sources, and `1` warning.
 - Current interpretation:
   - the copilot route is healthy and evidence-grounded.
-  - production AI generation mode is still pending Vercel AI Gateway/OIDC activation.
+  - production AI generation mode moved to KAN-41 using direct Google Gemini because Vercel AI Gateway required billing-card activation.
+
+## Current KAN-41 Implementation Notes
+
+- Jira: `KAN-41 - Activate governance copilot AI mode on Vercel`.
+- Implementation branch: `product/KAN-41-google-ai-sdk-copilot`.
+- Report: `docs/reports/google-ai-sdk-copilot-provider-2026-05-01.md`.
+- Scope:
+  - add direct Google Gemini support to `POST /api/copilot/governance` through `@ai-sdk/google`.
+  - keep AI Gateway as an optional provider path.
+  - keep deterministic fallback if no provider is configured or generation fails.
+  - do not change the existing Rust `/chat/ask` Gemini bot path.
+- Vercel production env configuration was updated without printing secret values:
+  - `GOOGLE_GENERATIVE_AI_API_KEY`.
+  - `GITGOV_COPILOT_PROVIDER=google`.
+  - `GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash`.
+- Preview remains fallback-only unless explicitly configured later.
+- Local validation already run:
+  - `pnpm run typecheck` from `gitgov-web`: passed.
+  - `pnpm run lint` from `gitgov-web`: passed.
+  - `pnpm run build` from `gitgov-web`: passed.
+  - local route smoke with `GITGOV_COPILOT_PROVIDER=google` and Google key mapped from ignored local `GEMINI_API_KEY`: HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+- After merge and Vercel production deploy, run:
+
+```powershell
+.\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
+  -TicketId KAN-39 `
+  -ReleaseId KAN-39 `
+  -RequireAiMode `
+  -OutputPath out\KAN-41-governance-copilot-google-ai-mode-validation.json
+```
 
 ## Current KAN-28 Implementation Notes
 

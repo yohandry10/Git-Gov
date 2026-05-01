@@ -36,7 +36,7 @@ The validator checks:
 
 ## Current Expected Production Interpretation
 
-Current production is expected to pass in non-strict mode and report `status=fallback` until Vercel AI Gateway/OIDC is active for the route.
+Before KAN-41, production was expected to pass in non-strict mode and report `status=fallback` until an AI provider was active for the route. KAN-41 selects direct Google Gemini as the first production AI provider path.
 
 That means:
 
@@ -88,7 +88,7 @@ Interpretation:
 
 - The copilot route is healthy and evidence-grounded.
 - Production AI generation mode is not active yet.
-- The new strict gate is ready to use after Vercel AI Gateway/OIDC activation.
+- The new strict gate is ready to use after Google Gemini or AI Gateway activation.
 
 Repository guard validation:
 
@@ -136,6 +136,10 @@ First manual workflow validation passed:
 
 ## Residual Work
 
-- Enable and validate Vercel AI Gateway/OIDC when production AI generation is required.
-- Re-run the validator with `-RequireAiMode`.
+- KAN-41 changes the production activation path from Vercel AI Gateway/OIDC to direct Google Gemini through `@ai-sdk/google`, because Vercel AI Gateway generation requires a billing card and the project already has a Gemini API integration.
+- Vercel production environment variables were configured without printing secret values:
+  - `GOOGLE_GENERATIVE_AI_API_KEY`.
+  - `GITGOV_COPILOT_PROVIDER=google`.
+  - `GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash`.
+- Re-run the validator with `-RequireAiMode` after the KAN-41 deployment reaches production.
 - Consider making strict AI mode a release gate only after the team decides that deterministic fallback is no longer acceptable.

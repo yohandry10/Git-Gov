@@ -15,7 +15,7 @@ The route is deliberately not an autonomous agent yet. It is an evidence brief g
 - Implementation PR `#127` merged on `main` as `9742472`.
 - Production Vercel deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
 - Production route smoke passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance`.
-- Current production behavior is `mode=fallback` because AI Gateway/OIDC generation was not active during validation. This is the expected safe behavior until production AI generation is explicitly enabled.
+- KAN-38 production validation originally returned `mode=fallback` because AI Gateway/OIDC generation was not active. KAN-41 selects direct Google Gemini through `@ai-sdk/google` as the practical production AI path, while preserving fallback when provider generation is unavailable.
 
 ## Route
 
@@ -99,23 +99,55 @@ The route imports:
 import { generateText } from 'ai'
 ```
 
-Default model:
+KAN-41 adds direct Google Gemini provider support through:
+
+```ts
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+```
+
+Provider selection:
+
+```text
+GITGOV_COPILOT_PROVIDER=auto|google|gateway|disabled
+```
+
+Current production decision:
+
+- `google` is the selected provider for production because Vercel AI Gateway generation requires a billing card on the Vercel account.
+- AI Gateway remains supported as an optional future provider path.
+- deterministic fallback remains the safe behavior when no AI provider is configured or generation fails.
+
+Default Google model:
+
+```text
+gemini-2.5-flash
+```
+
+Google model override:
+
+```text
+GITGOV_COPILOT_GOOGLE_MODEL
+```
+
+Gateway default model:
 
 ```text
 openai/gpt-5.4
 ```
 
-Model override:
+Gateway model override:
 
 ```text
-GITGOV_COPILOT_MODEL
+GITGOV_COPILOT_GATEWAY_MODEL
 ```
 
-AI generation is attempted only when the runtime looks AI Gateway/OIDC-capable. If AI generation is unavailable, the route returns a deterministic evidence brief instead of failing.
+AI generation is attempted only when the selected provider has the required server-side runtime configuration. If AI generation is unavailable, the route returns a deterministic evidence brief instead of failing.
 
 This follows the current AI SDK v6 guidance:
 
 - `generateText()` is the basic text generation API.
+- `@ai-sdk/google` exposes the Google Generative AI provider.
+- `google('gemini-2.5-flash')` calls Gemini directly with the Google API key.
 - plain `provider/model` strings can route through Vercel AI Gateway.
 - `maxOutputTokens` and `temperature` are passed as generation settings.
 
@@ -123,6 +155,7 @@ References:
 
 - `https://ai-sdk.dev/docs/ai-sdk-core/generating-text`
 - `https://ai-sdk.dev/docs/reference/ai-sdk-core/generate-text`
+- `https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai`
 
 ## Guardrails
 
@@ -154,7 +187,7 @@ Key fields:
 
 `mode` is:
 
-- `ai` when Vercel AI SDK generation succeeded.
+- `ai` when Vercel AI SDK generation succeeded through Google Gemini or AI Gateway.
 - `fallback` when AI generation was skipped or unavailable.
 
 ## Non-Goals
