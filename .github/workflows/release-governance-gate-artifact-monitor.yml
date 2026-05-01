@@ -1,0 +1,54 @@
+name: Release Governance Gate Artifact Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Maximum accepted age for the latest release governance gate artifact"
+        required: false
+        default: "720"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+
+jobs:
+  validate-artifact:
+    name: Validate release governance gate artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Validate latest release governance artifact
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INPUT_MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+        run: |
+          $maxAgeHours = $env:INPUT_MAX_AGE_HOURS
+          if ([string]::IsNullOrWhiteSpace($maxAgeHours)) {
+            $maxAgeHours = "720"
+          }
+
+          .\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+            -Repository $env:GITHUB_REPOSITORY_NAME `
+            -WorkflowFile "release-governance-gate.yml" `
+            -ArtifactNamePrefix "release-governance-gate-" `
+            -MaxAgeHours ([int]$maxAgeHours) `
+            -OutputPath "out/release-governance-gate-artifact-monitor.json"
+
+      - name: Upload monitor summary
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-governance-gate-artifact-monitor
+          path: out/release-governance-gate-artifact-monitor.json
+          if-no-files-found: error

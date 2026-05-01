@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Ticket: `KAN-47`
+Tickets: `KAN-47`, `KAN-49`
 
 ## Purpose
 
@@ -70,3 +70,33 @@ would_block=false
 ```
 
 That proves the gate can observe release governance without changing the customer's default release behavior.
+
+## Artifact Monitor
+
+KAN-49 adds a separate monitor for the evidence artifact produced by the gate:
+
+```text
+.github/workflows/release-governance-gate-artifact-monitor.yml
+```
+
+This monitor is manual only in the GitGov repository. It checks the latest successful `release-governance-gate.yml` run for a fresh artifact named like:
+
+```text
+release-governance-gate-*
+```
+
+Default accepted age:
+
+```text
+720 hours
+```
+
+Run it after at least one successful release governance gate run. If it fails with missing or expired artifact, rerun the Release Governance Gate to create fresh evidence.
+
+Enterprise workflow packs include this monitor only when:
+
+- the customer enabled `formal-approval`;
+- the release governance policy is non-`record-only` through the base policy or an environment override; and
+- the customer selected `artifact-monitoring`.
+
+It is not generated for default `record-only` release approval evidence.
