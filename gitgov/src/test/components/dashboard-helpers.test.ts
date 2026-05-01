@@ -1,6 +1,8 @@
 import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
+  buildEnterpriseOnboardingReadinessReport,
+  buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
@@ -489,5 +491,86 @@ describe('dashboard-helpers enterprise adoption pack', () => {
         status: 'needs-config',
       }),
     ])
+  })
+
+  it('builds an onboarding readiness snapshot without secret values', () => {
+    const providerHealth = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, {
+      githubEventsTotal: 42,
+      jiraCommitsWithTicket: 12,
+      jiraCoveragePercentage: 80,
+      pipelineRuns7d: 10,
+      pipelineSuccess7d: 9,
+      sonarRuns: 3,
+      sonarSuccessful: 3,
+      activeRepos: 1,
+    })
+
+    const report = buildEnterpriseOnboardingReadinessReport(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providerHealth,
+      {
+        status: 'ready',
+        totals: {
+          workflows_missing: 0,
+          workflows_different: 0,
+          variables_missing: 0,
+          secrets_missing: 0,
+        },
+      },
+      '2026-05-01T00:00:00.000Z',
+    )
+
+    expect(report.status).toBe('ready')
+    expect(report.readiness_score).toBe(100)
+    expect(report.stage_counts).toEqual({
+      ready: 6,
+      'needs-action': 0,
+      blocked: 0,
+    })
+    expect(report.safety).toEqual({
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      release_blocking_default: false,
+    })
+    expect(JSON.stringify(report)).not.toContain('GITGOV_API_KEY=')
+    expect(JSON.stringify(report)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('keeps dashboard readiness honest when remote workflow readiness is missing', () => {
+    const providerHealth = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
+    const report = buildEnterpriseOnboardingReadinessReport(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providerHealth,
+      null,
+      '2026-05-01T00:00:00.000Z',
+    )
+
+    expect(report.status).toBe('needs-action')
+    expect(report.readiness_score).toBeLessThan(100)
+    expect(report.next_actions).toContain(
+      'Remote workflow readiness: Run the read-only remote workflow readiness validator after install or PR merge.',
+    )
+    expect(report.stages.find((stage) => stage.id === 'actions-config')?.status).toBe('needs-action')
+  })
+
+  it('blocks onboarding readiness for invalid profiles', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      repository_full_name: 'missing-owner',
+    }
+
+    const report = buildEnterpriseOnboardingReadinessReport(profile, [], null, '2026-05-01T00:00:00.000Z')
+
+    expect(report.status).toBe('blocked')
+    expect(report.stages.find((stage) => stage.id === 'profile')?.status).toBe('blocked')
+    expect(report.next_actions.some((action) => action.includes('Repository must look like owner/repo.'))).toBe(true)
+  })
+
+  it('builds a stable onboarding readiness filename', () => {
+    expect(buildEnterpriseOnboardingReadinessReportFilename(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)).toBe(
+      'exampleco-example-org-example-repo-onboarding-readiness.json',
+    )
   })
 })
