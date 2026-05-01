@@ -8,6 +8,14 @@ KAN-39 adds the first operator dashboard UI for the KAN-38 governance copilot ro
 
 The feature keeps the Vercel AI SDK route server-side and adds a Tauri desktop proxy command so the dashboard can use the existing GitGov API key without exposing it in a public web page.
 
+## Merge And Traceability
+
+- Jira issue: `KAN-39 - Governance copilot dashboard UI MVP`.
+- Implementation branch: `product/KAN-39-governance-copilot-dashboard`.
+- Implementation PR: `#129 - product(KAN-39): add governance copilot dashboard`.
+- Merged commit: `eda2f13 product(KAN-39): add governance copilot dashboard`.
+- Jira final comment: `10198`.
+
 ## Changes
 
 - Created Jira issue `KAN-39 - Governance copilot dashboard UI MVP`.
@@ -45,9 +53,21 @@ Local validation:
 - `git diff --check`: passed.
 - `.\scripts\security\publication_guard.ps1`: passed.
 
-PR and post-merge validation will be recorded after GitHub checks complete.
+PR and post-merge validation completed after merge.
+
+## Post-Merge Validation
+
+GitHub checks passed on `main` commit `eda2f13`:
+
+- `CI` - run `25195469511`.
+- `Release Readiness Gate` - run `25195469482`.
+- `Quality Gate Policy Matrix (Optional)` - run `25195469485`.
+- `Secret Scan` - run `25195469486`.
+- `Governance Correlation Smoke (Optional)` - run `25195469490`.
+- `Desktop Updater Readiness (Optional)` - run `25195469496`.
+- `SonarQube Governance (Non-Blocking)` - run `25195469502`.
+- `Public Naming Guard` - run `25195469507`.
 
 ## Remaining Work
 
-- PR checks and post-merge validation.
 - Production AI generation mode remains separate from this UI MVP.
