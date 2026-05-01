@@ -31,7 +31,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-37 - Formal enterprise release approval MVP`.
 - Latest completed follow-up: `KAN-38 - Vercel AI SDK governance copilot MVP`.
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
-- Current in-progress follow-up: `KAN-40 - Governance copilot AI mode validation`.
+- Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -832,6 +832,8 @@ Latest KAN-39 governance copilot dashboard baseline:
 
 - Jira: `KAN-40 - Governance copilot AI mode validation`.
 - Implementation branch: `product/KAN-40-governance-copilot-ai-validation`.
+- Implementation PR: `#131 - product(KAN-40): validate governance copilot AI mode`.
+- Implementation commit: `2b507bc product(KAN-40): validate governance copilot AI mode`.
 - Script: `scripts/control-plane/validate_governance_copilot_ai_mode.ps1`.
 - Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
 - Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
@@ -844,6 +846,21 @@ Latest KAN-39 governance copilot dashboard baseline:
 - Local production validation already run:
   - non-strict command returned `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, and `4` ok sources.
   - strict mode returned the expected controlled failure because production still reports `mode=fallback`.
+- Post-merge checks passed:
+  - `CI` run `25196003313`.
+  - `Release Readiness Gate` run `25196003326`.
+  - `Quality Gate Policy Matrix (Optional)` run `25196003325`.
+  - `Secret Scan` run `25196003309`.
+  - `Governance Correlation Smoke (Optional)` run `25196003311`.
+  - `SonarQube Governance (Non-Blocking)` run `25196003302`.
+  - `Public Naming Guard` run `25196003318`.
+  - `Desktop Updater Readiness (Optional)` run `25196003351`.
+- First manual workflow validation passed:
+  - Run `25196010712`.
+  - Artifact `governance-copilot-ai-mode-validation`.
+  - Artifact ID `6742816838`.
+  - Artifact status: not expired; expires `2026-07-30T00:21:30Z`.
+  - Result: `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, `4` ok sources, and `1` warning.
 - Current interpretation:
   - the copilot route is healthy and evidence-grounded.
   - production AI generation mode is still pending Vercel AI Gateway/OIDC activation.

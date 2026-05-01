@@ -8,6 +8,13 @@ KAN-40 adds a reproducible, secret-safe validation layer for the Vercel AI SDK g
 
 KAN-38 created the route. KAN-39 added the dashboard UI. KAN-40 makes the remaining production state explicit: the route can be continuously checked for successful evidence loading and for whether it is running in `mode=ai` or deterministic `fallback`.
 
+## Merge And Traceability
+
+- Jira issue: `KAN-40 - Governance copilot AI mode validation`.
+- Implementation branch: `product/KAN-40-governance-copilot-ai-validation`.
+- Implementation PR: `#131 - product(KAN-40): validate governance copilot AI mode`.
+- Merged commit: `2b507bc product(KAN-40): validate governance copilot AI mode`.
+
 ## Scope
 
 - Script: `scripts/control-plane/validate_governance_copilot_ai_mode.ps1`.
@@ -91,7 +98,41 @@ Repository guard validation:
 
 ## GitHub Validation
 
-Pending.
+Implementation PR checks passed before merge:
+
+- `Security Guard`.
+- `Server Clippy + Check`.
+- `Desktop Rust Clippy`.
+- `Frontend Lint + Typecheck`.
+- `Website Lint + Typecheck + Build`.
+- `Workflow Lint`.
+- `Validate quality_gates warn/block matrix`.
+- `Sonar Scan + Quality Gate`.
+- `Vercel`.
+- `Vercel Preview Comments`.
+- `Block internal-assistant markers`.
+
+Post-merge `main` checks passed on commit `2b507bc`:
+
+- `CI` - run `25196003313`.
+- `Release Readiness Gate` - run `25196003326`.
+- `Quality Gate Policy Matrix (Optional)` - run `25196003325`.
+- `Secret Scan` - run `25196003309`.
+- `Governance Correlation Smoke (Optional)` - run `25196003311`.
+- `SonarQube Governance (Non-Blocking)` - run `25196003302`.
+- `Public Naming Guard` - run `25196003318`.
+- `Desktop Updater Readiness (Optional)` - run `25196003351`.
+
+First manual workflow validation passed:
+
+- Workflow: `Governance Copilot AI Mode Validation`.
+- Run: `25196010712`.
+- Trigger: `workflow_dispatch`.
+- Branch: `main`.
+- Artifact: `governance-copilot-ai-mode-validation`.
+- Artifact ID: `6742816838`.
+- Artifact expiry: `2026-07-30T00:21:30Z`.
+- Artifact result: `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, `4` ok sources, `1` warning.
 
 ## Residual Work
 
