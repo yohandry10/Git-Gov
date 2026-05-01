@@ -1117,6 +1117,7 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 
 - Jira: `KAN-46 - Add release governance evaluator`.
 - Implementation branch: `product/KAN-46-release-governance-evaluator`.
+- Implementation PR: `#146 - product(KAN-46): add release governance evaluator`.
 - Design: `docs/design/release-governance-evaluator-mvp.md`.
 - Report: `docs/reports/release-governance-evaluator-2026-05-01.md`.
 - Scope:

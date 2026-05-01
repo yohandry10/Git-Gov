@@ -14,6 +14,7 @@ Default behavior remains non-blocking. A customer must explicitly configure bloc
 
 - Jira issue: `KAN-46 - Add release governance evaluator`.
 - Branch: `product/KAN-46-release-governance-evaluator`.
+- PR: `#146 - product(KAN-46): add release governance evaluator`.
 - Design: `docs/design/release-governance-evaluator-mvp.md`.
 
 ## Changes
