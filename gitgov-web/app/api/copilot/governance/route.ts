@@ -145,6 +145,28 @@ function resolveAiGenerationTarget(): { target?: CopilotAiTarget; warning?: stri
     return { warning: 'AI generation skipped because no configured AI provider is available.' };
 }
 
+function readErrorField(error: unknown, field: string) {
+    if (!error || typeof error !== 'object') {
+        return undefined;
+    }
+    const value = (error as Record<string, unknown>)[field];
+    if (typeof value === 'string' || typeof value === 'number') {
+        return `${value}`.replace(/[^\w.-]/g, '').slice(0, 80);
+    }
+    return undefined;
+}
+
+function describeAiGenerationFailure(error: unknown) {
+    const details = [
+        readErrorField(error, 'name'),
+        readErrorField(error, 'code'),
+        readErrorField(error, 'statusCode') || readErrorField(error, 'status'),
+    ].filter(Boolean);
+
+    const suffix = details.length > 0 ? ` (${details.join('/')})` : '';
+    return `AI generation was unavailable${suffix}; returned deterministic evidence brief.`;
+}
+
 export async function POST(request: NextRequest) {
     const auth = resolveGitGovAuthorization(request);
     if (auth.error) {
@@ -195,8 +217,8 @@ export async function POST(request: NextRequest) {
                 answer = result.text.trim() || answer;
                 mode = 'ai';
                 model = generation.target.displayModel;
-            } catch {
-                warnings.push('AI generation was unavailable; returned deterministic evidence brief.');
+            } catch (error) {
+                warnings.push(describeAiGenerationFailure(error));
             }
         } else {
             warnings.push(generation.warning || 'AI generation skipped because no configured AI provider is available.');
