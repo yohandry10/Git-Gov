@@ -33,7 +33,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-39 - Governance copilot dashboard UI MVP`.
 - Latest completed follow-up: `KAN-40 - Governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
-- Current follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
+- Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -928,6 +928,7 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Jira: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Implementation branch: `ops/KAN-42-enforce-copilot-ai-validation`.
 - Implementation PR: `#138 - ops(KAN-42): enforce governance copilot AI validation`.
+- Implementation commit: `7ad1c9d ops(KAN-42): enforce governance copilot AI validation`.
 - Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
 - Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
 - Report: `docs/reports/governance-copilot-ai-mode-enforcement-2026-05-01.md`.
@@ -939,6 +940,20 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Local validation already run:
   - workflow YAML parsed successfully.
   - strict production validator passed with HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+- Post-merge checks for commit `7ad1c9d` passed:
+  - `CI` - run `25200079701`.
+  - `Release Readiness Gate` - run `25200079686`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25200079694`.
+  - `Secret Scan` - run `25200079699`.
+  - `Governance Correlation Smoke (Optional)` - run `25200079688`.
+  - `SonarQube Governance (Non-Blocking)` - run `25200079685`.
+  - `Public Naming Guard` - run `25200079691`.
+  - `Desktop Updater Readiness (Optional)` - run `25200079696`.
+- First strict manual `Governance Copilot AI Mode Validation` workflow run on `main` passed:
+  - Run `25200126845`.
+  - Head SHA `7ad1c9dc947a2ff50e451f4caacc8125874527aa`.
+  - Result: `status=ai`, `ok=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+  - Artifact `governance-copilot-ai-mode-validation`, ID `6744359123`, expires `2026-07-30T02:58:40Z`.
 
 ## Current KAN-28 Implementation Notes
 
