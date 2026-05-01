@@ -90,6 +90,7 @@ First MVP:
 - `.github/workflows/enterprise-onboarding-readiness.yml`.
 - `.github/workflows/enterprise-onboarding-readiness-artifact-monitor.yml`.
 - `.github/workflows/enterprise-onboarding-readiness-trend-report.yml`.
+- `.github/workflows/enterprise-onboarding-readiness-trend-monitor.yml`.
 - `docs/design/enterprise-self-service-adoption-mvp.md`.
 - `docs/design/workflow-template-generation-mvp.md`.
 - `docs/design/dashboard-workflow-template-pack-mvp.md`.
@@ -100,6 +101,7 @@ First MVP:
 - `docs/design/enterprise-onboarding-readiness-automation-mvp.md`.
 - `docs/design/enterprise-onboarding-readiness-artifact-monitor-mvp.md`.
 - `docs/design/enterprise-onboarding-readiness-trend-mvp.md`.
+- `docs/design/enterprise-onboarding-readiness-trend-monitor-mvp.md`.
 - `docs/design/provider-connection-validation-mvp.md`.
 - `docs/design/formal-release-approval-mvp.md`.
 - `docs/design/release-approval-dashboard-mvp.md`.
@@ -112,7 +114,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, automates that readiness report as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, automates that readiness report as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, monitors trend deterioration in report-only mode by default, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or block releases from approval state by default.
 
 Release governance default:
 
@@ -180,7 +182,7 @@ The agreed order is:
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
-5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based workflow installation starts in `KAN-50`; read-only remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; recurring onboarding readiness evidence starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; direct GitHub App installation remains optional future packaging.
+5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based workflow installation starts in `KAN-50`; read-only remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; recurring onboarding readiness evidence starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; direct GitHub App installation remains optional future packaging.
 6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, AI-mode validation starts in `KAN-40`, and direct Google Gemini activation starts in `KAN-41`.
 
 ## Non-Goals
