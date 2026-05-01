@@ -84,7 +84,7 @@ This MVP creates a reusable adoption pack from a customer profile, exposes the f
 
 ### 2. Vercel AI SDK Copilot
 
-Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route.
+Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route; dashboard UI added in `KAN-39`; AI/fallback mode validation started in `KAN-40`.
 
 Current state:
 
@@ -92,6 +92,7 @@ Current state:
 - The product already exposes the core dashboard, exports, and Evidence Packets MVP.
 - KAN-38 adds the first AI SDK route, `POST /api/copilot/governance`, which gathers bounded GitGov evidence and returns a cited governance brief.
 - KAN-39 starts the first admin dashboard UI for the copilot route through a secret-safe Tauri desktop proxy.
+- KAN-40 adds a secret-safe validator and GitHub workflow for checking whether the route is healthy, evidence-grounded, and running in `mode=ai` or deterministic `fallback`.
 - Production validation passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` in deterministic fallback mode; production AI Gateway/OIDC still needs to be enabled if the desired runtime is `mode=ai`.
 
 Missing product packaging:
@@ -111,6 +112,7 @@ Missing product packaging:
 - First MVP:
   - server-side Next.js route.
   - admin dashboard panel.
+  - AI/fallback mode validator.
   - Vercel AI SDK `generateText()`.
   - Evidence Packet, ticket coverage, release approval, and adoption profile evidence.
   - deterministic fallback when AI Gateway/OIDC is not configured.
@@ -133,7 +135,7 @@ The agreed order is:
 3. Keep the known `rsa` / inactive `sqlx-mysql` dependency finding documented as expected and not reachable unless upstream or dependency cleanup makes a clean removal safe.
 4. Start the next product feature design/implementation for Enterprise Self-Service Adoption. This starts in `KAN-29`.
 5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based installation and dashboard approval workflows remain optional future packaging.
-6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`.
+6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, and AI-mode validation starts in `KAN-40`.
 
 ## Non-Goals
 

@@ -111,3 +111,5 @@ POST /api/copilot/governance
 ```
 
 It gathers bounded GitGov evidence server-side and returns a cited governance brief. The caller must provide a GitGov bearer token in the `Authorization` header unless explicitly configured server-key mode is enabled.
+
+Operational validation is tracked by `scripts/control-plane/validate_governance_copilot_ai_mode.ps1` and `.github/workflows/governance-copilot-ai-mode-validation.yml`. Non-strict validation accepts deterministic `fallback`; strict validation requires `mode=ai` after Vercel AI Gateway/OIDC is enabled.
