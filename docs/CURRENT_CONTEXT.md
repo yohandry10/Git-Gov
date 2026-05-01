@@ -35,7 +35,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-41 - Activate governance copilot AI mode on Vercel`.
 - Latest completed follow-up: `KAN-42 - Enforce governance copilot AI mode validation`.
 - Latest completed follow-up: `KAN-43 - Dashboard release approval wizard MVP`.
-- Current follow-up: `KAN-44 - Document configurable release governance defaults`.
+- Latest completed follow-up: `KAN-44 - Document configurable release governance defaults`.
+- Current follow-up: none selected after KAN-44.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1012,10 +1013,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `Desktop Updater Readiness (Optional)` - run `25202577680`.
 - No new backend route, database migration, Render deploy, or Vercel production env change was needed; KAN-43 reuses the existing KAN-37 backend API.
 
-## Current KAN-44 Implementation Notes
+## Latest KAN-44 Validation Notes
 
 - Jira: `KAN-44 - Document configurable release governance defaults`.
 - Implementation branch: `docs/KAN-44-configurable-release-governance`.
+- Implementation PR: `#142 - docs(KAN-44): clarify release governance defaults`.
+- Implementation commit: `eb15b08 docs(KAN-44): clarify release governance defaults`.
 - Design: `docs/design/configurable-release-governance-defaults.md`.
 - Report: `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
 - Product decision:
@@ -1030,6 +1033,31 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - `docs/design/release-approval-dashboard-mvp.md`.
   - `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
   - `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
+- Local validation:
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#142` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `eb15b08` passed:
+  - `CI` - run `25203116708`.
+  - `Release Readiness Gate` - run `25203116684`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25203116644`.
+  - `Secret Scan` - run `25203116635`.
+  - `SonarQube Governance (Non-Blocking)` - run `25203116668`.
+  - `Public Naming Guard` - run `25203116673`.
+  - `Governance Correlation Smoke (Optional)` - run `25203116650`.
+  - `Desktop Updater Readiness (Optional)` - run `25203116657`.
+- No code, database, Render, Vercel, provider, or customer workflow behavior changed; KAN-44 is documentation/product-default memory only.
 
 ## Current KAN-28 Implementation Notes
 
