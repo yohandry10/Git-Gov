@@ -156,11 +156,54 @@ function readErrorField(error: unknown, field: string) {
     return undefined;
 }
 
+function readNestedErrorField(error: unknown, objectField: string, nestedField: string) {
+    if (!error || typeof error !== 'object') {
+        return undefined;
+    }
+    const nested = (error as Record<string, unknown>)[objectField];
+    return readErrorField(nested, nestedField);
+}
+
+function sanitizeErrorMessage(error: unknown) {
+    if (!error || typeof error !== 'object') {
+        return undefined;
+    }
+
+    const message = (error as Record<string, unknown>).message;
+    if (typeof message !== 'string' || !message.trim()) {
+        return undefined;
+    }
+
+    let sanitized = message;
+    for (const secret of [
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        process.env.GEMINI_API_KEY,
+        process.env.GITGOV_API_KEY,
+    ]) {
+        if (secret) {
+            sanitized = sanitized.replaceAll(secret, '[redacted]');
+        }
+    }
+
+    sanitized = sanitized
+        .replace(/key=[^&\s"']+/gi, 'key=[redacted]')
+        .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+        .replace(/[^\w\s().:/-]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 160);
+
+    return sanitized || undefined;
+}
+
 function describeAiGenerationFailure(error: unknown) {
     const details = [
         readErrorField(error, 'name'),
         readErrorField(error, 'code'),
         readErrorField(error, 'statusCode') || readErrorField(error, 'status'),
+        readNestedErrorField(error, 'cause', 'name'),
+        readNestedErrorField(error, 'cause', 'code'),
+        sanitizeErrorMessage(error),
     ].filter(Boolean);
 
     const suffix = details.length > 0 ? ` (${details.join('/')})` : '';
