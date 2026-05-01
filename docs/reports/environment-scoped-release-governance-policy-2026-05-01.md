@@ -12,6 +12,8 @@ This lets a customer keep the base profile `record-only` while explicitly making
 
 - Jira issue: `KAN-48 - Add environment-scoped release governance policy overrides`.
 - Branch: `product/KAN-48-environment-release-governance-policy`.
+- PR: `#150 - product(KAN-48): add environment release governance overrides`.
+- Merge commit: `cba3f9d`.
 - Design: `docs/design/environment-scoped-release-governance-policy-mvp.md`.
 
 ## Changes
@@ -53,5 +55,25 @@ This lets a customer keep the base profile `record-only` while explicitly making
 
 ## Remaining Validation
 
-- GitHub PR checks.
-- Post-merge `main` checks after PR approval/merge.
+- Docs refresh PR checks.
+
+## GitHub Validation
+
+PR `#150` passed required checks before merge:
+
+- `Security Guard`
+- `Server Clippy + Check`
+- `Desktop Rust Clippy`
+- `Frontend Lint + Typecheck`
+- `Website Lint + Typecheck + Build`
+- `Workflow Lint`
+- `Validate quality_gates warn/block matrix`
+- `Sonar Scan + Quality Gate`
+- `Block internal-assistant markers in branch/commits`
+- `Vercel`
+- `Vercel Preview Comments`
+
+Post-merge validation for commit `cba3f9d` passed:
+
+- `CI` - run `25209198316`
+- `Release Readiness Gate` - run `25209198277`
