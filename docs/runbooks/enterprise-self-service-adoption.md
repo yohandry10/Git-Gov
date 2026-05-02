@@ -297,6 +297,28 @@ The dashboard plan is built from the current profile, the dashboard readiness re
 
 The dashboard export is local JSON only. It does not create variables or secrets, does not call provider APIs, and does not mutate customer repositories.
 
+## Use Guided Onboarding Checklist
+
+KAN-59 adds a `Guided checklist` section in the Enterprise Adoption dashboard.
+
+The checklist is built from the same dashboard readiness and remediation data used by the `Readiness` and `Plan` downloads. It shows:
+
+- completed onboarding stages.
+- the next recommended stage.
+- remaining todo stages.
+- blocked stages when the profile is invalid.
+- suggested owner and validation evidence for each stage.
+- counts for GitHub Actions variable names, secret names, and placeholder commands.
+
+Checklist safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- no provider APIs are called.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- release blocking remains customer opt-in only; record-only remains the safe default.
+
 ## Automate Onboarding Readiness Evidence
 
 KAN-53 adds a GitHub Actions workflow that generates the KAN-52 readiness report as a reusable evidence artifact.

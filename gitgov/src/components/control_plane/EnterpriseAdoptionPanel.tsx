@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, Circle, CircleAlert, CircleDot, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -12,6 +12,7 @@ import {
   buildReleaseGovernancePolicy,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
+  buildEnterpriseOnboardingGuide,
   buildEnterpriseOnboardingReadinessReport,
   buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseOnboardingRemediationPlan,
@@ -26,6 +27,7 @@ import {
   type AdoptionProvider,
   type AdoptionReleaseGovernanceMode,
   type EnterpriseAdoptionProfile,
+  type EnterpriseOnboardingGuideStepStatus,
   type EnterpriseOnboardingReadinessStatus,
   type EnterpriseReleaseGovernancePolicy,
   type EnterpriseProviderHealthStatus,
@@ -71,6 +73,27 @@ function onboardingReadinessLabel(status: EnterpriseOnboardingReadinessStatus): 
   return 'Action'
 }
 
+function onboardingGuideStepBadgeVariant(status: EnterpriseOnboardingGuideStepStatus): 'success' | 'warning' | 'info' | 'neutral' {
+  if (status === 'complete') return 'success'
+  if (status === 'blocked') return 'warning'
+  if (status === 'next') return 'info'
+  return 'neutral'
+}
+
+function onboardingGuideStepLabel(status: EnterpriseOnboardingGuideStepStatus): string {
+  if (status === 'complete') return 'Done'
+  if (status === 'blocked') return 'Blocked'
+  if (status === 'next') return 'Next'
+  return 'Todo'
+}
+
+function onboardingGuideStepClass(status: EnterpriseOnboardingGuideStepStatus): string {
+  if (status === 'complete') return 'border-success-500/20 bg-success-500/8'
+  if (status === 'blocked') return 'border-warning-500/25 bg-warning-500/8'
+  if (status === 'next') return 'border-brand-500/25 bg-brand-500/8'
+  return 'border-white/8 bg-white/[0.03]'
+}
+
 export function EnterpriseAdoptionPanel() {
   const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
   const serverStats = useControlPlaneStore((state) => state.serverStats)
@@ -114,6 +137,10 @@ export function EnterpriseAdoptionPanel() {
   const onboardingRemediationPlan = useMemo(
     () => buildEnterpriseOnboardingRemediationPlan(onboardingReadiness, pack),
     [onboardingReadiness, pack],
+  )
+  const onboardingGuide = useMemo(
+    () => buildEnterpriseOnboardingGuide(onboardingReadiness, onboardingRemediationPlan),
+    [onboardingReadiness, onboardingRemediationPlan],
   )
   const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
@@ -608,6 +635,75 @@ export function EnterpriseAdoptionPanel() {
             </div>
             <div className="mt-2 text-[10px] uppercase tracking-widest text-surface-500">
               {onboardingRemediationPlan.action_count} remediation action{onboardingRemediationPlan.action_count === 1 ? '' : 's'}
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded border border-white/8 bg-white/[0.03] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-xs font-semibold text-surface-200">
+                <ListChecks size={14} className="text-brand-300" />
+                Guided checklist
+              </h3>
+              <Badge variant={onboardingGuide.completed_steps === onboardingGuide.total_steps ? 'success' : 'info'}>
+                {onboardingGuide.completed_steps}/{onboardingGuide.total_steps}
+              </Badge>
+            </div>
+            {onboardingGuide.next_step && (
+              <div className="rounded border border-brand-500/20 bg-brand-500/8 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] uppercase tracking-widest text-brand-200">Next</span>
+                  <span className="text-[10px] text-surface-500">{onboardingGuide.next_step.owner}</span>
+                </div>
+                <div className="mt-1 text-xs font-medium text-surface-100">{onboardingGuide.next_step.label}</div>
+                <div className="mt-1 text-[11px] leading-5 text-surface-300">{onboardingGuide.next_step.action}</div>
+              </div>
+            )}
+            <div className="space-y-2">
+              {onboardingGuide.steps.map((step) => {
+                const StepIcon = step.status === 'complete'
+                  ? CheckCircle2
+                  : step.status === 'blocked'
+                    ? CircleAlert
+                    : step.status === 'next'
+                      ? CircleDot
+                      : Circle
+                return (
+                  <div key={step.stage_id} className={`rounded border p-2 ${onboardingGuideStepClass(step.status)}`}>
+                    <div className="flex items-start gap-2">
+                      <StepIcon size={14} className={step.status === 'complete' ? 'mt-0.5 text-success-300' : step.status === 'blocked' ? 'mt-0.5 text-warning-300' : step.status === 'next' ? 'mt-0.5 text-brand-300' : 'mt-0.5 text-surface-500'} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-xs font-medium text-surface-100">
+                            {step.order}. {step.label}
+                          </div>
+                          <Badge variant={onboardingGuideStepBadgeVariant(step.status)}>
+                            {onboardingGuideStepLabel(step.status)}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 text-[11px] leading-5 text-surface-400">{step.summary}</div>
+                        <div className="mt-1 text-[11px] leading-5 text-surface-300">{step.action}</div>
+                        <div className="mt-1 text-[10px] leading-4 text-surface-500">
+                          {step.owner} - {step.validation}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded border border-white/8 bg-surface-900/40 p-2">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Vars</div>
+                <div className="mono-data mt-1 text-sm text-surface-100">{onboardingGuide.configuration_summary.variable_names.length}</div>
+              </div>
+              <div className="rounded border border-white/8 bg-surface-900/40 p-2">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Secrets</div>
+                <div className="mono-data mt-1 text-sm text-surface-100">{onboardingGuide.configuration_summary.secret_names.length}</div>
+              </div>
+              <div className="rounded border border-white/8 bg-surface-900/40 p-2">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Cmds</div>
+                <div className="mono-data mt-1 text-sm text-surface-100">{onboardingGuide.configuration_summary.suggested_commands_count}</div>
+              </div>
             </div>
           </div>
 

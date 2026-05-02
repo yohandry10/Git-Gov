@@ -1,6 +1,7 @@
 import {
   DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
   buildEnterpriseAdoptionPack,
+  buildEnterpriseOnboardingGuide,
   buildEnterpriseOnboardingReadinessReport,
   buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseOnboardingRemediationPlan,
@@ -619,6 +620,87 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     })
     expect(JSON.stringify(plan)).not.toContain('GITGOV_API_KEY=')
     expect(JSON.stringify(plan)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('builds a guided onboarding checklist from dashboard readiness and remediation', () => {
+    const providerHealth = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
+    const readiness = buildEnterpriseOnboardingReadinessReport(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providerHealth,
+      null,
+      '2026-05-02T00:00:00.000Z',
+    )
+    const pack = buildEnterpriseAdoptionPack(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, '2026-05-02T00:00:00.000Z')
+    const plan = buildEnterpriseOnboardingRemediationPlan(readiness, pack, '2026-05-02T00:01:00.000Z')
+    const guide = buildEnterpriseOnboardingGuide(readiness, plan, '2026-05-02T00:02:00.000Z')
+
+    expect(guide.readiness_status).toBe('needs-action')
+    expect(guide.completed_steps).toBe(3)
+    expect(guide.total_steps).toBe(6)
+    expect(guide.next_step).toEqual(expect.objectContaining({
+      stage_id: 'providers',
+      status: 'next',
+      owner: 'Platform owner',
+    }))
+    expect(guide.steps.map((step) => [step.stage_id, step.status])).toEqual([
+      ['profile', 'complete'],
+      ['providers', 'next'],
+      ['workflow-pack', 'complete'],
+      ['remote-workflows', 'todo'],
+      ['actions-config', 'todo'],
+      ['release-governance', 'complete'],
+    ])
+    expect(guide.configuration_summary).toEqual({
+      variable_names: ['GITGOV_URL', 'SONAR_HOST_URL', 'SONAR_PROJECT_KEY'],
+      secret_names: ['GITGOV_API_KEY', 'SONAR_TOKEN'],
+      commands_are_placeholders: true,
+      suggested_commands_count: 5,
+    })
+    expect(guide.safety).toEqual({
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      creates_github_actions_variables: false,
+      creates_github_actions_secrets: false,
+      release_blocking_default: false,
+    })
+    expect(JSON.stringify(guide)).not.toContain('GITGOV_API_KEY=')
+    expect(JSON.stringify(guide)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('shows a completed guide when onboarding readiness is fully ready', () => {
+    const providerHealth = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, {
+      githubEventsTotal: 42,
+      jiraCommitsWithTicket: 12,
+      jiraCoveragePercentage: 80,
+      pipelineRuns7d: 10,
+      pipelineSuccess7d: 9,
+      sonarRuns: 3,
+      sonarSuccessful: 3,
+      activeRepos: 1,
+    })
+    const readiness = buildEnterpriseOnboardingReadinessReport(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providerHealth,
+      {
+        status: 'ready',
+        totals: {
+          workflows_missing: 0,
+          workflows_different: 0,
+          variables_missing: 0,
+          secrets_missing: 0,
+        },
+      },
+      '2026-05-02T00:00:00.000Z',
+    )
+    const pack = buildEnterpriseAdoptionPack(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, '2026-05-02T00:00:00.000Z')
+    const plan = buildEnterpriseOnboardingRemediationPlan(readiness, pack, '2026-05-02T00:01:00.000Z')
+    const guide = buildEnterpriseOnboardingGuide(readiness, plan, '2026-05-02T00:02:00.000Z')
+
+    expect(guide.next_step).toBeNull()
+    expect(guide.completed_steps).toBe(6)
+    expect(guide.steps.every((step) => step.status === 'complete')).toBe(true)
   })
 
   it('builds a stable onboarding remediation plan filename', () => {
