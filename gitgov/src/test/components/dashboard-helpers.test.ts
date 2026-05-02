@@ -3,6 +3,8 @@ import {
   buildEnterpriseAdoptionPack,
   buildEnterpriseOnboardingReadinessReport,
   buildEnterpriseOnboardingReadinessReportFilename,
+  buildEnterpriseOnboardingRemediationPlan,
+  buildEnterpriseOnboardingRemediationPlanFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
@@ -571,6 +573,57 @@ describe('dashboard-helpers enterprise adoption pack', () => {
   it('builds a stable onboarding readiness filename', () => {
     expect(buildEnterpriseOnboardingReadinessReportFilename(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)).toBe(
       'exampleco-example-org-example-repo-onboarding-readiness.json',
+    )
+  })
+
+  it('builds a secret-safe onboarding remediation plan from dashboard readiness', () => {
+    const providerHealth = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
+    const readiness = buildEnterpriseOnboardingReadinessReport(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providerHealth,
+      null,
+      '2026-05-02T00:00:00.000Z',
+    )
+    const pack = buildEnterpriseAdoptionPack(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, '2026-05-02T00:00:00.000Z')
+    const plan = buildEnterpriseOnboardingRemediationPlan(readiness, pack, '2026-05-02T00:01:00.000Z')
+
+    expect(plan.remediation_status).toBe('needs-action')
+    expect(plan.action_count).toBe(3)
+    expect(plan.actions.map((action) => [action.priority, action.stage_id, action.owner])).toEqual([
+      [2, 'providers', 'Platform owner'],
+      [4, 'remote-workflows', 'Repository admin'],
+      [5, 'actions-config', 'Repository admin'],
+    ])
+    expect(plan.github_actions_configuration.variables_count).toBe(3)
+    expect(plan.github_actions_configuration.secrets_count).toBe(2)
+    expect(plan.github_actions_configuration.commands).toContainEqual({
+      kind: 'variable',
+      name: 'GITGOV_URL',
+      command: 'gh variable set GITGOV_URL --repo example-org/example-repo --body "<value>"',
+      contains_secret_value: false,
+    })
+    expect(plan.github_actions_configuration.commands).toContainEqual({
+      kind: 'secret',
+      name: 'GITGOV_API_KEY',
+      command: 'gh secret set GITGOV_API_KEY --repo example-org/example-repo',
+      contains_secret_value: false,
+    })
+    expect(plan.safety).toEqual({
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      creates_github_actions_variables: false,
+      creates_github_actions_secrets: false,
+      release_blocking_default: false,
+    })
+    expect(JSON.stringify(plan)).not.toContain('GITGOV_API_KEY=')
+    expect(JSON.stringify(plan)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('builds a stable onboarding remediation plan filename', () => {
+    expect(buildEnterpriseOnboardingRemediationPlanFilename(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)).toBe(
+      'exampleco-example-org-example-repo-onboarding-remediation-plan.json',
     )
   })
 })
