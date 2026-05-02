@@ -9,7 +9,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Expected branch before new work: `main`.
-- Latest main commit: `655478e` - merge of PR `#193`, `docs(KAN-72): audit desktop dashboard documentation`.
+- Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, followed by handoff refresh PR `#194` merged as `2ab821e`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
 - KAN-24 post-merge context refresh PR: `#98` - `docs(KAN-24): record post-merge validation`.
