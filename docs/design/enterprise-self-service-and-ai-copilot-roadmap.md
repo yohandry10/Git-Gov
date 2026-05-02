@@ -2,7 +2,7 @@
 
 Updated: 2026-05-02
 
-Ticket: `KAN-60`
+Ticket: `KAN-68`
 
 ## Decision
 
@@ -10,11 +10,38 @@ GitGov already has the core product promise: it connects pipeline, ticket, revie
 
 The next product work is not to invent a new category. It is to package the proven GitGov operating model so another company can adopt it with less manual setup.
 
+## Current Product Focus After KAN-67
+
+The post-hardening decision is to stop adding standalone technical features by default.
+
+GitGov now needs a usability layer:
+
+```text
+Enterprise Action Center UX
+```
+
+The Action Center should make the existing capabilities obvious to a customer by showing:
+
+- current onboarding state.
+- next recommended action.
+- why that action matters.
+- one clear button to continue.
+- evidence behind the recommendation.
+- which actions are read-only and which require explicit operator approval.
+
+The candidate next implementation ticket is:
+
+```text
+KAN-69 - Enterprise Action Center UX MVP
+```
+
+This should be dashboard-first and should reuse existing capabilities from `KAN-29` through `KAN-67`. It should not introduce another independent monitor, trend, or enforcement chain unless required to make the Action Center accurate.
+
 ## Next Product Features
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`; remote workflow installation PRs start in `KAN-50`; remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; onboarding readiness automation starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; dashboard remediation export starts in `KAN-58`; guided dashboard onboarding checklist starts in `KAN-59`; persisted guided checklist tracking starts in `KAN-60`.
+Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`; remote workflow installation PRs start in `KAN-50`; remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; onboarding readiness automation starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; dashboard remediation export starts in `KAN-58`; guided dashboard onboarding checklist starts in `KAN-59`; persisted guided checklist tracking starts in `KAN-60`; route auth hardening/smoke/trend/enforcement safety chain completed through `KAN-67`; post-`KAN-67` focus moves to Enterprise Action Center UX through `KAN-68` documentation and candidate `KAN-69` implementation.
 
 Current state:
 
@@ -186,7 +213,7 @@ GitGov can explain governance evidence in plain language for CTOs, engineering m
 
 ## Operating Sequence
 
-The agreed order is:
+The original agreed order through hardening and enterprise packaging was:
 
 1. Keep automatic vulnerability review, artifact monitor, and trend workflows on their weekly cadence.
 2. Implement KAN-28 trend enforcement so the vulnerability trend fails when security posture worsens.
@@ -195,11 +222,23 @@ The agreed order is:
 5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based workflow installation starts in `KAN-50`; read-only remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; recurring onboarding readiness evidence starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; dashboard remediation export starts in `KAN-58`; guided dashboard onboarding checklist starts in `KAN-59`; persisted checklist tracking starts in `KAN-60`; direct GitHub App installation remains optional future packaging.
 6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, AI-mode validation starts in `KAN-40`, and direct Google Gemini activation starts in `KAN-41`.
 
+The current agreed order after `KAN-67` is:
+
+1. Stop adding incremental hardening/features by default.
+2. Keep existing scheduled evidence workflows running.
+3. Only open new hardening tickets for real bugs, confirmed vulnerabilities, production risks, or customer-selected enforcement requirements.
+4. Make the next product feature UX-focused: `KAN-69 - Enterprise Action Center UX MVP`.
+5. Use existing evidence/readiness/onboarding/release-governance/checklist/copilot capabilities to show a simple guided path.
+6. Treat AI work as useful only when it explains or simplifies the guided product experience.
+
 ## Non-Goals
 
 - Do not claim GitGov removes all vulnerabilities.
 - Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement are productionized for customer-selected policies.
 - Do not make multi-approver quorum or release-blocking enforcement default behavior; both must be explicit customer choices.
+- Do not continue adding standalone monitor/trend/enforcement tickets by default after `KAN-67`.
+- Do not make the customer learn internal workflow names or artifact chains when a guided Action Center can explain the next step.
+- Do not start new capability work unless it improves usability, closes a real risk, or supports a customer-selected policy.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.
 - Do not claim the AI copilot is a full autonomous agent until streaming, tool-loop behavior, and governed tool approval are complete.

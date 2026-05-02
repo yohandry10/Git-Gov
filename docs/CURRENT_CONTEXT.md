@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-67`
+Ticket: `KAN-68`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -59,7 +59,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-65 - Monitor enterprise route auth smoke trend artifact freshness`.
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
 - Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
-- Current follow-up: none selected after `KAN-67`.
+- Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
+- Current follow-up: none selected after `KAN-68`; recommended next implementation is `KAN-69 - Enterprise Action Center UX MVP`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1575,6 +1576,37 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-68 Product Direction Notes
+
+- Jira: `KAN-68 - Document Enterprise Action Center UX focus`.
+- Branch: `docs/KAN-68-enterprise-action-center-ux-focus`.
+- Design: `docs/design/enterprise-action-center-ux-focus.md`.
+- Report: `docs/reports/enterprise-action-center-ux-focus-2026-05-02.md`.
+- Roadmap updated: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+- Core decision:
+  - GitGov has enough core governance capability for the current stage.
+  - Do not keep adding standalone hardening workflows, monitors, trend reports, enforcement gates, or isolated features by default.
+  - The next product stage should make GitGov easier to use.
+  - The recommended next implementation is `KAN-69 - Enterprise Action Center UX MVP`.
+- Product rule going forward:
+  - accept new work when it makes the product easier for a customer to use.
+  - accept new work when it turns several existing technical pieces into one clear workflow.
+  - accept new work when it reduces onboarding steps or makes the next action obvious.
+  - accept new work when it fixes a real bug, confirmed vulnerability, or production risk.
+  - defer work that only adds another standalone artifact chain without improving UX or risk posture.
+- KAN-69 default shape:
+  - dashboard-first Action Center inside the Enterprise Adoption area.
+  - reuse existing adoption profile, provider health, workflow template, remote PR, readiness, remediation, checklist tracking, release governance, and copilot evidence.
+  - show current onboarding state, next recommended action, why it matters, and one primary button.
+  - keep provider/customer repository mutations explicit, reviewed, and opt-in.
+  - keep release enforcement, quorum, and multi-approver rules optional and never default.
+- Resume instruction:
+  - do not continue the KAN-61 through KAN-67 hardening chain unless there is a real security bug or production risk.
+  - start the next product discussion from: `How do we make the existing GitGov capabilities obvious and useful to a first customer?`
+  - default answer: build the Enterprise Action Center UX MVP.
+- Worktree note:
+  - local uncommitted edits existed outside KAN-68 scope in README/docs files; they must not be staged into KAN-68 unless explicitly requested.
 
 ## Latest KAN-67 Validation Notes
 
