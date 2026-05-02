@@ -44,6 +44,45 @@ Local validation before PR:
 - `git diff --check`: passed.
 - `.\scripts\security\publication_guard.ps1`: passed.
 
+PR `#186` merged on `main` as `004eeea`.
+
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `004eeea` passed:
+
+- `CI` - run `25247711351`.
+- `Release Readiness Gate` - run `25247711349`.
+- `Quality Gate Policy Matrix (Optional)` - run `25247711335`.
+- `Secret Scan` - run `25247711345`.
+- `Public Naming Guard` - run `25247711342`.
+- `Governance Correlation Smoke (Optional)` - run `25247711348`.
+- `Desktop Updater Readiness (Optional)` - run `25247711338`.
+- `SonarQube Governance (Non-Blocking)` - run `25247711340`.
+
+First manual enforcement workflow validation passed:
+
+- Workflow: `Enterprise Route Auth Smoke Trend Enforcement`.
+- Run: `25247747284`.
+- Artifact: `enterprise-route-auth-smoke-trend-enforcement`.
+- Artifact ID: `6761818040`.
+- Artifact status: not expired.
+- Artifact expires at `2026-07-31T08:19:25Z`.
+- Enforcement status: `pass`.
+- Parsed latest successful source run: `25246304135`.
+- Parsed latest counts: `9` passed, `0` failed.
+
 ## Current Status
 
-KAN-66 is in progress.
+KAN-66 is implemented, merged, workflow-validated, and documented.

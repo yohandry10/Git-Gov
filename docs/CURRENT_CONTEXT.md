@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-65`
+Ticket: `KAN-66`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -57,7 +57,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-63 - Monitor enterprise route auth smoke artifact freshness`.
 - Latest completed follow-up: `KAN-64 - Trend enterprise route auth smoke artifacts`.
 - Latest completed follow-up: `KAN-65 - Monitor enterprise route auth smoke trend artifact freshness`.
-- Current follow-up: none selected after `KAN-65`.
+- Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
+- Current follow-up: none selected after `KAN-66`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1573,6 +1574,55 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-66 Validation Notes
+
+- Jira: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
+- Implementation branch: `hardening/KAN-66-enterprise-route-auth-smoke-trend-enforcement`.
+- Implementation PR: `#186 - hardening(KAN-66): enforce enterprise auth smoke trend baseline`.
+- Implementation commit: `3c19b7f hardening(KAN-66): enforce enterprise auth smoke trend baseline`.
+- Main merge commit: `004eeea Merge pull request #186 from yohandry10/hardening/KAN-66-enterprise-route-auth-smoke-trend-enforcement`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-enforcement.yml`.
+- Trend script: `scripts/control-plane/generate_enterprise_route_auth_smoke_trend_report.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-enforcement-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-enforcement-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local enforcement command passed:
+  - `.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxReports 12 -Enforce -MaxLatestFailedChecks 0 -FailOnFailureIncrease -RequireLatestRunArtifact -OutputMarkdownPath out\KAN-66-enterprise-route-auth-smoke-trend-enforcement.md -OutputJsonPath out\KAN-66-enterprise-route-auth-smoke-trend-enforcement.json`
+- Local enforcement result:
+  - source run `25246304135`
+  - source artifact `enterprise-route-auth-smoke-25246304135`
+  - source artifact ID `6761394808`
+  - latest counts `9` passed, `0` failed
+  - failed-check delta `0`
+  - enforcement status `pass`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Post-merge checks on `main` commit `004eeea` passed:
+  - `CI` - run `25247711351`
+  - `Release Readiness Gate` - run `25247711349`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247711335`
+  - `Secret Scan` - run `25247711345`
+  - `Public Naming Guard` - run `25247711342`
+  - `Governance Correlation Smoke (Optional)` - run `25247711348`
+  - `Desktop Updater Readiness (Optional)` - run `25247711338`
+  - `SonarQube Governance (Non-Blocking)` - run `25247711340`
+- First manual workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Enforcement`
+  - run `25247747284`
+  - artifact `enterprise-route-auth-smoke-trend-enforcement`
+  - artifact ID `6761818040`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T08:19:25Z`
+  - enforcement status `pass`
+  - parsed latest successful source run `25246304135`
+  - parsed latest counts `9` passed, `0` failed
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - enforcement is workflow-scoped and opt-in, not a global release default
+  - clients can choose not to enable this gate
 
 ## Latest KAN-65 Validation Notes
 
