@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-62`
+Ticket: `KAN-63`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -54,7 +54,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-60 - Persist guided onboarding checklist tracking`.
 - Latest completed follow-up: `KAN-61 - Enterprise route auth regression hardening`.
 - Latest completed follow-up: `KAN-62 - Automate enterprise route auth smoke evidence`.
-- Current follow-up: none selected after `KAN-62`.
+- Latest completed follow-up: `KAN-63 - Monitor enterprise route auth smoke artifact freshness`.
+- Current follow-up: none selected after `KAN-63`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1570,6 +1571,63 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-63 Validation Notes
+
+- Jira: `KAN-63 - Monitor enterprise route auth smoke artifact freshness`.
+- Implementation branch: `hardening/KAN-63-enterprise-route-auth-smoke-artifact-monitor`.
+- Implementation PR: `#180 - hardening(KAN-63): monitor enterprise auth smoke artifacts`.
+- Implementation commit: `800b906 hardening(KAN-63): monitor enterprise auth smoke artifacts`.
+- Main merge commit: `4342947 Merge pull request #180 from yohandry10/hardening/KAN-63-enterprise-route-auth-smoke-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-artifact-monitor.yml`.
+- Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-artifact-monitor-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Monitor behavior:
+  - `workflow_dispatch` with `max_age_hours`.
+  - weekly schedule at `47 15 * * 2`.
+  - monitors workflow `enterprise-route-auth-smoke.yml`.
+  - requires artifact prefix `enterprise-route-auth-smoke-`.
+  - uploads monitor artifact `enterprise-route-auth-smoke-artifact-monitor`.
+- Secret safety:
+  - no `.env` files are read.
+  - no provider secret values are read or printed.
+  - no GitGov API key is read or printed.
+  - only GitHub artifact metadata is read through the GitHub token.
+- Local validation passed:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxAgeHours 192 -OutputPath out\enterprise-route-auth-smoke-artifact-monitor.json`.
+  - parsed result: `status=PASS`, source run `25246304135`, source artifact `6761394808`, observed age `0.15h`.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- PR `#180` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `4342947` passed:
+  - `CI` - run `25246990171`.
+  - `Release Readiness Gate` - run `25246990161`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25246990166`.
+  - `Secret Scan` - run `25246990197`.
+  - `Public Naming Guard` - run `25246990188`.
+  - `Governance Correlation Smoke (Optional)` - run `25246990170`.
+  - `Desktop Updater Readiness (Optional)` - run `25246990174`.
+  - `SonarQube Governance (Non-Blocking)` - run `25246990176`.
+- First manual workflow dispatch passed:
+  - Run `25247025700`.
+  - Artifact `enterprise-route-auth-smoke-artifact-monitor`.
+  - Artifact ID `6761616364`.
+  - Artifact status: not expired, expires at `2026-07-31T07:37:28Z`.
+  - Downloaded artifact parsed as `status=PASS`, source run `25246304135`, source artifact `6761394808`, source age `0.68h`.
+- No Render deploy, database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch against customer repositories, branch protection change, or release blocking default change was needed.
 
 ## Latest KAN-62 Validation Notes
 

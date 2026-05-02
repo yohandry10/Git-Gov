@@ -53,8 +53,49 @@ Parsed local monitor output:
 | Max age | `192h` |
 | Observed age | `0.15h` |
 
-Additional validation will be recorded after PR checks and first workflow dispatch.
+PR validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#180` `Security Guard` | Passed |
+| PR `#180` `Server Clippy + Check` | Passed |
+| PR `#180` `Desktop Rust Clippy` | Passed |
+| PR `#180` `Frontend Lint + Typecheck` | Passed |
+| PR `#180` `Website Lint + Typecheck + Build` | Passed |
+| PR `#180` `Workflow Lint` | Passed |
+| PR `#180` `Validate quality_gates warn/block matrix` | Passed |
+| PR `#180` `Sonar Scan + Quality Gate` | Passed |
+| PR `#180` `Block internal-assistant markers in branch/commits` | Passed |
+| PR `#180` Vercel preview | Passed |
+
+Post-merge validation:
+
+| Check | Result |
+| --- | --- |
+| Main merge commit | `4342947` |
+| `CI` | Passed, run `25246990171` |
+| `Release Readiness Gate` | Passed, run `25246990161` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25246990166` |
+| `Secret Scan` | Passed, run `25246990197` |
+| `Public Naming Guard` | Passed, run `25246990188` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25246990170` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25246990174` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25246990176` |
+
+First workflow dispatch:
+
+| Field | Result |
+| --- | --- |
+| Workflow | `Enterprise Route Auth Smoke Artifact Monitor` |
+| Run | `25247025700` |
+| Conclusion | Passed |
+| Artifact | `enterprise-route-auth-smoke-artifact-monitor` |
+| Artifact ID | `6761616364` |
+| Artifact expiry | `2026-07-31T07:37:28Z` |
+| Parsed result | `status=PASS`, source run `25246304135`, source artifact `6761394808`, source age `0.68h` |
+
+No Render deploy or database migration was needed because KAN-63 adds only workflow and documentation changes.
 
 ## Current Status
 
-Implementation is ready for PR validation.
+KAN-63 is implemented, merged, workflow-validated, and documented.
