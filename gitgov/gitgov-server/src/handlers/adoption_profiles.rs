@@ -3,6 +3,7 @@
 // ============================================================================
 
 const ENTERPRISE_ADOPTION_PROFILE_MAX_BYTES: usize = 32 * 1024;
+const ENTERPRISE_ONBOARDING_CHECKLIST_TRACKING_MAX_BYTES: usize = 16 * 1024;
 const ADOPTION_POLICY_PRESETS: &[&str] = &["audit-only", "moderate", "strict"];
 const ADOPTION_PROVIDER_IDS: &[&str] =
     &["github", "jira", "jenkins", "sonarqube", "render", "vercel"];
@@ -26,6 +27,27 @@ const ADOPTION_RELEASE_GOVERNANCE_MODES: &[&str] = &[
 ];
 const ADOPTION_RELEASE_GOVERNANCE_ENFORCEMENT: &[&str] =
     &["disabled", "advisory", "blocking"];
+const ONBOARDING_STAGE_IDS: &[&str] = &[
+    "profile",
+    "providers",
+    "workflow-pack",
+    "remote-workflows",
+    "actions-config",
+    "release-governance",
+];
+const ONBOARDING_TRACKING_STATUSES: &[&str] = &["open", "in-progress", "waiting", "done"];
+const TRACKING_FORBIDDEN_SECRET_MARKERS: &[&str] = &[
+    "authorization:",
+    "bearer ",
+    "api_token=",
+    "gitgov_api_key=",
+    "jira_api_token=",
+    "sonar_token=",
+    "jenkins_api_token=",
+    "vck_",
+    "gho_",
+    "atatt",
+];
 
 fn adoption_profile_string_field<'a>(
     profile: &'a serde_json::Value,
@@ -79,6 +101,125 @@ fn adoption_profile_string_array(
     }
 
     result
+}
+
+fn onboarding_tracking_text_field(
+    item: &serde_json::Value,
+    field: &str,
+    max_chars: usize,
+    errors: &mut Vec<String>,
+) -> Option<String> {
+    match item.get(field) {
+        None | Some(serde_json::Value::Null) => None,
+        Some(value) => {
+            let Some(text) = value.as_str() else {
+                errors.push(format!("{field} must be a string."));
+                return None;
+            };
+            let trimmed = text.trim();
+            if trimmed.chars().count() > max_chars {
+                errors.push(format!("{field} must be at most {max_chars} characters."));
+            }
+            let lowered = trimmed.to_ascii_lowercase();
+            if TRACKING_FORBIDDEN_SECRET_MARKERS
+                .iter()
+                .any(|marker| lowered.contains(marker))
+            {
+                errors.push(format!("{field} must not contain secret-looking values."));
+            }
+            Some(trimmed.to_string())
+        }
+    }
+}
+
+fn onboarding_tracking_target_date_valid(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| index == 4 || index == 7 || byte.is_ascii_digit())
+}
+
+fn validate_enterprise_onboarding_checklist_tracking(
+    tracking: &serde_json::Value,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    let size = serde_json::to_vec(tracking).map(|bytes| bytes.len()).unwrap_or(usize::MAX);
+    if size > ENTERPRISE_ONBOARDING_CHECKLIST_TRACKING_MAX_BYTES {
+        errors.push("Onboarding checklist tracking is too large.".to_string());
+    }
+
+    let Some(object) = tracking.as_object() else {
+        errors.push("tracking must be an object.".to_string());
+        return Err(errors);
+    };
+
+    if let Some(version) = object.get("version") {
+        if version.as_i64() != Some(1) {
+            errors.push("version must be 1.".to_string());
+        }
+    }
+
+    let Some(items_value) = object.get("items") else {
+        errors.push("items is required.".to_string());
+        return Err(errors);
+    };
+    let Some(items) = items_value.as_array() else {
+        errors.push("items must be an array.".to_string());
+        return Err(errors);
+    };
+    if items.len() > ONBOARDING_STAGE_IDS.len() {
+        errors.push("items has too many entries.".to_string());
+    }
+
+    let allowed_stages: HashSet<&str> = ONBOARDING_STAGE_IDS.iter().copied().collect();
+    let allowed_statuses: HashSet<&str> = ONBOARDING_TRACKING_STATUSES.iter().copied().collect();
+    let mut seen_stages = HashSet::new();
+    for (index, item) in items.iter().enumerate() {
+        let Some(item_object) = item.as_object() else {
+            errors.push(format!("items[{index}] must be an object."));
+            continue;
+        };
+
+        let stage_id = item_object
+            .get("stage_id")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .unwrap_or_default();
+        if !allowed_stages.contains(stage_id) {
+            errors.push(format!("items[{index}].stage_id is unsupported."));
+        } else if !seen_stages.insert(stage_id.to_string()) {
+            errors.push(format!("items contains duplicate stage_id '{stage_id}'."));
+        }
+
+        let status = item_object
+            .get("status")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .unwrap_or_default();
+        if !allowed_statuses.contains(status) {
+            errors.push(format!("items[{index}].status is unsupported."));
+        }
+
+        onboarding_tracking_text_field(item, "owner", 80, &mut errors);
+        onboarding_tracking_text_field(item, "note", 1000, &mut errors);
+        onboarding_tracking_text_field(item, "external_ref", 120, &mut errors);
+
+        if let Some(target_date) = onboarding_tracking_text_field(item, "target_date", 10, &mut errors) {
+            if !target_date.is_empty() && !onboarding_tracking_target_date_valid(&target_date) {
+                errors.push("target_date must use YYYY-MM-DD format.".to_string());
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 fn validate_release_governance_policy_object(
@@ -551,6 +692,161 @@ pub async fn upsert_enterprise_adoption_profile(
     }
 }
 
+pub async fn get_enterprise_onboarding_checklist_tracking(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<EnterpriseOnboardingChecklistTrackingQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        query.org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "org_name is required for global admin keys" })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(json!({ "error": adoption_scope_error_message(err) })),
+            )
+                .into_response();
+        }
+    };
+
+    match state
+        .db
+        .get_enterprise_onboarding_checklist_tracking(&org_id)
+        .await
+    {
+        Ok(Some(tracking)) => (
+            StatusCode::OK,
+            Json(EnterpriseOnboardingChecklistTrackingResponse {
+                found: true,
+                tracking: Some(tracking),
+            }),
+        )
+            .into_response(),
+        Ok(None) => (
+            StatusCode::OK,
+            Json(EnterpriseOnboardingChecklistTrackingResponse {
+                found: false,
+                tracking: None,
+            }),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to load enterprise onboarding checklist tracking");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn upsert_enterprise_onboarding_checklist_tracking(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<UpsertEnterpriseOnboardingChecklistTrackingRequest>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+
+    if let Err(errors) = validate_enterprise_onboarding_checklist_tracking(&payload.tracking) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Invalid enterprise onboarding checklist tracking", "details": errors })),
+        )
+            .into_response();
+    }
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        payload.org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "org_name is required for global admin keys" })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(json!({ "error": adoption_scope_error_message(err) })),
+            )
+                .into_response();
+        }
+    };
+
+    match state
+        .db
+        .upsert_enterprise_onboarding_checklist_tracking(
+            &org_id,
+            &payload.tracking,
+            &auth_user.client_id,
+        )
+        .await
+    {
+        Ok(record) => {
+            let items = record
+                .tracking
+                .get("items")
+                .and_then(|value| value.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let audit = AdminAuditLogEntry {
+                id: Uuid::new_v4().to_string(),
+                actor_client_id: auth_user.client_id.clone(),
+                action: "upsert_enterprise_onboarding_checklist_tracking".to_string(),
+                target_type: Some("enterprise_onboarding_checklist_tracking".to_string()),
+                target_id: Some(org_id.clone()),
+                metadata: json!({
+                    "org_id": org_id,
+                    "item_count": items.len(),
+                    "done_count": items.iter().filter(|item| item.get("status").and_then(|value| value.as_str()) == Some("done")).count(),
+                    "waiting_count": items.iter().filter(|item| item.get("status").and_then(|value| value.as_str()) == Some("waiting")).count()
+                }),
+                created_at: chrono::Utc::now().timestamp_millis(),
+            };
+            if let Err(e) = state.db.insert_admin_audit_log(&audit).await {
+                tracing::warn!(error = %e, "Failed to write admin audit log (enterprise onboarding checklist tracking)");
+            }
+
+            (StatusCode::OK, Json(record)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to save enterprise onboarding checklist tracking");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
 #[cfg(test)]
 mod adoption_profile_tests {
     use super::*;
@@ -741,5 +1037,66 @@ mod adoption_profile_tests {
 
         assert!(errors
             .contains(&"record-only release governance must use disabled enforcement.".to_string()));
+    }
+
+    #[test]
+    fn enterprise_onboarding_checklist_tracking_accepts_valid_tracking() {
+        let tracking = json!({
+            "version": 1,
+            "items": [
+                {
+                    "stage_id": "providers",
+                    "status": "in-progress",
+                    "owner": "Platform owner",
+                    "note": "Waiting for provider evidence",
+                    "external_ref": "KAN-60",
+                    "target_date": "2026-05-08"
+                },
+                {
+                    "stage_id": "actions-config",
+                    "status": "waiting",
+                    "owner": "Repository admin",
+                    "note": "Variable and secret names still need customer setup"
+                }
+            ]
+        });
+
+        assert!(validate_enterprise_onboarding_checklist_tracking(&tracking).is_ok());
+    }
+
+    #[test]
+    fn enterprise_onboarding_checklist_tracking_rejects_secret_looking_values() {
+        let tracking = json!({
+            "version": 1,
+            "items": [
+                {
+                    "stage_id": "providers",
+                    "status": "in-progress",
+                    "note": "Bearer abc123 should not be stored here"
+                }
+            ]
+        });
+
+        let errors = validate_enterprise_onboarding_checklist_tracking(&tracking).unwrap_err();
+
+        assert!(errors.contains(&"note must not contain secret-looking values.".to_string()));
+    }
+
+    #[test]
+    fn enterprise_onboarding_checklist_tracking_rejects_duplicate_or_unknown_stage() {
+        let tracking = json!({
+            "version": 1,
+            "items": [
+                { "stage_id": "providers", "status": "open" },
+                { "stage_id": "providers", "status": "done" },
+                { "stage_id": "unknown", "status": "open", "target_date": "20260508" }
+            ]
+        });
+
+        let errors = validate_enterprise_onboarding_checklist_tracking(&tracking).unwrap_err();
+
+        assert!(errors.contains(&"items contains duplicate stage_id 'providers'.".to_string()));
+        assert!(errors.contains(&"items[2].stage_id is unsupported.".to_string()));
+        assert!(errors.contains(&"target_date must use YYYY-MM-DD format.".to_string()));
     }
 }

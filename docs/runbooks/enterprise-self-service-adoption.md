@@ -319,6 +319,39 @@ Checklist safety boundaries:
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - release blocking remains customer opt-in only; record-only remains the safe default.
 
+## Save Guided Checklist Tracking
+
+KAN-60 adds persisted tracking metadata to the `Guided checklist` section.
+
+Admins can mark each onboarding stage as `open`, `in-progress`, `waiting`, or `done`, then save owner, target date, external reference, and notes for the selected organization. This is human/operator tracking only:
+
+- `done` does not mark the underlying readiness stage as ready.
+- saved notes do not change release readiness scores.
+- saved notes do not change release governance policy.
+- saved notes do not make workflow installation, provider connection, or release enforcement happen automatically.
+
+Backend route:
+
+```text
+GET /enterprise/onboarding-checklist-tracking
+PUT /enterprise/onboarding-checklist-tracking
+```
+
+The API is admin-only and org-scoped. Global admin keys must pass `org_name`, matching the existing adoption profile persistence behavior.
+
+Tracking safety boundaries:
+
+- no `.env` files are read.
+- no provider token values are read or printed.
+- no provider APIs are called.
+- common secret-looking values in owner, note, external reference, and target date fields are rejected.
+- no GitHub Actions variables or secrets are created.
+- no customer repositories are mutated.
+- no provider settings are mutated.
+- no workflow dispatch occurs.
+- no branch protection is changed.
+- release blocking remains customer opt-in only; record-only remains the safe default.
+
 ## Automate Onboarding Readiness Evidence
 
 KAN-53 adds a GitHub Actions workflow that generates the KAN-52 readiness report as a reusable evidence artifact.
