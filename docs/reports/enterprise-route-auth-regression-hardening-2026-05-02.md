@@ -62,8 +62,47 @@ Notes:
 - The existing `gitgov-db` container was running on `5433`, but the host also had a local `postgres` process listening on that port, so the DB-backed test used an isolated temporary Postgres container on `55433`.
 - Temporary `pg_hba.conf` changes tested on the persistent `gitgov-db` container were restored before continuing.
 
-Post-merge validation will be recorded after PR merge.
+PR validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#176` `Security Guard` | Passed |
+| PR `#176` `Server Clippy + Check` | Passed |
+| PR `#176` `Desktop Rust Clippy` | Passed |
+| PR `#176` `Frontend Lint + Typecheck` | Passed |
+| PR `#176` `Website Lint + Typecheck + Build` | Passed |
+| PR `#176` `Workflow Lint` | Passed |
+| PR `#176` `Validate quality_gates warn/block matrix` | Passed |
+| PR `#176` `Sonar Scan + Quality Gate` | Passed |
+| PR `#176` `Block internal-assistant markers in branch/commits` | Passed |
+| PR `#176` Vercel preview | Passed |
+
+Post-merge validation:
+
+| Check | Result |
+| --- | --- |
+| Main merge commit | `6483c53` |
+| `CI` | Passed, run `25245741318` |
+| `Release Readiness Gate` | Passed, run `25245741327` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25245741326` |
+| `Secret Scan` | Passed, run `25245741329` |
+| `Public Naming Guard` | Passed, run `25245741320` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25245741322` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25245741328` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25245741313` |
+
+Production validation:
+
+| Probe | Result |
+| --- | --- |
+| Render deploy | `dep-d7qph6vlk1mc73d5lni0` reached `live` for commit `6483c53` |
+| `GET /health` | `200` |
+| Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` | `401` |
+| Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` | `200` |
+| Authenticated `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` | `200` |
+
+No database migration was needed for KAN-61.
 
 ## Current Status
 
-KAN-61 implementation is ready for PR validation.
+KAN-61 is implemented, merged, deployed, and smoke-validated in production.

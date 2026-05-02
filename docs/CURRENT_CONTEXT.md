@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-60`
+Ticket: `KAN-61`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -52,7 +52,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-58 - Dashboard onboarding remediation export`.
 - Latest completed follow-up: `KAN-59 - Dashboard guided enterprise onboarding checklist`.
 - Latest completed follow-up: `KAN-60 - Persist guided onboarding checklist tracking`.
-- Current follow-up: none selected after `KAN-60`.
+- Latest completed follow-up: `KAN-61 - Enterprise route auth regression hardening`.
+- Current follow-up: none selected after `KAN-61`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1568,6 +1569,75 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-61 Validation Notes
+
+- Jira: `KAN-61 - Enterprise route auth regression hardening`.
+- Implementation branch: `hardening/KAN-61-enterprise-route-auth-regression`.
+- Implementation PR: `#176 - hardening(KAN-61): cover enterprise route auth matrix`.
+- Implementation commits:
+  - `2de1fd8 hardening(KAN-61): cover enterprise route auth matrix`.
+  - `c92cd6b docs(KAN-61): record docker-backed validation`.
+- Main merge commit: `6483c53 Merge pull request #176 from yohandry10/hardening/KAN-61-enterprise-route-auth-regression`.
+- Backend hardening:
+  - `gitgov/gitgov-server/src/auth.rs` treats all `/enterprise/*` routes as sensitive admin paths for stale-auth-cache fail-closed behavior.
+  - `gitgov/gitgov-server/src/integration_tests.rs` adds a DB-backed Enterprise admin route auth/org-scope matrix.
+- Covered route classes:
+  - `GET /enterprise/adoption-profile`.
+  - `PUT /enterprise/adoption-profile`.
+  - `GET /enterprise/onboarding-checklist-tracking`.
+  - `PUT /enterprise/onboarding-checklist-tracking`.
+  - `GET /enterprise/release-approvals`.
+  - `GET /enterprise/release-governance/evaluate`.
+- Matrix assertions:
+  - anonymous caller returns `401`.
+  - scoped non-admin key returns `403`.
+  - global admin key without `org_name` returns `400`.
+  - org-scoped admin key cannot cross tenant boundaries and returns `403`.
+  - valid org-scoped admin access returns `200`.
+- Report: `docs/reports/enterprise-route-auth-regression-hardening-2026-05-02.md`.
+- Local validation passed:
+  - `cargo fmt` in `gitgov/gitgov-server`.
+  - `cargo check` in `gitgov/gitgov-server`.
+  - `cargo clippy -- -D warnings` in `gitgov/gitgov-server`.
+  - `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` in `gitgov/gitgov-server`.
+  - `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` with Docker-backed `TEST_DATABASE_URL` against temporary local Postgres on port `55433`.
+  - `cargo test` in `gitgov/gitgov-server`; `193` tests.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- Docker validation notes:
+  - Docker Desktop was restarted locally for DB-backed validation.
+  - Persistent `gitgov-db` was running, but host port `5433` was also held by a local `postgres` process.
+  - The DB-backed focused test therefore used an isolated temporary Postgres container on port `55433`, then removed it.
+  - Temporary `pg_hba.conf` changes tested on persistent `gitgov-db` were restored before continuing.
+- PR `#176` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `6483c53` passed:
+  - `CI` - run `25245741318`.
+  - `Release Readiness Gate` - run `25245741327`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25245741326`.
+  - `Secret Scan` - run `25245741329`.
+  - `Public Naming Guard` - run `25245741320`.
+  - `Governance Correlation Smoke (Optional)` - run `25245741322`.
+  - `Desktop Updater Readiness (Optional)` - run `25245741328`.
+  - `SonarQube Governance (Non-Blocking)` - run `25245741313`.
+- Render deploy `dep-d7qph6vlk1mc73d5lni0` reached `live` for commit `6483c53` on 2026-05-02.
+- Production route validation after deploy:
+  - `GET /health` returned `200`.
+  - Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` returned `401`.
+  - Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` returned `200`.
+  - Authenticated `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` returned `200`.
+- No database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch, branch protection change, or release blocking default change was needed.
 
 ## Latest KAN-60 Validation Notes
 
