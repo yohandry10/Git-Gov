@@ -50,8 +50,8 @@ El sistema está compuesto por **cuatro componentes** que trabajan juntas: una a
 - Comunicación con Git: librería git2
 - Almacenamiento local: SQLite para auditoría offline (`{data_local_dir}/gitgov/audit.db`)
 - Credenciales: usa el keyring del sistema operativo
-- Actualizaciones: tauri-plugin-updater v2 (OTA, aún sin servidor de releases configurado)
-- Tests: vitest 4 + @testing-library/react 16
+- Actualizaciones: tauri-plugin-updater v2 con endpoint GitHub Releases `latest.json` configurado en `tauri.conf.json`
+- Tests: vitest 4 + @testing-library/react 16; `npm test -- --run` reporta `25` archivos y `296` tests
 
 **Responsabilidades principales:**
 
@@ -90,7 +90,15 @@ Usuario hace click → React UI → Comando Tauri → Lógica Rust → Operació
 
 ### Dashboard Desktop: Chat y Políticas
 
-Dentro del dashboard desktop existen dos capacidades distintas:
+El dashboard desktop vive en `gitgov/src/components/control_plane/ServerDashboard.tsx`. La auditoría `KAN-72` verificó `27` módulos en `gitgov/src/components/control_plane`, `99` archivos TypeScript/TSX en `gitgov/src`, `31` archivos Rust en `gitgov/src-tauri/src`, `94` comandos Tauri registrados en `src-tauri/src/lib.rs`, `25` archivos de test frontend con `296` tests y `23` tests Rust/Tauri.
+
+Superficies montadas hoy en el dashboard:
+
+- Métricas operativas, actividad diaria, pipeline health, Jira ticket coverage, evidencia GitHub y outcomes de riesgo.
+- Recent commits, policy editor, evidence packets, enterprise adoption, release approvals, governance copilot, export y chat.
+- SSE para refresco en vivo con fallback de polling.
+
+Dos capacidades siguen teniendo reglas de alcance específicas:
 
 - **Chat de gobernanza (sí existe):**
   - UI: `gitgov/src/components/control_plane/ConversationalChatPanel.tsx`

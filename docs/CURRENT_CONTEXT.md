@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-71`
+Ticket: `KAN-72`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -62,8 +62,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
 - Pending product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
 - Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
-- Current documentation follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
-- `KAN-70` and `KAN-71` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
+- Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
+- Current documentation follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
+- `KAN-70`, `KAN-71`, and `KAN-72` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1619,7 +1620,13 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Branch: `docs/KAN-71-backend-api-schema-doc-audit`.
   - Scope: verify backend route/API/schema/config documentation against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and tracked `.env.example` files.
   - Verified facts: production router has `72` Axum `.route(...)` registrations plus `/api-docs`; handler modules count is `23`; schema files count is `21`; postcheck files count is `7`; latest migration remains `supabase_schema_v25.sql`; `cargo test -- --list` reports `193` tests.
-  - Non-goals: no runtime code change, no provider mutation, no secret printing, no OpenAPI completeness work as a blocker, and no product/UX implementation under `KAN-69`.
+  - PR `#192` merged as `a920530`; local `main` was clean afterward.
+- KAN-72 Desktop/dashboard documentation audit:
+  - Jira: `KAN-72 - Desktop/dashboard documentation reality audit`.
+  - Branch: `docs/KAN-72-desktop-dashboard-doc-audit`.
+  - Scope: verify Desktop React dashboard, Tauri backend, updater config, test counts, and desktop docs against `gitgov/src`, `gitgov/src-tauri`, `gitgov/package.json`, and `gitgov/src-tauri/tauri.conf.json`.
+  - Verified facts: React is `19.2.0`; `gitgov/src` has `99` TypeScript/TSX files; `gitgov/src/components/control_plane` has `27` component/helper modules; `src-tauri/src` has `31` Rust files; `src-tauri/src/lib.rs` registers `94` Tauri commands; `npm test -- --run` reports `25` files and `296` tests; `cargo test -- --list` in `src-tauri` reports `23` tests; updater endpoint/pubkey are configured in `tauri.conf.json`.
+  - Non-goals: no runtime code change, no provider mutation, no secret printing, no web public docs audit beyond facts needed for Desktop comparisons, and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes
 

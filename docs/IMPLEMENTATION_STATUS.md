@@ -4,12 +4,13 @@ Updated: 2026-05-02
 
 ## Documentation Reality Audit - 2026-05-02
 
-`KAN-70` started the documentation cleanup track and `KAN-71` is the active backend/API/schema audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
+`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, and `KAN-72` is the active Desktop/dashboard audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
 - `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
-- The current repo has `32` GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, and `25` desktop frontend test files.
+- The current repo has `32` GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
 - Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
-- Existing documentation edits in `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/QUICKSTART.md`, `docs/TROUBLESHOOTING.md`, and `gitgov/gitgov-server/README.md` are being included only where they match code/configuration reality.
+- Desktop/dashboard docs are being checked against `gitgov/src`, `gitgov/src-tauri`, `gitgov/package.json`, and `gitgov/src-tauri/tauri.conf.json`; verified facts include `27` Control Plane component modules, `94` registered Tauri commands, React `19.2.0`, and an updater endpoint configured through GitHub Releases.
+- Existing documentation edits in `README.md`, `gitgov/README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/QUICKSTART.md`, `docs/TROUBLESHOOTING.md`, and `gitgov/gitgov-server/README.md` are being included only where they match code/configuration reality.
 - Historical reports remain evidence snapshots. The cleanup target is living docs and current handoff/status material.
 
 ## Current Execution Summary - 2026-04-25
@@ -659,11 +660,11 @@ The security review did not create a new critical/high implementation blocker. T
 1. Enterprise Self-Service Adoption.
    - Goal: let another company adopt the proven GitGov operating model without manual, repo-specific setup.
    - Needed product surfaces: provider onboarding, repository selection, workflow template installation, policy presets, module toggles, integration health, and formal release approval rules.
-   - Current state: KAN-29 implemented the first packaging layer through PR `#108` with a reproducible adoption pack generator, example profile, design doc, and runbook. KAN-30 adds the first dashboard profile builder so admins can choose providers, modules, and policy preset, preview the generated workflow/policy/config plan, and download secret-safe JSON. KAN-31 persists the profile per org. KAN-32 adds evidence-based provider health in the dashboard. KAN-33 generates reviewed workflow template packs from the same profile by CLI. KAN-34 adds dashboard download for workflow template packs. KAN-35 adds reviewed local workflow installation from those packs. KAN-36 adds direct provider credential/reachability checks. Formal enterprise release approval is still future product work.
+   - Current state: KAN-29 through KAN-60 implemented the adoption pack generator, dashboard profile builder, persisted profiles, provider health, workflow template generation/download, reviewed local and remote workflow installation, direct provider checks, formal release approval, release governance evaluation, onboarding readiness/remediation evidence, dashboard remediation export, guided onboarding checklist, and persisted checklist tracking.
 2. Vercel AI SDK Copilot.
    - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
    - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
-   - Current state: the evidence substrate exists; the customer-facing copilot is not implemented.
+   - Current state: KAN-38 through KAN-42 implemented the first governance copilot, dashboard UI, AI mode validation, production activation, and validation enforcement. `KAN-69` remains pending because the next need is guided Action Center UX that tells the user what to do next, not another standalone copilot feature.
 3. KAN-28 vulnerability trend enforcement.
    - Goal: convert the KAN-27 trend from informational evidence into an automated gate that fails when failures appear, findings increase, or the latest review artifact is missing/expired.
    - Current state: implemented through PR `#106`; first manual enforcement workflow run `25160194313` passed and uploaded artifact `product-vulnerability-review-trend-enforcement` ID `6727810243`.

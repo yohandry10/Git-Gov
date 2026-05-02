@@ -177,7 +177,9 @@ curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:3000/stats
 
 ### Dashboard del Control Plane
 
-El dashboard muestra en tiempo real:
+El dashboard actual vive en `src/components/control_plane/ServerDashboard.tsx` y monta `27` módulos bajo `src/components/control_plane`. Además de métricas base, incluye widgets de pipeline, Jira coverage, evidencia GitHub, risk outcomes, policy editor, evidence packets, enterprise adoption, release approvals, governance copilot, export y chat.
+
+Métricas base:
 
 | Métrica | Descripción | Fuente |
 |---------|-------------|--------|
@@ -240,7 +242,7 @@ El sistema usa **confidence scoring** en lugar de detección binaria:
 ### Desktop App (`gitgov/`)
 
 - **Tauri v2**: Framework de apps de escritorio (Rust + WebView)
-- **React 18 + TypeScript**: Frontend con Vite
+- **React 19 + TypeScript**: Frontend con Vite
 - **Tailwind v4**: Estilos
 - **Zustand**: Estado global
 - **git2 (Rust)**: Operaciones Git nativas
@@ -382,7 +384,7 @@ admins = ["admin-user"]
 
 | Componente | Stack |
 |------------|-------|
-| Desktop | Tauri v2, React 18, TypeScript, Tailwind v4, Zustand |
+| Desktop | Tauri v2, React 19, TypeScript, Tailwind v4, Zustand |
 | Backend Desktop | Rust, git2, rusqlite, reqwest |
 | Server | Rust, Axum, sqlx |
 | Database | Supabase (PostgreSQL) |

@@ -63,10 +63,10 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 - ✅ Policy drift detection y auditoría
 - ✅ GDPR: erase/export de datos de usuario
 - ✅ Compliance signals y detección automática
-- ✅ Branch tree visual (Cytoscape.js)
+- ✅ Pipeline visual local en Desktop (ticket → branch → stage → commit → push/PR → CI)
 - ✅ Métricas Prometheus (`/metrics`)
 - ✅ 32 GitHub Actions workflows (CI, security, governance, monitoring, trends)
-- ✅ 193 server tests + 25 frontend test files
+- ✅ 193 server tests + 296 desktop frontend tests across 25 files + 23 Tauri tests
 
 > Nota: métricas de quality gate/readiness dependen de tener telemetría Jenkins/Jira/Sonar configurada.
 

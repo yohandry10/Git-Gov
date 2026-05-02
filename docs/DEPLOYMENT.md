@@ -1245,7 +1245,7 @@ If using a proxy, set `HTTP_PROXY` / `HTTPS_PROXY` environment variables.
 
 ## 4. Desktop Updates (Tauri Updater)
 
-Actualizaciones in-app usando `tauri-plugin-updater` con full updates (sin deltas) y distribución por S3 + CloudFront.
+Actualizaciones in-app usando `tauri-plugin-updater` con full updates (sin deltas). La configuración trackeada actual apunta a GitHub Releases; S3 + CloudFront queda como guía para distribución custom/self-hosted.
 
 ### Estado actual (implementado)
 
@@ -1261,16 +1261,13 @@ Actualizaciones in-app usando `tauri-plugin-updater` con full updates (sin delta
 - Enforcement de actualización obligatoria por metadata de release:
   - `min_supported_version`
   - `force_update` / `critical_update`
+- `gitgov/src-tauri/tauri.conf.json` ya define `plugins.updater.endpoints` y `plugins.updater.pubkey`
 
 ### Requisito para producción
 
-El updater **no funcionará** hasta configurar en `tauri.conf.json`:
-- `plugins.updater.endpoints`
-- `plugins.updater.pubkey`
+El updater requiere publicar un `latest.json` firmado en el endpoint configurado y firmar cada update con la clave privada correspondiente al `plugins.updater.pubkey` trackeado. Si el endpoint devuelve `404` o el manifest no cumple shape/firma, el validador queda en `WARN`/`FAIL` según modo.
 
-Y firmar el update con la clave del updater de Tauri.
-
-### Arquitectura (AWS)
+### Arquitectura custom/self-hosted (AWS)
 
 - **S3**: almacenar artefactos y manifests
 - **CloudFront**: servir con HTTPS y CDN
@@ -1287,9 +1284,26 @@ s3://gitgov-downloads/desktop/
     ...
 ```
 
-CloudFront URL: `https://downloads.gitgov.com/desktop/stable/latest.json`
+CloudFront URL de ejemplo: `https://downloads.gitgov.com/desktop/stable/latest.json`
 
 ### Configuración `tauri.conf.json`
+
+La configuración actual del repo usa GitHub Releases:
+
+```json
+{
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/yohandry10/Git-Gov/releases/latest/download/latest.json"
+      ],
+      "pubkey": "<public-updater-key>"
+    }
+  }
+}
+```
+
+Ejemplo para reemplazarlo por distribución custom:
 
 ```json
 {
