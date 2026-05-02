@@ -4,10 +4,10 @@ Updated: 2026-05-02
 
 ## Documentation Reality Audit - 2026-05-02
 
-`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, and `KAN-73` completed the CI/workflows/release automation audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
+`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, and `KAN-74` is the narrow CI helper/runtime follow-up from that audit. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
 - `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
-- Recommended next follow-up: `KAN-74 - CI helper/runtime follow-up` (not started), because KAN-73 found branch-protection helper defaults that lag live required checks and a post-merge `gitleaks/gitleaks-action@v2` Node.js 20 deprecation annotation.
+- Active follow-up: `KAN-74 - CI helper/runtime follow-up`, because KAN-73 found branch-protection helper defaults that lag live required checks and a post-merge `gitleaks/gitleaks-action@v2` Node.js 20 deprecation annotation.
 - The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
 - CI/workflow docs were checked against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and live GitHub branch protection metadata; verified facts include `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, `28` artifact-producing workflows, and `6` strict required checks on `main`.
 - Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
@@ -311,7 +311,7 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
   - `harden_repo_governance.ps1` now runs token-permission preflight (`check_token_permissions.ps1`) before CI/protection steps.
   - `scripts/github/create_or_print_pr.ps1` added to automate PR creation and fallback to compare URL when token lacks `pull_requests` permissions.
   - GitHub/Jenkins helper scripts now avoid hardcoded personal repo defaults; `owner/repo` are auto-resolved from `GITHUB_REPOSITORY` or `git remote origin` when omitted.
-- Live execution completed: branch protection applied and verified on `main` with required checks (`Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Security Guard`), strict checks enabled, admins enforced.
+- Live execution completed: branch protection applied and verified on `main` with strict checks enabled and admins enforced. KAN-74 aligns the helper defaults with the current required checks (`Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`).
 - `docs/DEPLOYMENT.md` now includes execution commands + verification checklist.
 - Sonar CI rollout preflight automation prepared:
   - `scripts/github/check_ci_repo_config.ps1` audits required GitHub secrets/variables for Sonar + GitGov telemetry.
