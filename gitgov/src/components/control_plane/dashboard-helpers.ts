@@ -470,6 +470,47 @@ export interface EnterpriseOnboardingRemediationPlan {
   }
 }
 
+export type EnterpriseOnboardingGuideStepStatus = 'complete' | 'next' | 'todo' | 'blocked'
+
+export interface EnterpriseOnboardingGuideStep {
+  order: number
+  stage_id: EnterpriseOnboardingReadinessStageId
+  label: string
+  status: EnterpriseOnboardingGuideStepStatus
+  readiness_status: EnterpriseOnboardingReadinessStatus
+  owner: string
+  summary: string
+  action: string
+  validation: string
+}
+
+export interface EnterpriseOnboardingGuide {
+  generated_at: string
+  customer_name: string
+  repository_full_name: string
+  readiness_status: EnterpriseOnboardingReadinessStatus
+  readiness_score: number
+  completed_steps: number
+  total_steps: number
+  next_step: EnterpriseOnboardingGuideStep | null
+  steps: EnterpriseOnboardingGuideStep[]
+  configuration_summary: {
+    variable_names: string[]
+    secret_names: string[]
+    commands_are_placeholders: true
+    suggested_commands_count: number
+  }
+  safety: {
+    contains_secret_values: false
+    reads_secret_values: false
+    mutates_customer_repository: false
+    mutates_provider_state: false
+    creates_github_actions_variables: false
+    creates_github_actions_secrets: false
+    release_blocking_default: false
+  }
+}
+
 const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
 const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
@@ -1976,6 +2017,72 @@ export function buildEnterpriseOnboardingRemediationPlan(
       regenerate_readiness: 'Run scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1 after completing actions.',
       rerun_provider_checks: 'Run scripts/control-plane/validate_enterprise_provider_connections.ps1 only with customer-approved credentials.',
       rerun_workflow_readiness: 'Run scripts/control-plane/validate_enterprise_workflow_installation_readiness.ps1 after workflow installation or remote PR merge.',
+    },
+    safety: {
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      creates_github_actions_variables: false,
+      creates_github_actions_secrets: false,
+      release_blocking_default: false,
+    },
+  }
+}
+
+export function buildEnterpriseOnboardingGuide(
+  readiness: EnterpriseOnboardingReadinessReport,
+  remediationPlan: EnterpriseOnboardingRemediationPlan,
+  generatedAt = new Date().toISOString(),
+): EnterpriseOnboardingGuide {
+  const actionByStage = new Map(
+    remediationPlan.actions.map((action) => [action.stage_id, action]),
+  )
+  const nextAction = remediationPlan.actions[0] ?? null
+  const steps = readiness.stages.map((stage, index): EnterpriseOnboardingGuideStep => {
+    const remediationAction = actionByStage.get(stage.id)
+    const status: EnterpriseOnboardingGuideStepStatus = stage.status === 'ready'
+      ? 'complete'
+      : stage.status === 'blocked'
+        ? 'blocked'
+        : nextAction?.stage_id === stage.id
+          ? 'next'
+          : 'todo'
+
+    return {
+      order: index + 1,
+      stage_id: stage.id,
+      label: stage.label,
+      status,
+      readiness_status: stage.status,
+      owner: remediationAction?.owner ?? 'GitGov operator',
+      summary: stage.summary,
+      action: stage.status === 'ready'
+        ? 'Keep this evidence current during onboarding.'
+        : remediationAction?.action ?? stage.next_action,
+      validation: remediationAction?.validation ?? 'Regenerate onboarding readiness and confirm the stage remains ready.',
+    }
+  })
+
+  return {
+    generated_at: generatedAt,
+    customer_name: readiness.customer_name,
+    repository_full_name: readiness.repository_full_name,
+    readiness_status: readiness.status,
+    readiness_score: readiness.readiness_score,
+    completed_steps: steps.filter((step) => step.status === 'complete').length,
+    total_steps: steps.length,
+    next_step: steps.find((step) => step.status === 'next') ?? steps.find((step) => step.status === 'blocked') ?? null,
+    steps,
+    configuration_summary: {
+      variable_names: remediationPlan.github_actions_configuration.commands
+        .filter((command) => command.kind === 'variable')
+        .map((command) => command.name),
+      secret_names: remediationPlan.github_actions_configuration.commands
+        .filter((command) => command.kind === 'secret')
+        .map((command) => command.name),
+      commands_are_placeholders: remediationPlan.github_actions_configuration.commands_are_placeholders,
+      suggested_commands_count: remediationPlan.github_actions_configuration.commands.length,
     },
     safety: {
       contains_secret_values: false,
