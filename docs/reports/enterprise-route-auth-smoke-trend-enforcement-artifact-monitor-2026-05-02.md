@@ -57,37 +57,43 @@ PR validation:
 
 | Check | Result |
 | --- | --- |
-| PR `#TBD` `Security Guard` | Pending |
-| PR `#TBD` `Server Clippy + Check` | Pending |
-| PR `#TBD` `Desktop Rust Clippy` | Pending |
-| PR `#TBD` `Frontend Lint + Typecheck` | Pending |
-| PR `#TBD` `Website Lint + Typecheck + Build` | Pending |
-| PR `#TBD` `Workflow Lint` | Pending |
-| PR `#TBD` `Validate quality_gates warn/block matrix` | Pending |
-| PR `#TBD` `Sonar Scan + Quality Gate` | Pending |
-| PR `#TBD` `Block internal-assistant markers in branch/commits` | Pending |
-| PR `#TBD` Vercel preview | Pending |
+| PR `#188` `Security Guard` | Passed |
+| PR `#188` `Server Clippy + Check` | Passed |
+| PR `#188` `Desktop Rust Clippy` | Passed |
+| PR `#188` `Frontend Lint + Typecheck` | Passed |
+| PR `#188` `Website Lint + Typecheck + Build` | Passed |
+| PR `#188` `Workflow Lint` | Passed |
+| PR `#188` `Validate quality_gates warn/block matrix` | Passed |
+| PR `#188` `Sonar Scan + Quality Gate` | Passed |
+| PR `#188` `Block internal-assistant markers in branch/commits` | Passed |
+| PR `#188` Vercel preview | Passed |
 
 Post-merge validation:
 
 | Check | Result |
 | --- | --- |
-| Main merge commit | Pending |
-| `CI` | Pending |
-| `Release Readiness Gate` | Pending |
+| Main merge commit | `78d4878` |
+| `CI` | Passed, run `25247988131` |
+| `Release Readiness Gate` | Passed, run `25247988122` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25247988133` |
+| `Secret Scan` | Passed, run `25247988128` |
+| `Public Naming Guard` | Passed, run `25247988129` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25247988126` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25247988124` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25247988127` |
 
 First workflow dispatch:
 
 | Field | Result |
 | --- | --- |
 | Workflow | `Enterprise Route Auth Smoke Trend Enforcement Artifact Monitor` |
-| Run | Pending |
-| Conclusion | Pending |
+| Run | `25248025190` |
+| Conclusion | Passed |
 | Artifact | `enterprise-route-auth-smoke-trend-enforcement-artifact-monitor` |
-| Artifact ID | Pending |
-| Artifact expiry | Pending |
-| Parsed result | Pending |
+| Artifact ID | `6761892441` |
+| Artifact expiry | `2026-07-31T08:35:58Z` |
+| Parsed result | `status=PASS`, source enforcement run `25247747284`, source enforcement artifact `6761818040`, source age `0.28h` |
 
 ## Current Status
 
-KAN-67 is implemented locally and awaiting validation, PR checks, merge, first workflow dispatch, and Jira closure.
+KAN-67 is implemented, merged, workflow-validated, and awaiting Jira closure.

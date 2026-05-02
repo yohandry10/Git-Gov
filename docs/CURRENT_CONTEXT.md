@@ -58,7 +58,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-64 - Trend enterprise route auth smoke artifacts`.
 - Latest completed follow-up: `KAN-65 - Monitor enterprise route auth smoke trend artifact freshness`.
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
-- Current follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
+- Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
+- Current follow-up: none selected after `KAN-67`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1575,10 +1576,13 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
 
-## Current KAN-67 Implementation Notes
+## Latest KAN-67 Validation Notes
 
 - Jira: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifacts`.
 - Implementation branch: `hardening/KAN-67-enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`.
+- Implementation PR: `#188 - hardening(KAN-67): monitor auth smoke enforcement artifacts`.
+- Implementation commit: `0133ef2 hardening(KAN-67): monitor auth smoke enforcement artifacts`.
+- Main merge commit: `78d4878 Merge pull request #188 from yohandry10/hardening/KAN-67-enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`.
 - Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml`.
 - Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
 - Design: `docs/design/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor-mvp.md`.
@@ -1596,6 +1600,34 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Local hygiene checks passed:
   - `git diff --check`
   - `.\scripts\security\publication_guard.ps1`
+- PR `#188` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - Vercel preview: passed.
+- Post-merge checks on `main` commit `78d4878` passed:
+  - `CI` - run `25247988131`
+  - `Release Readiness Gate` - run `25247988122`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247988133`
+  - `Secret Scan` - run `25247988128`
+  - `Public Naming Guard` - run `25247988129`
+  - `Governance Correlation Smoke (Optional)` - run `25247988126`
+  - `Desktop Updater Readiness (Optional)` - run `25247988124`
+  - `SonarQube Governance (Non-Blocking)` - run `25247988127`
+- First manual monitor workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Enforcement Artifact Monitor`
+  - run `25248025190`
+  - artifact `enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`
+  - artifact ID `6761892441`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T08:35:58Z`
+  - parsed result `status=PASS`, source enforcement run `25247747284`, source artifact `6761818040`, source age `0.28h`
 - Delivery notes:
   - no Render deploy required
   - no DB migration required
