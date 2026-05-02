@@ -12,7 +12,7 @@
 # 1. Control Plane Server
 cd gitgov/gitgov-server
 cp .env.example .env
-# Editar .env con credenciales de Supabase
+# Editar .env con credenciales de PostgreSQL
 cargo run
 
 # 2. Desktop App
@@ -35,7 +35,7 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 | Desktop App | Tauri v2 + React | `gitgov/` |
 | Control Plane Server | Axum + Rust | `gitgov/gitgov-server/` |
 | Web App pública | Next.js 15.5 (App Router) | `gitgov-web/` |
-| Database | PostgreSQL (Supabase) | Supabase Cloud |
+| Database | PostgreSQL (Supabase) | Render + Supabase (producción) |
 
 ## Funcionalidades
 
@@ -53,6 +53,20 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
   - Acceso: perfil de usuario y estado de clave (sin exponer secretos)
   - Roles permitidos: `Admin`, `Architect`, `PM`
 - ✅ Editor de políticas en dashboard desktop para definir ramas y reglas (guardado en Control Plane)
+- ✅ SSE (Server-Sent Events) para actualizaciones en tiempo real con fallback a polling
+- ✅ Enterprise adoption profiles — self-service onboarding enterprise
+- ✅ Enterprise release approvals — aprobaciones formales con evidence packets
+- ✅ Enterprise onboarding checklist — checklist guiado con tracking persistente
+- ✅ Governance copilot (AI mode) — copilot de gobernanza con Vercel AI SDK
+- ✅ Release governance evaluator con enforcement gate configurable
+- ✅ Evidence packets auditables por ticket
+- ✅ Policy drift detection y auditoría
+- ✅ GDPR: erase/export de datos de usuario
+- ✅ Compliance signals y detección automática
+- ✅ Branch tree visual (Cytoscape.js)
+- ✅ Métricas Prometheus (`/metrics`)
+- ✅ 32 GitHub Actions workflows (CI, security, governance, monitoring, trends)
+- ✅ 193 server tests + 25 frontend test files
 
 > Nota: métricas de quality gate/readiness dependen de tener telemetría Jenkins/Jira/Sonar configurada.
 
@@ -72,6 +86,9 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 | [OPERATIONS_ACCESS.md](./docs/OPERATIONS_ACCESS.md) | Runbook de accesos operativos GitHub/Render/SonarQube/Jenkins |
 | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Solución de problemas |
 | [PUBLICATION_POLICY.md](./docs/PUBLICATION_POLICY.md) | Qué documentación puede publicarse (y cuál no) |
+| [CURRENT_CONTEXT.md](./docs/CURRENT_CONTEXT.md) | Estado actual compacto y handoff operativo |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Guía de despliegue |
+| [ENTERPRISE_READINESS_DECISION.md](./docs/ENTERPRISE_READINESS_DECISION.md) | Decisión de readiness enterprise |
 
 ## Scripts de Prueba
 

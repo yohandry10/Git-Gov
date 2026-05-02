@@ -66,7 +66,7 @@ If a proposed feature does not pass one of those tests, defer it.
 Candidate next implementation:
 
 ```text
-KAN-69 - Enterprise Action Center UX MVP
+KAN-69 - Enterprise Action Center guided UX
 ```
 
 This should be a product/UX feature, not another backend hardening chain.
@@ -112,7 +112,7 @@ With clear actions:
 - `View remediation`
 - `Mark step done`
 
-## What Already Exists For This MVP
+## What Already Exists For This UX
 
 The Action Center should reuse these existing pieces:
 
@@ -149,7 +149,7 @@ For the next stage, do not make these default goals:
 
 If the next session starts KAN-69, start from the dashboard.
 
-Preferred MVP:
+Preferred product shape:
 
 - Add an `Action Center` section to the Enterprise Adoption dashboard.
 - Compute a small set of recommended next actions from existing profile, provider health, workflow pack, readiness, remediation, and checklist state.
@@ -205,5 +205,5 @@ How do we make the existing GitGov capabilities obvious and useful to a first cu
 The default answer should be:
 
 ```text
-Build the Enterprise Action Center UX MVP.
+Build the Enterprise Action Center guided UX.
 ```

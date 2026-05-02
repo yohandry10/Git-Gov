@@ -16,7 +16,7 @@ Make GitGov easier to use by turning existing evidence, onboarding, readiness, w
 
 - GitGov has completed a large security and enterprise-readiness hardening sequence through `KAN-67`.
 - There is no current need to keep extending that chain with more monitor/trend/enforcement tickets unless a real bug, confirmed vulnerability, or production risk appears.
-- The next recommended implementation is a product/UX milestone, tentatively `KAN-69 - Enterprise Action Center UX MVP`.
+- The next recommended implementation is the product/UX milestone `KAN-69 - Enterprise Action Center guided UX`.
 - New work should be evaluated by whether it makes GitGov easier for customers to understand and operate.
 
 ## Why
@@ -59,7 +59,7 @@ The next UX should show:
 Candidate:
 
 ```text
-KAN-69 - Enterprise Action Center UX MVP
+KAN-69 - Enterprise Action Center guided UX
 ```
 
 Scope should be dashboard-first:
@@ -91,4 +91,4 @@ At the time of this documentation update, local uncommitted edits existed in doc
 
 ## Current Status
 
-KAN-68 is documentation-only and awaiting commit, push, PR, and Jira closure.
+KAN-68 was completed as documentation-only product direction work. It is the handoff source for keeping `KAN-69` focused on the Enterprise Action Center guided UX instead of another standalone hardening or evidence-chain ticket.

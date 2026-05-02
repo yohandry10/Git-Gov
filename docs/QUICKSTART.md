@@ -5,7 +5,7 @@
 - Node.js 20+ (Desktop App y Web App, alineado con CI)
 - pnpm (Web App: `npm install -g pnpm`)
 - Rust 1.70+
-- PostgreSQL (o cuenta Supabase)
+- PostgreSQL 16+
 - GitHub Account
 
 ## Instalación (5 minutos)
@@ -69,7 +69,7 @@ GITHUB_WEBHOOK_SECRET=tu-webhook-secret
 
 ### 3. Inicializar Base de Datos
 
-En Supabase SQL Editor, ejecutar los archivos **en orden**:
+En `psql` o cualquier cliente SQL, ejecutar los archivos **en orden**:
 ```sql
 -- 1. Schema base
 -- Ejecutar: gitgov/gitgov-server/supabase/supabase_schema.sql
@@ -79,10 +79,10 @@ En Supabase SQL Editor, ejecutar los archivos **en orden**:
 -- supabase_schema_v2.sql
 -- supabase_schema_v3.sql
 -- ...
--- supabase_schema_v22.sql
+-- supabase_schema_v25.sql
 ```
 
-Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico (actualmente hasta `v22`).
+Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico (actualmente hasta `v25`).
 
 ### 4. Ejecutar
 
@@ -149,7 +149,7 @@ GitGov/
 │   ├── gitgov-server/             # Control Plane Server (Axum + Rust)
 │   │   ├── src/
 │   │   │   ├── main.rs            # Rutas, rate limiters, bootstrap
-│   │   │   ├── handlers.rs        # HTTP handlers (30+ endpoints)
+│   │   │   ├── handlers/           # HTTP handlers (65+ endpoints, 23 archivos)
 │   │   │   ├── auth.rs            # Middleware auth (SHA256 + roles)
 │   │   │   ├── db.rs              # Database queries (COALESCE siempre)
 │   │   │   └── models.rs          # Data structures (serde + defaults)
@@ -164,6 +164,9 @@ GitGov/
 │   │   │   ├── supabase_schema_v20.sql # Policy change requests + decisions
 │   │   │   ├── supabase_schema_v21.sql # Chat query audit trail
 │   │   │   ├── supabase_schema_v22.sql # GitHub stats restoration
+│   │   │   ├── supabase_schema_v23.sql # Enterprise adoption profiles
+│   │   │   ├── supabase_schema_v24.sql # Enterprise release approvals
+│   │   │   └── supabase_schema_v25.sql # Enterprise onboarding checklist
 │   │   └── tests/                 # Tests E2E (bash)
 │   └── gitgov.toml                # Config del repo
 │
@@ -330,7 +333,7 @@ admins = ["admin-user"]
 
 | Variable | Propósito |
 |----------|-----------|
-| `DATABASE_URL` | Conexión PostgreSQL (Supabase pooler) |
+| `DATABASE_URL` | Conexión PostgreSQL |
 | `GITGOV_JWT_SECRET` | Secreto JWT (mín 32 chars) |
 | `GITGOV_SERVER_ADDR` | Dirección del servidor (ej. `0.0.0.0:3000`) |
 | `GITGOV_API_KEY` | API key inicial (se inserta en DB si no existe) |
@@ -347,7 +350,7 @@ admins = ["admin-user"]
 | Serialization error | Verificar structs cliente/servidor coinciden |
 | Outbox no envía | Verificar `GITGOV_SERVER_URL` y `GITGOV_API_KEY` en `gitgov/.env` |
 | Dashboard vacío pero outbox OK | Verificar `VITE_SERVER_URL` y `VITE_API_KEY` en `gitgov/.env` |
-| DB error | Ejecutar supabase_schema.sql (base) + todas `supabase_schema_v*.sql` en orden (actualmente hasta v22) |
+| DB error | Ejecutar supabase_schema.sql (base) + todas `supabase_schema_v*.sql` en orden (actualmente hasta v25) |
 | App no abre | `npm install` y verificar Node.js 20+ |
 | 429 Too Many Requests | Rate limit alcanzado — ajustar `GITGOV_RATE_LIMIT_*_PER_MIN` en .env del servidor |
 | localhost vs 127.0.0.1 | Usar siempre `127.0.0.1:3000` como URL canónica en local |
@@ -362,11 +365,10 @@ admins = ["admin-user"]
 3. ✅ Eventos registrándose
 4. ✅ V1.2-A Jenkins — funcional
 5. ✅ V1.2-B Jira — preview funcional
-6. ✅ Deploy servidor en EC2 (`example.com`)
-7. ✅ Sitio web desplegado (`https://<your-domain>`)
-8. ⬜ Configurar webhooks GitHub en repos de producción
-9. ⬜ Activar HTTPS en EC2 (dominio + Let's Encrypt)
-10. ⬜ Configurar servidor de releases para tauri-updater
+6. ✅ Deploy servidor en Render (`https://gitgov-api.onrender.com`)
+7. ✅ Sitio web desplegado en Vercel
+8. ✅ Webhooks GitHub/Jira configurados contra Render
+9. ⬜ Configurar servidor de releases para tauri-updater
 
 ## Soporte
 

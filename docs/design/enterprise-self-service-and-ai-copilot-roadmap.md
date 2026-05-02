@@ -32,7 +32,7 @@ The Action Center should make the existing capabilities obvious to a customer by
 The candidate next implementation ticket is:
 
 ```text
-KAN-69 - Enterprise Action Center UX MVP
+KAN-69 - Enterprise Action Center guided UX
 ```
 
 This should be dashboard-first and should reuse existing capabilities from `KAN-29` through `KAN-67`. It should not introduce another independent monitor, trend, or enforcement chain unless required to make the Action Center accurate.
@@ -227,7 +227,7 @@ The current agreed order after `KAN-67` is:
 1. Stop adding incremental hardening/features by default.
 2. Keep existing scheduled evidence workflows running.
 3. Only open new hardening tickets for real bugs, confirmed vulnerabilities, production risks, or customer-selected enforcement requirements.
-4. Make the next product feature UX-focused: `KAN-69 - Enterprise Action Center UX MVP`.
+4. Make the next product feature UX-focused: `KAN-69 - Enterprise Action Center guided UX`.
 5. Use existing evidence/readiness/onboarding/release-governance/checklist/copilot capabilities to show a simple guided path.
 6. Treat AI work as useful only when it explains or simplifies the guided product experience.
 
