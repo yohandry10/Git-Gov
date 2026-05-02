@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-58`
+Ticket: `KAN-59`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -50,7 +50,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-56 - Monitor enterprise onboarding readiness trend deterioration`.
 - Latest completed follow-up: `KAN-57 - Generate enterprise onboarding remediation plan`.
 - Latest completed follow-up: `KAN-58 - Dashboard onboarding remediation export`.
-- Current follow-up: none selected after `KAN-58`.
+- Latest completed follow-up: `KAN-59 - Dashboard guided enterprise onboarding checklist`.
+- Current follow-up: none selected after `KAN-59`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1565,6 +1566,61 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact `enterprise-onboarding-readiness-artifact-monitor`.
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-59 Validation Notes
+
+- Jira: `KAN-59 - Dashboard guided enterprise onboarding checklist`.
+- Implementation branch: `product/KAN-59-dashboard-guided-onboarding-checklist`.
+- Implementation PR: `#172 - product(KAN-59): add guided onboarding checklist`.
+- Implementation commit: `a24e34b product(KAN-59): add guided onboarding checklist`.
+- Main merge commit: `d2ce33b Merge pull request #172 from yohandry10/product/KAN-59-dashboard-guided-onboarding-checklist`.
+- Dashboard helper: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Dashboard UI: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Design: `docs/design/dashboard-guided-onboarding-checklist-mvp.md`.
+- Report: `docs/reports/dashboard-guided-onboarding-checklist-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no provider API calls.
+  - no secret value printing.
+  - secret names may be displayed, but values are never read or generated.
+  - no GitHub Actions variable/secret creation.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no workflow dispatch or branch protection mutation.
+  - advisory/non-blocking by default.
+  - no release blocking by default.
+- Local validation already run:
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `26` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `294` tests.
+  - `npm run build`: passed with existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#172` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `d2ce33b` passed:
+  - `CI` - run `25244188759`.
+  - `Release Readiness Gate` - run `25244188770`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25244188767`.
+  - `Secret Scan` - run `25244188764`.
+  - `Public Naming Guard` - run `25244188766`.
+  - `Governance Correlation Smoke (Optional)` - run `25244188774`.
+  - `Desktop Updater Readiness (Optional)` - run `25244188758`.
+  - `SonarQube Governance (Non-Blocking)` - run `25244188762`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
 
 ## Latest KAN-58 Validation Notes
