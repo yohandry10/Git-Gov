@@ -222,7 +222,7 @@ La función SQL no fue creada en la base de datos.
 
 **Solución:**
 
-Ejecutar el archivo supabase_schema.sql en el editor SQL de Supabase o con psql.
+Ejecutar el archivo supabase_schema.sql con psql o cualquier cliente SQL.
 
 ---
 
@@ -533,12 +533,15 @@ En Jira, define el mismo valor de `JIRA_WEBHOOK_SECRET` como secret del webhook.
 
 **Solución:**
 ```sql
--- En Supabase SQL Editor, ejecutar en orden:
+-- En psql o cualquier cliente SQL, ejecutar en orden:
 -- supabase_schema_v5.sql  (pipeline_events para Jenkins)
 -- supabase_schema_v6.sql  (project_tickets + commit_ticket_correlations para Jira)
 -- supabase_schema_v20.sql (policy change requests + decisions)
 -- supabase_schema_v21.sql (chat_query_events + chat_query_tool_calls)
 -- supabase_schema_v22.sql (restaura github_events en /stats)
+-- supabase_schema_v23.sql (enterprise adoption profiles)
+-- supabase_schema_v24.sql (enterprise release approvals)
+-- supabase_schema_v25.sql (enterprise onboarding checklist tracking)
 --
 -- Recomendado: ejecutar TODAS las migraciones supabase_schema_v*.sql en orden numérico.
 ```
@@ -707,7 +710,7 @@ Cuando algo no funciona, verifica en orden:
 10. [ ] El auto-refresh (30s) no está bloqueado por CORS o red
 
 **Base de datos:**
-11. [ ] Se aplicó `supabase_schema.sql` + todas las migraciones `supabase_schema_v*.sql` en orden (actualmente hasta v22)
+11. [ ] Se aplicó `supabase_schema.sql` + todas las migraciones `supabase_schema_v*.sql` en orden (actualmente hasta v25)
 12. [ ] No hay panics con "invalid type: null" → revisar COALESCE en queries
 13. [ ] Las estructuras `ServerStats` / `CombinedEvent` coinciden frontend ↔ backend
 

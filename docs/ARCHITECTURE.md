@@ -26,11 +26,11 @@ El sistema está compuesto por **cuatro componentes** que trabajan juntas: una a
 │  │  ─────────────  │   │  └───────────┘  │   │  └─────────┘  │  │  i18n EN/ES │ │
 │  │  Rust + git2    │   │  ┌───────────┐  │   │               │  │  Vercel     │ │
 │  │  Outbox (JSONL) │   │  │ PostgreSQL│  │   │               │  │             │ │
-│  │  SQLite local   │   │  │ Supabase  │  │   │               │  │             │ │
+│  │  SQLite local   │   │  │ (Supabase)│  │   │               │  │             │ │
 │  │  tauri-updater  │   │  │ Job Queue │  │   │               │  │             │ │
 │  └─────────────────┘   │  └───────────┘  │   └───────────────┘  └─────────────┘ │
 │                         └─────────────────┘                                      │
-│                         EC2: example.com                                       │
+│                         Render: gitgov-api.onrender.com                        │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -113,10 +113,10 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 
 **Tecnologías:**
 - Framework: Axum (basado en Tokio para async)
-- Base de datos: PostgreSQL (hosteado en Supabase; pooler de conexiones)
+- Base de datos: PostgreSQL (Supabase)
 - Autenticación: hash SHA256 de API keys + roles (Admin, Architect, Developer, PM)
 - Procesamiento: jobs en background con reintentos (`FOR UPDATE SKIP LOCKED`)
-- Deploy: Ubuntu 22.04 + Nginx + systemd en EC2 (`example.com`) o Docker
+- Deploy: Render (producción: `https://gitgov-api.onrender.com`) o Docker (local)
 
 **Job Worker — constantes hardcoded:**
 
@@ -177,6 +177,39 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/org-invitations/{id}/revoke` | Bearer (admin) | Revocar invitación |
 | `/org-invitations/preview/{token}` | Público | Previsualizar invitación |
 | `/org-invitations/accept` | Público | Aceptar invitación y emitir API key |
+| `/stats/daily` | Bearer (admin) | Actividad diaria |
+| `/team/overview` | Bearer (admin) | Vista general del equipo |
+| `/team/repos` | Bearer (admin) | Repositorios del equipo |
+| `/me` | Bearer | Datos del usuario autenticado |
+| `/orgs` | Bearer (admin) | Crear organización |
+| `/org-users` | Bearer (admin) | Listar/crear usuarios de organización |
+| `/org-users/{id}/status` | Bearer (admin) | Actualizar estado de usuario |
+| `/org-users/{id}/api-key` | Bearer (admin) | Crear API key para usuario |
+| `/enterprise/adoption-profile` | Bearer | Obtener/actualizar perfil de adopción enterprise |
+| `/enterprise/onboarding-checklist-tracking` | Bearer | Obtener/actualizar tracking de checklist de onboarding |
+| `/enterprise/release-approvals` | Bearer | Listar/crear aprobaciones de release enterprise |
+| `/enterprise/release-governance/evaluate` | Bearer | Evaluar governance de release enterprise |
+| `/signals/{signal_id}` | Bearer (scoped) | Actualizar señal individual |
+| `/signals/{signal_id}/confirm` | Bearer (scoped) | Confirmar señal |
+| `/signals/detect/{org_name}` | Bearer (admin) | Disparar detección de señales |
+| `/policy/{repo_name}` | Bearer | Obtener política actual de un repo |
+| `/policy/{repo_name}/history` | Bearer | Historial de política |
+| `/policy/{repo_name}/override` | Bearer (admin) | Sobreescribir política |
+| `/pr-merges` | Bearer (admin) | Listar PR merges |
+| `/admin-audit-log` | Bearer (admin) | Log de auditoría administrativa |
+| `/outbox/lease` | Bearer | Adquirir lease de flush del outbox |
+| `/outbox/lease/metrics` | Bearer (admin) | Métricas de lease del outbox |
+| `/users/{login}/erase` | Bearer (admin) | GDPR: borrar datos de usuario |
+| `/users/{login}/export` | Bearer (admin) | GDPR: exportar datos de usuario |
+| `/clients` | Bearer (admin) | Listar sesiones de clientes |
+| `/identities/aliases` | Bearer (admin) | Crear/listar aliases de identidad |
+| `/chat/ask` | Bearer (scoped: Admin, Architect, PM) | Chat conversacional de gobernanza |
+| `/feature-requests` | Bearer | Crear feature request desde el bot |
+| `/cli/commands` | Bearer | Ingesta/listado de comandos CLI auditados |
+| `/policy/drift-events` | Bearer | Ingesta/listado de eventos de policy drift |
+| `/webhooks/jira` | HMAC `X-Hub-Signature` | Webhooks nativos de Jira (firmados) |
+| `/metrics` | Público | Métricas Prometheus |
+| `/sse` | Bearer (admin) | Stream de eventos en tiempo real (SSE) |
 
 **Headers de integración:**
 - Jenkins: `x-gitgov-jenkins-secret` (si `JENKINS_WEBHOOK_SECRET` configurado)
@@ -184,7 +217,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 - Jira webhook nativo: `X-Hub-Signature: sha256=...` en `/webhooks/jira`, firmado con `JIRA_WEBHOOK_SECRET`
 
 **Schema versionado:** La DB se inicializa con schema base y migraciones incrementales activas:
-`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21` → `v22`
+`supabase_schema.sql` → `v2` → `v3` → `v4` → `v5` → `v6` → `v7` → `v8` → `v9` → `v10` → `v11` → `v12` → `v13` → `v18` → `v19` → `v20` → `v21` → `v22` → `v23` → `v24` → `v25`
 
 ### 3. GitHub Integration
 
@@ -532,6 +565,17 @@ El sistema trabaja con estas entidades principales:
 - Deduplicación por `(commit_sha, ticket_id)`
 - Extraída de mensajes de commit y nombres de ramas
 
+**Enterprise Adoption Profiles (enterprise_adoption_profiles) — V23**
+- Un perfil de adopción por organización (JSONB validado, sin secretos)
+- Persistencia del onboarding enterprise self-service
+
+**Enterprise Release Approvals (enterprise_release_approvals) — V24**
+- Decisiones de aprobación de release con evidencia (append-only)
+- Incluye evidence packet hash, severidad de riesgo, ambiente destino
+
+**Enterprise Onboarding Checklist Tracking (enterprise_onboarding_checklist_tracking) — V25**
+- Tracking de progreso del checklist guiado de onboarding enterprise
+
 **Governance Events (governance_events)**
 - Cambios de configuración de seguridad desde GitHub Audit Log
 - Append-only. Incluye cambios de branch protection, rulesets, permisos
@@ -558,6 +602,9 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v20.sql` | Policy change requests + decisions (persistencia versionada) |
 | `supabase_schema_v21.sql` | Trazabilidad auditable del bot (chat_query_events + tool_calls) |
 | `supabase_schema_v22.sql` | Restaura conteos reales de `github_events` en `get_audit_stats` |
+| `supabase_schema_v23.sql` | Enterprise adoption profiles (`enterprise_adoption_profiles`) |
+| `supabase_schema_v24.sql` | Enterprise release approvals (`enterprise_release_approvals`) — append-only |
+| `supabase_schema_v25.sql` | Enterprise onboarding checklist tracking (`enterprise_onboarding_checklist_tracking`) |
 
 ### Relaciones entre Entidades
 
@@ -727,11 +774,11 @@ El servidor tiene tres capas de testing con distintos requisitos de infraestruct
 
 ```bash
 cd gitgov/gitgov-server
-cargo test        # 36 tests, ~0.01s
+cargo test        # 193 tests
 make test         # equivalente con Makefile
 ```
 
-Ubicación: bloques `#[cfg(test)]` en `src/models.rs`, `src/handlers.rs`, `src/auth.rs`.
+Ubicación: bloques `#[cfg(test)]` en 13 archivos: `models.rs`, `handlers/tests.rs`, `auth.rs`, `db.rs`, `main.rs`, `openapi.rs`, `notifications.rs`, `integration_tests.rs`, `handlers/adoption_profiles.rs`, `handlers/release_approvals.rs`, `handlers/policy_drift_audit.rs`, `handlers/github_webhook.rs`, `handlers/integrations.rs`.
 
 | Suite | Qué valida |
 |-------|-----------|
@@ -783,6 +830,47 @@ Todos los endpoints de lectura paginada aceptan `offset` y `limit` como opcional
 | `/governance-events` | 100 | — |
 
 Si `offset` no se envía, equivale a `offset=0`.
+
+---
+
+## CI/CD (GitHub Actions)
+
+El repositorio tiene **32 workflows** en `.github/workflows/`:
+
+| Workflow | Propósito |
+|----------|-----------|
+| `ci.yml` | Build + lint + test (server + desktop + web) |
+| `build-signed.yml` | Build firmado del installer Windows |
+| `release-readiness-gate.yml` | Gate de release readiness |
+| `secret-scan.yml` | Escaneo de secretos |
+| `public-naming-guard.yml` | Guardia de nombres públicos |
+| `sonar-governance.yml` | SonarQube governance (non-blocking) |
+| `quality-gate-policy-matrix.yml` | Matriz de quality gate (optional) |
+| `governance-correlation-smoke.yml` | Smoke test de correlación governance |
+| `desktop-updater-readiness.yml` | Readiness del updater desktop (optional) |
+| `domain-slo-validation.yml` | Validación de SLOs por dominio |
+| `risk-tier-baseline-calibration.yml` | Calibración de baseline por tier de riesgo |
+| `github-evidence-report.yml` | Reporte de evidencia GitHub |
+| `github-evidence-artifact-monitor.yml` | Monitor de artefactos de evidencia |
+| `github-evidence-trend-report.yml` | Reporte de tendencia de evidencia |
+| `product-vulnerability-review.yml` | Revisión de vulnerabilidades |
+| `product-vulnerability-review-artifact-monitor.yml` | Monitor de artefactos de vulnerabilidad |
+| `product-vulnerability-review-trend-report.yml` | Tendencia de vulnerabilidades |
+| `product-vulnerability-review-trend-enforcement.yml` | Enforcement de tendencia de vulnerabilidades |
+| `governance-copilot-ai-mode-validation.yml` | Validación de AI mode del copilot |
+| `release-governance-gate.yml` | Gate de governance de release |
+| `release-governance-gate-artifact-monitor.yml` | Monitor de artefactos de release governance |
+| `enterprise-readiness-bundle.yml` | Bundle de readiness enterprise |
+| `enterprise-onboarding-readiness.yml` | Readiness de onboarding enterprise |
+| `enterprise-onboarding-readiness-artifact-monitor.yml` | Monitor de artefactos de onboarding |
+| `enterprise-onboarding-readiness-trend-report.yml` | Tendencia de onboarding readiness |
+| `enterprise-onboarding-readiness-trend-monitor.yml` | Monitor de tendencia de onboarding |
+| `enterprise-route-auth-smoke.yml` | Smoke test de auth de rutas enterprise |
+| `enterprise-route-auth-smoke-artifact-monitor.yml` | Monitor de artefactos de auth smoke |
+| `enterprise-route-auth-smoke-trend-report.yml` | Tendencia de auth smoke |
+| `enterprise-route-auth-smoke-trend-artifact-monitor.yml` | Monitor de tendencia auth smoke |
+| `enterprise-route-auth-smoke-trend-enforcement.yml` | Enforcement de tendencia auth smoke |
+| `enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml` | Monitor de enforcement auth smoke |
 
 ---
 

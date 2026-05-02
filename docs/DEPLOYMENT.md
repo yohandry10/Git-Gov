@@ -468,14 +468,14 @@ done
 - EC2 Ubuntu 22.04
 - Nginx como reverse proxy
 - systemd para el backend
-- Supabase como PostgreSQL remoto (sin RDS)
+- Supabase como PostgreSQL remoto
 
 ### Perfil objetivo 250 simultáneos (sin tocar UI)
 
 Topología recomendada:
 - **3 instancias** `gitgov-server` (mismo build) detrás de un balanceador L7 (Nginx upstream o ALB).
 - URL pública única para Desktop/dashboard.
-- Supabase PostgreSQL compartido.
+- Supabase PostgreSQL compartido (o PostgreSQL 16 self-hosted/RDS).
 
 Contrato operativo:
 - No cambiar contratos HTTP de `/events`, `/logs`, `/stats`, `/chat/ask`, `/sse`.
@@ -596,7 +596,7 @@ Resultados certificados con esa configuración:
 
 ### Decisiones operativas
 
-- **No usar RDS por ahora**: DB en Supabase.
+- **DB**: Supabase (PostgreSQL) en producción. EC2 + PG16 local es ruta legacy/self-hosted validada.
 - **No subir Desktop a AWS**: Tauri se distribuye como instalador.
 - **Render**: ruta actual para el backend productivo.
 - **EC2 + Nginx + systemd**: ruta legacy/self-hosted documentada para migraciones o instalaciones propias.

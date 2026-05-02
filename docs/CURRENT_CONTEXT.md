@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-68`
+Ticket: `KAN-70`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -60,7 +60,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
 - Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
 - Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
-- Current follow-up: none selected after `KAN-68`; recommended next implementation is `KAN-69 - Enterprise Action Center UX MVP`.
+- Pending product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
+- Current documentation follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
+- `KAN-70` is not a product feature. It audits living documentation against the actual repository state and records that `KAN-69` remains pending as the guided Action Center product work.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1588,7 +1590,7 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - GitGov has enough core governance capability for the current stage.
   - Do not keep adding standalone hardening workflows, monitors, trend reports, enforcement gates, or isolated features by default.
   - The next product stage should make GitGov easier to use.
-  - The recommended next implementation is `KAN-69 - Enterprise Action Center UX MVP`.
+  - The recommended next product implementation is `KAN-69 - Enterprise Action Center guided UX`.
 - Product rule going forward:
   - accept new work when it makes the product easier for a customer to use.
   - accept new work when it turns several existing technical pieces into one clear workflow.
@@ -1604,7 +1606,13 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - Resume instruction:
   - do not continue the KAN-61 through KAN-67 hardening chain unless there is a real security bug or production risk.
   - start the next product discussion from: `How do we make the existing GitGov capabilities obvious and useful to a first customer?`
-  - default answer: build the Enterprise Action Center UX MVP.
+  - default answer: build the Enterprise Action Center guided UX.
+- KAN-70 documentation audit:
+  - Jira: `KAN-70 - Documentation reality audit and stale docs cleanup`.
+  - Branch: `docs/KAN-70-documentation-reality-audit`.
+  - Purpose: update living docs in phases by checking them against code, routes, migrations, workflows, scripts, and current product decisions.
+  - First-pass verified facts: `.github/workflows` contains `32` workflows, backend schema migrations currently run through `supabase_schema_v25.sql`, backend `cargo test -- --list` reports `193` tests, and the desktop frontend has `25` test files.
+  - Existing local documentation edits may enter the first PR only when verified against code/configuration.
 - Worktree note:
   - local uncommitted edits existed outside KAN-68 scope in README/docs files; they must not be staged into KAN-68 unless explicitly requested.
 

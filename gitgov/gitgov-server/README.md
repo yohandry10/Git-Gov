@@ -1,6 +1,6 @@
 # GitGov Control Plane Server
 
-Centralized audit and policy server for GitGov desktop clients. Uses Supabase (PostgreSQL) as the database.
+Centralized audit and policy server for GitGov desktop clients. Uses PostgreSQL (Supabase in production, local PG16+ for development).
 
 ## Features
 
@@ -8,7 +8,7 @@ Centralized audit and policy server for GitGov desktop clients. Uses Supabase (P
 - **GitHub Webhooks**: Receives push/create events as source of truth
 - **Client Events**: Batch telemetry from desktop clients with idempotency
 - **Append-Only Audit**: Events cannot be modified or deleted
-- **Row Level Security**: Supabase RLS policies for multi-tenant access
+- **Row Level Security**: PostgreSQL RLS policies for multi-tenant access
 
 ### Compliance (V1.0)
 - **Correlation Engine**: Correlates client events with GitHub events by commit_sha
@@ -20,78 +20,28 @@ Centralized audit and policy server for GitGov desktop clients. Uses Supabase (P
 
 ## Quick Start
 
-### 1. Setup Supabase
+### 1. Setup PostgreSQL
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Go to **SQL Editor** and run the contents of `supabase_schema.sql`
-3. Run the contents of `supabase_schema_v2.sql` for production hardening
-4. Get your database URL from **Project Settings > Database > Connection string (URI)**
+1. Install PostgreSQL 16+ (or use Docker: `docker compose up -d gitgov-db`)
+2. Create a database: `CREATE DATABASE gitgov;`
+3. Run schema base: `psql -d gitgov -f supabase/supabase_schema.sql`
+4. Run all migrations in order: `supabase_schema_v2.sql` through `supabase_schema_v25.sql`
 
-#### 1.1 Create a Limited Database User (CRITICAL for Security)
-
-**IMPORTANT:** The default `postgres` user has `service_role` privileges which **bypasses all Row Level Security (RLS)**. You MUST create a limited user for the control plane server.
-
-**Step-by-step in Supabase Dashboard:**
-
-1. Go to **Database → Roles**
-2. Click **Create a new role**
-3. Name it `gitgov_server`
-4. Set a strong password
-5. **Do NOT** check `superuser`, `createrole`, or `createdb`
-6. Save
-
-**Then run this SQL in SQL Editor to grant minimal permissions:**
+#### 1.1 Create a Limited Database User (recommended for production)
 
 ```sql
--- Grant connect privilege
-GRANT CONNECT ON DATABASE postgres TO gitgov_server;
-
--- Grant usage on schema
+CREATE ROLE gitgov_server WITH LOGIN PASSWORD 'your-strong-password';
+GRANT CONNECT ON DATABASE gitgov TO gitgov_server;
 GRANT USAGE ON SCHEMA public TO gitgov_server;
-
--- GRANT PERMISSIONS BY TABLE (NOT ALL TABLES)
-
--- Tables that need INSERT and SELECT (audit data)
-GRANT SELECT, INSERT ON github_events TO gitgov_server;
-GRANT SELECT, INSERT ON client_events TO gitgov_server;
-GRANT SELECT, INSERT ON noncompliance_signals TO gitgov_server;
-GRANT SELECT, INSERT ON violations TO gitgov_server;
-GRANT SELECT, INSERT ON governance_events TO gitgov_server;
-GRANT SELECT, INSERT ON export_logs TO gitgov_server;
-GRANT SELECT, INSERT ON webhook_events TO gitgov_server;
-
--- Tables that need SELECT, INSERT, UPDATE (config/metadata)
-GRANT SELECT, INSERT, UPDATE ON orgs TO gitgov_server;
-GRANT SELECT, INSERT, UPDATE ON repos TO gitgov_server;
-GRANT SELECT, INSERT, UPDATE ON members TO gitgov_server;
-GRANT SELECT, INSERT, UPDATE ON policies TO gitgov_server;
-GRANT SELECT, INSERT, UPDATE ON correlation_config TO gitgov_server;
-
--- API keys table - needs UPDATE for last_used_at
-GRANT SELECT, INSERT, UPDATE ON api_keys TO gitgov_server;
-
--- Policy history and signal decisions - INSERT only (append-only)
-GRANT SELECT, INSERT ON policy_history TO gitgov_server;
-GRANT SELECT, INSERT ON signal_decisions TO gitgov_server;
-
--- Job queue - needs UPDATE for state transitions
-GRANT SELECT, INSERT, UPDATE ON jobs TO gitgov_server;
-
--- Org processing state
-GRANT SELECT, INSERT, UPDATE ON org_processing_state TO gitgov_server;
-
--- Grant usage on sequences (for UUID generation)
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO gitgov_server;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO gitgov_server;
-
--- Grant execute on functions
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO gitgov_server;
 ```
 
 **Update your `.env`:**
 
 ```env
-# Use the limited gitgov_server user, NOT postgres
-DATABASE_URL=postgresql://gitgov_server:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres
+DATABASE_URL=postgresql://gitgov_server:YOUR_PASSWORD@localhost:5432/gitgov
 ```
 
 ### 2. Configure Environment
@@ -103,7 +53,7 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres
+DATABASE_URL=postgresql://gitgov_server:YOUR_PASSWORD@localhost:5432/gitgov
 GITGOV_JWT_SECRET=your-secure-secret-key
 GITGOV_SERVER_ADDR=0.0.0.0:3000
 GITHUB_WEBHOOK_SECRET=your-webhook-secret
@@ -342,14 +292,91 @@ The `jobs` table allows state transitions but restricts which columns can be upd
 |--------|------|-------------|
 | GET | `/evidence/packets/tickets/:ticket_id` | Build a ticket-scoped audit evidence packet with SHA256 content hash |
 
+### Integrations
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/integrations/jenkins` | Ingest Jenkins pipeline events |
+| GET | `/integrations/jenkins/status` | Jenkins integration health check |
+| GET | `/integrations/jenkins/correlations` | Commit↔pipeline correlations |
+| GET | `/integrations/correlations/v2` | Unified ticket↔commit↔pipeline view |
+| POST | `/integrations/jira` | Ingest Jira issues (admin/manual) |
+| POST | `/webhooks/jira` | Signed Jira webhooks (HMAC) |
+| GET | `/integrations/jira/status` | Jira integration health check |
+| GET | `/integrations/jira/tickets/:id` | Jira ticket detail |
+| POST | `/integrations/jira/correlate` | Batch commit↔ticket correlation |
+| GET | `/integrations/jira/ticket-coverage` | Ticket coverage metrics |
+
+### Enterprise
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET/PUT | `/enterprise/adoption-profile` | Get/upsert enterprise adoption profile |
+| GET/PUT | `/enterprise/onboarding-checklist-tracking` | Get/upsert onboarding checklist tracking |
+| GET/POST | `/enterprise/release-approvals` | List/create formal release approvals |
+| GET | `/enterprise/release-governance/evaluate` | Evaluate release governance policy |
+
+### Real-Time
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/sse` | Server-Sent Events stream |
+
+### Organization Management
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/orgs` | Create organization |
+| GET/POST | `/org-users` | List/create org users |
+| PATCH | `/org-users/:id/status` | Update org user status |
+| POST | `/org-users/:id/api-key` | Create API key for org user |
+| GET/POST | `/org-invitations` | List/create invitations |
+| POST | `/org-invitations/:id/resend` | Resend invitation |
+| POST | `/org-invitations/:id/revoke` | Revoke invitation |
+| GET | `/org-invitations/preview/:token` | Preview invitation (public) |
+| POST | `/org-invitations/accept` | Accept invitation (public) |
+
+### Chat & AI
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/chat/ask` | Conversational governance chat (Admin/Architect/PM) |
+| POST | `/feature-requests` | Create feature request from bot |
+
+### GDPR
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/users/:login/erase` | Erase user data |
+| GET | `/users/:login/export` | Export user data |
+| GET | `/clients` | List client sessions |
+| GET/POST | `/identities/aliases` | List/create identity aliases |
+
+### Audit & Observability
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/stats/daily` | Daily activity |
+| GET | `/team/overview` | Team overview |
+| GET | `/team/repos` | Team repositories |
+| GET | `/pr-merges` | List PR merges |
+| GET | `/admin-audit-log` | Admin audit log |
+| POST/GET | `/cli/commands` | Ingest/list CLI commands |
+| POST/GET | `/policy/drift-events` | Ingest/list policy drift events |
+| GET | `/metrics` | Prometheus metrics (public) |
+| GET | `/me` | Current user info |
+
 ### Admin
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api-keys` | Create API key |
+| GET/POST | `/api-keys` | List/create API keys |
+| POST | `/api-keys/:id/revoke` | Revoke API key |
 | GET | `/jobs/metrics` | Job queue metrics |
 | GET | `/jobs/dead` | List dead-letter jobs |
 | POST | `/jobs/:id/retry` | Retry dead job |
+| POST | `/outbox/lease` | Acquire outbox flush lease |
+| GET | `/outbox/lease/metrics` | Outbox lease metrics |
 
 ## Correlation & Bypass Detection
 
@@ -381,7 +408,7 @@ The system uses evidence-based language, NOT accusations:
 
 - **HMAC Signature**: Webhooks are validated using `X-Hub-Signature-256`
 - **API Keys**: Desktop clients authenticate with API keys
-- **RLS**: Row Level Security restricts data access by user/role
+- **RLS**: PostgreSQL Row Level Security restricts data access by user/role
 - **Append-Only**: Audit events cannot be tampered with
 - **Export Hash**: Every export has SHA256 for verification
 - **Bootstrap Security**: API keys printed only with explicit flag or TTY
@@ -521,9 +548,9 @@ curl -H "Authorization: Bearer $API_KEY" \
                            │
                            ▼
                   ┌─────────────────┐
-                  │   Supabase      │
                   │   PostgreSQL    │
-                  │   (Append-only) │
+                  │   (Supabase /   │
+                  │    local PG16)  │
                   └────────┬────────┘
                            │
                            ▼
