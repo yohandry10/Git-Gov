@@ -46,10 +46,42 @@ Local validation before PR:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
-PR validation and post-merge evidence will be appended after merge.
+PR validation:
+
+| Check | Result |
+| --- | --- |
+| PR | PASS. `#170` - `product(KAN-58): export onboarding remediation plan`. |
+| Implementation commit | PASS. `43ac78e product(KAN-58): export onboarding remediation plan`. |
+| `Security Guard` | PASS. |
+| `Server Clippy + Check` | PASS. |
+| `Desktop Rust Clippy` | PASS. |
+| `Frontend Lint + Typecheck` | PASS. |
+| `Website Lint + Typecheck + Build` | PASS. |
+| `Workflow Lint` | PASS. |
+| `Validate quality_gates warn/block matrix` | PASS. |
+| `Sonar Scan + Quality Gate` | PASS. |
+| `Block internal-assistant markers in branch/commits` | PASS. |
+| `Vercel` | PASS. |
+| `Vercel Preview Comments` | PASS. |
+
+Post-merge evidence:
+
+| Check | Result |
+| --- | --- |
+| Main merge commit | PASS. `4f0eff5 Merge pull request #170 from yohandry10/product/KAN-58-dashboard-onboarding-remediation-export`. |
+| `CI` | PASS. Run `25243856927`. |
+| `Release Readiness Gate` | PASS. Run `25243856920`. |
+| `Quality Gate Policy Matrix (Optional)` | PASS. Run `25243856933`. |
+| `Secret Scan` | PASS. Run `25243856930`. |
+| `Public Naming Guard` | PASS. Run `25243856934`. |
+| `Governance Correlation Smoke (Optional)` | PASS. Run `25243856931`. |
+| `Desktop Updater Readiness (Optional)` | PASS. Run `25243856923`. |
+| `SonarQube Governance (Non-Blocking)` | PASS. Run `25243856915`. |
 
 ## Current Status
 
-KAN-58 implementation is in progress.
+KAN-58 implementation is merged on `main`.
 
 The dashboard can build and download a secret-safe onboarding remediation plan JSON without mutating repositories/providers or changing release-blocking defaults.
+
+No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
