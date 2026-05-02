@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-05-01
-Ticket: `KAN-56`
+Updated: 2026-05-02
+Ticket: `KAN-57`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -48,7 +48,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-54 - Monitor enterprise onboarding readiness evidence artifacts`.
 - Latest completed follow-up: `KAN-55 - Trend enterprise onboarding readiness evidence artifacts`.
 - Latest completed follow-up: `KAN-56 - Monitor enterprise onboarding readiness trend deterioration`.
-- Current follow-up: none selected after `KAN-56`.
+- Latest completed follow-up: `KAN-57 - Generate enterprise onboarding remediation plan`.
+- Current follow-up: none selected after `KAN-57`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1563,6 +1564,58 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact `enterprise-onboarding-readiness-artifact-monitor`.
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-57 Validation Notes
+
+- Jira: `KAN-57 - Generate enterprise onboarding remediation plan`.
+- Implementation branch: `product/KAN-57-enterprise-onboarding-remediation-plan`.
+- Implementation PR: `#168 - product(KAN-57): generate onboarding remediation plan`.
+- Implementation commit: `1ef7fce product(KAN-57): generate onboarding remediation plan`.
+- Main merge commit: `dca7e0b Merge pull request #168 from yohandry10/product/KAN-57-enterprise-onboarding-remediation-plan`.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_remediation_plan.ps1`.
+- Design: `docs/design/enterprise-onboarding-remediation-plan-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-remediation-plan-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no secret value printing.
+  - secret names may be listed, but values are never read or generated.
+  - no GitHub Actions variable/secret creation.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no workflow dispatch or branch protection mutation.
+  - advisory/non-blocking by default.
+  - no release blocking by default.
+- Local validation already run:
+  - PowerShell parser check: passed.
+  - `scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1` produced ExampleCo readiness status `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, and `0` blocked stages.
+  - `scripts/control-plane/generate_enterprise_onboarding_remediation_plan.ps1` produced remediation status `needs-action`, `3` actions, `3` variable names, and `2` secret names with placeholder-only commands.
+  - generated output scan for `Authorization`, `Bearer`, `ATATT`, `vck_`, `gho_`, `JIRA_API_TOKEN=`, `GITGOV_API_KEY=`, and `SONAR_TOKEN=`: passed with no matches.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#168` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `dca7e0b` passed:
+  - `CI` - run `25243574261`.
+  - `Release Readiness Gate` - run `25243574245`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25243574251`.
+  - `Secret Scan` - run `25243574256`.
+  - `Public Naming Guard` - run `25243574262`.
+  - `Governance Correlation Smoke (Optional)` - run `25243574244`.
+  - `Desktop Updater Readiness (Optional)` - run `25243574236`.
+  - `SonarQube Governance (Non-Blocking)` - run `25243577058`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
 
 ## Latest KAN-56 Validation Notes

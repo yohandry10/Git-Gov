@@ -54,10 +54,35 @@ Local validation before PR:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
-PR validation and post-merge evidence will be appended after merge.
+PR `#168` merged on `main` as `dca7e0b`.
+
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `dca7e0b` passed:
+
+- `CI` - run `25243574261`.
+- `Release Readiness Gate` - run `25243574245`.
+- `Quality Gate Policy Matrix (Optional)` - run `25243574251`.
+- `Secret Scan` - run `25243574256`.
+- `Public Naming Guard` - run `25243574262`.
+- `Governance Correlation Smoke (Optional)` - run `25243574244`.
+- `Desktop Updater Readiness (Optional)` - run `25243574236`.
+- `SonarQube Governance (Non-Blocking)` - run `25243577058`.
 
 ## Current Status
 
-KAN-57 implementation is in progress.
+KAN-57 implementation is complete and merged through PR `#168`.
 
-The local remediation plan converts the ExampleCo readiness report into actionable next steps without reading secret values, mutating repositories/providers, or changing release-blocking defaults.
+The remediation plan generator converts the ExampleCo readiness report into actionable next steps without reading secret values, mutating repositories/providers, or changing release-blocking defaults.
