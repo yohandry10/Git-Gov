@@ -41,8 +41,6 @@ Local validation:
 | `git diff --check` | Passed |
 | `.\scripts\security\publication_guard.ps1` | Passed |
 
-PR, post-merge, and first workflow dispatch validation will be added after implementation merge.
-
 Parsed local monitor output:
 
 | Field | Result |
@@ -55,6 +53,47 @@ Parsed local monitor output:
 | Max age | `192h` |
 | Observed age | `0.13h` |
 
+PR validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#184` `Security Guard` | Passed |
+| PR `#184` `Server Clippy + Check` | Passed |
+| PR `#184` `Desktop Rust Clippy` | Passed |
+| PR `#184` `Frontend Lint + Typecheck` | Passed |
+| PR `#184` `Website Lint + Typecheck + Build` | Passed |
+| PR `#184` `Workflow Lint` | Passed |
+| PR `#184` `Validate quality_gates warn/block matrix` | Passed |
+| PR `#184` `Sonar Scan + Quality Gate` | Passed |
+| PR `#184` `Block internal-assistant markers in branch/commits` | Passed |
+| PR `#184` Vercel preview | Passed |
+
+Post-merge validation:
+
+| Check | Result |
+| --- | --- |
+| Main merge commit | `8bd9cf0` |
+| `CI` | Passed, run `25247484224` |
+| `Release Readiness Gate` | Passed, run `25247484227` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25247484230` |
+| `Secret Scan` | Passed, run `25247484222` |
+| `Public Naming Guard` | Passed, run `25247484226` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25247484223` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25247484225` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25247484231` |
+
+First workflow dispatch:
+
+| Field | Result |
+| --- | --- |
+| Workflow | `Enterprise Route Auth Smoke Trend Artifact Monitor` |
+| Run | `25247519159` |
+| Conclusion | Passed |
+| Artifact | `enterprise-route-auth-smoke-trend-artifact-monitor` |
+| Artifact ID | `6761758944` |
+| Artifact expiry | `2026-07-31T08:05:56Z` |
+| Parsed result | `status=PASS`, source trend run `25247310737`, source trend artifact `6761702022`, source age `0.2h` |
+
 ## Current Status
 
-KAN-65 is in progress.
+KAN-65 is implemented, merged, workflow-validated, and documented.
