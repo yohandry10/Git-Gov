@@ -2,6 +2,8 @@
 
 Date: 2026-05-02
 
+Status: merged through PR `#198` as `ae5771b`.
+
 ## Scope
 
 KAN-74 is the narrow follow-up from the KAN-73 CI/workflow documentation audit. It does not add product functionality and does not mutate provider configuration.
@@ -58,3 +60,16 @@ Local validation before PR:
 - Third PR check run showed that the push-triggered Secret Scan job can receive a `before` SHA from a force-pushed-away commit. The workflow now verifies that `before` exists locally before using it in neutral naming, Jira traceability, or Gitleaks ranges.
 
 The first branch-protection validation attempt without an explicit token failed with GitHub `403` because the locally resolved token lacked administration read permission. The successful retry used the already authenticated GitHub CLI token without printing it.
+
+PR `#198` checks passed before merge, including the required checks `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+
+Post-merge checks for `ae5771b` passed:
+
+- `CI` - run `25250037671`
+- `Release Readiness Gate` - run `25250037686`
+- `Secret Scan` - run `25250037690`
+- `Public Naming Guard` - run `25250037677`
+- `Quality Gate Policy Matrix (Optional)` - run `25250037685`
+- `Governance Correlation Smoke (Optional)` - run `25250037684`
+- `Desktop Updater Readiness (Optional)` - run `25250037688`
+- `SonarQube Governance (Non-Blocking)` - run `25250037682`
