@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-73`
+Ticket: `KAN-73` completed
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -65,7 +65,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
 - Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
-- Current documentation follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
+- Latest completed follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
+- Recommended next follow-up: `KAN-74 - CI helper/runtime follow-up` (not started), to reconcile branch-protection helper defaults with live required checks and address the `gitleaks/gitleaks-action@v2` Node.js 20 deprecation warning before GitHub forces Node 24 on June 2, 2026.
 - `KAN-70`, `KAN-71`, `KAN-72`, and `KAN-73` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
@@ -1634,8 +1635,11 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - KAN-73 CI/workflows/release automation documentation audit:
   - Jira: `KAN-73 - CI/workflows/release automation documentation reality audit`.
   - Branch: `docs/KAN-73-ci-workflows-doc-audit`.
+  - PR `#196` merged as `9952d47`.
   - Scope: verify GitHub Actions workflow inventory, trigger families, artifact behavior, live branch-protection required checks, and release/readiness automation documentation against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and GitHub branch protection metadata.
   - Verified facts so far: `.github/workflows` has `32` workflow files and GitHub reports the same `32` workflows active; trigger counts are `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, and `28` workflows using `actions/upload-artifact`; live `main` branch protection is strict and currently requires exactly `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+  - Post-merge checks for `9952d47` passed: `CI` run `25249588378`, `Release Readiness Gate` run `25249588369`, `Secret Scan` run `25249588396`, `Public Naming Guard` run `25249588388`, `SonarQube Governance` run `25249588373`, `Desktop Updater Readiness` run `25249588387`, `Governance Correlation Smoke` run `25249588376`, and `Quality Gate Policy Matrix` run `25249588382`.
+  - Observed follow-up: `Secret Scan` reported a non-failing GitHub Actions annotation that `gitleaks/gitleaks-action@v2` uses Node.js 20. GitHub says Node 24 becomes forced by default on June 2, 2026, and Node 20 is removed from the runner on September 16, 2026. Treat this as a small CI runtime follow-up, not as a KAN-73 failure.
   - Non-goals: no workflow behavior change, no branch-protection mutation, no GitHub Actions variable/secret mutation, no provider mutation, no release-default change, no SonarCloud proposal, no Jenkins trigger-only work, and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes

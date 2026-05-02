@@ -40,6 +40,8 @@ KAN-73 is phase 4 of the GitGov documentation reality audit. It checks GitHub Ac
 
 The helper script defaults in `scripts/github/check_branch_protection.ps1` and `scripts/github/set_required_checks.ps1` still include older check-context assumptions. KAN-73 did not change those scripts because this phase is documentation-only. If the helpers should be made authoritative again, handle that as a small traced automation follow-up.
 
+Post-merge `Secret Scan` for merge commit `9952d47` passed, but GitHub emitted a non-failing annotation that `gitleaks/gitleaks-action@v2` still runs on Node.js 20. GitHub's runner message says Node 24 becomes the default on June 2, 2026, and Node 20 is removed on September 16, 2026. This should be handled as a small CI runtime follow-up, not as a KAN-73 failure.
+
 ## Non-Goals
 
 - No workflow YAML behavior changes.
