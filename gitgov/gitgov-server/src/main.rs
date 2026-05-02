@@ -1583,6 +1583,11 @@ async fn main() {
                 .put(handlers::upsert_enterprise_adoption_profile),
         )
         .route(
+            "/enterprise/onboarding-checklist-tracking",
+            get(handlers::get_enterprise_onboarding_checklist_tracking)
+                .put(handlers::upsert_enterprise_onboarding_checklist_tracking),
+        )
+        .route(
             "/enterprise/release-approvals",
             get(handlers::list_enterprise_release_approvals)
                 .post(handlers::create_enterprise_release_approval),

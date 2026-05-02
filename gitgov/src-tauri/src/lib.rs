@@ -253,6 +253,8 @@ pub fn run() {
             commands::cmd_server_get_ticket_evidence_packet,
             commands::cmd_server_get_enterprise_adoption_profile,
             commands::cmd_server_upsert_enterprise_adoption_profile,
+            commands::cmd_server_get_enterprise_onboarding_checklist_tracking,
+            commands::cmd_server_upsert_enterprise_onboarding_checklist_tracking,
             commands::cmd_server_list_enterprise_release_approvals,
             commands::cmd_server_evaluate_enterprise_release_governance,
             commands::cmd_server_create_enterprise_release_approval,

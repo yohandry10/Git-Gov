@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { tauriInvoke, tauriListen, parseCommandError } from '@/lib/tauri'
 import type { CombinedEvent, ServerStats } from '@/lib/types'
-import type { EnterpriseAdoptionProfile } from '@/components/control_plane/dashboard-helpers'
+import type {
+  EnterpriseAdoptionProfile,
+  EnterpriseOnboardingChecklistTracking,
+} from '@/components/control_plane/dashboard-helpers'
 import { detectBrowserTimezone, persistTimezone, readStoredTimezone } from '@/lib/timezone'
 import { useAuthStore } from '@/store/useAuthStore'
 import { notifyNewEvents } from '@/lib/notifications'
@@ -139,6 +142,19 @@ interface EnterpriseAdoptionProfileRecord {
 interface EnterpriseAdoptionProfileResponse {
   found: boolean
   profile?: EnterpriseAdoptionProfileRecord | null
+}
+
+interface EnterpriseOnboardingChecklistTrackingRecord {
+  org_id: string
+  tracking: EnterpriseOnboardingChecklistTracking
+  updated_by: string
+  created_at: number
+  updated_at: number
+}
+
+interface EnterpriseOnboardingChecklistTrackingResponse {
+  found: boolean
+  tracking?: EnterpriseOnboardingChecklistTrackingRecord | null
 }
 
 export type EnterpriseReleaseApprovalDecision = 'approved' | 'rejected' | 'accepted-risk'
@@ -546,6 +562,11 @@ interface ControlPlaneState {
   isEnterpriseAdoptionProfileLoading: boolean
   isEnterpriseAdoptionProfileSaving: boolean
   enterpriseAdoptionProfileError: string | null
+  enterpriseOnboardingChecklistTracking: EnterpriseOnboardingChecklistTracking | null
+  enterpriseOnboardingChecklistTrackingUpdatedAt: number | null
+  isEnterpriseOnboardingChecklistTrackingLoading: boolean
+  isEnterpriseOnboardingChecklistTrackingSaving: boolean
+  enterpriseOnboardingChecklistTrackingError: string | null
   releaseApprovals: EnterpriseReleaseApprovalRecord[]
   releaseApprovalsTotal: number
   releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
@@ -621,6 +642,8 @@ interface ControlPlaneActions {
   loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; org_name?: string }) => Promise<EvidencePacket | null>
   loadEnterpriseAdoptionProfile: (orgName?: string) => Promise<EnterpriseAdoptionProfile | null>
   saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
+  loadEnterpriseOnboardingChecklistTracking: (orgName?: string) => Promise<EnterpriseOnboardingChecklistTracking | null>
+  saveEnterpriseOnboardingChecklistTracking: (tracking: EnterpriseOnboardingChecklistTracking, orgName?: string) => Promise<boolean>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
@@ -1341,6 +1364,11 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
   isEnterpriseAdoptionProfileLoading: false,
   isEnterpriseAdoptionProfileSaving: false,
   enterpriseAdoptionProfileError: null,
+  enterpriseOnboardingChecklistTracking: null,
+  enterpriseOnboardingChecklistTrackingUpdatedAt: null,
+  isEnterpriseOnboardingChecklistTrackingLoading: false,
+  isEnterpriseOnboardingChecklistTrackingSaving: false,
+  enterpriseOnboardingChecklistTrackingError: null,
   releaseApprovals: [],
   releaseApprovalsTotal: 0,
   releaseApprovalsFilters: { limit: 10, offset: 0 },
@@ -1961,6 +1989,71 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
   },
 
+  loadEnterpriseOnboardingChecklistTracking: async (orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({
+      isEnterpriseOnboardingChecklistTrackingLoading: true,
+      enterpriseOnboardingChecklistTrackingError: null,
+    })
+    try {
+      const response = await tauriInvoke<EnterpriseOnboardingChecklistTrackingResponse>('cmd_server_get_enterprise_onboarding_checklist_tracking', {
+        config: serverConfig,
+        orgName,
+      })
+      const record = response.found ? response.tracking ?? null : null
+      const tracking = record?.tracking ?? null
+      set({
+        enterpriseOnboardingChecklistTracking: tracking,
+        enterpriseOnboardingChecklistTrackingUpdatedAt: record?.updated_at ?? null,
+        isEnterpriseOnboardingChecklistTrackingLoading: false,
+      })
+      return tracking
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        enterpriseOnboardingChecklistTrackingError: message,
+        isEnterpriseOnboardingChecklistTrackingLoading: false,
+      })
+      return null
+    }
+  },
+
+  saveEnterpriseOnboardingChecklistTracking: async (tracking, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return false
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({
+      isEnterpriseOnboardingChecklistTrackingSaving: true,
+      enterpriseOnboardingChecklistTrackingError: null,
+    })
+    try {
+      const record = await tauriInvoke<EnterpriseOnboardingChecklistTrackingRecord>('cmd_server_upsert_enterprise_onboarding_checklist_tracking', {
+        config: serverConfig,
+        payload: {
+          org_name: orgName ?? null,
+          tracking,
+        },
+      })
+      set({
+        enterpriseOnboardingChecklistTracking: record.tracking,
+        enterpriseOnboardingChecklistTrackingUpdatedAt: record.updated_at,
+        isEnterpriseOnboardingChecklistTrackingSaving: false,
+      })
+      return true
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        enterpriseOnboardingChecklistTrackingError: message,
+        isEnterpriseOnboardingChecklistTrackingSaving: false,
+      })
+      return false
+    }
+  },
+
   loadEnterpriseReleaseApprovals: async (query = {}) => {
     const { serverConfig, selectedOrgName, releaseApprovalsFilters } = get()
     if (!serverConfig) return null
@@ -2537,6 +2630,11 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
       isEnterpriseAdoptionProfileLoading: false,
       isEnterpriseAdoptionProfileSaving: false,
       enterpriseAdoptionProfileError: null,
+      enterpriseOnboardingChecklistTracking: null,
+      enterpriseOnboardingChecklistTrackingUpdatedAt: null,
+      isEnterpriseOnboardingChecklistTrackingLoading: false,
+      isEnterpriseOnboardingChecklistTrackingSaving: false,
+      enterpriseOnboardingChecklistTrackingError: null,
       releaseApprovals: [],
       releaseApprovalsTotal: 0,
       releaseApprovalsFilters: { limit: 10, offset: 0 },

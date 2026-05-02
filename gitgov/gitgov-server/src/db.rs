@@ -819,6 +819,76 @@ impl Database {
         })
     }
 
+    pub async fn get_enterprise_onboarding_checklist_tracking(
+        &self,
+        org_id: &str,
+    ) -> Result<Option<EnterpriseOnboardingChecklistTrackingRecord>, DbError> {
+        let result = sqlx::query(
+            r#"
+            SELECT
+                org_id::text,
+                tracking,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            FROM enterprise_onboarding_checklist_tracking
+            WHERE org_id = $1::uuid
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(
+            result.map(|row| EnterpriseOnboardingChecklistTrackingRecord {
+                org_id: row.get("org_id"),
+                tracking: row.get("tracking"),
+                updated_by: row.get("updated_by"),
+                created_at: row.get("created_at_ms"),
+                updated_at: row.get("updated_at_ms"),
+            }),
+        )
+    }
+
+    pub async fn upsert_enterprise_onboarding_checklist_tracking(
+        &self,
+        org_id: &str,
+        tracking: &serde_json::Value,
+        updated_by: &str,
+    ) -> Result<EnterpriseOnboardingChecklistTrackingRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO enterprise_onboarding_checklist_tracking (org_id, tracking, updated_by)
+            VALUES ($1::uuid, $2::jsonb, $3)
+            ON CONFLICT (org_id) DO UPDATE SET
+                tracking = EXCLUDED.tracking,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+            RETURNING
+                org_id::text,
+                tracking,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(org_id)
+        .bind(tracking)
+        .bind(updated_by)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(EnterpriseOnboardingChecklistTrackingRecord {
+            org_id: row.get("org_id"),
+            tracking: row.get("tracking"),
+            updated_by: row.get("updated_by"),
+            created_at: row.get("created_at_ms"),
+            updated_at: row.get("updated_at_ms"),
+        })
+    }
+
     pub async fn create_enterprise_release_approval(
         &self,
         org_id: &str,

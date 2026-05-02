@@ -11,6 +11,8 @@ import {
   buildEnterpriseProviderHealth,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
+  normalizeEnterpriseOnboardingChecklistTracking,
+  upsertEnterpriseOnboardingChecklistTrackingItem,
   validateEnterpriseAdoptionProfile,
   type EnterpriseAdoptionProfile,
   type OperationalPipelineEvidence,
@@ -701,6 +703,82 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(guide.next_step).toBeNull()
     expect(guide.completed_steps).toBe(6)
     expect(guide.steps.every((step) => step.status === 'complete')).toBe(true)
+  })
+
+  it('normalizes guided checklist tracking without secret values', () => {
+    const tracking = normalizeEnterpriseOnboardingChecklistTracking({
+      version: 1,
+      items: [
+        {
+          stage_id: 'providers',
+          status: 'waiting',
+          owner: ' Platform owner ',
+          note: ' Waiting for evidence ',
+          external_ref: ' KAN-60 ',
+          target_date: '2026-05-08',
+        },
+        {
+          stage_id: 'providers',
+          status: 'done',
+          note: 'duplicate should be ignored',
+        },
+        {
+          stage_id: 'actions-config',
+          status: 'invalid' as never,
+          owner: 'Repository admin',
+        },
+      ],
+    })
+
+    expect(tracking).toEqual({
+      version: 1,
+      items: [
+        {
+          stage_id: 'providers',
+          status: 'waiting',
+          owner: 'Platform owner',
+          note: 'Waiting for evidence',
+          external_ref: 'KAN-60',
+          target_date: '2026-05-08',
+          updated_at: undefined,
+        },
+        {
+          stage_id: 'actions-config',
+          status: 'open',
+          owner: 'Repository admin',
+          note: undefined,
+          external_ref: undefined,
+          target_date: undefined,
+          updated_at: undefined,
+        },
+      ],
+    })
+    expect(JSON.stringify(tracking)).not.toContain('GITGOV_API_KEY=')
+  })
+
+  it('upserts guided checklist tracking items in stage order', () => {
+    const tracking = normalizeEnterpriseOnboardingChecklistTracking()
+    const withActions = upsertEnterpriseOnboardingChecklistTrackingItem(tracking, {
+      stage_id: 'actions-config',
+      status: 'in-progress',
+      owner: 'Repository admin',
+      note: 'Configuring names only',
+      updated_at: '2026-05-02T00:00:00.000Z',
+    })
+    const updated = upsertEnterpriseOnboardingChecklistTrackingItem(withActions, {
+      stage_id: 'providers',
+      status: 'waiting',
+      owner: 'Platform owner',
+      external_ref: 'KAN-60',
+      updated_at: '2026-05-02T00:01:00.000Z',
+    })
+
+    expect(updated.items.map((item) => [item.stage_id, item.status])).toEqual([
+      ['providers', 'waiting'],
+      ['actions-config', 'in-progress'],
+    ])
+    expect(updated.items[0].external_ref).toBe('KAN-60')
+    expect(updated.items[1].note).toBe('Configuring names only')
   })
 
   it('builds a stable onboarding remediation plan filename', () => {

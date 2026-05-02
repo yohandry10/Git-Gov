@@ -511,9 +511,40 @@ export interface EnterpriseOnboardingGuide {
   }
 }
 
+export type EnterpriseOnboardingChecklistTrackingStatus = 'open' | 'in-progress' | 'waiting' | 'done'
+
+export interface EnterpriseOnboardingChecklistTrackingItem {
+  stage_id: EnterpriseOnboardingReadinessStageId
+  status: EnterpriseOnboardingChecklistTrackingStatus
+  owner?: string
+  note?: string
+  external_ref?: string
+  target_date?: string
+  updated_at?: string
+}
+
+export interface EnterpriseOnboardingChecklistTracking {
+  version: 1
+  items: EnterpriseOnboardingChecklistTrackingItem[]
+}
+
 const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
 const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
+const ONBOARDING_STAGE_IDS: EnterpriseOnboardingReadinessStageId[] = [
+  'profile',
+  'providers',
+  'workflow-pack',
+  'remote-workflows',
+  'actions-config',
+  'release-governance',
+]
+const ONBOARDING_TRACKING_STATUSES: EnterpriseOnboardingChecklistTrackingStatus[] = [
+  'open',
+  'in-progress',
+  'waiting',
+  'done',
+]
 
 function defaultQuorumRules(): EnterpriseReleaseGovernanceQuorumRule[] {
   return [
@@ -2094,6 +2125,65 @@ export function buildEnterpriseOnboardingGuide(
       release_blocking_default: false,
     },
   }
+}
+
+function trimTrackingText(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  return trimmed.slice(0, maxLength)
+}
+
+export function normalizeEnterpriseOnboardingChecklistTracking(
+  tracking?: Partial<EnterpriseOnboardingChecklistTracking> | null,
+): EnterpriseOnboardingChecklistTracking {
+  const items = Array.isArray(tracking?.items) ? tracking.items : []
+  const seen = new Set<EnterpriseOnboardingReadinessStageId>()
+  const normalizedItems: EnterpriseOnboardingChecklistTrackingItem[] = []
+  for (const item of items) {
+    const stageId = item?.stage_id
+    if (!ONBOARDING_STAGE_IDS.includes(stageId) || seen.has(stageId)) continue
+    seen.add(stageId)
+    const status = ONBOARDING_TRACKING_STATUSES.includes(item.status) ? item.status : 'open'
+    normalizedItems.push({
+      stage_id: stageId,
+      status,
+      owner: trimTrackingText(item.owner, 80),
+      note: trimTrackingText(item.note, 1000),
+      external_ref: trimTrackingText(item.external_ref, 120),
+      target_date: trimTrackingText(item.target_date, 10),
+      updated_at: trimTrackingText(item.updated_at, 40),
+    })
+  }
+
+  return {
+    version: 1,
+    items: normalizedItems,
+  }
+}
+
+export function upsertEnterpriseOnboardingChecklistTrackingItem(
+  tracking: EnterpriseOnboardingChecklistTracking,
+  item: EnterpriseOnboardingChecklistTrackingItem,
+): EnterpriseOnboardingChecklistTracking {
+  const normalized = normalizeEnterpriseOnboardingChecklistTracking(tracking)
+  if (!ONBOARDING_STAGE_IDS.includes(item.stage_id)) return normalized
+  const nextItem: EnterpriseOnboardingChecklistTrackingItem = {
+    stage_id: item.stage_id,
+    status: ONBOARDING_TRACKING_STATUSES.includes(item.status) ? item.status : 'open',
+    owner: trimTrackingText(item.owner, 80),
+    note: trimTrackingText(item.note, 1000),
+    external_ref: trimTrackingText(item.external_ref, 120),
+    target_date: trimTrackingText(item.target_date, 10),
+    updated_at: item.updated_at ?? new Date().toISOString(),
+  }
+  const withoutStage = normalized.items.filter((candidate) => candidate.stage_id !== item.stage_id)
+  return normalizeEnterpriseOnboardingChecklistTracking({
+    version: 1,
+    items: [...withoutStage, nextItem].sort(
+      (left, right) => ONBOARDING_STAGE_IDS.indexOf(left.stage_id) - ONBOARDING_STAGE_IDS.indexOf(right.stage_id),
+    ),
+  })
 }
 
 export function buildEnterpriseOnboardingRemediationPlanFilename(profile: EnterpriseAdoptionProfile): string {

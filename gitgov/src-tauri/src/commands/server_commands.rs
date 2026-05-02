@@ -6,6 +6,7 @@ use crate::control_plane::{
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
+    EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
     EnterpriseReleaseApprovalListResponse, EnterpriseReleaseApprovalQuery,
     EnterpriseReleaseApprovalRecord, EnterpriseReleaseGovernanceEvaluationQuery,
     EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
@@ -16,6 +17,7 @@ use crate::control_plane::{
     PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
     ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
     TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
+    UpsertEnterpriseOnboardingChecklistTrackingRequest,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::Outbox;
@@ -678,6 +680,43 @@ pub async fn cmd_server_upsert_enterprise_adoption_profile(
             .upsert_enterprise_adoption_profile(&payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_enterprise_onboarding_checklist_tracking(
+    config: ServerConnectionConfig,
+    org_name: Option<String>,
+) -> Result<EnterpriseOnboardingChecklistTrackingResponse, String> {
+    run_blocking_command("GET_ENTERPRISE_ONBOARDING_CHECKLIST_TRACKING", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_enterprise_onboarding_checklist_tracking(org_name.as_deref())
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_upsert_enterprise_onboarding_checklist_tracking(
+    config: ServerConnectionConfig,
+    payload: UpsertEnterpriseOnboardingChecklistTrackingRequest,
+) -> Result<EnterpriseOnboardingChecklistTrackingRecord, String> {
+    run_blocking_command(
+        "UPSERT_ENTERPRISE_ONBOARDING_CHECKLIST_TRACKING",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .upsert_enterprise_onboarding_checklist_tracking(&payload)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
     .await
 }
 
