@@ -584,6 +584,56 @@ Safety boundaries:
 - the validator does not create webhooks.
 - the validator does not create GitHub Actions variables or secrets.
 
+## Validate Enterprise Route Auth Smoke
+
+KAN-62 adds a repeatable smoke check for the Enterprise admin route auth boundary.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke.yml
+```
+
+Manual run inputs:
+
+- `gitgov_url`: GitGov API URL. Defaults to repository variable `GITGOV_URL`, then production.
+- `org_name`: organization name to validate. Default is `yohandry10`.
+- `repository_full_name`: repository used by release governance evaluation. Defaults to the current GitHub repository.
+- `release_id`: synthetic release id used by release governance evaluation. Default is `KAN-62-smoke`.
+- `environment`: release governance environment. Default is `production`.
+- `report_only`: record findings without failing the workflow. Default is `false`.
+
+The workflow uploads:
+
+```text
+enterprise-route-auth-smoke-{run_id}
+```
+
+Run the same smoke locally when a GitGov API key is available through ignored env files or process environment:
+
+```powershell
+.\scripts\control-plane\validate_enterprise_route_auth_smoke.ps1 `
+  -GitGovUrl https://gitgov-api.onrender.com `
+  -OrgName yohandry10 `
+  -RepoFullName yohandry10/Git-Gov `
+  -ReleaseId KAN-62-local-smoke `
+  -Environment production `
+  -OutputDir out/enterprise-route-auth-smoke
+```
+
+Expected behavior:
+
+- `GET /health` returns `200`.
+- anonymous Enterprise admin routes return `401`.
+- authenticated Enterprise admin routes return `200`.
+
+Smoke safety boundaries:
+
+- the API key is used only as a Bearer header.
+- no `.env` values, provider tokens, Authorization headers, or response bodies are written to artifacts.
+- output contains only route ids, sanitized paths, expected/actual HTTP status codes, timing, and pass/fail status.
+- no provider settings, customer repositories, GitHub Actions variables/secrets, workflow dispatches, branch protection, release governance defaults, or database schema are changed.
+
 ## Policy Presets
 
 `audit-only`:

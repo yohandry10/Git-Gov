@@ -1,0 +1,120 @@
+name: Enterprise Route Auth Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      gitgov_url:
+        description: "GitGov API URL. Defaults to repository variable GITGOV_URL or production."
+        required: false
+        default: ""
+        type: string
+      org_name:
+        description: "Organization name to validate."
+        required: false
+        default: "yohandry10"
+        type: string
+      repository_full_name:
+        description: "Repository used by release governance evaluation."
+        required: false
+        default: ""
+        type: string
+      release_id:
+        description: "Synthetic release id used by release governance evaluation."
+        required: false
+        default: "KAN-62-smoke"
+        type: string
+      environment:
+        description: "Release governance environment."
+        required: false
+        default: "production"
+        type: string
+      report_only:
+        description: "Do not fail the workflow on route status mismatch."
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "17 15 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+  OUTPUT_DIR: docs/reports/enterprise-route-auth-smoke-ci
+
+jobs:
+  enterprise-route-auth-smoke:
+    name: Validate enterprise route auth smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Run enterprise route auth smoke
+        shell: pwsh
+        env:
+          INPUT_GITGOV_URL: ${{ inputs.gitgov_url }}
+          DEFAULT_GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          INPUT_ORG_NAME: ${{ inputs.org_name }}
+          INPUT_REPOSITORY_FULL_NAME: ${{ inputs.repository_full_name }}
+          DEFAULT_REPOSITORY_FULL_NAME: ${{ github.repository }}
+          INPUT_RELEASE_ID: ${{ inputs.release_id }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_REPORT_ONLY: ${{ inputs.report_only }}
+        run: |
+          $gitGovUrl = $env:INPUT_GITGOV_URL
+          if ([string]::IsNullOrWhiteSpace($gitGovUrl)) {
+            $gitGovUrl = $env:DEFAULT_GITGOV_URL
+          }
+          if ([string]::IsNullOrWhiteSpace($gitGovUrl)) {
+            $gitGovUrl = "https://gitgov-api.onrender.com"
+          }
+
+          $orgName = $env:INPUT_ORG_NAME
+          if ([string]::IsNullOrWhiteSpace($orgName)) {
+            $orgName = "yohandry10"
+          }
+
+          $repositoryFullName = $env:INPUT_REPOSITORY_FULL_NAME
+          if ([string]::IsNullOrWhiteSpace($repositoryFullName)) {
+            $repositoryFullName = $env:DEFAULT_REPOSITORY_FULL_NAME
+          }
+
+          $releaseId = $env:INPUT_RELEASE_ID
+          if ([string]::IsNullOrWhiteSpace($releaseId)) {
+            $releaseId = "KAN-62-smoke"
+          }
+
+          $environment = $env:INPUT_ENVIRONMENT
+          if ([string]::IsNullOrWhiteSpace($environment)) {
+            $environment = "production"
+          }
+
+          $params = @{
+            GitGovUrl = $gitGovUrl
+            OrgName = $orgName
+            RepoFullName = $repositoryFullName
+            ReleaseId = $releaseId
+            Environment = $environment
+            ApiKey = $env:GITGOV_API_KEY
+            OutputDir = $env:OUTPUT_DIR
+          }
+
+          if ($env:INPUT_REPORT_ONLY -eq "true") {
+            .\scripts\control-plane\validate_enterprise_route_auth_smoke.ps1 @params -AllowMissingApiKey -ReportOnly
+          } else {
+            .\scripts\control-plane\validate_enterprise_route_auth_smoke.ps1 @params -AllowMissingApiKey
+          }
+
+      - name: Upload enterprise route auth smoke evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: enterprise-route-auth-smoke-${{ github.run_id }}
+          path: docs/reports/enterprise-route-auth-smoke-ci
+          if-no-files-found: error
