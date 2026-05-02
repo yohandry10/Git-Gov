@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-63`
+Ticket: `KAN-64`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -55,7 +55,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-61 - Enterprise route auth regression hardening`.
 - Latest completed follow-up: `KAN-62 - Automate enterprise route auth smoke evidence`.
 - Latest completed follow-up: `KAN-63 - Monitor enterprise route auth smoke artifact freshness`.
-- Current follow-up: none selected after `KAN-63`.
+- Latest completed follow-up: `KAN-64 - Trend enterprise route auth smoke artifacts`.
+- Current follow-up: none selected after `KAN-64`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1571,6 +1572,55 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-64 Validation Notes
+
+- Jira: `KAN-64 - Trend enterprise route auth smoke artifacts`.
+- Implementation branch: `hardening/KAN-64-enterprise-route-auth-smoke-trend-report`.
+- Implementation PR: `#182 - hardening(KAN-64): add enterprise auth smoke trend report`.
+- Implementation commit: `af04995 hardening(KAN-64): add enterprise auth smoke trend report`.
+- Main merge commit: `45eec39 Merge pull request #182 from yohandry10/hardening/KAN-64-enterprise-route-auth-smoke-trend-report`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-report.yml`.
+- Trend script: `scripts/control-plane/generate_enterprise_route_auth_smoke_trend_report.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-report-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local validation command passed:
+  - `.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxReports 12 -GitHubToken <redacted> -OutputMarkdownPath out\KAN-64-enterprise-route-auth-smoke-trend.md -OutputJsonPath out\KAN-64-enterprise-route-auth-smoke-trend.json`
+- Local validation result:
+  - source run `25246304135`
+  - source artifact `enterprise-route-auth-smoke-25246304135`
+  - source artifact ID `6761394808`
+  - latest status `passed`
+  - `9` passed checks
+  - `0` failed checks
+  - trend `stable`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Post-merge checks on `main` commit `45eec39` passed:
+  - `CI` - run `25247275328`
+  - `Release Readiness Gate` - run `25247275146`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247275134`
+  - `Secret Scan` - run `25247275150`
+  - `Public Naming Guard` - run `25247275137`
+  - `Governance Correlation Smoke (Optional)` - run `25247275132`
+  - `Desktop Updater Readiness (Optional)` - run `25247275133`
+  - `SonarQube Governance (Non-Blocking)` - run `25247275143`
+- First manual workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Report`
+  - run `25247310737`
+  - artifact `enterprise-route-auth-smoke-trend-report`
+  - artifact ID `6761702022`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T07:53:51Z`
+  - parsed latest successful smoke run `25246304135`
+  - parsed latest check counts: `9` passed, `0` failed
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - no GitGov protected route probe was added beyond KAN-62
+  - release blocking remains opt-in only; KAN-64 is historical reporting only
 
 ## Latest KAN-63 Validation Notes
 
