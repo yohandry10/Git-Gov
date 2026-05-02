@@ -283,6 +283,20 @@ Remediation plan safety boundaries:
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - release blocking remains customer opt-in only; record-only remains the safe default.
 
+## Download Remediation Plan From Dashboard
+
+KAN-58 adds a `Plan` download action in the Enterprise Adoption dashboard.
+
+The dashboard plan is built from the current profile, the dashboard readiness report, and the dashboard adoption pack. It produces the same remediation shape as the CLI plan:
+
+- prioritized actions.
+- suggested owner.
+- validation evidence.
+- placeholder-only GitHub Actions variable/secret commands.
+- safety flags.
+
+The dashboard export is local JSON only. It does not create variables or secrets, does not call provider APIs, and does not mutate customer repositories.
+
 ## Automate Onboarding Readiness Evidence
 
 KAN-53 adds a GitHub Actions workflow that generates the KAN-52 readiness report as a reusable evidence artifact.

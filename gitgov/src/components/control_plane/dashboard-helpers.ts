@@ -418,6 +418,58 @@ export interface EnterpriseOnboardingReadinessReport {
   }
 }
 
+export interface EnterpriseOnboardingRemediationAction {
+  priority: number
+  stage_id: EnterpriseOnboardingReadinessStageId
+  stage: string
+  status: EnterpriseOnboardingReadinessStatus
+  owner: string
+  action: string
+  reason: string
+  validation: string
+}
+
+export interface EnterpriseOnboardingConfigurationCommand {
+  kind: 'variable' | 'secret'
+  name: string
+  command: string
+  contains_secret_value: false
+}
+
+export interface EnterpriseOnboardingRemediationPlan {
+  generated_at: string
+  customer_name: string
+  repository_full_name: string
+  default_branch: string
+  policy_preset: AdoptionPolicyPreset
+  readiness_status: EnterpriseOnboardingReadinessStatus
+  readiness_score: number
+  remediation_status: EnterpriseOnboardingReadinessStatus
+  action_count: number
+  actions: EnterpriseOnboardingRemediationAction[]
+  github_actions_configuration: {
+    source: 'dashboard-adoption-pack'
+    variables_count: number
+    secrets_count: number
+    commands_are_placeholders: true
+    commands: EnterpriseOnboardingConfigurationCommand[]
+  }
+  validation: {
+    regenerate_readiness: string
+    rerun_provider_checks: string
+    rerun_workflow_readiness: string
+  }
+  safety: {
+    contains_secret_values: false
+    reads_secret_values: false
+    mutates_customer_repository: false
+    mutates_provider_state: false
+    creates_github_actions_variables: false
+    creates_github_actions_secrets: false
+    release_blocking_default: false
+  }
+}
+
 const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
 const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
@@ -1819,6 +1871,130 @@ export function buildEnterpriseOnboardingReadinessReportFilename(profile: Enterp
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return `${basis || 'enterprise-adoption'}-onboarding-readiness.json`
+}
+
+function onboardingRemediationPriority(
+  stageId: EnterpriseOnboardingReadinessStageId,
+  status: EnterpriseOnboardingReadinessStatus,
+): number {
+  if (status === 'blocked') return 0
+  if (stageId === 'profile') return 1
+  if (stageId === 'providers') return 2
+  if (stageId === 'workflow-pack') return 3
+  if (stageId === 'remote-workflows') return 4
+  if (stageId === 'actions-config') return 5
+  if (stageId === 'release-governance') return 6
+  return 50
+}
+
+function onboardingRemediationOwner(stageId: EnterpriseOnboardingReadinessStageId): string {
+  if (stageId === 'profile') return 'GitGov admin'
+  if (stageId === 'providers') return 'Platform owner'
+  if (stageId === 'workflow-pack') return 'DevOps owner'
+  if (stageId === 'remote-workflows') return 'Repository admin'
+  if (stageId === 'actions-config') return 'Repository admin'
+  if (stageId === 'release-governance') return 'Release governance owner'
+  return 'GitGov operator'
+}
+
+function onboardingRemediationValidation(stageId: EnterpriseOnboardingReadinessStageId): string {
+  if (stageId === 'profile') return 'Regenerate onboarding readiness and confirm the profile stage is ready.'
+  if (stageId === 'providers') return 'Attach a sanitized provider connection report with ready provider checks.'
+  if (stageId === 'workflow-pack') return 'Regenerate the workflow template pack and review the manifest.'
+  if (stageId === 'remote-workflows') return 'Run remote workflow readiness validation after install or remote PR merge.'
+  if (stageId === 'actions-config') return 'Re-run workflow readiness and confirm required variable and secret names are present.'
+  if (stageId === 'release-governance') return 'Run the release governance evaluator or confirm record-only policy remains intentional.'
+  return 'Regenerate onboarding readiness and confirm the stage is ready.'
+}
+
+function buildOnboardingConfigurationCommand(
+  kind: 'variable' | 'secret',
+  name: string,
+  repositoryFullName: string,
+): EnterpriseOnboardingConfigurationCommand {
+  return {
+    kind,
+    name,
+    command: kind === 'variable'
+      ? `gh variable set ${name} --repo ${repositoryFullName} --body "<value>"`
+      : `gh secret set ${name} --repo ${repositoryFullName}`,
+    contains_secret_value: false,
+  }
+}
+
+export function buildEnterpriseOnboardingRemediationPlan(
+  readiness: EnterpriseOnboardingReadinessReport,
+  pack?: EnterpriseAdoptionPack,
+  generatedAt = new Date().toISOString(),
+): EnterpriseOnboardingRemediationPlan {
+  const actions = readiness.stages
+    .filter((stage) => stage.status !== 'ready')
+    .map((stage): EnterpriseOnboardingRemediationAction => ({
+      priority: onboardingRemediationPriority(stage.id, stage.status),
+      stage_id: stage.id,
+      stage: stage.label,
+      status: stage.status,
+      owner: onboardingRemediationOwner(stage.id),
+      action: stage.next_action,
+      reason: stage.summary,
+      validation: onboardingRemediationValidation(stage.id),
+    }))
+    .sort((left, right) => left.priority - right.priority || left.stage_id.localeCompare(right.stage_id))
+
+  const variables = pack?.variables ?? []
+  const secrets = pack?.secrets ?? []
+  const commands = [
+    ...variables.map((variable) => buildOnboardingConfigurationCommand('variable', variable.name, readiness.repository_full_name)),
+    ...secrets.map((secret) => buildOnboardingConfigurationCommand('secret', secret.name, readiness.repository_full_name)),
+  ]
+
+  const remediationStatus: EnterpriseOnboardingReadinessStatus = readiness.status === 'ready'
+    ? 'ready'
+    : actions.some((action) => action.status === 'blocked')
+      ? 'blocked'
+      : 'needs-action'
+
+  return {
+    generated_at: generatedAt,
+    customer_name: readiness.customer_name,
+    repository_full_name: readiness.repository_full_name,
+    default_branch: readiness.default_branch,
+    policy_preset: readiness.policy_preset,
+    readiness_status: readiness.status,
+    readiness_score: readiness.readiness_score,
+    remediation_status: remediationStatus,
+    action_count: actions.length,
+    actions,
+    github_actions_configuration: {
+      source: 'dashboard-adoption-pack',
+      variables_count: variables.length,
+      secrets_count: secrets.length,
+      commands_are_placeholders: true,
+      commands,
+    },
+    validation: {
+      regenerate_readiness: 'Run scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1 after completing actions.',
+      rerun_provider_checks: 'Run scripts/control-plane/validate_enterprise_provider_connections.ps1 only with customer-approved credentials.',
+      rerun_workflow_readiness: 'Run scripts/control-plane/validate_enterprise_workflow_installation_readiness.ps1 after workflow installation or remote PR merge.',
+    },
+    safety: {
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      creates_github_actions_variables: false,
+      creates_github_actions_secrets: false,
+      release_blocking_default: false,
+    },
+  }
+}
+
+export function buildEnterpriseOnboardingRemediationPlanFilename(profile: EnterpriseAdoptionProfile): string {
+  const basis = `${profile.customer_name}-${profile.repository_full_name}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${basis || 'enterprise-adoption'}-onboarding-remediation-plan.json`
 }
 
 export function readDetailFiles(log: CombinedEvent): string[] {

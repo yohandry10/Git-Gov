@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, ClipboardCheck, Download, KeyRound, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -14,6 +14,8 @@ import {
   buildEnterpriseAdoptionPackFilename,
   buildEnterpriseOnboardingReadinessReport,
   buildEnterpriseOnboardingReadinessReportFilename,
+  buildEnterpriseOnboardingRemediationPlan,
+  buildEnterpriseOnboardingRemediationPlanFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
@@ -108,6 +110,10 @@ export function EnterpriseAdoptionPanel() {
   const onboardingReadiness = useMemo(
     () => buildEnterpriseOnboardingReadinessReport(profile, providerHealth),
     [profile, providerHealth],
+  )
+  const onboardingRemediationPlan = useMemo(
+    () => buildEnterpriseOnboardingRemediationPlan(onboardingReadiness, pack),
+    [onboardingReadiness, pack],
   )
   const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
@@ -276,6 +282,19 @@ export function EnterpriseAdoptionPanel() {
     }
   }
 
+  const downloadOnboardingRemediationPlan = () => {
+    const blob = new Blob([JSON.stringify(onboardingRemediationPlan, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = buildEnterpriseOnboardingRemediationPlanFilename(profile)
+      link.click()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
+
   const saveProfile = async () => {
     if (!validation.valid) return
     await saveEnterpriseAdoptionProfile(profile, selectedOrgName || undefined)
@@ -336,6 +355,15 @@ export function EnterpriseAdoptionPanel() {
           >
             <ClipboardCheck size={14} />
             Readiness
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={downloadOnboardingRemediationPlan}
+            title="Download onboarding remediation plan JSON"
+          >
+            <ListChecks size={14} />
+            Plan
           </Button>
         </div>
       </div>
@@ -577,6 +605,9 @@ export function EnterpriseAdoptionPanel() {
             </div>
             <div className="mt-2 text-[11px] leading-5 text-surface-400">
               {onboardingReadiness.next_actions[0] ?? 'Onboarding evidence is ready for customer review.'}
+            </div>
+            <div className="mt-2 text-[10px] uppercase tracking-widest text-surface-500">
+              {onboardingRemediationPlan.action_count} remediation action{onboardingRemediationPlan.action_count === 1 ? '' : 's'}
             </div>
           </div>
 
