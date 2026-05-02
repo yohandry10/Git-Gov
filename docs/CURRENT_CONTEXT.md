@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-61`
+Ticket: `KAN-62`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -53,7 +53,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-59 - Dashboard guided enterprise onboarding checklist`.
 - Latest completed follow-up: `KAN-60 - Persist guided onboarding checklist tracking`.
 - Latest completed follow-up: `KAN-61 - Enterprise route auth regression hardening`.
-- Current follow-up: none selected after `KAN-61`.
+- Latest completed follow-up: `KAN-62 - Automate enterprise route auth smoke evidence`.
+- Current follow-up: none selected after `KAN-62`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1569,6 +1570,72 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-62 Validation Notes
+
+- Jira: `KAN-62 - Automate enterprise route auth smoke evidence`.
+- Implementation branch: `hardening/KAN-62-enterprise-route-auth-smoke`.
+- Implementation PR: `#178 - hardening(KAN-62): automate enterprise route auth smoke`.
+- Implementation commit: `253f20d hardening(KAN-62): automate enterprise route auth smoke`.
+- Main merge commit: `e86c6bc Merge pull request #178 from yohandry10/hardening/KAN-62-enterprise-route-auth-smoke`.
+- Script: `scripts/control-plane/validate_enterprise_route_auth_smoke.ps1`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke.yml`.
+- Design: `docs/design/enterprise-route-auth-smoke-automation-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-automation-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Workflow behavior:
+  - `workflow_dispatch` with overrides for GitGov URL, org name, repository, release id, environment, and report-only mode.
+  - weekly schedule at `17 15 * * 1`.
+  - uploads `enterprise-route-auth-smoke-{run_id}`.
+  - uses repository variable `GITGOV_URL` when provided, otherwise production.
+  - uses repository secret `GITGOV_API_KEY`; missing key can be recorded as `skipped` with `-AllowMissingApiKey`.
+- Smoke matrix:
+  - public `GET /health` expects `200`.
+  - anonymous `GET /enterprise/adoption-profile?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/onboarding-checklist-tracking?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/release-approvals?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/release-governance/evaluate?...` expects `401`.
+  - authenticated `GET /enterprise/adoption-profile?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/onboarding-checklist-tracking?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/release-approvals?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/release-governance/evaluate?...` expects `200`.
+- Secret safety:
+  - no `.env` values are printed.
+  - no API key, Authorization header, provider token, or response body is written to artifacts.
+  - artifacts contain route ids, sanitized paths, expected/actual status codes, timing, and pass/fail status only.
+- Local validation passed:
+  - strict production smoke returned `status=passed`, `9` checks, `0` failures.
+  - missing-key mode with `-AllowMissingApiKey` returned `status=skipped`.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- PR `#178` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `e86c6bc` passed:
+  - `CI` - run `25246267909`.
+  - `Release Readiness Gate` - run `25246267897`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25246267908`.
+  - `Secret Scan` - run `25246267900`.
+  - `Public Naming Guard` - run `25246267906`.
+  - `Governance Correlation Smoke (Optional)` - run `25246267918`.
+  - `Desktop Updater Readiness (Optional)` - run `25246267904`.
+  - `SonarQube Governance (Non-Blocking)` - run `25246267912`.
+- First manual workflow dispatch passed:
+  - Run `25246304135`.
+  - Artifact `enterprise-route-auth-smoke-25246304135`.
+  - Artifact ID `6761394808`.
+  - Artifact status: not expired, expires at `2026-07-31T06:56:47Z`.
+  - Downloaded artifact parsed as `status=passed`, `checks=9`, `failures=0`.
+- No Render deploy, database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch against customer repositories, branch protection change, or release blocking default change was needed.
 
 ## Latest KAN-61 Validation Notes
 
