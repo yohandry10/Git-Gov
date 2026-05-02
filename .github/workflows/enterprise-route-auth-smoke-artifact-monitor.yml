@@ -1,0 +1,56 @@
+name: Enterprise Route Auth Smoke Artifact Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Maximum accepted age for the latest enterprise route auth smoke artifact"
+        required: false
+        default: "192"
+        type: string
+  schedule:
+    - cron: "47 15 * * 2"
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  GITGOV_ENV: ci
+
+jobs:
+  validate-artifact:
+    name: Validate enterprise route auth smoke artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+
+      - name: Validate latest enterprise route auth smoke artifact
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          INPUT_MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+        run: |
+          $maxAgeHours = $env:INPUT_MAX_AGE_HOURS
+          if ([string]::IsNullOrWhiteSpace($maxAgeHours)) {
+            $maxAgeHours = "192"
+          }
+
+          .\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+            -Repository $env:GITHUB_REPOSITORY_NAME `
+            -WorkflowFile "enterprise-route-auth-smoke.yml" `
+            -ArtifactNamePrefix "enterprise-route-auth-smoke-" `
+            -MaxAgeHours ([int]$maxAgeHours) `
+            -OutputPath "out/enterprise-route-auth-smoke-artifact-monitor.json"
+
+      - name: Upload monitor summary
+        uses: actions/upload-artifact@v7
+        with:
+          name: enterprise-route-auth-smoke-artifact-monitor
+          path: out/enterprise-route-auth-smoke-artifact-monitor.json
+          if-no-files-found: error

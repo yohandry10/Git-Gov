@@ -634,6 +634,55 @@ Smoke safety boundaries:
 - output contains only route ids, sanitized paths, expected/actual HTTP status codes, timing, and pass/fail status.
 - no provider settings, customer repositories, GitHub Actions variables/secrets, workflow dispatches, branch protection, release governance defaults, or database schema are changed.
 
+## Monitor Enterprise Route Auth Smoke Artifacts
+
+KAN-63 adds a GitHub Actions monitor that validates the latest KAN-62 Enterprise Route Auth Smoke artifact is still present, fresh, and not expired.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke-artifact-monitor.yml
+```
+
+Manual run input:
+
+- `max_age_hours`: maximum accepted artifact age. Default is `192`.
+
+The monitor checks for artifacts with this prefix:
+
+```text
+enterprise-route-auth-smoke-
+```
+
+It uploads:
+
+```text
+enterprise-route-auth-smoke-artifact-monitor
+```
+
+Run the same check locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-route-auth-smoke.yml `
+  -ArtifactNamePrefix enterprise-route-auth-smoke- `
+  -MaxAgeHours 192 `
+  -GitHubToken $token `
+  -OutputPath out/enterprise-route-auth-smoke-artifact-monitor.json
+```
+
+Monitor safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- no GitGov API key is read or printed.
+- GitHub artifact metadata is read only through the GitHub token available to the caller.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, route smoke, or workflow dispatch mutation is performed.
+- this monitor validates artifact freshness only; KAN-62 owns the actual route probing.
+
 ## Policy Presets
 
 `audit-only`:
