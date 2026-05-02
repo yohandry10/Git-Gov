@@ -51,10 +51,18 @@ Local validation before PR creation:
 | `cargo check` in `gitgov/gitgov-server` | Passed |
 | `cargo clippy -- -D warnings` in `gitgov/gitgov-server` | Passed |
 | `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` in `gitgov/gitgov-server` | Passed |
+| `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` with Docker-backed `TEST_DATABASE_URL` | Passed against temporary Postgres on local port `55433` |
 | `cargo test` in `gitgov/gitgov-server` | Passed, `193` tests |
 | `git diff --check` | Passed |
+| `.\scripts\security\publication_guard.ps1` | Passed |
 
-Full publication guard and post-merge validation will be recorded after PR validation.
+Notes:
+
+- Docker Desktop was restarted locally for DB-backed validation.
+- The existing `gitgov-db` container was running on `5433`, but the host also had a local `postgres` process listening on that port, so the DB-backed test used an isolated temporary Postgres container on `55433`.
+- Temporary `pg_hba.conf` changes tested on the persistent `gitgov-db` container were restored before continuing.
+
+Post-merge validation will be recorded after PR merge.
 
 ## Current Status
 
