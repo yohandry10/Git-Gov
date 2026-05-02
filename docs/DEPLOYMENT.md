@@ -292,24 +292,35 @@ Automatización GitHub Actions:
 
 Para evitar merges sin controles activos, aplicar branch protection en `main` con checks requeridos.
 
-Checks mínimos recomendados:
+Estado verificado por `KAN-73`: la protección real de `main` usa status checks estrictos y requiere exactamente estos checks:
 
-- `Workflow Lint`
+- `Security Guard`
 - `Server Clippy + Check`
 - `Desktop Rust Clippy`
 - `Frontend Lint + Typecheck`
 - `Website Lint + Typecheck + Build`
-- `Security Guard`
-- `Block internal-assistant markers in branch/commits`
+- `Validate quality_gates warn/block matrix`
+
+`Workflow Lint` y `Block internal-assistant markers in branch/commits` siguen ejecutándose en PR/push, pero no son contextos requeridos por branch protection en la regla actual de `main`.
 
 Script automático (usa API de GitHub):
 
 ```powershell
+$requiredChecks = @(
+  "Security Guard",
+  "Server Clippy + Check",
+  "Desktop Rust Clippy",
+  "Frontend Lint + Typecheck",
+  "Website Lint + Typecheck + Build",
+  "Validate quality_gates warn/block matrix"
+)
+
 powershell -ExecutionPolicy Bypass -File scripts/github/set_required_checks.ps1 `
   -GitHubToken "<TOKEN_CON_ADMIN_ON_REPO>" `
   -Owner "<owner>" `
   -Repo "<repo>" `
-  -Branch "main"
+  -Branch "main" `
+  -RequiredChecks $requiredChecks
 ```
 
 Validación rápida:
