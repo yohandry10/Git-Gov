@@ -61,10 +61,45 @@ Local validation before PR:
 | `git diff --check` | PASS. |
 | `.\scripts\security\publication_guard.ps1` | PASS. |
 
-PR validation and first workflow run will be appended after merge.
+PR `#166` merged on `main` as `89175b3`.
+
+PR checks passed before merge:
+
+- `Security Guard`: passed.
+- `Server Clippy + Check`: passed.
+- `Desktop Rust Clippy`: passed.
+- `Frontend Lint + Typecheck`: passed.
+- `Website Lint + Typecheck + Build`: passed.
+- `Workflow Lint`: passed.
+- `Validate quality_gates warn/block matrix`: passed.
+- `Sonar Scan + Quality Gate`: passed.
+- `Block internal-assistant markers in branch/commits`: passed.
+- `Vercel`: passed.
+- `Vercel Preview Comments`: passed.
+
+Post-merge validation for commit `89175b3` passed:
+
+- `CI` - run `25212797552`.
+- `Release Readiness Gate` - run `25212797547`.
+- `Quality Gate Policy Matrix (Optional)` - run `25212797530`.
+- `Secret Scan` - run `25212797571`.
+- `Public Naming Guard` - run `25212797553`.
+- `Governance Correlation Smoke (Optional)` - run `25212797545`.
+- `Desktop Updater Readiness (Optional)` - run `25212797541`.
+- `SonarQube Governance (Non-Blocking)` - run `25212797561`.
+- Scheduled `Release Readiness Gate` - run `25212844642`.
+
+First manual trend monitor workflow validation passed:
+
+- Workflow: `Enterprise Onboarding Readiness Trend Monitor`.
+- Run: `25212805979`.
+- Artifact: `enterprise-onboarding-readiness-trend-monitor`.
+- Artifact ID: `6748834779`.
+- Artifact status: not expired.
+- Artifact expires at `2026-07-30T11:32:21Z`.
 
 ## Current Status
 
-KAN-56 implementation is in progress.
+KAN-56 implementation is complete and merged through PR `#166`.
 
-The local monitor validates the current KAN-55 trend artifact and reports `ready` while preserving the customer-safe default: report-only evidence, no provider secrets, no repository mutation, and no release blocking unless explicitly configured by an operator.
+The monitor is operational on `main`. It validates the current KAN-55 trend artifact and reports `ready` while preserving the customer-safe default: report-only evidence, no provider secrets, no repository mutation, and no release blocking unless explicitly configured by an operator.
