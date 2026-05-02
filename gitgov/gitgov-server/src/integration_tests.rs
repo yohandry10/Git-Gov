@@ -84,6 +84,44 @@ mod integration_tests {
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS enterprise_adoption_profiles (
+                org_id UUID PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
+                profile JSONB NOT NULL,
+                updated_by TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS enterprise_onboarding_checklist_tracking (
+                org_id UUID PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
+                tracking JSONB NOT NULL,
+                updated_by TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS enterprise_release_approvals (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+                release_id TEXT NOT NULL,
+                repository_full_name TEXT NOT NULL,
+                branch TEXT,
+                target_sha TEXT,
+                environment TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK (decision IN ('approved', 'rejected', 'accepted-risk')),
+                approver TEXT NOT NULL,
+                ticket_id TEXT,
+                evidence_packet_hash TEXT,
+                evidence_packet_uri TEXT,
+                evidence_summary JSONB NOT NULL DEFAULT '{}'::jsonb,
+                risk_severity TEXT NOT NULL DEFAULT 'none' CHECK (risk_severity IN ('none', 'low', 'medium', 'high', 'critical')),
+                risk_acceptance_reason TEXT,
+                expires_at TIMESTAMPTZ,
+                approval_hash TEXT NOT NULL UNIQUE,
+                created_by TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS repos (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
@@ -294,10 +332,11 @@ mod integration_tests {
 
             CREATE TABLE IF NOT EXISTS admin_audit_log (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                actor TEXT NOT NULL,
+                actor_client_id TEXT NOT NULL,
                 action TEXT NOT NULL,
-                target TEXT,
-                details JSONB DEFAULT '{}',
+                target_type TEXT,
+                target_id TEXT,
+                metadata JSONB DEFAULT '{}',
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
@@ -487,6 +526,39 @@ mod integration_tests {
         raw_key
     }
 
+    async fn insert_test_api_key_for_org(
+        pool: &PgPool,
+        client_id: &str,
+        role: &str,
+        org_id: &str,
+    ) -> String {
+        let raw_key = format!("test-key-{}", uuid::Uuid::new_v4());
+        let hash = format!("{:x}", sha2::Sha256::digest(raw_key.as_bytes()));
+        sqlx::query(
+            "INSERT INTO api_keys (key_hash, client_id, role, org_id, is_active) VALUES ($1, $2, $3, $4::uuid, true)",
+        )
+        .bind(&hash)
+        .bind(client_id)
+        .bind(role)
+        .bind(org_id)
+        .execute(pool)
+        .await
+        .expect("insert org-scoped test API key");
+        raw_key
+    }
+
+    async fn insert_test_org(pool: &PgPool, login: &str) -> String {
+        let org_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO orgs (id, login, name) VALUES ($1::uuid, $2, $3)")
+            .bind(&org_id)
+            .bind(login)
+            .bind(format!("{} Org", login))
+            .execute(pool)
+            .await
+            .expect("insert test org");
+        org_id
+    }
+
     /// Insert a minimal org + repo for policy endpoints.
     async fn insert_test_repo(pool: &PgPool, full_name: &str) -> (String, String) {
         let org_id = uuid::Uuid::new_v4().to_string();
@@ -618,6 +690,25 @@ mod integration_tests {
             .route("/me", get(handlers::get_me))
             .route("/orgs", post(handlers::create_org))
             .route("/export", post(handlers::export_events))
+            .route(
+                "/enterprise/adoption-profile",
+                get(handlers::get_enterprise_adoption_profile)
+                    .put(handlers::upsert_enterprise_adoption_profile),
+            )
+            .route(
+                "/enterprise/onboarding-checklist-tracking",
+                get(handlers::get_enterprise_onboarding_checklist_tracking)
+                    .put(handlers::upsert_enterprise_onboarding_checklist_tracking),
+            )
+            .route(
+                "/enterprise/release-approvals",
+                get(handlers::list_enterprise_release_approvals)
+                    .post(handlers::create_enterprise_release_approval),
+            )
+            .route(
+                "/enterprise/release-governance/evaluate",
+                get(handlers::evaluate_enterprise_release_governance),
+            )
             .route("/policy/{repo_name}", get(handlers::get_policy))
             .route(
                 "/policy/{repo_name}/override",
@@ -1248,6 +1339,210 @@ mod integration_tests {
         // Developer cannot access /dashboard (admin-only)
         let (status, _) = json_request(&app, "GET", "/dashboard", None, Some(&dev_key)).await;
         assert_eq!(status, StatusCode::FORBIDDEN);
+
+        teardown(&admin_pool, &schema).await;
+    }
+
+    #[tokio::test]
+    async fn enterprise_admin_routes_enforce_auth_and_org_scope() {
+        let (pool, schema, admin_pool) = setup_or_skip!();
+        let org_a = insert_test_org(&pool, "enterprise-a").await;
+        let _org_b = insert_test_org(&pool, "enterprise-b").await;
+        let global_admin_key = insert_test_api_key(&pool, "global-admin", "Admin").await;
+        let scoped_admin_key =
+            insert_test_api_key_for_org(&pool, "enterprise-a-admin", "Admin", &org_a).await;
+        let scoped_dev_key =
+            insert_test_api_key_for_org(&pool, "enterprise-a-dev", "Developer", &org_a).await;
+        let db = Arc::new(Database::from_pool(pool.clone()));
+        let app = build_test_app(db);
+
+        fn profile_payload(org_name: Option<&str>) -> String {
+            let mut payload = serde_json::json!({
+                "profile": {
+                    "customer_name": "ExampleCo",
+                    "repository_full_name": "example-org/example-repo",
+                    "default_branch": "main",
+                    "jira_project_key": "KAN",
+                    "policy_preset": "moderate",
+                    "providers": ["github", "jira"],
+                    "modules": ["traceability", "release-readiness"],
+                    "release_governance": {
+                        "mode": "record-only",
+                        "environment": "production",
+                        "approval_required": false,
+                        "enforcement": "disabled",
+                        "quorum": {
+                            "enabled": false,
+                            "rules": []
+                        }
+                    }
+                }
+            });
+            if let Some(org_name) = org_name {
+                payload["org_name"] = serde_json::json!(org_name);
+            }
+            payload.to_string()
+        }
+
+        fn tracking_payload(org_name: Option<&str>) -> String {
+            let mut payload = serde_json::json!({
+                "tracking": {
+                    "version": 1,
+                    "items": [
+                        {
+                            "stage_id": "providers",
+                            "status": "in-progress",
+                            "owner": "Platform owner",
+                            "external_ref": "KAN-61"
+                        }
+                    ]
+                }
+            });
+            if let Some(org_name) = org_name {
+                payload["org_name"] = serde_json::json!(org_name);
+            }
+            payload.to_string()
+        }
+
+        struct EnterpriseRouteCase<'a> {
+            method: &'a str,
+            implicit_uri: &'a str,
+            cross_org_uri: &'a str,
+            implicit_body: Option<String>,
+            cross_org_body: Option<String>,
+        }
+
+        let cases = vec![
+            EnterpriseRouteCase {
+                method: "GET",
+                implicit_uri: "/enterprise/adoption-profile",
+                cross_org_uri: "/enterprise/adoption-profile?org_name=enterprise-b",
+                implicit_body: None,
+                cross_org_body: None,
+            },
+            EnterpriseRouteCase {
+                method: "PUT",
+                implicit_uri: "/enterprise/adoption-profile",
+                cross_org_uri: "/enterprise/adoption-profile",
+                implicit_body: Some(profile_payload(None)),
+                cross_org_body: Some(profile_payload(Some("enterprise-b"))),
+            },
+            EnterpriseRouteCase {
+                method: "GET",
+                implicit_uri: "/enterprise/onboarding-checklist-tracking",
+                cross_org_uri: "/enterprise/onboarding-checklist-tracking?org_name=enterprise-b",
+                implicit_body: None,
+                cross_org_body: None,
+            },
+            EnterpriseRouteCase {
+                method: "PUT",
+                implicit_uri: "/enterprise/onboarding-checklist-tracking",
+                cross_org_uri: "/enterprise/onboarding-checklist-tracking",
+                implicit_body: Some(tracking_payload(None)),
+                cross_org_body: Some(tracking_payload(Some("enterprise-b"))),
+            },
+            EnterpriseRouteCase {
+                method: "GET",
+                implicit_uri: "/enterprise/release-approvals",
+                cross_org_uri: "/enterprise/release-approvals?org_name=enterprise-b",
+                implicit_body: None,
+                cross_org_body: None,
+            },
+            EnterpriseRouteCase {
+                method: "GET",
+                implicit_uri: "/enterprise/release-governance/evaluate?repository_full_name=example-org/example-repo&release_id=rel-1&environment=production",
+                cross_org_uri: "/enterprise/release-governance/evaluate?org_name=enterprise-b&repository_full_name=example-org/example-repo&release_id=rel-1&environment=production",
+                implicit_body: None,
+                cross_org_body: None,
+            },
+        ];
+
+        for case in cases {
+            let (status, body) = json_request(
+                &app,
+                case.method,
+                case.implicit_uri,
+                case.implicit_body.as_deref(),
+                None,
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::UNAUTHORIZED,
+                "{} {} should require auth: {}",
+                case.method,
+                case.implicit_uri,
+                body
+            );
+
+            let (status, body) = json_request(
+                &app,
+                case.method,
+                case.implicit_uri,
+                case.implicit_body.as_deref(),
+                Some(&scoped_dev_key),
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::FORBIDDEN,
+                "{} {} should require admin role: {}",
+                case.method,
+                case.implicit_uri,
+                body
+            );
+
+            let (status, body) = json_request(
+                &app,
+                case.method,
+                case.implicit_uri,
+                case.implicit_body.as_deref(),
+                Some(&global_admin_key),
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::BAD_REQUEST,
+                "{} {} should require org_name for global admin keys: {}",
+                case.method,
+                case.implicit_uri,
+                body
+            );
+
+            let (status, body) = json_request(
+                &app,
+                case.method,
+                case.cross_org_uri,
+                case.cross_org_body.as_deref(),
+                Some(&scoped_admin_key),
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::FORBIDDEN,
+                "{} {} should block cross-org scoped admin access: {}",
+                case.method,
+                case.cross_org_uri,
+                body
+            );
+
+            let (status, body) = json_request(
+                &app,
+                case.method,
+                case.implicit_uri,
+                case.implicit_body.as_deref(),
+                Some(&scoped_admin_key),
+            )
+            .await;
+            assert_eq!(
+                status,
+                StatusCode::OK,
+                "{} {} should allow scoped admin implicit org access: {}",
+                case.method,
+                case.implicit_uri,
+                body
+            );
+        }
 
         teardown(&admin_pool, &schema).await;
     }
