@@ -51,8 +51,49 @@ Production probe result from the strict local run:
 | `release_approvals_authenticated` | `200` | `200` |
 | `release_governance_evaluate_authenticated` | `200` | `200` |
 
-Additional validation will be recorded after PR checks and first workflow dispatch.
+PR validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#178` `Security Guard` | Passed |
+| PR `#178` `Server Clippy + Check` | Passed |
+| PR `#178` `Desktop Rust Clippy` | Passed |
+| PR `#178` `Frontend Lint + Typecheck` | Passed |
+| PR `#178` `Website Lint + Typecheck + Build` | Passed |
+| PR `#178` `Workflow Lint` | Passed |
+| PR `#178` `Validate quality_gates warn/block matrix` | Passed |
+| PR `#178` `Sonar Scan + Quality Gate` | Passed |
+| PR `#178` `Block internal-assistant markers in branch/commits` | Passed |
+| PR `#178` Vercel preview | Passed |
+
+Post-merge validation:
+
+| Check | Result |
+| --- | --- |
+| Main merge commit | `e86c6bc` |
+| `CI` | Passed, run `25246267909` |
+| `Release Readiness Gate` | Passed, run `25246267897` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25246267908` |
+| `Secret Scan` | Passed, run `25246267900` |
+| `Public Naming Guard` | Passed, run `25246267906` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25246267918` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25246267904` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25246267912` |
+
+First workflow dispatch:
+
+| Field | Result |
+| --- | --- |
+| Workflow | `Enterprise Route Auth Smoke` |
+| Run | `25246304135` |
+| Conclusion | Passed |
+| Artifact | `enterprise-route-auth-smoke-25246304135` |
+| Artifact ID | `6761394808` |
+| Artifact expiry | `2026-07-31T06:56:47Z` |
+| Parsed result | `status=passed`, `checks=9`, `failures=0` |
+
+No Render deploy or database migration was needed because KAN-62 changes only workflow, script, and docs.
 
 ## Current Status
 
-Implementation is ready for PR validation.
+KAN-62 is implemented, merged, workflow-validated, and documented.
