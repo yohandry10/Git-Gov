@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`, `KAN-53`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`, `KAN-53`, `KAN-62`, `KAN-63`, `KAN-64`
 
 ## Purpose
 
@@ -682,6 +682,55 @@ Monitor safety boundaries:
 - no GitHub Actions variables or secrets are created.
 - no customer repository, provider, branch protection, route smoke, or workflow dispatch mutation is performed.
 - this monitor validates artifact freshness only; KAN-62 owns the actual route probing.
+
+## Trend Enterprise Route Auth Smoke Artifacts
+
+KAN-64 adds a GitHub Actions trend report for recent KAN-62 Enterprise Route Auth Smoke artifacts.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke-trend-report.yml
+```
+
+Manual run input:
+
+- `max_reports`: maximum parseable auth smoke artifacts to include. Default is `12`.
+
+The trend reads artifacts with this prefix:
+
+```text
+enterprise-route-auth-smoke-
+```
+
+It uploads:
+
+```text
+enterprise-route-auth-smoke-trend-report
+```
+
+Run the same trend locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-route-auth-smoke.yml `
+  -ArtifactNamePrefix enterprise-route-auth-smoke- `
+  -MaxReports 12 `
+  -GitHubToken $token `
+  -OutputMarkdownPath out/enterprise-route-auth-smoke-trend-report.md `
+  -OutputJsonPath out/enterprise-route-auth-smoke-trend-report.json
+```
+
+Trend safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- only GitHub Actions artifact metadata and sanitized auth-smoke JSON are read.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, route smoke, or workflow dispatch mutation is performed.
+- this trend reports whether auth-smoke behavior is stable, improving, declining, or failing; it does not make release blocking the default.
 
 ## Policy Presets
 
