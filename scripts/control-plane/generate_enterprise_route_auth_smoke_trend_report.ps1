@@ -6,7 +6,11 @@ param(
   [int]$MaxReports = 12,
   [string]$GitHubToken = $env:GITHUB_TOKEN,
   [string]$OutputMarkdownPath = "out/enterprise-route-auth-smoke-trend-report.md",
-  [string]$OutputJsonPath = "out/enterprise-route-auth-smoke-trend-report.json"
+  [string]$OutputJsonPath = "out/enterprise-route-auth-smoke-trend-report.json",
+  [switch]$Enforce,
+  [int]$MaxLatestFailedChecks = 0,
+  [switch]$FailOnFailureIncrease,
+  [switch]$RequireLatestRunArtifact
 )
 
 Set-StrictMode -Version Latest
@@ -87,6 +91,10 @@ if ($MaxRuns -le 0) {
 
 if ($MaxReports -le 0) {
   Fail-Trend "-MaxReports must be greater than zero."
+}
+
+if ($MaxLatestFailedChecks -lt 0) {
+  Fail-Trend "-MaxLatestFailedChecks cannot be negative."
 }
 
 foreach ($path in @($OutputMarkdownPath, $OutputJsonPath)) {
@@ -212,6 +220,29 @@ $trendDirection = if ($latest.failed_checks -gt 0) {
   "stable"
 }
 
+$enforcementViolations = New-Object System.Collections.Generic.List[string]
+if ($Enforce) {
+  if ($RequireLatestRunArtifact -and $latestSuccessfulRunRecord.Count -eq 0) {
+    $enforcementViolations.Add(("Latest successful workflow run `{0}` does not have a parseable `{1}*` artifact; status is `{2}`." -f $latestSuccessfulRunId, $ArtifactNamePrefix, $latestSuccessfulRunArtifactStatus)) | Out-Null
+  }
+
+  if ([int]$latest.failed_checks -gt $MaxLatestFailedChecks) {
+    $enforcementViolations.Add(("Latest parsed report has `{0}` failed checks; allowed maximum is `{1}`." -f $latest.failed_checks, $MaxLatestFailedChecks)) | Out-Null
+  }
+
+  if ($FailOnFailureIncrease -and $failedDelta -gt 0) {
+    $enforcementViolations.Add(("Failed-check count increased by `{0}` compared with the oldest analyzed report." -f $failedDelta)) | Out-Null
+  }
+}
+
+$enforcementStatus = if (-not $Enforce) {
+  "not_enforced"
+} elseif ($enforcementViolations.Count -gt 0) {
+  "fail"
+} else {
+  "pass"
+}
+
 $summaryOutput = [pscustomobject]@{
   generated_at                          = $generatedAtUtc
   repository                            = $Repository
@@ -232,6 +263,14 @@ $summaryOutput = [pscustomobject]@{
   runs_failed                           = $runsFailed
   runs_skipped                          = $runsSkipped
   trend_direction                       = $trendDirection
+  enforcement                           = [pscustomobject]@{
+    requested                   = [bool]$Enforce
+    status                      = $enforcementStatus
+    max_latest_failed_checks    = $MaxLatestFailedChecks
+    fail_on_failure_increase    = [bool]$FailOnFailureIncrease
+    require_latest_run_artifact = [bool]$RequireLatestRunArtifact
+    violations                  = @($enforcementViolations.ToArray())
+  }
   reports                               = @($orderedRecords)
 }
 
@@ -259,6 +298,25 @@ $markdown.Add(('- Failed-check delta vs oldest report: `{0}`' -f $failedDelta)) 
 $markdown.Add(('- Runs passed: `{0}`' -f $runsPassed)) | Out-Null
 $markdown.Add(('- Runs failed: `{0}`' -f $runsFailed)) | Out-Null
 $markdown.Add(('- Runs skipped: `{0}`' -f $runsSkipped)) | Out-Null
+$markdown.Add(('- Enforcement status: `{0}`' -f $enforcementStatus)) | Out-Null
+
+if ($Enforce) {
+  $markdown.Add("") | Out-Null
+  $markdown.Add("## Enforcement") | Out-Null
+  $markdown.Add("") | Out-Null
+  $markdown.Add(('- Max latest failed checks: `{0}`' -f $MaxLatestFailedChecks)) | Out-Null
+  $markdown.Add(('- Fail on failure increase: `{0}`' -f [bool]$FailOnFailureIncrease)) | Out-Null
+  $markdown.Add(('- Require latest run artifact: `{0}`' -f [bool]$RequireLatestRunArtifact)) | Out-Null
+  if ($enforcementViolations.Count -gt 0) {
+    $markdown.Add("") | Out-Null
+    $markdown.Add("### Violations") | Out-Null
+    $markdown.Add("") | Out-Null
+    foreach ($violation in $enforcementViolations) {
+      $markdown.Add(('- {0}' -f $violation)) | Out-Null
+    }
+  }
+}
+
 $markdown.Add("") | Out-Null
 $markdown.Add("## Report History") | Out-Null
 $markdown.Add("") | Out-Null
@@ -290,3 +348,14 @@ $markdown.Add("- Missing or expired artifacts are listed separately so operators
 Set-Content -LiteralPath $OutputMarkdownPath -Value $markdown -Encoding UTF8
 Write-Host "Wrote enterprise route auth smoke trend report: $OutputMarkdownPath"
 Write-Host "Wrote enterprise route auth smoke trend JSON: $OutputJsonPath"
+
+if ($Enforce -and $enforcementViolations.Count -gt 0) {
+  foreach ($violation in $enforcementViolations) {
+    Write-Host "[FAIL] $violation"
+  }
+  exit 1
+}
+
+if ($Enforce) {
+  Write-Host "[PASS] Enterprise route auth smoke trend enforcement passed."
+}
