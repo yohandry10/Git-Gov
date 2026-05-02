@@ -732,6 +732,55 @@ Trend safety boundaries:
 - no customer repository, provider, branch protection, route smoke, or workflow dispatch mutation is performed.
 - this trend reports whether auth-smoke behavior is stable, improving, declining, or failing; it does not make release blocking the default.
 
+## Monitor Enterprise Route Auth Smoke Trend Artifacts
+
+KAN-65 adds a GitHub Actions monitor that validates the latest KAN-64 trend artifact is still present, fresh, and not expired.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke-trend-artifact-monitor.yml
+```
+
+Manual run input:
+
+- `max_age_hours`: maximum accepted artifact age. Default is `192`.
+
+The monitor checks for artifacts with this name/prefix:
+
+```text
+enterprise-route-auth-smoke-trend-report
+```
+
+It uploads:
+
+```text
+enterprise-route-auth-smoke-trend-artifact-monitor
+```
+
+Run the same check locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-route-auth-smoke-trend-report.yml `
+  -ArtifactNamePrefix enterprise-route-auth-smoke-trend-report `
+  -MaxAgeHours 192 `
+  -GitHubToken $token `
+  -OutputPath out/enterprise-route-auth-smoke-trend-artifact-monitor.json
+```
+
+Monitor safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- no GitGov API key is read or printed.
+- GitHub artifact metadata is read only through the GitHub token available to the caller.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, trend generation, or workflow dispatch mutation is performed.
+- this monitor validates artifact freshness only; KAN-64 owns the actual trend generation.
+
 ## Policy Presets
 
 `audit-only`:
