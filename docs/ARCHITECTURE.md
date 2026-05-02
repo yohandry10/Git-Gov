@@ -137,10 +137,14 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 
 **Endpoints principales:**
 
+La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71` verificó `72` registros Axum `.route(...)` productivos, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
 | `/health` | None | Health check básico |
 | `/health/detailed` | None | Latencia DB + uptime |
+| `/api-docs` | None | Swagger UI parcial para explorar schema |
+| `/api-docs/openapi.json` | None | OpenAPI parcial generado por `openapi::build_openapi_spec()` |
 | `/events` | Bearer | Ingesta de eventos del cliente |
 | `/webhooks/github` | HMAC | Webhooks de GitHub |
 | `/audit-stream/github` | Bearer (admin) | Batch de audit logs de GitHub |
@@ -171,7 +175,7 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/integrations/jira/status` | Bearer (admin) | Health check Jira |
 | `/integrations/jira/correlate` | Bearer (admin) | Correlación batch commit↔ticket |
 | `/integrations/jira/ticket-coverage` | Bearer (admin) | Cobertura de tickets |
-| `/integrations/jira/tickets/{id}` | Bearer (admin) | Detalle de ticket |
+| `/integrations/jira/tickets/{ticket_id}` | Bearer (admin) | Detalle de ticket |
 | `/org-invitations` | Bearer (admin) | Crear/listar invitaciones de organización |
 | `/org-invitations/{id}/resend` | Bearer (admin) | Regenerar token de invitación |
 | `/org-invitations/{id}/revoke` | Bearer (admin) | Revocar invitación |
@@ -207,7 +211,6 @@ Dentro del dashboard desktop existen dos capacidades distintas:
 | `/feature-requests` | Bearer | Crear feature request desde el bot |
 | `/cli/commands` | Bearer | Ingesta/listado de comandos CLI auditados |
 | `/policy/drift-events` | Bearer | Ingesta/listado de eventos de policy drift |
-| `/webhooks/jira` | HMAC `X-Hub-Signature` | Webhooks nativos de Jira (firmados) |
 | `/metrics` | Público | Métricas Prometheus |
 | `/sse` | Bearer (admin) | Stream de eventos en tiempo real (SSE) |
 

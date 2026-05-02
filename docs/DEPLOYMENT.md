@@ -388,7 +388,7 @@ docker compose logs -f jira
 ### Qué inicializa automáticamente
 
 Al crear el volumen de Postgres por primera vez, Docker ejecuta:
-1. `gitgov/gitgov-server/supabase_schema.sql`
+1. `gitgov/gitgov-server/supabase/supabase_schema.sql`
 2. todas las migraciones `gitgov/gitgov-server/supabase/supabase_schema_v*.sql` en orden numérico
 
 Si ya existe el volumen, los scripts **no** se vuelven a ejecutar.

@@ -4,10 +4,11 @@ Updated: 2026-05-02
 
 ## Documentation Reality Audit - 2026-05-02
 
-`KAN-70` is the active documentation cleanup track. Its purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
+`KAN-70` started the documentation cleanup track and `KAN-71` is the active backend/API/schema audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
 - `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
 - The current repo has `32` GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, and `25` desktop frontend test files.
+- Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
 - Existing documentation edits in `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/QUICKSTART.md`, `docs/TROUBLESHOOTING.md`, and `gitgov/gitgov-server/README.md` are being included only where they match code/configuration reality.
 - Historical reports remain evidence snapshots. The cleanup target is living docs and current handoff/status material.
 
