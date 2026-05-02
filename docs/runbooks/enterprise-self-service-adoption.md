@@ -2,7 +2,7 @@
 
 Updated: 2026-05-01
 
-Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`, `KAN-53`, `KAN-62`, `KAN-63`, `KAN-64`
+Tickets: `KAN-29`, `KAN-30`, `KAN-31`, `KAN-32`, `KAN-33`, `KAN-34`, `KAN-35`, `KAN-36`, `KAN-50`, `KAN-51`, `KAN-52`, `KAN-53`, `KAN-62`, `KAN-63`, `KAN-64`, `KAN-65`, `KAN-66`, `KAN-67`
 
 ## Purpose
 
@@ -825,6 +825,47 @@ Important:
 - This is a stricter control than KAN-64 and KAN-65.
 - It is workflow-specific enforcement, not a global product default.
 - If a client does not want this policy, they do not have to enable or depend on this workflow.
+
+## Monitor Enterprise Route Auth Smoke Trend Enforcement Artifacts
+
+KAN-67 adds a GitHub Actions monitor that validates the latest KAN-66 enforcement artifact is still present, fresh, and not expired.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml
+```
+
+Manual run inputs:
+
+- `max_age_hours`: maximum accepted age for the latest enforcement artifact. Default `192`.
+
+It uploads:
+
+```text
+enterprise-route-auth-smoke-trend-enforcement-artifact-monitor
+```
+
+Run the same monitor locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-route-auth-smoke-trend-enforcement.yml `
+  -ArtifactName enterprise-route-auth-smoke-trend-enforcement `
+  -MaxAgeHours 192 `
+  -GitHubToken $token `
+  -OutputPath out/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.json
+```
+
+Important:
+
+- no `.env` files are read.
+- no provider tokens or GitGov API keys are read or printed.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, trend enforcement, or workflow dispatch mutation is performed.
+- this monitor validates artifact freshness only; KAN-66 owns the actual enforcement decision.
 
 ## Policy Presets
 
