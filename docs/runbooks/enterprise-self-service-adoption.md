@@ -781,6 +781,51 @@ Monitor safety boundaries:
 - no customer repository, provider, branch protection, trend generation, or workflow dispatch mutation is performed.
 - this monitor validates artifact freshness only; KAN-64 owns the actual trend generation.
 
+## Enforce Enterprise Route Auth Smoke Trend
+
+KAN-66 adds an optional enforcement workflow for the auth-smoke trend.
+
+Workflow:
+
+```text
+.github/workflows/enterprise-route-auth-smoke-trend-enforcement.yml
+```
+
+Manual run inputs:
+
+- `max_reports`: maximum parsed trend window. Default `12`.
+- `max_latest_failed_checks`: maximum allowed failed checks in the latest parsed report. Default `0`.
+
+It uploads:
+
+```text
+enterprise-route-auth-smoke-trend-enforcement
+```
+
+Run the same enforcement locally when GitHub API access is available:
+
+```powershell
+$token = & C:\Users\PC\Tools\gh\bin\gh.exe auth token
+.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 `
+  -Repository yohandry10/Git-Gov `
+  -WorkflowFile enterprise-route-auth-smoke.yml `
+  -ArtifactNamePrefix enterprise-route-auth-smoke- `
+  -MaxReports 12 `
+  -GitHubToken $token `
+  -Enforce `
+  -MaxLatestFailedChecks 0 `
+  -FailOnFailureIncrease `
+  -RequireLatestRunArtifact `
+  -OutputMarkdownPath out/enterprise-route-auth-smoke-trend-enforcement.md `
+  -OutputJsonPath out/enterprise-route-auth-smoke-trend-enforcement.json
+```
+
+Important:
+
+- This is a stricter control than KAN-64 and KAN-65.
+- It is workflow-specific enforcement, not a global product default.
+- If a client does not want this policy, they do not have to enable or depend on this workflow.
+
 ## Policy Presets
 
 `audit-only`:
