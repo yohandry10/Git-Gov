@@ -883,6 +883,14 @@ El repositorio tiene **32 workflows** en `.github/workflows/`:
 | `enterprise-route-auth-smoke-trend-enforcement.yml` | Enforcement de tendencia auth smoke |
 | `enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml` | Monitor de enforcement auth smoke |
 
+Auditoría `KAN-73`:
+
+- GitHub reporta los `32` workflows anteriores como activos.
+- Triggers actuales: `5` workflows en `pull_request`, `9` en `push`, `29` con `workflow_dispatch`, `22` con `schedule`.
+- `28` workflows publican artifacts mediante `actions/upload-artifact`.
+- La protección estricta de `main` requiere `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build` y `Validate quality_gates warn/block matrix`.
+- `Workflow Lint` y `Block internal-assistant markers in branch/commits` se ejecutan, pero no son required status checks en la regla actual.
+
 ---
 
 ## Próximos Pasos

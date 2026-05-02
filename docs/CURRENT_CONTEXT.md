@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-72` completed
+Ticket: `KAN-73`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Expected branch before new work: `main`.
-- Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, followed by handoff refresh PR `#194` merged as `2ab821e`.
+- Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, handoff refresh PR `#194` merged as `2ab821e`, and stable wording PR `#195` merged as `0ccef26`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
 - KAN-24 post-merge context refresh PR: `#98` - `docs(KAN-24): record post-merge validation`.
@@ -65,8 +65,8 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
 - Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
-- Recommended next documentation phase: `KAN-73 - CI/workflows/release automation documentation reality audit` (not started).
-- `KAN-70`, `KAN-71`, and `KAN-72` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
+- Current documentation follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
+- `KAN-70`, `KAN-71`, `KAN-72`, and `KAN-73` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1631,6 +1631,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Verified facts: React is `19.2.0`; `gitgov/src` has `99` TypeScript/TSX files; `gitgov/src/components/control_plane` has `27` component/helper modules; `src-tauri/src` has `31` Rust files; `src-tauri/src/lib.rs` registers `94` Tauri commands; `npm test -- --run` reports `25` files and `296` tests; `cargo test -- --list` in `src-tauri` reports `23` tests; updater endpoint/pubkey are configured in `tauri.conf.json`.
   - Post-merge checks for `655478e` passed: `CI` run `25249226431`, `Release Readiness Gate` run `25249226413`, `Public Naming Guard` run `25249226412`, `Secret Scan` run `25249226425`, `SonarQube Governance` run `25249226427`, `Desktop Updater Readiness` run `25249226418`, `Governance Correlation Smoke` run `25249226410`, and `Quality Gate Policy Matrix` run `25249226420`.
   - Non-goals: no runtime code change, no provider mutation, no secret printing, no web public docs audit beyond facts needed for Desktop comparisons, and no implementation of `KAN-69`.
+- KAN-73 CI/workflows/release automation documentation audit:
+  - Jira: `KAN-73 - CI/workflows/release automation documentation reality audit`.
+  - Branch: `docs/KAN-73-ci-workflows-doc-audit`.
+  - Scope: verify GitHub Actions workflow inventory, trigger families, artifact behavior, live branch-protection required checks, and release/readiness automation documentation against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and GitHub branch protection metadata.
+  - Verified facts so far: `.github/workflows` has `32` workflow files and GitHub reports the same `32` workflows active; trigger counts are `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, and `28` workflows using `actions/upload-artifact`; live `main` branch protection is strict and currently requires exactly `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+  - Non-goals: no workflow behavior change, no branch-protection mutation, no GitHub Actions variable/secret mutation, no provider mutation, no release-default change, no SonarCloud proposal, no Jenkins trigger-only work, and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes
 

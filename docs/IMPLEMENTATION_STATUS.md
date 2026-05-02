@@ -4,11 +4,11 @@ Updated: 2026-05-02
 
 ## Documentation Reality Audit - 2026-05-02
 
-`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, and `KAN-72` completed the Desktop/dashboard audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
+`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, and `KAN-73` is the active CI/workflows/release automation audit phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
 - `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
-- Recommended next documentation phase: `KAN-73 - CI/workflows/release automation documentation reality audit` (not started).
-- The current repo has `32` GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
+- The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
+- CI/workflow docs are being checked against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and live GitHub branch protection metadata; verified facts include `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, `28` artifact-producing workflows, and `6` strict required checks on `main`.
 - Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
 - Desktop/dashboard docs were checked against `gitgov/src`, `gitgov/src-tauri`, `gitgov/package.json`, and `gitgov/src-tauri/tauri.conf.json`; verified facts include `27` Control Plane component modules, `94` registered Tauri commands, React `19.2.0`, and an updater endpoint configured through GitHub Releases.
 - Existing documentation edits in `README.md`, `gitgov/README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/QUICKSTART.md`, `docs/TROUBLESHOOTING.md`, and `gitgov/gitgov-server/README.md` are being included only where they match code/configuration reality.
