@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-74` active
+Ticket: `KAN-74` completed
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -66,8 +66,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
 - Latest completed follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
-- Active follow-up: `KAN-74 - CI helper/runtime follow-up`, to reconcile branch-protection helper defaults with live required checks and address the `gitleaks/gitleaks-action@v2` Node.js 20 deprecation warning before GitHub forces Node 24 on June 2, 2026.
-- `KAN-70`, `KAN-71`, `KAN-72`, and `KAN-73` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
+- Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`.
+- `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, and `KAN-74` are documentation/CI hygiene follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
+- Recommended next follow-up: continue the documentation reality audit in the next narrow phase only if there is a concrete stale-docs target; otherwise return to `KAN-69 - Enterprise Action Center guided UX`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1644,8 +1645,13 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - KAN-74 CI helper/runtime follow-up:
   - Jira: `KAN-74 - CI helper/runtime follow-up`.
   - Branch: `ci/KAN-74-helper-runtime-follow-up`.
+  - PR `#198` merged as `ae5771b`.
   - Scope: align `scripts/github/set_required_checks.ps1` and `scripts/github/check_branch_protection.ps1` defaults with the live `main` required checks from KAN-73, and replace `gitleaks/gitleaks-action@v2` in Secret Scan with direct Gitleaks CLI execution to avoid the Node.js 20 action-runtime warning.
   - Verified source facts: GitHub release `gitleaks/gitleaks` includes `gitleaks_8.30.0_linux_x64.tar.gz`; live `main` branch protection requires `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+  - Implementation details: Secret Scan now downloads Gitleaks CLI `v8.30.0`, scans explicit PR/push commit ranges with `--log-opts`, and falls back when a force-push makes `github.event.before` unavailable in the checkout.
+  - Local validation passed: `git diff --check`, `.\scripts\security\publication_guard.ps1`, branch-protection helper read using the authenticated `gh` token, Gitleaks release tarball HEAD `200`, and local `gitleaks.exe detect --source . --log-opts 'main..HEAD'`.
+  - PR `#198` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+  - Post-merge checks for `ae5771b` passed: `CI` run `25250037671`, `Release Readiness Gate` run `25250037686`, `Secret Scan` run `25250037690`, `Public Naming Guard` run `25250037677`, `Quality Gate Policy Matrix` run `25250037685`, `Governance Correlation Smoke` run `25250037684`, `Desktop Updater Readiness` run `25250037688`, and `SonarQube Governance` run `25250037682`.
   - Non-goals: no branch-protection mutation, no provider mutation, no secret or variable creation, no SonarCloud proposal, no Jenkins trigger-only work, no release-default change, and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes

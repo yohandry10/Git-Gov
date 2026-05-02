@@ -4,10 +4,10 @@ Updated: 2026-05-02
 
 ## Documentation Reality Audit - 2026-05-02
 
-`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, and `KAN-74` is the narrow CI helper/runtime follow-up from that audit. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
+`KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, and `KAN-74` completed the narrow CI helper/runtime follow-up from that audit. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
 - `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
-- Active follow-up: `KAN-74 - CI helper/runtime follow-up`, because KAN-73 found branch-protection helper defaults that lag live required checks and a post-merge `gitleaks/gitleaks-action@v2` Node.js 20 deprecation annotation.
+- Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`, which aligned branch-protection helper defaults with live required checks and replaced `gitleaks/gitleaks-action@v2` with direct Gitleaks CLI execution.
 - The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
 - CI/workflow docs were checked against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and live GitHub branch protection metadata; verified facts include `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, `28` artifact-producing workflows, and `6` strict required checks on `main`.
 - Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
