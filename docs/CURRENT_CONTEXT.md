@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-66`
+Ticket: `KAN-67`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -58,7 +58,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-64 - Trend enterprise route auth smoke artifacts`.
 - Latest completed follow-up: `KAN-65 - Monitor enterprise route auth smoke trend artifact freshness`.
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
-- Current follow-up: none selected after `KAN-66`.
+- Current follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1574,6 +1574,34 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Artifact ID `6748551922`.
   - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
 - No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Current KAN-67 Implementation Notes
+
+- Jira: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifacts`.
+- Implementation branch: `hardening/KAN-67-enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml`.
+- Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local monitor command passed:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke-trend-enforcement.yml -ArtifactName enterprise-route-auth-smoke-trend-enforcement -MaxAgeHours 192 -OutputPath out\enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.json`
+- Local monitor result:
+  - status `PASS`
+  - source workflow run `25247747284`
+  - source artifact `enterprise-route-auth-smoke-trend-enforcement`
+  - source artifact ID `6761818040`
+  - artifact expired `false`
+  - artifact age `0.17h`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - no GitHub Actions variable or secret creation
+  - no provider, customer repository, branch protection, trend enforcement, or workflow dispatch mutation
+  - this monitor validates artifact freshness only; KAN-66 owns the enforcement decision
 
 ## Latest KAN-66 Validation Notes
 
