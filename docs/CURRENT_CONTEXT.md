@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-70`
+Ticket: `KAN-71`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -61,8 +61,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
 - Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
 - Pending product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
-- Current documentation follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
-- `KAN-70` is not a product feature. It audits living documentation against the actual repository state and records that `KAN-69` remains pending as the guided Action Center product work.
+- Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
+- Current documentation follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
+- `KAN-70` and `KAN-71` are documentation-only follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1612,9 +1613,13 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - Branch: `docs/KAN-70-documentation-reality-audit`.
   - Purpose: update living docs in phases by checking them against code, routes, migrations, workflows, scripts, and current product decisions.
   - First-pass verified facts: `.github/workflows` contains `32` workflows, backend schema migrations currently run through `supabase_schema_v25.sql`, backend `cargo test -- --list` reports `193` tests, and the desktop frontend has `25` test files.
-  - Existing local documentation edits may enter the first PR only when verified against code/configuration.
-- Worktree note:
-  - local uncommitted edits existed outside KAN-68 scope in README/docs files; they must not be staged into KAN-68 unless explicitly requested.
+  - PR `#191` merged as `f39ea0e`; local `main` was clean afterward.
+- KAN-71 backend/API/schema documentation audit:
+  - Jira: `KAN-71 - Backend/API/schema documentation reality audit`.
+  - Branch: `docs/KAN-71-backend-api-schema-doc-audit`.
+  - Scope: verify backend route/API/schema/config documentation against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and tracked `.env.example` files.
+  - Verified facts: production router has `72` Axum `.route(...)` registrations plus `/api-docs`; handler modules count is `23`; schema files count is `21`; postcheck files count is `7`; latest migration remains `supabase_schema_v25.sql`; `cargo test -- --list` reports `193` tests.
+  - Non-goals: no runtime code change, no provider mutation, no secret printing, no OpenAPI completeness work as a blocker, and no product/UX implementation under `KAN-69`.
 
 ## Latest KAN-67 Validation Notes
 

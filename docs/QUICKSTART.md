@@ -149,7 +149,7 @@ GitGov/
 │   ├── gitgov-server/             # Control Plane Server (Axum + Rust)
 │   │   ├── src/
 │   │   │   ├── main.rs            # Rutas, rate limiters, bootstrap
-│   │   │   ├── handlers/           # HTTP handlers (65+ endpoints, 23 archivos)
+│   │   │   ├── handlers/           # HTTP handlers (72 rutas Axum productivas, 23 archivos)
 │   │   │   ├── auth.rs            # Middleware auth (SHA256 + roles)
 │   │   │   ├── db.rs              # Database queries (COALESCE siempre)
 │   │   │   └── models.rs          # Data structures (serde + defaults)
@@ -341,6 +341,8 @@ admins = ["admin-user"]
 | `JENKINS_WEBHOOK_SECRET` | Secreto para Jenkins (opcional) |
 | `JIRA_WEBHOOK_SECRET` | Secreto para Jira (opcional) |
 | `RUST_LOG` | Nivel de logging (ej. `gitgov_server=info`) |
+
+La lista completa y actual de knobs operativos vive en `gitgov/gitgov-server/.env.example`; esa plantilla se verifica contra `src/main.rs` en la auditoría documental y usa placeholders, no secretos reales.
 
 ## Troubleshooting Rápido
 
