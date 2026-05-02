@@ -19,7 +19,7 @@ Admins can save checklist stage tracking state, owner, target date, external ref
 | Dashboard store | Added load/save state and actions for checklist tracking. |
 | Dashboard UI | Added per-stage tracking controls inside `Guided checklist`. |
 | Tests | Added backend validation tests and dashboard helper tests. |
-| Documentation | Added design/report docs and will update runbook/roadmap/context. |
+| Documentation | Added design/report docs and updated runbook, roadmap, and operating context. |
 
 ## Safety
 
@@ -56,8 +56,33 @@ Local validation before PR creation:
 | `git diff --check` | Passed |
 | `.\scripts\security\publication_guard.ps1` | Passed |
 
-Post-merge and production validation will be recorded after PR merge and database migration `v25`.
+PR and post-merge validation:
+
+| Check | Result |
+| --- | --- |
+| PR `#174` required checks | Passed before merge |
+| `CI` on `main` commit `5ebbfa1` | Passed, run `25244715786` |
+| `Release Readiness Gate` on `main` commit `5ebbfa1` | Passed, run `25244715777` |
+| `Quality Gate Policy Matrix (Optional)` | Passed, run `25244715780` |
+| `Secret Scan` | Passed, run `25244715781` |
+| `Public Naming Guard` | Passed, run `25244715778` |
+| `Governance Correlation Smoke (Optional)` | Passed, run `25244715779` |
+| `Desktop Updater Readiness (Optional)` | Passed, run `25244715903` |
+| `SonarQube Governance (Non-Blocking)` | Passed, run `25244715783` |
+
+Production validation:
+
+| Check | Result |
+| --- | --- |
+| Supabase migration `v25` | Applied successfully |
+| `v25_postcheck.sql` | Passed: table, primary key, and `updated_at` index exist |
+| Render deploy | `dep-d7qol80k1i2s73dpedag` reached `live` for commit `5ebbfa1` |
+| `GET /health` | Returned `ok` |
+| Anonymous `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` | Returned `401` |
+| Authenticated initial `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` | Returned `200`, `found=false` |
+| Authenticated `PUT /enterprise/onboarding-checklist-tracking` | Returned `200` with `org_id` and `updated_at` present |
+| Authenticated final `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` | Returned `200`, `found=true`, `item_count=0` |
 
 ## Current Status
 
-KAN-60 implementation is ready for PR validation.
+KAN-60 implementation is merged, deployed, migrated, and production-smoke validated.
