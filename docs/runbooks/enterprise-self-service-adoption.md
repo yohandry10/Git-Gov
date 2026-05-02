@@ -250,6 +250,39 @@ Onboarding readiness safety boundaries:
 - no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
 - release blocking remains customer opt-in only; record-only remains the safe default.
 
+## Generate Onboarding Remediation Plan
+
+KAN-57 turns the KAN-52 readiness JSON into a prioritized action plan.
+
+Generate a plan after producing readiness:
+
+```powershell
+.\scripts\control-plane\generate_enterprise_onboarding_remediation_plan.ps1 `
+  -ReadinessPath out/enterprise-onboarding-readiness/enterprise-onboarding-readiness.json `
+  -OutputDir out/enterprise-onboarding-remediation-plan
+```
+
+If the readiness file contains an adoption pack source path, the plan also includes placeholder-only GitHub Actions configuration commands for required variable and secret names.
+
+Expected outputs:
+
+```text
+out/enterprise-onboarding-remediation-plan/enterprise-onboarding-remediation-plan.md
+out/enterprise-onboarding-remediation-plan/enterprise-onboarding-remediation-plan.json
+```
+
+Use `-FailOnBlocked` only when the caller should fail on blocked onboarding stages. By default, the plan is advisory and non-mutating.
+
+Remediation plan safety boundaries:
+
+- no `.env` files are read.
+- no provider secret values are read or printed.
+- GitHub Actions secret names may be listed, but values are never read or generated.
+- placeholder commands use `<value>` only.
+- no GitHub Actions variables or secrets are created.
+- no customer repository, provider, branch protection, or workflow dispatch mutation is performed.
+- release blocking remains customer opt-in only; record-only remains the safe default.
+
 ## Automate Onboarding Readiness Evidence
 
 KAN-53 adds a GitHub Actions workflow that generates the KAN-52 readiness report as a reusable evidence artifact.
