@@ -59,8 +59,17 @@ This is documentation-only work. It does not implement `KAN-69 - Enterprise Acti
 
 ## Validation
 
-Planned validation for this branch:
+Local validation passed:
 
 - `git diff --check`
 - `.\scripts\security\publication_guard.ps1`
 - stale-claim search for corrected public documentation phrases
+- `pnpm --dir gitgov-web build`
+- `pnpm --dir gitgov-web typecheck` after Next regenerated `.next/types`
+
+PR validation passed:
+
+- PR `#200` merged as `b393a82`.
+- Required checks passed before merge: `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+- Supporting checks passed before merge: `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+- Post-merge `main` checks passed for `b393a82`: `CI` run `25265387894`, `Release Readiness Gate` run `25265387888`, `Secret Scan` run `25265387889`, `Public Naming Guard` run `25265387885`, `Quality Gate Policy Matrix` run `25265387902`, `Governance Correlation Smoke` run `25265387895`, `Desktop Updater Readiness` run `25265387900`, and `SonarQube Governance` run `25265387890`.
