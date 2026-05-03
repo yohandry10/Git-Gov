@@ -69,3 +69,10 @@ Local validation passed:
 
 - `git diff --check`
 - `.\scripts\security\publication_guard.ps1`
+
+PR validation passed:
+
+- PR `#202` merged as `8f311f2`.
+- Required checks passed before merge: `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+- Supporting checks passed before merge: `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+- Post-merge `main` checks passed for `8f311f2`: `CI` run `25266101104`, `Release Readiness Gate` run `25266101089`, `Secret Scan` run `25266101093`, `Public Naming Guard` run `25266101097`, `Quality Gate Policy Matrix` run `25266101102`, `Governance Correlation Smoke` run `25266101092`, `Desktop Updater Readiness` run `25266101090`, and `SonarQube Governance` run `25266101101`.
