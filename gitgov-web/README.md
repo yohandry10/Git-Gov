@@ -1,7 +1,7 @@
 # GitGov Web — Public Website
 
 > Marketing site + documentation + download portal for GitGov.  
-> Built with **Next.js 15.5.10** (App Router) + **TypeScript** + **Tailwind CSS** + **Framer Motion**.
+> Built with **Next.js 15.5.15** (App Router) + **TypeScript** + **Tailwind CSS** + **Framer Motion**.
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ pnpm dev:turbo
 | `/features` | Feature overview |
 | `/download` | Desktop app download |
 | `/contact` | Contact form |
-| `/pricing` | Pricing (coming soon) |
+| `/pricing` | Enterprise evaluation and pilot fit |
 | `/docs` | Documentation |
 | `/docs/[slug]` | Individual doc page |
 
@@ -76,7 +76,7 @@ gitgov-web/
 
 ## Tech Stack
 
-- **Next.js 15.5.10** — App Router, RSC
+- **Next.js 15.5.15** — App Router, RSC
 - **TypeScript** — Strict mode
 - **Tailwind CSS 3** — Custom design tokens
 - **Framer Motion** — Animations, parallax, scroll reveal

@@ -87,7 +87,7 @@ The response includes:
 - `warnings` — soft advisories (non-blocking)
 - `evaluated_rules` — the rules applied to reach this decision
 
-> **Current state**: The `/policy/check` endpoint operates in **advisory mode**. It informs CI pipelines about compliance status but does not automatically halt deployments. Hard enforcement at the CI level is on the roadmap.
+> **Current state**: The `/policy/check` endpoint is advisory by default and can return blocking HTTP `409` only for explicitly configured scopes. Release governance also has an optional manual workflow gate for customer-selected enforcement. GitGov does not make release blocking the default behavior.
 
 ---
 

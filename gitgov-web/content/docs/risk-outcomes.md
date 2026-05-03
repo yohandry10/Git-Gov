@@ -173,12 +173,15 @@ Use `Standard` as baseline, then move each repository to `Critical` or `Internal
 
 ---
 
-## Next Iteration
+## Operational Metrics Already Surfaced
 
-Roadmap metrics under active implementation:
+The admin dashboard already surfaces two informational operational metrics from correlated Jenkins evidence:
 
-- MTTR for noncompliance resolution,
-- time-to-evidence for audits,
-- release readiness trend by repository tier.
+- **Time-to-Evidence** — commit timestamp to correlated pipeline ingestion timestamp.
+- **MTTR pipeline** — recoverable non-green pipeline event to the next successful run for the same job.
 
-These will be added without changing the existing event contracts.
+These metrics are sample-based and are not yet SLO-backed product guarantees. They are not included in the composite risk/readiness score until tier-specific SLO thresholds are calibrated.
+
+## Remaining Iteration
+
+Remaining roadmap work is to turn those sample-based metrics into calibrated SLOs and to make release readiness trends easier to consume by repository tier. This should feed the Enterprise Action Center instead of creating another standalone report chain.

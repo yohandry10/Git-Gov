@@ -173,12 +173,15 @@ Usa `Standard` como baseline y mueve cada repositorio a `Critical` o `Internal` 
 
 ---
 
-## Siguiente Iteración
+## Métricas Operativas Ya Visibles
 
-Métricas de roadmap en implementación:
+El dashboard admin ya muestra dos métricas operativas informativas a partir de evidencia Jenkins correlacionada:
 
-- MTTR de resolución de no cumplimiento,
-- time-to-evidence para auditorías,
-- tendencia de release readiness por tier de repositorio.
+- **Time-to-Evidence** — desde el timestamp del commit hasta la ingesta del pipeline correlacionado.
+- **MTTR pipeline** — desde un evento de pipeline no verde recuperable hasta el siguiente run exitoso del mismo job.
 
-Estas mejoras se incorporarán sin romper contratos de eventos existentes.
+Estas métricas son muestrales y todavía no son garantías de producto respaldadas por SLO. No participan en el score compuesto de riesgo/readiness hasta calibrar umbrales SLO por tier.
+
+## Iteración Pendiente
+
+El trabajo restante es convertir esas métricas muestrales en SLOs calibrados y hacer que las tendencias de release readiness sean más fáciles de consumir por tier de repositorio. Ese trabajo debe alimentar el Enterprise Action Center, no crear otra cadena de reportes aislada.

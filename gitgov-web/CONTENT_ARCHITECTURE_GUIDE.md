@@ -90,7 +90,6 @@ The site repeats the same trust answers across:
 
 - home FAQ
 - `/docs/faq`
-- `/docs/privacy`
 - `/docs/security`
 - `/privacy`
 
@@ -116,12 +115,18 @@ That page should qualify leads, not restate the site.
 
 ## What Is Stale Versus The Real Product
 
-The public website underrepresents actual product maturity.
+The public website has been partly reconciled by `KAN-75`, but it still needs product-design cleanup before a larger marketing rewrite. Treat this guide as an audit map, not as evidence that every listed stale claim is still present.
 
-### Outdated or undersold
+### Recently reconciled
 
-- Jira is still framed as `Preview`, while backend support is operational.
-- Governance is still described as mostly advisory, while the real product already supports `off/warn/block`, quality-gate evaluation, governed exceptions, signals, and alerts.
+- Jira preview wording was removed from the quickstart path; current copy should describe Jira as operational through API access and native signed webhooks.
+- Governance wording now needs to stay precise: workstation policy checks can block configured pushes and record `blocked_push` evidence; `/policy/check` remains advisory by default with optional blocking for explicitly configured scopes; release governance gates are opt-in and should not be marketed as default release blocking.
+- Public docs should describe managed production as Render HTTPS. Nginx/systemd/reverse-proxy guidance belongs to self-hosted deployment material.
+- Pricing copy should frame enterprise evaluation and pilot fit until real plan packaging exists.
+- Metadata copy should say GitGov stores bounded metadata such as file paths and counts, never source content or diffs.
+
+### Still undersold
+
 - Home/features still frame GitGov as traceability plus integrations, while the real product already has:
   - release readiness
   - risk outcomes
@@ -138,15 +143,15 @@ The public website underrepresents actual product maturity.
 
 ## Contradictions To Eliminate
 
-These contradictions reduce trust and must be resolved before major copy rewrites:
+These contradictions reduce trust and should be resolved before major copy rewrites. `KAN-75` removed several documentation-level contradictions; remaining UI/marketing contradictions should be handled as public web design work, not as another backend hardening chain.
 
 - Hero CTA is visually primary but functionally dead.
 - The hero contains an unsupported claim (`98% faster`) with no proof.
 - Hero copy is partially hardcoded in Spanish despite bilingual support.
-- Pricing says both "simple transparent pricing" and "plans still in development".
+- Pricing should not imply finalized public plan packaging; use enterprise evaluation and pilot-fit language until packaging is real.
 - OS/platform messaging is inconsistent across download/docs/FAQ.
-- Governance wording is inconsistent on whether GitGov only observes or can participate in blocking flows.
-- Metadata wording is inconsistent on whether GitGov captures file counts only or file paths too.
+- Governance wording must separate workstation blocking, advisory/default API checks, and opt-in release gates.
+- Metadata wording must remain consistent that GitGov captures file metadata, including bounded paths/counts, but not source content or diffs.
 
 ## Commercial Positioning To Use Going Forward
 
@@ -401,8 +406,8 @@ PRIVATE / INTERNAL DOCS
 
 ### Phase 3: product reality alignment
 
-- Update Jira maturity language
-- Update governance and CI docs to reflect current policy/readiness reality
+- Keep Jira maturity language aligned with operational API and signed webhook support
+- Keep governance and CI docs aligned with workstation blocking, advisory/default API checks, and opt-in release readiness enforcement
 - Surface exports, risk outcomes, release readiness, and admin/org features where commercially useful
 - Resolve role wording drift
 

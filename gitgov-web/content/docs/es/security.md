@@ -163,7 +163,7 @@ Todos los límites son configurables mediante variables de entorno.
 
 - El Control Plane escucha en una dirección y puerto configurables (mediante la variable de entorno `GITGOV_SERVER_ADDR`).
 - El desarrollo local usa enlace solo a loopback para prevenir exposición accidental en la red.
-- Los despliegues en producción deben colocarse detrás de un **proxy inverso** (p.ej., Nginx, Caddy) con terminación TLS.
+- La producción gestionada actual corre mediante HTTPS en Render. Los despliegues self-hosted deben usar HTTPS directamente o colocarse detrás de un **proxy inverso** (p.ej., Nginx, Caddy) con terminación TLS.
 - Se aplican límites de CORS y tamaño de cuerpo de solicitud por endpoint de integración.
 - Los tamaños máximos de body son configurables por integración (Jenkins, Jira, audit stream) para prevenir abuso.
 
@@ -190,7 +190,7 @@ Esta sección es crítica para establecer expectativas precisas:
 | **Monitoriza pulsaciones de tecla o pantalla** | GitGov solo observa operaciones Git, no el comportamiento del desarrollador. |
 | **Toma decisiones de RRHH** | Las señales son observaciones consultivas, no determinaciones disciplinarias. |
 | **Reemplaza CI/CD** | GitGov traza pipelines de CI pero no ejecuta builds, tests ni despliegues. |
-| **Aplica protección de ramas** | GitGov detecta violaciones de política; no bloquea operaciones Git. |
+| **Reemplaza branch protection o reglas de PR de GitHub** | GitGov puede bloquear pushes configurados en la estación de trabajo y registrar evidencia `blocked_push`, pero GitHub sigue siendo la fuente de verdad para branch protection alojada en el repositorio y reglas de merge de PR. |
 | **Almacena contraseñas o secretos** | Las API keys se hashean; nunca se recopilan contraseñas. |
 | **Accede a repositorios privados** | GitGov no clona, hace fetch ni lee contenido de repositorios. |
 | **Perfila productividad individual** | No hay puntuaciones de "líneas de código" ni "frecuencia de commits". |
@@ -220,7 +220,6 @@ Si se descubre una vulnerabilidad de seguridad en GitGov:
 
 ## Relacionado
 
-- [**Privacidad y Responsabilidad de Señales**](/docs/privacy) — Límites legales y cumplimiento RGPD.
 - [**Política de Privacidad**](/privacy) — Términos legales completos para usuarios finales.
 - [**Gobernanza y Políticas**](/docs/governance) — Configurar reglas en `gitgov.toml`.
 - [**Preguntas Frecuentes**](/docs/faq) — Preguntas comunes sobre datos, seguridad y cumplimiento.
