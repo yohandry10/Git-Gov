@@ -163,7 +163,7 @@ All limits are configurable via environment variables.
 
 - The Control Plane listens on a configurable address and port (set via `GITGOV_SERVER_ADDR` environment variable).
 - Local development uses loopback-only binding to prevent accidental network exposure.
-- Production deployments should be placed behind a **reverse proxy** (e.g., Nginx, Caddy) with TLS termination.
+- Managed production currently runs through Render HTTPS. Self-hosted deployments should use HTTPS directly or sit behind a **reverse proxy** (e.g., Nginx, Caddy) with TLS termination.
 - CORS and request body size limits are enforced per integration endpoint.
 - Maximum request body sizes are configurable per integration (Jenkins, Jira, audit stream) to prevent abuse.
 
@@ -190,7 +190,7 @@ This section is critical for setting accurate expectations:
 | **Monitor keystrokes or screen** | GitGov only observes Git operations, not developer behavior. |
 | **Make HR decisions** | Signals are advisory observations, not disciplinary determinations. |
 | **Replace CI/CD** | GitGov traces CI pipelines but does not run builds, tests, or deployments. |
-| **Enforce branch protection** | GitGov detects policy violations; it does not block Git operations. |
+| **Replace GitHub branch protection or PR rules** | GitGov can block configured workstation pushes and record `blocked_push` evidence, but GitHub remains the source of truth for repository-hosted branch protection and PR merge rules. |
 | **Store passwords or secrets** | API keys are hashed; no passwords are ever collected. |
 | **Access private repositories** | GitGov does not clone, fetch, or read repository content. |
 | **Profile individual productivity** | There are no "lines of code" or "commit frequency" performance scores. |
@@ -283,7 +283,5 @@ For EU-based deployments:
 ## Related
 
 - [**Privacy Policy**](/privacy) — Full legal terms for end-users.
-- [**Governance & Policies**](/docs/governance) — Configuring `gitgov.toml` rules.
-- [**FAQ**](/docs/faq) — Common questions about data, security, and compliance.
 - [**Governance & Policies**](/docs/governance) — Configuring `gitgov.toml` rules.
 - [**FAQ**](/docs/faq) — Common questions about data, security, and compliance.

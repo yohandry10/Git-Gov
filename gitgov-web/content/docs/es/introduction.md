@@ -5,7 +5,7 @@ order: 1
 category: Evaluate
 ---
 
-GitGov es un **Sistema de Gobernanza de Git Distribuido de Grado Empresarial**. Está diseñado específicamente para equipos de ingeniería con altos requisitos de seguridad que necesitan evidencia operativa inmutable, trazabilidad profunda y aplicación automatizada de cumplimiento en cada commit, push y despliegue.
+GitGov es un **Sistema de Gobernanza de Git Distribuido de Grado Empresarial**. Está diseñado específicamente para equipos de ingeniería con altos requisitos de seguridad que necesitan evidencia operativa inmutable, trazabilidad profunda, verificaciones de política en estación de trabajo y gates de gobernanza opt-in para commits, pushes y releases.
 
 ## El Problema: Pistas de Auditoría Fragmentadas
 
@@ -49,7 +49,7 @@ GitGov está compuesto por cuatro componentes misión-críticos:
 | **GitGov Desktop** | Captura local de eventos Git y feedback en tiempo real al desarrollador | Tauri v2, Rust, React 19 |
 | **Control Plane** | Ingestión central de eventos, almacenamiento, reporting y motor de políticas | Rust, Axum, PostgreSQL |
 | **Integraciones** | Correlación de datos de Jenkins, Jira y GitHub | Webhooks y REST APIs |
-| **Web App** | Documentación, marketing y portal de descarga | Next.js 15.5, React 18 |
+| **Web App** | Documentación, marketing, portal de descarga y ruta de copilot de gobernanza | Next.js 15.5.15, React 18 |
 
 ---
 

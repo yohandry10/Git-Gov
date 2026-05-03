@@ -366,7 +366,7 @@ La lista completa y actual de knobs operativos vive en `gitgov/gitgov-server/.en
 2. ✅ Control Plane conectado
 3. ✅ Eventos registrándose
 4. ✅ V1.2-A Jenkins — funcional
-5. ✅ V1.2-B Jira — preview funcional
+5. ✅ V1.2-B Jira — operativo por API y webhook nativo firmado
 6. ✅ Deploy servidor en Render (`https://gitgov-api.onrender.com`)
 7. ✅ Sitio web desplegado en Vercel
 8. ✅ Webhooks GitHub/Jira configurados contra Render

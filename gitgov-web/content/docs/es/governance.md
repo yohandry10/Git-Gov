@@ -87,7 +87,7 @@ La respuesta incluye:
 - `warnings` — avisos suaves (no bloqueantes)
 - `evaluated_rules` — las reglas aplicadas para tomar esta decisión
 
-> **Estado actual**: El endpoint `/policy/check` opera en **modo advisorio**. Informa a los pipelines CI sobre el estado de cumplimiento pero no detiene automáticamente los despliegues. La aplicación estricta a nivel CI está en el roadmap.
+> **Estado actual**: El endpoint `/policy/check` es advisorio por defecto y solo puede devolver bloqueo HTTP `409` para scopes configurados explícitamente. Release governance también tiene un workflow manual opcional para enforcement seleccionado por el cliente. GitGov no hace que el bloqueo de releases sea el comportamiento por defecto.
 
 ---
 
