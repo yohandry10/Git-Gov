@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-75` completed
+Ticket: `KAN-76` active
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -68,9 +68,11 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
 - Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`.
 - Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`.
+- Active follow-up: `KAN-76 - Public agent documentation visibility map`.
 - `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, `KAN-74`, and `KAN-75` are documentation/CI hygiene follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - `KAN-75` scope: public web docs, roadmap/context/product-state docs, and systematic cleanup of stale public claims that were not covered by the backend/API, Desktop/dashboard, or workflows/scripts/ops audit phases.
-- Recommended next after `KAN-75`: return to `KAN-69 - Enterprise Action Center guided UX` unless there is a specific stale-docs defect with a bounded target.
+- `KAN-76` scope: publish a sanitized public agent-readable context bridge so external models can understand current product state without force-adding restricted forensic/strategy docs.
+- Recommended next after `KAN-76`: return to `KAN-69 - Enterprise Action Center guided UX` unless there is a specific stale-docs defect with a bounded target.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1665,6 +1667,11 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - PR `#200` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
   - Post-merge checks for `b393a82` passed: `CI` run `25265387894`, `Release Readiness Gate` run `25265387888`, `Secret Scan` run `25265387889`, `Public Naming Guard` run `25265387885`, `Quality Gate Policy Matrix` run `25265387902`, `Governance Correlation Smoke` run `25265387895`, `Desktop Updater Readiness` run `25265387900`, and `SonarQube Governance` run `25265387890`.
   - Non-goals: no runtime code change, no provider mutation, no secret printing, no branch-protection mutation, no SonarCloud proposal, no Jenkins trigger-only work, no OpenAPI/SDK blocker, and no implementation of `KAN-69`.
+- KAN-76 public agent documentation visibility map:
+  - Jira: `KAN-76 - Public agent documentation visibility map`.
+  - Branch: `docs/KAN-76-public-agent-doc-visibility`.
+  - Scope: create a tracked public context document for external agents, summarize useful conclusions from ignored local strategy/forensic docs and the external deep-research report, and clarify that restricted docs remain ignored by publication policy and `publication_guard`.
+  - Non-goals: no force-add of `docs/ENTERPRISE_READINESS_DECISION.md`, `docs/AUDIT_*.md`, or `docs/INTEGRATIONS_AUDIT_*.md`; no runtime code change; no provider mutation; no secret printing; no branch-protection mutation; no SonarCloud proposal; no Jenkins trigger-only work; no OpenAPI/SDK blocker; and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes
 

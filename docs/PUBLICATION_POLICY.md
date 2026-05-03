@@ -47,6 +47,19 @@ Never publish to public repo:
 7. Branch names, PR titles, and commit messages must be neutral and product-oriented; internal assistant/vendor/tooling identifiers are forbidden.
 8. Branch names, PR titles, and commit messages must include a Jira-style ticket ID such as `KAN-4` to preserve traceability coverage.
 
+## Agent-Readable Public Context
+
+When external agents need repo context, publish sanitized, current, product-facing summaries instead of force-adding restricted local memory.
+
+Use `docs/AGENT_PUBLIC_CONTEXT.md` as the public bridge for:
+
+- conclusions from ignored forensic or strategy documents that are still useful.
+- current product phase and non-goals.
+- a reading path for agents that cannot access ignored local files.
+- corrections where old external analysis is now stale after later tickets.
+
+Do not publish ignored forensic files directly. If a restricted note contains a still-valid conclusion, extract only the sanitized conclusion into a tracked public doc or ticket report.
+
 ## Identifier Handling
 
 Use placeholders such as `<owner>/<repo>`, `<org>`, `<your-domain>`, and `<service-url>` in examples, templates, setup guides, and reusable runbooks.
