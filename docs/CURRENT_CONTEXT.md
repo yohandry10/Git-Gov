@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-05-02
-Ticket: `KAN-75` active
+Ticket: `KAN-75` completed
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -67,7 +67,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
 - Latest completed follow-up: `KAN-73 - CI/workflows/release automation documentation reality audit`.
 - Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`.
-- Active follow-up: `KAN-75 - Public web roadmap claims documentation audit`.
+- Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`.
 - `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, `KAN-74`, and `KAN-75` are documentation/CI hygiene follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
 - `KAN-75` scope: public web docs, roadmap/context/product-state docs, and systematic cleanup of stale public claims that were not covered by the backend/API, Desktop/dashboard, or workflows/scripts/ops audit phases.
 - Recommended next after `KAN-75`: return to `KAN-69 - Enterprise Action Center guided UX` unless there is a specific stale-docs defect with a bounded target.
@@ -1658,8 +1658,12 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
 - KAN-75 public web, roadmap, and stale-claim documentation audit:
   - Jira: `KAN-75 - Public web roadmap claims documentation audit`.
   - Branch: `docs/KAN-75-public-web-roadmap-claims-audit`.
-  - Scope: reconcile public web documentation and content architecture notes with actual repository state after the earlier backend/API, Desktop/dashboard, and workflows/scripts/ops documentation phases.
-  - Corrections in progress: Next.js public web runtime from `15.5.10` to `15.5.15`; Jira maturity from preview wording to operational API/native signed webhook support; governance wording split across workstation blocking, advisory/default `/policy/check`, and opt-in release governance gates; Render-managed production wording separated from self-hosted reverse-proxy guidance; risk-outcome metrics described as surfaced/sample-based until SLO-calibrated; pricing reframed as enterprise evaluation/pilot fit; stale `/docs/privacy` references removed.
+  - PR `#200` merged as `b393a82`.
+  - Scope: reconciled public web documentation and content architecture notes with actual repository state after the earlier backend/API, Desktop/dashboard, and workflows/scripts/ops documentation phases.
+  - Corrections completed: Next.js public web runtime from `15.5.10` to `15.5.15`; Jira maturity from preview wording to operational API/native signed webhook support; governance wording split across workstation blocking, advisory/default `/policy/check`, and opt-in release governance gates; Render-managed production wording separated from self-hosted reverse-proxy guidance; risk-outcome metrics described as surfaced/sample-based until SLO-calibrated; pricing reframed as enterprise evaluation/pilot fit; stale `/docs/privacy` references removed.
+  - Local validation passed: `git diff --check`, `.\scripts\security\publication_guard.ps1`, stale-claim search for corrected public phrases, `pnpm --dir gitgov-web build`, and `pnpm --dir gitgov-web typecheck` after Next regenerated `.next/types`.
+  - PR `#200` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+  - Post-merge checks for `b393a82` passed: `CI` run `25265387894`, `Release Readiness Gate` run `25265387888`, `Secret Scan` run `25265387889`, `Public Naming Guard` run `25265387885`, `Quality Gate Policy Matrix` run `25265387902`, `Governance Correlation Smoke` run `25265387895`, `Desktop Updater Readiness` run `25265387900`, and `SonarQube Governance` run `25265387890`.
   - Non-goals: no runtime code change, no provider mutation, no secret printing, no branch-protection mutation, no SonarCloud proposal, no Jenkins trigger-only work, no OpenAPI/SDK blocker, and no implementation of `KAN-69`.
 
 ## Latest KAN-67 Validation Notes
