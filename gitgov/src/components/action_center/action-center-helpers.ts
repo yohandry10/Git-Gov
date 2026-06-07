@@ -390,6 +390,7 @@ function traceabilityRecommendation(input: ActionCenterBuildInput): ActionCenter
   const coverage = input.ticketCoverage?.coverage_percentage
   const total = input.ticketCoverage?.total_commits ?? 0
   const missingCommits = input.ticketCoverage?.commits_without_ticket?.length ?? 0
+  const isCoverageReady = total > 0 && coverage !== undefined && coverage >= 85
   return recommendation({
     id: 'repair-traceability-coverage',
     title: 'Repair Jira traceability before release',
@@ -397,12 +398,12 @@ function traceabilityRecommendation(input: ActionCenterBuildInput): ActionCenter
     reason: total > 0
       ? `${missingCommits} commit(s) are missing ticket evidence in the current coverage window.`
       : 'Ticket coverage is not loaded yet, so release confidence should stay conservative.',
-    status: coverage !== undefined && coverage >= 85 ? 'ready' : 'needs-action',
+    status: isCoverageReady ? 'ready' : 'needs-action',
     confidence: total > 0 ? 'high' : 'low',
     permission: permissionForNavigation(input.isConnected),
     primaryAction: action('Open ticket coverage', ACTION_CENTER_TARGETS.controlPlane, 'review'),
     evidence: [
-      evidence('Coverage', coverage === undefined ? 'N/A' : `${coverage.toFixed(2)}%`, coverage !== undefined && coverage >= 85 ? 'ready' : 'needs-action'),
+      evidence('Coverage', coverage === undefined ? 'N/A' : `${coverage.toFixed(2)}%`, isCoverageReady ? 'ready' : 'needs-action'),
       evidence('Window commits', String(total), total > 0 ? 'ready' : 'needs-action'),
     ],
   })
@@ -462,7 +463,8 @@ function prepareReleasePrimary(input: ActionCenterBuildInput): ActionCenterRecom
   }
 
   const coverage = input.ticketCoverage?.coverage_percentage
-  if (coverage !== undefined && coverage < 85) {
+  const hasTraceabilityWindow = (input.ticketCoverage?.total_commits ?? 0) > 0
+  if (coverage === undefined || !hasTraceabilityWindow || coverage < 85) {
     return traceabilityRecommendation(input)
   }
 

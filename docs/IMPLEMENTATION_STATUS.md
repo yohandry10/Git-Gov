@@ -20,6 +20,8 @@ PR: `#204 - product(KAN-69): add guided Action Center workspace`.
 Main commit: `aa7e352 product(KAN-69): add guided action center workspace (#204)`.
 Post-merge checks passed on `main`: `CI` run `27086413044`, `Release Readiness Gate` run `27086413043`, `Secret Scan` run `27086413053`, `Public Naming Guard` run `27086413041`, `SonarQube Governance (Non-Blocking)` run `27086413042`, `Quality Gate Policy Matrix (Optional)` run `27086413040`, `Governance Correlation Smoke (Optional)` run `27086413050`, and `Desktop Updater Readiness (Optional)` run `27086413038`.
 
+Verification follow-up: `docs/reports/enterprise-action-center-verification-2026-06-07.md` records the product/infrastructure Q/A review. It fixed release prep so missing or empty Jira coverage stays conservative before Evidence Packet/release decision guidance, and it avoids known-forbidden admin-only adoption-profile/checklist reads for non-admin users. Follow-up validation passed focused Action Center helper tests (`8` tests), full frontend tests (`304` tests in `26` files), typecheck, lint, build, and local Vite HTTP smoke for `/action-center`.
+
 ## Documentation Reality Audit - 2026-05-02
 
 `KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, `KAN-74` completed the narrow CI helper/runtime follow-up from that audit, and `KAN-75` completed the remaining public web, roadmap/context, and stale public-claim cleanup phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.

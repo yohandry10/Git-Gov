@@ -59,7 +59,7 @@ The helper ranks the primary action through explicit rules:
 - provider configuration before provider evidence.
 - provider evidence before onboarding completion.
 - pipeline health before release approval.
-- Jira traceability before release evidence confidence.
+- Jira traceability before release evidence confidence, including missing or empty coverage windows.
 - Evidence Packet review before release decision recording.
 - readiness/remediation export when evidence export is requested before onboarding is ready.
 
@@ -72,19 +72,29 @@ The helper ranks the primary action through explicit rules:
 - No customer repository is mutated.
 - No release gate defaults are changed.
 - AI is linked only as an explanation surface; the Action Center recommendation remains deterministic.
+- Follow-up verification avoids known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
 
 ## Validation
 
 Local validation:
 
 - `npm --prefix gitgov run typecheck` - passed.
-- `npm --prefix gitgov run test -- --run src/test/components/action-center-helpers.test.ts` - passed, `6` tests.
-- `npm --prefix gitgov run test -- --run` - passed, `302` tests in `26` files.
+- `npm --prefix gitgov run test -- --run src/test/components/action-center-helpers.test.ts` - passed, `8` tests after follow-up regression coverage.
+- `npm --prefix gitgov run test -- --run` - passed, `304` tests in `26` files after follow-up regression coverage.
 - `npm --prefix gitgov run lint` - passed.
 - `npm --prefix gitgov run build` - passed. Vite reported the pre-existing large chunk warning; no KAN-69 build failure.
 - `git diff --check` - passed.
 - `.\scripts\security\publication_guard.ps1` - passed.
 - Browser smoke at `http://127.0.0.1:5173/action-center` - Vite served the app and console had no errors. The browser showed the expected `Requiere GitGov Desktop` gate because the full desktop UI requires Tauri runtime APIs.
+
+## Follow-up Verification Findings
+
+The post-implementation product/infrastructure review found two fixable issues:
+
+- Release prep skipped Jira traceability when ticket coverage was not loaded, allowing a complete Evidence Packet to appear before traceability confidence. The helper now treats missing or empty coverage as `needs-action`.
+- The Action Center attempted admin-only adoption-profile/checklist reads for non-admin users. The UI now refreshes general evidence for every connected role, but loads those admin-only resources only when `userRole === 'Admin'`.
+
+Report: `docs/reports/enterprise-action-center-verification-2026-06-07.md`.
 
 Post-merge validation:
 
