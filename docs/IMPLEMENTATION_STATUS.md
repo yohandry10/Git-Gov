@@ -4,7 +4,7 @@ Updated: 2026-06-07
 
 ## KAN-69 Product UX Implementation - 2026-06-07
 
-`KAN-69 - Enterprise Action Center guided UX` is the active product implementation after the documentation reality audit.
+`KAN-69 - Enterprise Action Center guided UX` is completed.
 
 - Adds a dedicated desktop route at `/action-center`.
 - Adds a sidebar `Action Center` navigation item.
@@ -16,12 +16,15 @@ Updated: 2026-06-07
 
 Design: `docs/design/enterprise-action-center-guided-ux.md`.
 Report: `docs/reports/enterprise-action-center-guided-ux-2026-06-07.md`.
+PR: `#204 - product(KAN-69): add guided Action Center workspace`.
+Main commit: `aa7e352 product(KAN-69): add guided action center workspace (#204)`.
+Post-merge checks passed on `main`: `CI` run `27086413044`, `Release Readiness Gate` run `27086413043`, `Secret Scan` run `27086413053`, `Public Naming Guard` run `27086413041`, `SonarQube Governance (Non-Blocking)` run `27086413042`, `Quality Gate Policy Matrix (Optional)` run `27086413040`, `Governance Correlation Smoke (Optional)` run `27086413050`, and `Desktop Updater Readiness (Optional)` run `27086413038`.
 
 ## Documentation Reality Audit - 2026-05-02
 
 `KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, `KAN-74` completed the narrow CI helper/runtime follow-up from that audit, and `KAN-75` completed the remaining public web, roadmap/context, and stale public-claim cleanup phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
-- `KAN-69 - Enterprise Action Center guided UX` is no longer pending; it is the active product/UX implementation after `KAN-68` and the documentation audit track.
+- `KAN-69 - Enterprise Action Center guided UX` is no longer pending; it is completed after `KAN-68` and the documentation audit track.
 - Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`, which aligned branch-protection helper defaults with live required checks and replaced `gitleaks/gitleaks-action@v2` with direct Gitleaks CLI execution.
 - Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`, which reconciled public docs and content architecture notes with implemented Jira, governance, Render production, risk-outcome, pricing, metadata, and web runtime facts when `KAN-69` was still pending. PR `#200` merged as `b393a82`; post-merge `CI` run `25265387894` and `Release Readiness Gate` run `25265387888` passed.
 - The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
