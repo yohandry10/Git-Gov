@@ -166,6 +166,47 @@ describe('action-center-helpers', () => {
     expect(guidance.primary.confidence).toBe('high')
   })
 
+  it('keeps release prep conservative when Jira traceability is not loaded', () => {
+    const guidance = buildActionCenterGuidance(makeInput({
+      goal: 'prepare-release',
+      pipeline: { total_7d: 10, success_7d: 10, failure_7d: 0 },
+      ticketCoverage: null,
+      evidencePacket: {
+        subject: 'KAN-69',
+        content_hash: 'c'.repeat(64),
+        completeness: {
+          ticket_found: true,
+          commits: 2,
+          pull_requests: 1,
+          pipelines: 1,
+          quality_gates: 1,
+          missing: [],
+        },
+      },
+    }))
+
+    expect(guidance.primary.id).toBe('repair-traceability-coverage')
+    expect(guidance.primary.status).toBe('needs-action')
+    expect(guidance.primary.confidence).toBe('low')
+  })
+
+  it('does not treat an empty traceability window as release-ready', () => {
+    const guidance = buildActionCenterGuidance(makeInput({
+      goal: 'prepare-release',
+      pipeline: { total_7d: 10, success_7d: 10, failure_7d: 0 },
+      ticketCoverage: {
+        total_commits: 0,
+        commits_with_ticket: 0,
+        coverage_percentage: 100,
+        commits_without_ticket: [],
+        tickets_without_commits: [],
+      },
+    }))
+
+    expect(guidance.primary.id).toBe('repair-traceability-coverage')
+    expect(guidance.primary.status).toBe('needs-action')
+  })
+
   it('marks a complete current Evidence Packet as ready for export review', () => {
     const guidance = buildActionCenterGuidance(makeInput({
       goal: 'export-evidence',

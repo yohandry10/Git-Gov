@@ -65,7 +65,7 @@ For release prep:
 
 1. Fix an invalid adoption profile first.
 2. Review pipeline health when recent CI evidence is missing or weak.
-3. Repair Jira traceability when coverage is below the release confidence threshold.
+3. Repair Jira traceability when coverage is missing, empty, or below the release confidence threshold.
 4. Generate or review an Evidence Packet.
 5. Record the release decision with the packet hash.
 
@@ -96,6 +96,8 @@ KAN-69 adds:
   - Release Approvals.
   - Governance Copilot.
 - Documentation and report updates.
+
+Follow-up verification keeps release guidance conservative when Jira ticket coverage is not loaded and avoids admin-only adoption-profile/checklist reads for non-admin users. Non-admin users can still see advisory guidance, but the UI does not issue known-forbidden admin reads just to build that guidance.
 
 KAN-69 does not add:
 
