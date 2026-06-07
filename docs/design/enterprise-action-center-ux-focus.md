@@ -1,6 +1,6 @@
 # KAN-68 Enterprise Action Center UX Focus
 
-Updated: 2026-05-02
+Updated: 2026-06-07
 
 ## Decision
 
@@ -147,16 +147,21 @@ For the next stage, do not make these default goals:
 
 ## Implementation Shape For KAN-69
 
-If the next session starts KAN-69, start from the dashboard.
+KAN-69 should start from a dedicated product space, not from another dashboard section.
 
 Preferred product shape:
 
-- Add an `Action Center` section to the Enterprise Adoption dashboard.
+- Add an `Action Center` route at `/action-center`.
+- Add a sidebar entry so the Action Center is a first-class product surface.
+- Keep the Workspace dashboard focused on file review, CLI, pipeline visualization, and commit/push work.
+- Keep the Control Plane dashboard as the detailed evidence/admin surface.
 - Compute a small set of recommended next actions from existing profile, provider health, workflow pack, readiness, remediation, and checklist state.
 - Render status in plain language.
-- Provide buttons that call existing local/dashboard actions where available.
+- Provide deep links into existing local/dashboard actions where available.
 - Keep all external mutations opt-in and reviewed.
 - Do not introduce new enforcement defaults.
+
+Historical note: the first KAN-68 draft suggested a dashboard-first Action Center inside the Enterprise Adoption area. That placement is now superseded. The current product decision is a dedicated Action Center view that reuses Enterprise Adoption, Evidence Packet, Release Approval, Workspace, and Copilot surfaces as destinations.
 
 Suggested first version action states:
 

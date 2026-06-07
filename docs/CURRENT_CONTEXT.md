@@ -1,14 +1,14 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-05-02
-Ticket: `KAN-76` completed
+Updated: 2026-06-07
+Ticket: `KAN-69` in progress
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Expected branch before new work: `main`.
+- Active branch: `product/KAN-69-action-center-guided-workspace`.
 - Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, handoff refresh PR `#194` merged as `2ab821e`, and stable wording PR `#195` merged as `0ccef26`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
@@ -61,7 +61,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
 - Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
 - Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
-- Pending product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
+- Active product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
 - Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
 - Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
@@ -69,10 +69,11 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`.
 - Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`.
 - Latest completed follow-up: `KAN-76 - Public agent documentation visibility map`.
-- `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, `KAN-74`, and `KAN-75` are documentation/CI hygiene follow-ups. They audit living documentation against actual repository state and keep `KAN-69` pending as the guided Action Center product work.
+- `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, `KAN-74`, and `KAN-75` were documentation/CI hygiene follow-ups. They audited living documentation against actual repository state before returning to `KAN-69`.
 - `KAN-75` scope: public web docs, roadmap/context/product-state docs, and systematic cleanup of stale public claims that were not covered by the backend/API, Desktop/dashboard, or workflows/scripts/ops audit phases.
 - `KAN-76` scope: publish a sanitized public agent-readable context bridge so external models can understand current product state without force-adding restricted forensic/strategy docs.
-- Recommended next after `KAN-76`: return to `KAN-69 - Enterprise Action Center guided UX` unless there is a specific stale-docs defect with a bounded target.
+- Current KAN-69 implementation shape: dedicated `/action-center` desktop route, sidebar navigation entry, deterministic `Goal + Evidence + Permission` recommendations, and deep links into existing Control Plane/Workspace surfaces. It is not another panel inside Workspace or Enterprise Adoption.
+- Current KAN-69 local validation: `npm --prefix gitgov run typecheck`, focused Action Center helper tests, full frontend tests (`302` tests), `npm --prefix gitgov run lint`, `npm --prefix gitgov run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. Browser smoke against Vite had no console errors and showed the expected GitGov Desktop gate outside Tauri.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
@@ -1607,12 +1608,16 @@ Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=go
   - accept new work when it reduces onboarding steps or makes the next action obvious.
   - accept new work when it fixes a real bug, confirmed vulnerability, or production risk.
   - defer work that only adds another standalone artifact chain without improving UX or risk posture.
-- KAN-69 default shape:
-  - dashboard-first Action Center inside the Enterprise Adoption area.
+- KAN-69 implementation shape:
+  - dedicated `/action-center` desktop route with sidebar navigation.
+  - deterministic `Goal + Evidence + Permission` recommendation helper.
+  - primary recommendation plus related alternatives.
+  - deep links to Enterprise Adoption, Evidence Packet, Release Approval, Governance Copilot, and Workspace surfaces.
   - reuse existing adoption profile, provider health, workflow template, remote PR, readiness, remediation, checklist tracking, release governance, and copilot evidence.
-  - show current onboarding state, next recommended action, why it matters, and one primary button.
+  - show current goal, state, next recommended action, why it matters, supporting evidence, permission, and alternatives.
   - keep provider/customer repository mutations explicit, reviewed, and opt-in.
   - keep release enforcement, quorum, and multi-approver rules optional and never default.
+  - Historical KAN-68 wording that suggested a dashboard-first Enterprise Adoption section is superseded.
 - Resume instruction:
   - do not continue the KAN-61 through KAN-67 hardening chain unless there is a real security bug or production risk.
   - start the next product discussion from: `How do we make the existing GitGov capabilities obvious and useful to a first customer?`

@@ -227,7 +227,7 @@ export function ReleaseApprovalPanel() {
   }
 
   return (
-    <section className="glass-panel p-5">
+    <section id="release-approvals" className="glass-panel p-5 scroll-mt-4">
       <div className="card-header mb-4">
         <div>
           <div className="flex items-center gap-2">

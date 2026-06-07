@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useRepoStore } from '@/store/useRepoStore'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -14,6 +15,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const location = useLocation()
   const { user, authStep, isLoading, isPinEnabled, pinUnlocked } = useAuthStore()
   const { repoPath } = useRepoStore()
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
@@ -37,6 +39,33 @@ export function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => {
     refreshChatMessagesForActiveUser()
   }, [user?.login, refreshChatMessagesForActiveUser])
+
+  useEffect(() => {
+    if (!location.hash) return
+    const targetId = decodeURIComponent(location.hash.slice(1))
+    let cancelled = false
+    let attempts = 0
+    let timeoutId: number | undefined
+
+    const scrollToTarget = () => {
+      if (cancelled) return
+      const target = document.getElementById(targetId)
+      if (target) {
+        target.scrollIntoView({ block: 'start' })
+        return
+      }
+      attempts += 1
+      if (attempts <= 8) {
+        timeoutId = window.setTimeout(scrollToTarget, 100)
+      }
+    }
+
+    timeoutId = window.setTimeout(scrollToTarget, 0)
+    return () => {
+      cancelled = true
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    }
+  }, [location.hash, location.pathname])
 
   if (isLoading) {
     return (
