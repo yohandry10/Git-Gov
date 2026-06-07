@@ -54,7 +54,7 @@ export function EvidencePacketPanel() {
   const packetStatus = completeness ? statusLabel(completeness.missing) : 'Sin generar'
 
   return (
-    <div className="glass-panel p-5">
+    <div id="evidence-packet" className="glass-panel p-5 scroll-mt-4">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <FileCheck2 size={14} className="text-surface-400 shrink-0" />

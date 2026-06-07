@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
-Updated: 2026-05-03
-Ticket: `KAN-76`
+Updated: 2026-06-07
+Ticket: `KAN-69`
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -16,7 +16,7 @@ The current direction is product/UX consolidation:
 - make GitGov easier to use.
 - package existing capabilities into a guided experience.
 - tell the operator what to do next instead of showing another disconnected report.
-- keep `KAN-69 - Enterprise Action Center guided UX` pending as the next product work.
+- deliver `KAN-69 - Enterprise Action Center guided UX` as the next product work.
 
 The product should not become an "AWS 2.0" style maze of separate surfaces. The next valuable work is a guided Action Center that reuses what already exists.
 
@@ -52,7 +52,7 @@ Current non-negotiable decisions:
 - Local SonarQube is the selected Sonar runtime for this personal repository.
 - Jenkins authenticated API access is the normal agent path.
 - OpenAPI remains intentionally partial and is not a product blocker.
-- `KAN-69 - Enterprise Action Center guided UX` is pending as product/UX work.
+- `KAN-69 - Enterprise Action Center guided UX` is implemented as a dedicated `/action-center` desktop route, not as another panel inside the crowded dashboard surfaces.
 - Restricted forensic/strategy docs stay ignored; public agent context lives here.
 
 ## How To Read The Repo
@@ -110,15 +110,17 @@ The external report is useful as directional product strategy, not as the source
 
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
-## Recommended Next Work
+## Current Product Work
 
-Return to `KAN-69 - Enterprise Action Center guided UX`.
+`KAN-69 - Enterprise Action Center guided UX` packages existing GitGov capabilities into a first-class guided surface.
 
 Recommended product shape:
 
-- Dashboard-first Action Center inside the existing Enterprise Adoption area.
+- Dedicated Action Center route at `/action-center`.
 - Reuse adoption profile, provider health, workflow templates, remote workflow readiness, onboarding readiness, remediation, checklist tracking, release governance, evidence packets, and copilot evidence.
 - Show current state, next recommended action, why it matters, and one primary action.
+- Keep recommendations deterministic, advisory, and non-blocking.
+- Treat persona/lens selection as presentation context, not authorization.
 - Avoid creating another standalone report chain unless it directly improves the guided workflow.
 
 Non-goals for the next phase:

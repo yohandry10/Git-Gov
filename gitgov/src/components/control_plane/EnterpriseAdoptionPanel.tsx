@@ -382,7 +382,7 @@ export function EnterpriseAdoptionPanel() {
   }
 
   return (
-    <section className="glass-panel p-5">
+    <section id="enterprise-adoption" className="glass-panel p-5 scroll-mt-4">
       <div className="card-header mb-4">
         <div>
           <div className="flex items-center gap-2">

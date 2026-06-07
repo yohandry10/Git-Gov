@@ -4,6 +4,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { AuditPage } from '@/pages/AuditPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ControlPlanePage } from '@/pages/ControlPlanePage'
+import { ActionCenterPage } from '@/pages/ActionCenterPage'
 import { HelpPage } from '@/pages/HelpPage'
 import { AlertCircle } from 'lucide-react'
 
@@ -87,6 +88,19 @@ const appRouter = createBrowserRouter([
     element: (
       <MainLayout>
         <ControlPlanePage />
+      </MainLayout>
+    ),
+    errorElement: (
+      <MainLayout>
+        <RouteErrorPage />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/action-center',
+    element: (
+      <MainLayout>
+        <ActionCenterPage />
       </MainLayout>
     ),
     errorElement: (

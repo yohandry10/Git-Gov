@@ -2,6 +2,8 @@
 
 Updated: 2026-05-02
 
+Superseded placement note: this KAN-68 report recorded the original product direction before the KAN-69 implementation discussion. Its dashboard-first placement recommendation is historical. Current KAN-69 implementation uses a dedicated `/action-center` desktop route and links into existing Control Plane/Workspace surfaces.
+
 ## Summary
 
 KAN-68 documents the product decision to stop expanding GitGov through endless standalone features by default.
@@ -62,7 +64,7 @@ Candidate:
 KAN-69 - Enterprise Action Center guided UX
 ```
 
-Scope should be dashboard-first:
+Original scope note, now superseded:
 
 - Add an Action Center section to the Enterprise Adoption dashboard.
 - Reuse existing profile/provider/readiness/remediation/checklist data.
@@ -70,6 +72,8 @@ Scope should be dashboard-first:
 - Provide buttons for existing actions.
 - Keep provider/customer repository mutations opt-in and reviewed.
 - Keep release enforcement and quorum optional, never default.
+
+Current KAN-69 scope uses a dedicated `/action-center` route instead of adding another section to the Enterprise Adoption dashboard.
 
 ## Validation
 

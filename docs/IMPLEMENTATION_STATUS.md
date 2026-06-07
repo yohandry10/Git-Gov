@@ -1,14 +1,29 @@
 # GitGov Implementation Status
 
-Updated: 2026-05-02
+Updated: 2026-06-07
+
+## KAN-69 Product UX Implementation - 2026-06-07
+
+`KAN-69 - Enterprise Action Center guided UX` is the active product implementation after the documentation reality audit.
+
+- Adds a dedicated desktop route at `/action-center`.
+- Adds a sidebar `Action Center` navigation item.
+- Uses deterministic `Goal + Evidence + Permission` rules to show one primary recommendation plus alternatives.
+- Reuses existing Control Plane and Workspace workflows through deep links instead of duplicating dashboard panels.
+- Keeps recommendations advisory, non-blocking, and explainable from loaded evidence.
+- Keeps AI as an explanation destination only; the Action Center recommendation is not LLM-driven.
+- Does not add backend endpoints, provider mutations, customer repository mutations, release blocking defaults, SonarCloud, Jenkins trigger-only setup, or OpenAPI/SDK work.
+
+Design: `docs/design/enterprise-action-center-guided-ux.md`.
+Report: `docs/reports/enterprise-action-center-guided-ux-2026-06-07.md`.
 
 ## Documentation Reality Audit - 2026-05-02
 
 `KAN-70` started the documentation cleanup track, `KAN-71` completed the backend/API/schema audit phase, `KAN-72` completed the Desktop/dashboard audit phase, `KAN-73` completed the CI/workflows/release automation audit phase, `KAN-74` completed the narrow CI helper/runtime follow-up from that audit, and `KAN-75` completed the remaining public web, roadmap/context, and stale public-claim cleanup phase. The purpose is to update living documentation against the actual repository state in phases, not to add product functionality.
 
-- `KAN-69 - Enterprise Action Center guided UX` remains pending as the next product/UX work after `KAN-68`.
+- `KAN-69 - Enterprise Action Center guided UX` is no longer pending; it is the active product/UX implementation after `KAN-68` and the documentation audit track.
 - Latest completed follow-up: `KAN-74 - CI helper/runtime follow-up`, which aligned branch-protection helper defaults with live required checks and replaced `gitleaks/gitleaks-action@v2` with direct Gitleaks CLI execution.
-- Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`, which reconciled public docs and content architecture notes with implemented Jira, governance, Render production, risk-outcome, pricing, metadata, and web runtime facts while keeping `KAN-69` pending. PR `#200` merged as `b393a82`; post-merge `CI` run `25265387894` and `Release Readiness Gate` run `25265387888` passed.
+- Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`, which reconciled public docs and content architecture notes with implemented Jira, governance, Render production, risk-outcome, pricing, metadata, and web runtime facts when `KAN-69` was still pending. PR `#200` merged as `b393a82`; post-merge `CI` run `25265387894` and `Release Readiness Gate` run `25265387888` passed.
 - The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
 - CI/workflow docs were checked against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and live GitHub branch protection metadata; verified facts include `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, `28` artifact-producing workflows, and `6` strict required checks on `main`.
 - Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
@@ -668,7 +683,7 @@ The security review did not create a new critical/high implementation blocker. T
 2. Vercel AI SDK Copilot.
    - Goal: explain GitGov evidence in plain language and guide operators through risk, readiness, blockers, tickets, pipelines, findings, and approvals.
    - Needed product surfaces: tool-backed answers over GitGov evidence, cited sources, secret-safe output, and clear separation between confirmed issues, expected findings, and accepted risks.
-   - Current state: KAN-38 through KAN-42 implemented the first governance copilot, dashboard UI, AI mode validation, production activation, and validation enforcement. `KAN-69` remains pending because the next need is guided Action Center UX that tells the user what to do next, not another standalone copilot feature.
+   - Current state: KAN-38 through KAN-42 implemented the first governance copilot, dashboard UI, AI mode validation, production activation, and validation enforcement. `KAN-69` now implements the guided Action Center UX so the copilot remains an explanation surface, not another standalone decision-maker.
 3. KAN-28 vulnerability trend enforcement.
    - Goal: convert the KAN-27 trend from informational evidence into an automated gate that fails when failures appear, findings increase, or the latest review artifact is missing/expired.
    - Current state: implemented through PR `#106`; first manual enforcement workflow run `25160194313` passed and uploaded artifact `product-vulnerability-review-trend-enforcement` ID `6727810243`.
