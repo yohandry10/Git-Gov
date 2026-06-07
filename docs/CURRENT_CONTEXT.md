@@ -1,14 +1,14 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-07
-Ticket: `KAN-69` in progress
+Ticket: `KAN-69` completed
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Active branch: `product/KAN-69-action-center-guided-workspace`.
+- Expected branch before new work: `main`.
 - Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, handoff refresh PR `#194` merged as `2ab821e`, and stable wording PR `#195` merged as `0ccef26`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
@@ -61,7 +61,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Latest completed follow-up: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
 - Latest completed follow-up: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifact freshness`.
 - Latest completed follow-up: `KAN-68 - Document Enterprise Action Center UX focus`.
-- Active product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
+- Latest completed product/UX work: `KAN-69 - Enterprise Action Center guided UX`.
 - Latest completed follow-up: `KAN-70 - Documentation reality audit and stale docs cleanup`.
 - Latest completed follow-up: `KAN-71 - Backend/API/schema documentation reality audit`.
 - Latest completed follow-up: `KAN-72 - Desktop/dashboard documentation reality audit`.
@@ -72,8 +72,11 @@ Read this file first when resuming work. It is the compact operational handoff f
 - `KAN-70`, `KAN-71`, `KAN-72`, `KAN-73`, `KAN-74`, and `KAN-75` were documentation/CI hygiene follow-ups. They audited living documentation against actual repository state before returning to `KAN-69`.
 - `KAN-75` scope: public web docs, roadmap/context/product-state docs, and systematic cleanup of stale public claims that were not covered by the backend/API, Desktop/dashboard, or workflows/scripts/ops audit phases.
 - `KAN-76` scope: publish a sanitized public agent-readable context bridge so external models can understand current product state without force-adding restricted forensic/strategy docs.
-- Current KAN-69 implementation shape: dedicated `/action-center` desktop route, sidebar navigation entry, deterministic `Goal + Evidence + Permission` recommendations, and deep links into existing Control Plane/Workspace surfaces. It is not another panel inside Workspace or Enterprise Adoption.
-- Current KAN-69 local validation: `npm --prefix gitgov run typecheck`, focused Action Center helper tests, full frontend tests (`302` tests), `npm --prefix gitgov run lint`, `npm --prefix gitgov run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. Browser smoke against Vite had no console errors and showed the expected GitGov Desktop gate outside Tauri.
+- KAN-69 implementation PR: `#204 - product(KAN-69): add guided Action Center workspace`.
+- KAN-69 implementation commit on main: `aa7e352 product(KAN-69): add guided action center workspace (#204)`.
+- KAN-69 implementation shape: dedicated `/action-center` desktop route, sidebar navigation entry, deterministic `Goal + Evidence + Permission` recommendations, and deep links into existing Control Plane/Workspace surfaces. It is not another panel inside Workspace or Enterprise Adoption.
+- KAN-69 local validation: `npm --prefix gitgov run typecheck`, focused Action Center helper tests, full frontend tests (`302` tests), `npm --prefix gitgov run lint`, `npm --prefix gitgov run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. Browser smoke against Vite had no console errors and showed the expected GitGov Desktop gate outside Tauri.
+- KAN-69 post-merge checks on `main` commit `aa7e352` passed: `CI` run `27086413044`, `Release Readiness Gate` run `27086413043`, `Secret Scan` run `27086413053`, `Public Naming Guard` run `27086413041`, `SonarQube Governance (Non-Blocking)` run `27086413042`, `Quality Gate Policy Matrix (Optional)` run `27086413040`, `Governance Correlation Smoke (Optional)` run `27086413050`, and `Desktop Updater Readiness (Optional)` run `27086413038`.
 - Any future branch, commit, and PR title must include the relevant Jira ticket ID.
 
 ## Latest Verified GitHub Checks
