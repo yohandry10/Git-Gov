@@ -3,6 +3,8 @@
 Date: 2026-06-07
 Ticket: `KAN-69`
 Scope: product, business logic, security, infrastructure, maintainability
+PR: `#206 - fix(KAN-69): harden Action Center verification logic`
+Main commit: `8a55a6d fix(KAN-69): harden action center verification logic (#206)`
 
 ## Baseline
 
@@ -87,6 +89,7 @@ Fix: the UI still refreshes role-appropriate evidence for every connected user, 
 - `git log -1 --oneline main` - `30fa716 docs(KAN-69): record action center merge (#205)`.
 - PR `#204` - merged; status checks successful.
 - PR `#205` - merged; status checks successful.
+- PR `#206` - merged; status checks successful before and after merge.
 - `npm --prefix gitgov run test -- --run src/test/components/action-center-helpers.test.ts` - passed, `8` tests.
 - `npm --prefix gitgov run typecheck` - passed.
 - `npm --prefix gitgov run test -- --run` - passed, `304` tests in `26` files.
@@ -95,6 +98,7 @@ Fix: the UI still refreshes role-appropriate evidence for every connected user, 
 - `Invoke-WebRequest http://127.0.0.1:5173/action-center` - HTTP `200` from the existing local Vite server.
 - `git diff --check` - passed.
 - `.\scripts\security\publication_guard.ps1` - passed on branch `product/KAN-69-action-center-verification-fixes`.
+- Post-merge checks on `main` commit `8a55a6d` - passed: `CI` run `27100640858`, `Release Readiness Gate` run `27100640831`, `Secret Scan` run `27100640840`, `Public Naming Guard` run `27100640856`, `SonarQube Governance (Non-Blocking)` run `27100640837`, `Quality Gate Policy Matrix (Optional)` run `27100640835`, `Governance Correlation Smoke (Optional)` run `27100640862`, and `Desktop Updater Readiness (Optional)` run `27100640864`.
 
 ## Residual Risk
 
