@@ -53,7 +53,7 @@ Current non-negotiable decisions:
 - Jenkins authenticated API access is the normal agent path.
 - OpenAPI remains intentionally partial and is not a product blocker.
 - `KAN-69 - Enterprise Action Center guided UX` is implemented as a dedicated `/action-center` desktop route, not as another panel inside the crowded dashboard surfaces.
-- KAN-69 follow-up verification keeps release guidance conservative when Jira coverage is missing or empty, and prevents known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
+- KAN-69 follow-up verification merged through PR `#206` as `8a55a6d`; it keeps release guidance conservative when Jira coverage is missing or empty, and prevents known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
 - Restricted forensic/strategy docs stay ignored; public agent context lives here.
 
 ## How To Read The Repo
