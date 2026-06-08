@@ -186,7 +186,7 @@ struct ShellSession {
 struct NativeTerminalSession {
     master: Arc<Mutex<Box<dyn portable_pty::MasterPty + Send>>>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
-    child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
+    killer: Arc<Mutex<Box<dyn portable_pty::ChildKiller + Send + Sync>>>,
 }
 
 #[derive(Default)]
@@ -204,6 +204,61 @@ fn is_command_allowed(command: &str) -> bool {
     DEFAULT_ALLOWED_PREFIXES
         .iter()
         .any(|prefix| trimmed == *prefix || trimmed.starts_with(&format!("{} ", prefix)))
+}
+
+fn split_command_line(command: &str) -> Result<Vec<String>, String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut quote: Option<char> = None;
+    let mut token_started = false;
+    let mut chars = command.trim().chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        match quote {
+            Some(active_quote) => {
+                if ch == active_quote {
+                    quote = None;
+                    token_started = true;
+                } else if active_quote == '"' && ch == '\\' {
+                    match chars.peek().copied() {
+                        Some('"') | Some('\\') => {
+                            if let Some(next) = chars.next() {
+                                current.push(next);
+                            }
+                        }
+                        _ => current.push(ch),
+                    }
+                    token_started = true;
+                } else {
+                    current.push(ch);
+                    token_started = true;
+                }
+            }
+            None => {
+                if ch == '"' || ch == '\'' {
+                    quote = Some(ch);
+                    token_started = true;
+                } else if ch.is_whitespace() {
+                    if token_started {
+                        args.push(std::mem::take(&mut current));
+                        token_started = false;
+                    }
+                } else {
+                    current.push(ch);
+                    token_started = true;
+                }
+            }
+        }
+    }
+
+    if let Some(active_quote) = quote {
+        return Err(format!("Unclosed {} quote in command", active_quote));
+    }
+    if token_started {
+        args.push(current);
+    }
+
+    Ok(args)
 }
 
 fn env_flag_enabled(var_name: &str, default_value: bool) -> bool {
@@ -262,7 +317,7 @@ fn parse_shell_exit_marker(text: &str) -> Option<(String, i32)> {
 #[cfg(target_os = "windows")]
 fn wrap_shell_command(command: &str, command_id: &str) -> String {
     format!(
-        "& {{ {} }}; $ggEc = if ($null -eq $LASTEXITCODE) {{ 0 }} else {{ [int]$LASTEXITCODE }}; Write-Output \"{}{}:$ggEc\"\n",
+        "& {{ $global:LASTEXITCODE = $null; {} }}; $ggSucceeded = $?; $ggLastExit = $LASTEXITCODE; if ($null -ne $ggLastExit) {{ $ggEc = [int]$ggLastExit }} elseif ($ggSucceeded) {{ $ggEc = 0 }} else {{ $ggEc = 1 }}; Write-Output \"{}{}:$ggEc\"\n",
         command, SHELL_EXIT_MARKER_PREFIX, command_id
     )
 }
@@ -331,11 +386,11 @@ fn build_native_terminal_command(shell: Option<&str>) -> (CommandBuilder, String
 }
 
 fn spawn_safe_child(command: &str, cwd: &str) -> Result<Child, String> {
-    let parts: Vec<&str> = command.split_whitespace().collect();
+    let parts = split_command_line(command)?;
     if parts.is_empty() {
         return Err("Empty command".to_string());
     }
-    let program = parts[0];
+    let program = &parts[0];
     let args = &parts[1..];
     Command::new(program)
         .args(args)
@@ -644,9 +699,13 @@ pub fn cmd_start_shell_session(
     let active_command_id_out = Arc::clone(&active_command_id);
     let session_id_out = session_id.clone();
     let outbox_ref = Arc::clone(&outbox);
+    let stdout_preview_by_cmd = Arc::new(Mutex::new(HashMap::<String, Vec<String>>::new()));
+    let stderr_preview_by_cmd = Arc::new(Mutex::new(HashMap::<String, Vec<String>>::new()));
+    let stdout_preview_out = Arc::clone(&stdout_preview_by_cmd);
+    let stdout_preview_done = Arc::clone(&stdout_preview_by_cmd);
+    let stderr_preview_done = Arc::clone(&stderr_preview_by_cmd);
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
-        let mut stdout_preview_by_cmd: HashMap<String, Vec<String>> = HashMap::new();
         for text in reader.lines().map_while(Result::ok) {
             if let Some((marker_command_id, exit_code)) = parse_shell_exit_marker(&text) {
                 let _ = app_out.emit(
@@ -662,8 +721,15 @@ pub fn cmd_start_shell_session(
                     .ok()
                     .and_then(|mut m| m.remove(&marker_command_id));
                 if let Some(pending_cmd) = pending {
-                    let stdout_preview = stdout_preview_by_cmd
-                        .remove(&marker_command_id)
+                    let stdout_preview = stdout_preview_done
+                        .lock()
+                        .ok()
+                        .and_then(|mut previews| previews.remove(&marker_command_id))
+                        .unwrap_or_default();
+                    let stderr_preview = stderr_preview_done
+                        .lock()
+                        .ok()
+                        .and_then(|mut previews| previews.remove(&marker_command_id))
                         .unwrap_or_default();
                     queue_cli_completion_audit(
                         &outbox_ref,
@@ -671,8 +737,17 @@ pub fn cmd_start_shell_session(
                         &marker_command_id,
                         exit_code,
                         &stdout_preview,
-                        &[],
+                        &stderr_preview,
                     );
+                } else {
+                    let _ = stdout_preview_done
+                        .lock()
+                        .ok()
+                        .and_then(|mut previews| previews.remove(&marker_command_id));
+                    let _ = stderr_preview_done
+                        .lock()
+                        .ok()
+                        .and_then(|mut previews| previews.remove(&marker_command_id));
                 }
                 continue;
             }
@@ -682,11 +757,9 @@ pub fn cmd_start_shell_session(
                 .map(|g| g.clone())
                 .unwrap_or_else(|_| session_id_out.clone());
 
-            stdout_preview_by_cmd
-                .entry(command_id.clone())
-                .or_default()
-                .push(text.clone());
-            if let Some(lines) = stdout_preview_by_cmd.get_mut(&command_id) {
+            if let Ok(mut previews) = stdout_preview_out.lock() {
+                let lines = previews.entry(command_id.clone()).or_default();
+                lines.push(text.clone());
                 if lines.len() > 20 {
                     let overflow = lines.len() - 20;
                     lines.drain(0..overflow);
@@ -707,6 +780,7 @@ pub fn cmd_start_shell_session(
     let app_err = app.clone();
     let active_command_id_err = Arc::clone(&active_command_id);
     let session_id_err = session_id.clone();
+    let stderr_preview_err = Arc::clone(&stderr_preview_by_cmd);
     std::thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for text in reader.lines().map_while(Result::ok) {
@@ -717,6 +791,14 @@ pub fn cmd_start_shell_session(
                 .lock()
                 .map(|g| g.clone())
                 .unwrap_or_else(|_| session_id_err.clone());
+            if let Ok(mut previews) = stderr_preview_err.lock() {
+                let lines = previews.entry(command_id.clone()).or_default();
+                lines.push(text.clone());
+                if lines.len() > 20 {
+                    let overflow = lines.len() - 20;
+                    lines.drain(0..overflow);
+                }
+            }
             let _ = app_err.emit(
                 "gitgov:cli-output",
                 CliOutputEvent {
@@ -785,6 +867,22 @@ pub fn cmd_send_shell_input(
             session.cwd.clone(),
         )
     };
+
+    {
+        let map = pending_commands
+            .lock()
+            .map_err(|_| "Shell pending command lock poisoned".to_string())?;
+        if !map.is_empty() {
+            return Ok(CliShellInputResult {
+                command_id,
+                accepted: false,
+                error: Some(
+                    "Another shell command is still running; wait for it to finish before sending the next command."
+                        .to_string(),
+                ),
+            });
+        }
+    }
 
     let resolved_user_login = request
         .user_login
@@ -938,23 +1036,30 @@ pub fn cmd_start_native_terminal(
         .slave
         .spawn_command(command)
         .map_err(|e| format!("Failed to spawn native terminal shell: {}", e))?;
+    let mut child_killer = child.clone_killer();
 
-    let mut reader = pair
-        .master
-        .try_clone_reader()
-        .map_err(|e| format!("Failed to clone PTY reader: {}", e))?;
-    let writer = pair
-        .master
-        .take_writer()
-        .map_err(|e| format!("Failed to take PTY writer: {}", e))?;
+    let mut reader = match pair.master.try_clone_reader() {
+        Ok(reader) => reader,
+        Err(e) => {
+            let _ = child_killer.kill();
+            return Err(format!("Failed to clone PTY reader: {}", e));
+        }
+    };
+    let writer = match pair.master.take_writer() {
+        Ok(writer) => writer,
+        Err(e) => {
+            let _ = child_killer.kill();
+            return Err(format!("Failed to take PTY writer: {}", e));
+        }
+    };
 
     let session_id = uuid::Uuid::new_v4().to_string();
-    let child_ref = Arc::new(Mutex::new(child));
+    let child_killer = Arc::new(Mutex::new(child_killer));
 
     let session = NativeTerminalSession {
         master: Arc::new(Mutex::new(pair.master)),
         writer: Arc::new(Mutex::new(writer)),
-        child: Arc::clone(&child_ref),
+        killer: Arc::clone(&child_killer),
     };
 
     {
@@ -991,10 +1096,10 @@ pub fn cmd_start_native_terminal(
     let session_exit = session_id.clone();
     let sessions_ref = Arc::clone(&native_manager.sessions);
     std::thread::spawn(move || {
-        let exit_code = child_ref
-            .lock()
+        let mut child = child;
+        let exit_code = child
+            .wait()
             .ok()
-            .and_then(|mut child| child.wait().ok())
             .map(|status| i32::try_from(status.exit_code()).unwrap_or(-1))
             .unwrap_or(-1);
 
@@ -1087,8 +1192,8 @@ pub fn cmd_stop_native_terminal(
     };
 
     if let Some(session) = session {
-        if let Ok(mut child) = session.child.lock() {
-            let _ = child.kill();
+        if let Ok(mut killer) = session.killer.lock() {
+            let _ = killer.kill();
         }
         return Ok(CliNativeTerminalStopResult { stopped: true });
     }
@@ -1239,43 +1344,58 @@ pub fn cmd_execute_cli(
     let command_started_at = Instant::now();
 
     std::thread::spawn(move || {
-        let mut stdout_preview: Vec<String> = Vec::new();
-        let mut stderr_preview: Vec<String> = Vec::new();
+        let stdout_preview = Arc::new(Mutex::new(Vec::<String>::new()));
+        let stderr_preview = Arc::new(Mutex::new(Vec::<String>::new()));
+        let mut stream_handles = Vec::new();
 
         // Stream stdout
         if let Some(out) = stdout {
+            let app_stream = app_clone.clone();
+            let stream_command_id = cmd_id.clone();
+            let preview_ref = Arc::clone(&stdout_preview);
             let reader = BufReader::new(out);
-            for text in reader.lines().map_while(Result::ok) {
-                if stdout_preview.len() < 20 {
-                    stdout_preview.push(text.clone());
+            stream_handles.push(std::thread::spawn(move || {
+                for text in reader.lines().map_while(Result::ok) {
+                    if let Ok(mut preview) = preview_ref.lock() {
+                        if preview.len() < 20 {
+                            preview.push(text.clone());
+                        }
+                    }
+                    let _ = app_stream.emit(
+                        "gitgov:cli-output",
+                        CliOutputEvent {
+                            command_id: stream_command_id.clone(),
+                            line_type: "stdout".to_string(),
+                            text,
+                        },
+                    );
                 }
-                let _ = app_clone.emit(
-                    "gitgov:cli-output",
-                    CliOutputEvent {
-                        command_id: cmd_id.clone(),
-                        line_type: "stdout".to_string(),
-                        text,
-                    },
-                );
-            }
+            }));
         }
 
         // Stream stderr
         if let Some(err) = stderr {
+            let app_stream = app_clone.clone();
+            let stream_command_id = cmd_id.clone();
+            let preview_ref = Arc::clone(&stderr_preview);
             let reader = BufReader::new(err);
-            for text in reader.lines().map_while(Result::ok) {
-                if stderr_preview.len() < 20 {
-                    stderr_preview.push(text.clone());
+            stream_handles.push(std::thread::spawn(move || {
+                for text in reader.lines().map_while(Result::ok) {
+                    if let Ok(mut preview) = preview_ref.lock() {
+                        if preview.len() < 20 {
+                            preview.push(text.clone());
+                        }
+                    }
+                    let _ = app_stream.emit(
+                        "gitgov:cli-output",
+                        CliOutputEvent {
+                            command_id: stream_command_id.clone(),
+                            line_type: "stderr".to_string(),
+                            text,
+                        },
+                    );
                 }
-                let _ = app_clone.emit(
-                    "gitgov:cli-output",
-                    CliOutputEvent {
-                        command_id: cmd_id.clone(),
-                        line_type: "stderr".to_string(),
-                        text,
-                    },
-                );
-            }
+            }));
         }
 
         // Wait for process to finish
@@ -1283,7 +1403,12 @@ pub fn cmd_execute_cli(
             Ok(status) => status.code().unwrap_or(-1),
             Err(_) => -1,
         };
+        for handle in stream_handles {
+            let _ = handle.join();
+        }
         let elapsed_ms = command_started_at.elapsed().as_millis() as i64;
+        let stdout_preview = stdout_preview.lock().map(|v| v.clone()).unwrap_or_default();
+        let stderr_preview = stderr_preview.lock().map(|v| v.clone()).unwrap_or_default();
 
         let _ = app_clone.emit(
             "gitgov:cli-finished",
@@ -1311,6 +1436,7 @@ pub fn cmd_execute_cli(
             "branch": branch_str,
             "exit_code": exit_code,
             "execution_mode": execution_mode_str,
+            "command_id": cmd_id.clone(),
         }));
         if let Ok(repo) = git2::Repository::open(&cwd_str) {
             if let Some(full_name) = super::git_commands::infer_repo_full_name_pub(&repo) {
@@ -1338,7 +1464,7 @@ pub fn cmd_execute_cli(
                     exit_code: Some(exit_code),
                     duration_ms: Some(elapsed_ms),
                     metadata: serde_json::json!({
-                        "command_id": cmd_id,
+                        "command_id": cmd_id.clone(),
                         "execution_mode": execution_mode_str,
                         "stdout_preview": stdout_preview,
                         "stderr_preview": stderr_preview,
@@ -1463,6 +1589,40 @@ mod tests {
     }
 
     #[test]
+    fn split_command_line_preserves_quoted_arguments() {
+        let parts = split_command_line(r#"git commit -m "hello world""#).unwrap();
+
+        assert_eq!(parts, vec!["git", "commit", "-m", "hello world"]);
+    }
+
+    #[test]
+    fn split_command_line_preserves_windows_paths_inside_quotes() {
+        let parts = split_command_line(r#"git -C "C:\Users\PC\Desktop\Git Gov" status"#).unwrap();
+
+        assert_eq!(
+            parts,
+            vec!["git", "-C", r#"C:\Users\PC\Desktop\Git Gov"#, "status"]
+        );
+    }
+
+    #[test]
+    fn split_command_line_preserves_empty_quoted_argument() {
+        let parts = split_command_line(r#"git commit --allow-empty-message -m """#).unwrap();
+
+        assert_eq!(
+            parts,
+            vec!["git", "commit", "--allow-empty-message", "-m", ""]
+        );
+    }
+
+    #[test]
+    fn split_command_line_rejects_unclosed_quote() {
+        let error = split_command_line(r#"git commit -m "unfinished"#).unwrap_err();
+
+        assert!(error.contains("Unclosed"));
+    }
+
+    #[test]
     fn parse_env_flag_value_handles_expected_variants() {
         assert!(parse_env_flag_value("true", false));
         assert!(parse_env_flag_value("  YES  ", false));
@@ -1472,5 +1632,29 @@ mod tests {
         assert!(!parse_env_flag_value("0", true));
         assert!(parse_env_flag_value("invalid", true));
         assert!(!parse_env_flag_value("invalid", false));
+    }
+
+    #[test]
+    fn parse_shell_exit_marker_accepts_valid_marker() {
+        let parsed = parse_shell_exit_marker("__GITGOV_EXIT__:abc-123:7");
+        assert_eq!(parsed, Some(("abc-123".to_string(), 7)));
+    }
+
+    #[test]
+    fn parse_shell_exit_marker_rejects_non_marker_output() {
+        assert_eq!(parse_shell_exit_marker("ordinary command output"), None);
+        assert_eq!(parse_shell_exit_marker("__GITGOV_EXIT__::0"), None);
+        assert_eq!(parse_shell_exit_marker("__GITGOV_EXIT__:abc:nope"), None);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_shell_wrapper_captures_powershell_and_native_exit_status() {
+        let wrapped = wrap_shell_command("Write-Error 'boom'", "cmd-1");
+
+        assert!(wrapped.contains("$global:LASTEXITCODE = $null"));
+        assert!(wrapped.contains("$ggSucceeded = $?"));
+        assert!(wrapped.contains("$ggLastExit = $LASTEXITCODE"));
+        assert!(wrapped.contains("__GITGOV_EXIT__:cmd-1:$ggEc"));
     }
 }

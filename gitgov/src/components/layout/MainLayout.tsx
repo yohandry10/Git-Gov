@@ -18,23 +18,17 @@ export function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation()
   const { user, authStep, isLoading, isPinEnabled, pinUnlocked } = useAuthStore()
   const { repoPath } = useRepoStore()
-  const serverConfig = useControlPlaneStore((s) => s.serverConfig)
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const userRole = useControlPlaneStore((s) => s.userRole)
-  const userOrgId = useControlPlaneStore((s) => s.userOrgId)
   const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
-  const disconnect = useControlPlaneStore((s) => s.disconnect)
   const resetControlPlaneAuthGate = useControlPlaneStore((s) => s.resetControlPlaneAuthGate)
   const refreshChatMessagesForActiveUser = useControlPlaneStore((s) => s.refreshChatMessagesForActiveUser)
 
   useEffect(() => {
     if (!user || authStep !== 'authenticated') {
       resetControlPlaneAuthGate()
-      if (serverConfig || isConnected || userRole) {
-        disconnect()
-      }
     }
-  }, [user, authStep, serverConfig, isConnected, userRole, disconnect, resetControlPlaneAuthGate])
+  }, [user, authStep, resetControlPlaneAuthGate])
 
   useEffect(() => {
     refreshChatMessagesForActiveUser()
@@ -111,7 +105,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     return <PinUnlockScreen />
   }
 
-  const requiresOrgNameForAdminScope = userRole === 'Admin' && Boolean(userOrgId) && !selectedOrgName.trim()
+  const requiresOrgNameForAdminScope = userRole === 'Admin' && !selectedOrgName.trim()
   const requiresControlPlaneAuth = Boolean(
     user &&
     authStep === 'authenticated' &&

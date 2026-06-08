@@ -461,8 +461,9 @@ export function EnterpriseAdoptionPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] gap-4">
-        <div className="space-y-4">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.42fr)] gap-4 items-start">
+          <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="text-[10px] text-surface-500 uppercase tracking-widest">Customer</span>
@@ -673,8 +674,8 @@ export function EnterpriseAdoptionPanel() {
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+          <div className="space-y-4">
+            <div className="rounded border border-white/8 bg-white/[0.03] p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
                 <ClipboardCheck size={13} />
@@ -696,9 +697,36 @@ export function EnterpriseAdoptionPanel() {
             <div className="mt-2 text-[10px] uppercase tracking-widest text-surface-500">
               {onboardingRemediationPlan.action_count} remediation action{onboardingRemediationPlan.action_count === 1 ? '' : 's'}
             </div>
-          </div>
+            </div>
 
-          <div className="space-y-3 rounded border border-white/8 bg-white/[0.03] p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
+                  <Workflow size={13} />
+                  Workflows
+                </div>
+                <div className="mt-2 mono-data text-xl text-surface-100">{pack.workflow_plan.length}</div>
+              </div>
+              <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
+                  <KeyRound size={13} />
+                  Secrets
+                </div>
+                <div className="mt-2 mono-data text-xl text-surface-100">{pack.secrets.length}</div>
+              </div>
+              <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Readiness</div>
+                <div className="mt-2 mono-data text-xl text-surface-100">{readinessTarget}</div>
+              </div>
+              <div className="rounded border border-white/8 bg-white/[0.03] p-3">
+                <div className="text-[10px] uppercase tracking-widest text-surface-500">Trend gate</div>
+                <div className="mt-2 text-xs font-medium text-surface-100">{trendRule}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3 rounded border border-white/8 bg-white/[0.03] p-3">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h3 className="flex items-center gap-2 text-xs font-semibold text-surface-200">
@@ -728,14 +756,14 @@ export function EnterpriseAdoptionPanel() {
             {onboardingGuide.next_step && (
               <div className="rounded border border-brand-500/20 bg-brand-500/8 p-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] uppercase tracking-widest text-brand-200">Next</span>
+                  <span className="text-[10px] uppercase tracking-widest text-brand-200">Next onboarding task</span>
                   <span className="text-[10px] text-surface-500">{onboardingGuide.next_step.owner}</span>
                 </div>
                 <div className="mt-1 text-xs font-medium text-surface-100">{onboardingGuide.next_step.label}</div>
                 <div className="mt-1 text-[11px] leading-5 text-surface-300">{onboardingGuide.next_step.action}</div>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2">
               {onboardingGuide.steps.map((step) => {
                 const trackingItem = trackingItemForStage(step.stage_id)
                 const StepIcon = step.status === 'complete'
@@ -829,31 +857,6 @@ export function EnterpriseAdoptionPanel() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded border border-white/8 bg-white/[0.03] p-3">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
-                <Workflow size={13} />
-                Workflows
-              </div>
-              <div className="mt-2 mono-data text-xl text-surface-100">{pack.workflow_plan.length}</div>
-            </div>
-            <div className="rounded border border-white/8 bg-white/[0.03] p-3">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
-                <KeyRound size={13} />
-                Secrets
-              </div>
-              <div className="mt-2 mono-data text-xl text-surface-100">{pack.secrets.length}</div>
-            </div>
-            <div className="rounded border border-white/8 bg-white/[0.03] p-3">
-              <div className="text-[10px] uppercase tracking-widest text-surface-500">Readiness</div>
-              <div className="mt-2 mono-data text-xl text-surface-100">{readinessTarget}</div>
-            </div>
-            <div className="rounded border border-white/8 bg-white/[0.03] p-3">
-              <div className="text-[10px] uppercase tracking-widest text-surface-500">Trend gate</div>
-              <div className="mt-2 text-xs font-medium text-surface-100">{trendRule}</div>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-xs font-semibold text-surface-200">
@@ -925,7 +928,6 @@ export function EnterpriseAdoptionPanel() {
               )}
             </div>
           </div>
-        </div>
       </div>
     </section>
   )

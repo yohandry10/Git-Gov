@@ -193,8 +193,8 @@ export const translations = {
         es: 'Sin visibilidad organizacional sobre si los equipos siguen prácticas de gobernanza de forma consistente entre proyectos.',
     },
     'roles.vpe.solution': {
-        en: 'Centralized governance dashboard across all teams. Policy compliance metrics without chasing manual reports.',
-        es: 'Dashboard centralizado de gobernanza entre todos los equipos. Métricas de cumplimiento de políticas sin perseguir reportes manuales.',
+        en: 'Governance surfaces organized by evidence, policy, adoption, releases, and copilot. Compliance metrics without chasing manual reports.',
+        es: 'Superficies de gobernanza organizadas por evidencia, políticas, adopción, releases y copilot. Métricas de cumplimiento sin perseguir reportes manuales.',
     },
 
     // ═══ CTA ═══
@@ -317,10 +317,10 @@ export const translations = {
         en: 'Turn workstation, CI, and ticket evidence into release-readiness, risk, and exportable reporting surfaces.',
         es: 'Convierte evidencia de workstation, CI y tickets en superficies de release readiness, riesgo y reportes exportables.',
     },
-    'features.centralized.title': { en: 'Live Compliance Dashboard', es: 'Dashboard de Cumplimiento en Vivo' },
+    'features.centralized.title': { en: 'Governance Evidence Center', es: 'Centro de Evidencia Governance' },
     'features.centralized.desc': {
-        en: 'The Control Plane centralizes pipeline health, ticket coverage, risk outcomes, and export history in one reporting surface.',
-        es: 'El Control Plane centraliza salud de pipelines, cobertura de tickets, risk outcomes e historial de exportación en una sola superficie de reporte.',
+        en: 'Governance organizes pipeline evidence, ticket coverage, release readiness, export history, and evidence gaps by domain instead of forcing them into one overloaded dashboard.',
+        es: 'Governance organiza evidencia de pipelines, cobertura de tickets, release readiness, historial de exportación y brechas de evidencia por dominio, sin meterlo todo en un dashboard sobrecargado.',
     },
     'features.risk.audit.title': { en: 'Append-Only Audit Trails', es: 'Pistas de Auditoría Inmutables' },
     'features.risk.audit.desc': {
@@ -333,10 +333,10 @@ export const translations = {
         es: 'Mapea commits, ejecuciones CI correlacionadas, títulos de PR y comentarios vinculados a PRs a IDs estilo Jira. Expone brechas cuando los cambios no están vinculados a un ticket.',
     },
 
-    'features.dashboard.title': { en: 'Admin Dashboard', es: 'Panel de Administración' },
+    'features.dashboard.title': { en: 'Governance Workspace', es: 'Workspace de Governance' },
     'features.dashboard.desc': {
-        en: 'Built-in dashboard with recent commits, Pipeline Health (7d), Ticket Coverage, Risk Outcomes, Export Panel, and 30-second refresh.',
-        es: 'Panel integrado con commits recientes, Pipeline Health (7d), Ticket Coverage, Risk Outcomes, Export Panel y refresco de 30 segundos.',
+        en: 'Dedicated Governance sections for Evidence, Policy, Adoption, Releases, and Copilot, with Action Center owning the global next step.',
+        es: 'Secciones dedicadas para Evidence, Policy, Adoption, Releases y Copilot, con Action Center como dueño del siguiente paso global.',
     },
     'features.github.title': { en: 'GitHub Webhooks', es: 'Webhooks de GitHub' },
     'features.github.desc': {
@@ -445,8 +445,8 @@ export const translations = {
     },
     'download.side.h3title': { en: 'Control Plane Ready', es: 'Control Plane Listo' },
     'download.side.h3desc': {
-        en: 'Connect to your self-hosted server and access the full governance dashboard instantly.',
-        es: 'Conéctate a tu servidor self-hosted y accede al dashboard de gobernanza completo de inmediato.',
+        en: 'Connect to your Control Plane server and keep connection, API key, role, organization scope, and update settings in one System area.',
+        es: 'Conéctate a tu servidor Control Plane y mantén conexión, API key, rol, alcance de organización y updates en una sola área System.',
     },
     'download.side.h4title': { en: 'Governance Checks', es: 'Verificaciones de Gobernanza' },
     'download.side.h4desc': {

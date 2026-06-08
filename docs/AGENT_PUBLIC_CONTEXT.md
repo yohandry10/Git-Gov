@@ -1,6 +1,6 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-07
+Updated: 2026-06-08
 Ticket: `KAN-69` completed
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
@@ -54,6 +54,16 @@ Current non-negotiable decisions:
 - OpenAPI remains intentionally partial and is not a product blocker.
 - `KAN-69 - Enterprise Action Center guided UX` is implemented as a dedicated `/action-center` desktop route, not as another panel inside the crowded dashboard surfaces.
 - KAN-69 follow-up verification merged through PR `#206` as `8a55a6d`; it keeps release guidance conservative when Jira coverage is missing or empty, and prevents known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
+- KAN-69 Desktop runtime QA is currently in progress on branch `fix/KAN-69-action-center-desktop-qa` after main commit `afa4aa1`. Tracked report: `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
+- Current Desktop QA rules: do not remove useful UI information to fix clipping; fix layout when the issue is visual. Do not restart or relaunch the Tauri app during a user's manual validation session unless explicitly asked.
+- Current Desktop QA information architecture:
+  - `/action-center` is the only owner of the global `Next Action`.
+  - Workspace keeps local execution only: CLI, pipeline visualizer, audit trail, file/commit/push controls, `Next local step`, and gates/blockers without duplicating the global recommendation.
+  - `/control-plane` is no longer a primary sidebar module; it redirects to `/settings#control-plane`.
+  - Settings owns technical Desktop/system configuration. Current tabs are `Preferences`, `Organization`, `Account`, `Repository`, and `System`; `System` merges Control Plane connection/API key/role/scope/transport with Desktop updates.
+  - `/governance` is the operational governance module. It defaults to `Evidence` and has sections `Evidence`, `Policy`, `Adoption`, `Releases`, and `Copilot`; there is no generic Governance Dashboard tab.
+  - Help/FAQ is a full-width operational support page and uses the canonical `https://gitgov.cloud` URL, not the old Vercel app URL.
+  - Settings, primary sidebar, and Governance shell are language-reactive through `i18n`; deeper nested feature panels still need targeted i18n work before claiming full app localization.
 - Restricted forensic/strategy docs stay ignored; public agent context lives here.
 
 ## How To Read The Repo
@@ -118,13 +128,16 @@ Implementation details in that report may be outdated because `KAN-70` through `
 Recommended product shape:
 
 - Dedicated Action Center route at `/action-center`.
-- Reuse adoption profile, provider health, workflow templates, remote workflow readiness, onboarding readiness, remediation, checklist tracking, release governance, evidence packets, and copilot evidence.
+- Reuse adoption profile, provider health, workflow templates, remote workflow readiness, onboarding readiness, remediation, checklist tracking, release governance, evidence packets, and copilot evidence through Governance and Workspace routes instead of duplicating panels inside Action Center.
 - Show current state, next recommended action, why it matters, and one primary action.
 - Keep recommendations deterministic, advisory, and non-blocking.
 - Treat missing or empty Jira coverage as a conservative release-prep signal before Evidence Packet/release decision guidance.
 - Treat persona/lens selection as presentation context, not authorization.
 - Let non-admin users see guidance without issuing admin-only profile/checklist reads.
 - Avoid creating another standalone report chain unless it directly improves the guided workflow.
+- Preserve Workspace dashboard utility: CLI, pipeline visualizer, audit trail, manual commit/push flow, and `Gates / Blockers` context are product surfaces, not disposable decoration. If `Next Action` or another item clips, fix responsive layout, text wrapping, or scroll behavior.
+- Treat Control Plane as configuration, not as an overloaded dashboard. Operational governance belongs in `/governance/*`; Control Plane connection/update settings belong in Settings `System`.
+- Desktop auth should reuse a valid local GitHub session by default. GitHub identifies the operator, while the GitGov API key authorizes Control Plane role/org/evidence. Forced GitHub Device Flow on every launch should remain an explicit hardening mode, not the normal product default.
 
 Non-goals for the next phase:
 

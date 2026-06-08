@@ -1,4 +1,4 @@
-# KAN-39 Governance Copilot Dashboard MVP
+# KAN-39 Governance Copilot UI MVP
 
 Updated: 2026-04-30
 
@@ -6,11 +6,11 @@ Updated: 2026-04-30
 
 KAN-39 turns the KAN-38 server-side copilot route into a usable operator surface inside GitGov Desktop.
 
-The MVP adds an admin dashboard panel that asks governance/readiness questions, sends bounded context to the Vercel AI SDK copilot route, and renders the answer with citations, source statuses, and warnings.
+The MVP adds an operator copilot panel that asks governance/readiness questions, sends bounded context to the Vercel AI SDK copilot route, and renders the answer with citations, source statuses, and warnings.
 
 ## Scope
 
-- Add `GovernanceCopilotPanel` to the admin dashboard.
+- Add `GovernanceCopilotPanel` to Desktop. After the KAN-69 Desktop runtime QA information-architecture decision, this panel belongs in `Governance > Copilot`.
 - Add a Tauri command that calls `POST /api/copilot/governance` from the desktop side.
 - Reuse the configured GitGov API key only as a Bearer token for the copilot route.
 - Keep the copilot endpoint URL out of browser-controlled state.

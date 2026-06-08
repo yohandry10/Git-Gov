@@ -14,7 +14,7 @@ The route is deliberately not an autonomous agent yet. It is an evidence brief g
 
 - Implementation PR `#127` merged on `main` as `9742472`.
 - Production Vercel deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
-- Production route smoke passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance`.
+- Production route smoke passed on the canonical `https://www.gitgov.cloud/api/copilot/governance`; the older `git-gov.vercel.app` alias remains historical validation evidence only.
 - KAN-38 production validation originally returned `mode=fallback` because AI Gateway/OIDC generation was not active. KAN-41 selects direct Google Gemini through `@ai-sdk/google` as the practical production AI path, while preserving fallback when provider generation is unavailable.
 
 ## Route

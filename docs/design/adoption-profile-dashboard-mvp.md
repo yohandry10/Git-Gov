@@ -1,4 +1,4 @@
-# Adoption Profile Dashboard MVP
+# Adoption Profile UI MVP
 
 Updated: 2026-04-30
 
@@ -6,13 +6,13 @@ Ticket: `KAN-30`
 
 ## Goal
 
-Turn the `KAN-29` enterprise adoption pack into a visible dashboard workflow.
+Turn the `KAN-29` enterprise adoption pack into a visible Desktop workflow.
 
 The MVP lets an admin shape a customer adoption profile from the GitGov UI, preview the generated governance plan, and download a secret-safe JSON adoption pack.
 
 ## Scope
 
-Implemented in the admin Control Plane dashboard:
+Originally implemented in the admin Control Plane dashboard. After the KAN-69 Desktop runtime QA information-architecture decision, this operator workflow belongs in `Governance > Adoption`; Control Plane connection settings live in `Settings > System`.
 
 - customer name, repository, default branch, and Jira project key inputs.
 - policy preset selector: `audit-only`, `moderate`, or `strict`.
@@ -36,7 +36,7 @@ The UI blocks download when:
 
 ## Safety
 
-The dashboard pack includes secret names only.
+The generated adoption pack includes secret names only.
 
 It does not:
 
@@ -57,7 +57,7 @@ It does not:
 ## Follow-Ups
 
 1. Persist adoption profiles per tenant/org. Implemented by `KAN-31`.
-2. Add provider health validation. Implemented as a dashboard evidence MVP by `KAN-32`; direct provider credential checks remain future work.
-3. Generate workflow templates for selected repositories. CLI generation implemented by `KAN-33`; dashboard download implemented by `KAN-34`; automatic/reviewed installation remains future work.
+2. Add provider health validation. Implemented as Governance adoption evidence by `KAN-32`; direct provider credential checks remain future work.
+3. Generate workflow templates for selected repositories. CLI generation implemented by `KAN-33`; Desktop pack download implemented by `KAN-34`; automatic/reviewed installation remains future work.
 4. Add formal release approval with approvers, expiration, risk acceptance, and evidence binding.
 5. Build the Vercel AI SDK Copilot over adoption profiles and evidence APIs.

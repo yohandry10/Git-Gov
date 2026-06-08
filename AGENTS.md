@@ -7,6 +7,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Read `docs/CURRENT_CONTEXT.md` first when resuming a paused or transferred session. It is the compact handoff for exact current state, latest commits/PRs, non-negotiable operating decisions, access summary, validation commands, and next steps.
 - Keep `docs/CURRENT_CONTEXT.md` current after major access/configuration/deployment/validation changes.
 - Use `docs/AGENT_PUBLIC_CONTEXT.md` as the safe public context bridge for external agents. Do not force-add restricted forensic/strategy docs just because another agent cannot see ignored local files.
+- During Desktop/UI work, classify the issue before changing behavior: product concept, layout/visual, data/state, performance, or security. If the problem is visual/layout, fix layout. Do not remove useful UI behavior or product information as a shortcut for a visual clipping/spacing bug.
+- Do not restart, kill, or relaunch the Tauri/Desktop app when the user is manually validating a session unless the user explicitly asks for that runtime action. Preserve the user's active manual login/session while investigating.
 
 ## Access
 

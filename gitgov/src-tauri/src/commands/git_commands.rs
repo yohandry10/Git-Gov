@@ -7,7 +7,7 @@ use crate::git::{
 use crate::models::AuditStatus;
 use crate::models::FileChange;
 use crate::outbox::{Outbox, OutboxEvent};
-use git2::Repository;
+use git2::{Config, ConfigLevel, Repository};
 use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
@@ -83,6 +83,50 @@ fn summarize_stage_files_for_event(files: &[String]) -> (Vec<String>, Option<ser
 fn repo_workdir(repo: &Repository) -> Result<&std::path::Path, String> {
     repo.workdir()
         .ok_or_else(|| to_command_error("Repositorio bare no soportado", "GIT_ERROR"))
+}
+
+fn git_config_level_name(level: ConfigLevel) -> &'static str {
+    match level {
+        ConfigLevel::ProgramData => "programdata",
+        ConfigLevel::System => "system",
+        ConfigLevel::XDG => "xdg",
+        ConfigLevel::Global => "global",
+        ConfigLevel::Local => "local",
+        ConfigLevel::Worktree => "worktree",
+        ConfigLevel::App => "app",
+        ConfigLevel::Highest => "highest",
+    }
+}
+
+fn git_config_source_for_level(repo: &Repository, level: ConfigLevel) -> Option<String> {
+    let path = match level {
+        ConfigLevel::Local => Some(repo.path().join("config")),
+        ConfigLevel::Worktree => Some(repo.path().join("config.worktree")),
+        ConfigLevel::Global => Config::find_global().ok(),
+        ConfigLevel::XDG => Config::find_xdg().ok(),
+        ConfigLevel::System => Config::find_system().ok(),
+        ConfigLevel::ProgramData | ConfigLevel::App | ConfigLevel::Highest => None,
+    }?;
+
+    Some(path.to_string_lossy().to_string())
+}
+
+fn git_config_entry_details(
+    repo: &Repository,
+    config: &Config,
+    key: &str,
+) -> (Option<String>, Option<&'static str>, Option<String>) {
+    match config.get_entry(key) {
+        Ok(entry) => {
+            let level = entry.level();
+            (
+                entry.value().map(ToOwned::to_owned),
+                Some(git_config_level_name(level)),
+                git_config_source_for_level(repo, level),
+            )
+        }
+        Err(_) => (None, None, None),
+    }
 }
 
 fn device_metadata() -> serde_json::Value {
@@ -474,11 +518,16 @@ pub fn cmd_get_git_identity(repo_path: String) -> Result<serde_json::Value, Stri
     let config = repo
         .config()
         .map_err(|e| to_command_error(e, "GIT_ERROR"))?;
-    let name = config.get_string("user.name").ok();
-    let email = config.get_string("user.email").ok();
+    let (name, name_scope, name_source) = git_config_entry_details(&repo, &config, "user.name");
+    let (email, email_scope, email_source) = git_config_entry_details(&repo, &config, "user.email");
+
     Ok(serde_json::json!({
         "name": name,
         "email": email,
+        "name_scope": name_scope,
+        "email_scope": email_scope,
+        "name_source": name_source,
+        "email_source": email_source,
     }))
 }
 

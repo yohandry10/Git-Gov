@@ -154,14 +154,15 @@ Preferred product shape:
 - Add an `Action Center` route at `/action-center`.
 - Add a sidebar entry so the Action Center is a first-class product surface.
 - Keep the Workspace dashboard focused on file review, CLI, pipeline visualization, and commit/push work.
-- Keep the Control Plane dashboard as the detailed evidence/admin surface.
+- Keep Governance as the detailed evidence/admin surface, organized by Evidence, Policy, Adoption, Releases, and Copilot.
+- Keep Control Plane connection/configuration in Settings > System.
 - Compute a small set of recommended next actions from existing profile, provider health, workflow pack, readiness, remediation, and checklist state.
 - Render status in plain language.
 - Provide deep links into existing local/dashboard actions where available.
 - Keep all external mutations opt-in and reviewed.
 - Do not introduce new enforcement defaults.
 
-Historical note: the first KAN-68 draft suggested a dashboard-first Action Center inside the Enterprise Adoption area. That placement is now superseded. The current product decision is a dedicated Action Center view that reuses Enterprise Adoption, Evidence Packet, Release Approval, Workspace, and Copilot surfaces as destinations.
+Historical note: the first KAN-68 draft suggested a dashboard-first Action Center inside the Enterprise Adoption area. That placement is now superseded. The current product decision is a dedicated Action Center view that reuses Governance, Workspace, Settings, Evidence Packet, Release Approval, and Copilot surfaces as destinations.
 
 Suggested first version action states:
 

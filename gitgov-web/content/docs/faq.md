@@ -28,9 +28,9 @@ GitGov is developed by **Yohandry Chirinos**, a Venezuelan software engineer wit
 ### What technology stack does GitGov use?
 
 - **Desktop App**: Tauri v2 + React 19 + Tailwind v4 + Zustand v5 — native desktop for Windows, macOS, and Linux.
-- **Control Plane Server**: Axum (Rust) — high-performance REST API for event ingestion, policy checks, and the admin dashboard.
+- **Control Plane Server**: Axum (Rust) — high-performance REST API for event ingestion, policy checks, provider webhooks, and governance evidence.
 - **Database**: PostgreSQL (Supabase-managed or self-hosted) — stores all audit events, organization data, and integrations.
-- **Web App**: Next.js 15.5 — marketing site and documentation at git-gov.vercel.app.
+- **Web App**: Next.js 15.5 — marketing site and documentation at gitgov.cloud.
 
 ---
 
@@ -174,7 +174,7 @@ Two methods:
 
 | Role | Access |
 |------|--------|
-| **Admin** | Full: events, stats, dashboard, integrations, team management, API keys, policies |
+| **Admin** | Full: events, stats, Governance evidence, integrations, team management, API keys, policies |
 | **Developer** | Own events only |
 | **Architect** | Same as Developer (reserved for future granular permissions) |
 | **PM** | Same as Developer (reserved for future reporting access) |
@@ -193,21 +193,19 @@ Settings > API Keys: list, create (with role), revoke (immediate), or issue for 
 
 ---
 
-## Dashboard & Analytics
+## Governance, Action Center & Analytics
 
-### What does the Admin Dashboard show?
+### What does Governance show?
 
-- **Metrics Grid** — Total events, success rate, active repos, pushes, blocked events, active developers.
-- **Pipeline Health** — Jenkins 7-day build metrics: total, success rate, failures, average duration.
-- **Daily Activity** — Commit/push trends (14 days).
-- **Ticket Coverage** — Percentage of commits linked to Jira tickets.
-- **Event Breakdown** — Distribution by type/status, commits without tickets, tickets without commits.
-- **Recent Commits Table** — Paginated events with CI badges, PR badges, Jira ticket links.
-- **Governance Chat** — Integrated AI assistant.
+- **Evidence** — traceability, pipeline evidence, GitHub signals, evidence packets, recent commits, event breakdown, exports, and evidence trends.
+- **Policy** — branch, review, traceability, and enforcement rules.
+- **Adoption** — enterprise setup, provider health, workflow packs, onboarding checklist, readiness, and remediation.
+- **Releases** — release readiness, release approvals, evidence hashes, governance evaluation, and recent decisions.
+- **Copilot** — evidence-grounded governance explanations.
 
-### How often does the Dashboard refresh?
+### What does the Action Center show?
 
-Every **30 seconds** by default. Toggle on/off available.
+Action Center owns the global **Next Action**. It shows the current goal, the recommended next move, why it matters, supporting evidence, and the destination workflow. Heavy evidence refresh is explicit, not automatic on route entry.
 
 ### What do the CI badges mean?
 
@@ -222,9 +220,9 @@ Jira ticket references detected in branch names or commit metadata (e.g., `PROJ-
 
 ### What does a Developer see?
 
-Their own commits/pushes and an option to accept org invitations. No org-wide stats or team management.
+Their own local Workspace context, commit/push flow, and scoped governance guidance. No org-wide team management.
 
-### What timezone does the Dashboard use?
+### What timezone does GitGov use?
 
 Stored in **UTC**. Display timezone configurable in Settings (12 IANA zones). Display-only — underlying data stays UTC.
 
@@ -236,7 +234,7 @@ Stored in **UTC**. Display timezone configurable in Settings (12 IANA zones). Di
 
 - **Analytics**: "Who pushed to main without a ticket this week?", "How many commits did alice make?"
 - **Configuration**: "How do I set up Jenkins?", "How do I configure branch protection?"
-- **Troubleshooting**: "Why am I getting 401?", "Why is my dashboard empty?"
+- **Troubleshooting**: "Why am I getting 401?", "Why is Governance empty?"
 - **Product**: "What integrations exist?", "What roles are available?"
 
 ### Does the chat access my source code?
@@ -253,7 +251,7 @@ It indicates insufficient data or offers to register a **feature request** for t
 
 ### What is the Control Plane?
 
-The central **Axum (Rust) server** — receives events, processes webhooks, runs policy checks, serves the dashboard.
+The central **Axum (Rust) server** — receives events, processes webhooks, runs policy checks, and serves the APIs used by Governance, Action Center, Workspace, and Settings.
 
 ### Can I self-host the Control Plane?
 

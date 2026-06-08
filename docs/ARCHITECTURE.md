@@ -88,19 +88,29 @@ Usuario hace click → React UI → Comando Tauri → Lógica Rust → Operació
                                         Enviar al servidor (cuando haya conexión)
 ```
 
-### Dashboard Desktop: Chat y Políticas
+### Desktop: Workspace, Action Center, Governance y Settings
 
-El dashboard desktop vive en `gitgov/src/components/control_plane/ServerDashboard.tsx`. La auditoría `KAN-72` verificó `27` módulos en `gitgov/src/components/control_plane`, `99` archivos TypeScript/TSX en `gitgov/src`, `31` archivos Rust en `gitgov/src-tauri/src`, `94` comandos Tauri registrados en `src-tauri/src/lib.rs`, `25` archivos de test frontend con `296` tests y `23` tests Rust/Tauri.
+La app Desktop ya no usa `Control Plane` como dashboard primario. La auditoría `KAN-72` describía el antiguo `ServerDashboard`; la QA runtime de `KAN-69` lo retiró porque mezclaba configuración, evidencia, policy, adoption, releases, export y copilot en una sola página demasiado grande.
 
-Superficies montadas hoy en el dashboard:
+Superficies actuales:
 
-- Métricas operativas, actividad diaria, pipeline health, Jira ticket coverage, evidencia GitHub y outcomes de riesgo.
-- Recent commits, policy editor, evidence packets, enterprise adoption, release approvals, governance copilot, export y chat.
-- SSE para refresco en vivo con fallback de polling.
+- **Workspace (`/`)**: file list, CLI, pipeline visual local, audit trail, commit/push controls, `Next local step`, y gates/blockers locales.
+- **Action Center (`/action-center`)**: único dueño del `Next Action` global. Muestra recomendación determinística, razón, evidencia y destino.
+- **Governance (`/governance`)**: evidencia, policy, adoption, releases y copilot organizados por dominio.
+- **Settings (`/settings`)**: preferencias, organización, cuenta, repositorio y `System`; `System` concentra conexión al Control Plane, API key, rol, org scope, transporte y Desktop updates.
+- **Control Plane compatibility (`/control-plane`)**: redirect a `/settings#control-plane`, no una superficie operativa independiente.
+
+Componentes dashboard-only retirados en KAN-69 Desktop runtime QA:
+
+- `ServerDashboard`
+- `DashboardHeader`
+- `DailyActivityWidget`
+- `RiskOutcomesWidget`
+- `TicketCoverageWidget`
 
 Dos capacidades siguen teniendo reglas de alcance específicas:
 
-- **Chat de gobernanza (sí existe):**
+- **Governance copilot (sí existe):**
   - UI: `gitgov/src/components/control_plane/ConversationalChatPanel.tsx`
   - Cliente desktop → server: `gitgov/src-tauri/src/control_plane/server.rs` (`/chat/ask`)
   - Backend de consultas: `gitgov/gitgov-server/src/handlers/conversational/query.rs`
@@ -117,7 +127,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 ### 2. Control Plane Server (Servidor Central)
 
-**Qué hace:** Es el cerebro del sistema. Recibe eventos de todas las desktop apps, los almacena, y proporciona dashboards para ver qué está pasando en la organización.
+**Qué hace:** Es el servidor central. Recibe eventos de las desktop apps, procesa webhooks/integraciones, almacena evidencia y expone APIs para Governance, Action Center, Workspace y Settings.
 
 **Tecnologías:**
 - Framework: Axum (basado en Tokio para async)

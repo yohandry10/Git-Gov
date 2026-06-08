@@ -74,11 +74,11 @@ export const ACTION_CENTER_LENSES: ActionCenterLensOption[] = [
 
 export const ACTION_CENTER_TARGETS = {
   workspace: '/',
-  controlPlane: '/control-plane',
-  enterpriseAdoption: '/control-plane#enterprise-adoption',
-  evidencePacket: '/control-plane#evidence-packet',
-  releaseApprovals: '/control-plane#release-approvals',
-  governanceCopilot: '/control-plane#governance-copilot',
+  controlPlane: '/settings#control-plane',
+  enterpriseAdoption: '/governance/adoption',
+  evidencePacket: '/governance/evidence',
+  releaseApprovals: '/governance/releases',
+  governanceCopilot: '/governance/copilot',
   settings: '/settings',
 } as const
 
@@ -378,7 +378,7 @@ function pipelineRecommendation(input: ActionCenterBuildInput): ActionCenterReco
     status: needsAction ? 'needs-action' : 'ready',
     confidence: total === 0 ? 'low' : 'high',
     permission: permissionForNavigation(input.isConnected),
-    primaryAction: action('Open pipeline dashboard', ACTION_CENTER_TARGETS.controlPlane, 'review'),
+    primaryAction: action('Open pipeline evidence', ACTION_CENTER_TARGETS.evidencePacket, 'review'),
     evidence: [
       evidence('Pipeline runs 7d', String(total), total > 0 ? 'ready' : 'needs-action'),
       evidence('Success rate', successRate === null ? 'N/A' : `${successRate}%`, needsAction ? 'needs-action' : 'ready'),
@@ -401,7 +401,7 @@ function traceabilityRecommendation(input: ActionCenterBuildInput): ActionCenter
     status: isCoverageReady ? 'ready' : 'needs-action',
     confidence: total > 0 ? 'high' : 'low',
     permission: permissionForNavigation(input.isConnected),
-    primaryAction: action('Open ticket coverage', ACTION_CENTER_TARGETS.controlPlane, 'review'),
+    primaryAction: action('Open traceability evidence', ACTION_CENTER_TARGETS.evidencePacket, 'review'),
     evidence: [
       evidence('Coverage', coverage === undefined ? 'N/A' : `${coverage.toFixed(2)}%`, isCoverageReady ? 'ready' : 'needs-action'),
       evidence('Window commits', String(total), total > 0 ? 'ready' : 'needs-action'),

@@ -71,17 +71,17 @@ To support role-based quorum without changing the existing approval table, GitGo
 }
 ```
 
-The dashboard now captures an optional approver role and stores it in `evidence_summary.approver_role`. The evaluator counts distinct approvers by role and compares them with the KAN-45 profile quorum rules.
+The Desktop release approval flow now captures an optional approver role and stores it in `evidence_summary.approver_role`. The evaluator counts distinct approvers by role and compares them with the KAN-45 profile quorum rules.
 
-## Dashboard Flow
+## Desktop Flow
 
-The Release Approval dashboard now includes:
+The release approval surface now includes:
 
 - an `Approver role` field.
 - an `Evaluate governance` action.
 - a governance result panel showing policy mode, enforcement, valid approval count, required approval count, blocking/would-block flags, quorum rules, issues, and next steps.
 
-After a new approval is created, the dashboard refreshes the governance evaluation for the current release form.
+After a new approval is created, the release approval surface refreshes the governance evaluation for the current release form.
 
 ## Enforcement Follow-Up
 

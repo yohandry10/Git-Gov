@@ -1,6 +1,40 @@
 # GitGov Implementation Status
 
-Updated: 2026-06-07
+Updated: 2026-06-08
+
+## KAN-69 Desktop Runtime QA - 2026-06-08
+
+`KAN-69 - Enterprise Action Center guided UX` remains implemented and merged. The current local branch `fix/KAN-69-action-center-desktop-qa` is a Desktop runtime QA and information-architecture pass, not a new feature wave.
+
+Current local QA decisions:
+
+- `/action-center` remains the only global `Next Action` owner.
+- Workspace keeps local execution: file list, CLI, pipeline visualizer, audit trail, commit/push controls, `Next local step`, and gates/blockers without repeating the global recommendation.
+- Opening Action Center no longer performs automatic heavy evidence refresh; heavy refresh remains behind explicit `Refresh`.
+- GitHub auth identifies the Desktop operator; the GitGov API key authorizes Control Plane role/org/evidence. Valid local GitHub sessions should be restored by default instead of forcing Device Flow on every app start.
+- Effective local Git identity is validated separately from GitHub login. Warnings now say the effective Git identity is incomplete or not provably aligned; `Ver prueba` emits read-only `git config --get` evidence and does not mutate Git config.
+- Control Plane is configuration, not a primary dashboard. `/control-plane` redirects to `/settings#control-plane`.
+- Settings tabs are `Preferences`, `Organization`, `Account`, `Repository`, and `System`. `System` merges former Connection and Updates surfaces: Control Plane endpoint/API key/role/scope/transport plus Desktop updater.
+- Organization settings use full-width vertical flow to avoid a dead right column. Repository is the only Settings tab retaining a two-column parent grid when config preview is present.
+- Governance is the operational governance module. `/governance` defaults to `Evidence`; sections are `Evidence`, `Policy`, `Adoption`, `Releases`, and `Copilot`; there is no generic Governance Dashboard tab.
+- Former dashboard-only components `ServerDashboard`, `DashboardHeader`, `DailyActivityWidget`, `RiskOutcomesWidget`, and `TicketCoverageWidget` are removed rather than left unmounted.
+- Help/FAQ uses a full-width support layout and canonical `https://gitgov.cloud` links instead of the old Vercel app URL.
+- Settings, primary sidebar, and Governance shell are language-reactive through `i18n`; nested feature panels still need targeted localization before claiming full app localization.
+- Do not restart, kill, or relaunch Tauri/Desktop while a user is manually validating unless explicitly requested.
+
+Current QA report: `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
+
+Latest local validation for this QA pass:
+
+- `npm --prefix gitgov run typecheck`
+- `npm --prefix gitgov run lint`
+- focused Settings/Governance/i18n/Help layout tests: `17` tests
+- full frontend suite: `332` tests in `32` files
+- `npm --prefix gitgov run build`
+- `git diff --check`
+- `.\scripts\security\publication_guard.ps1`
+
+The build still reports the known Vite `>500 kB` base chunk warning; Action Center and Governance are emitted as separate route chunks.
 
 ## KAN-69 Product UX Implementation - 2026-06-07
 
@@ -9,7 +43,7 @@ Updated: 2026-06-07
 - Adds a dedicated desktop route at `/action-center`.
 - Adds a sidebar `Action Center` navigation item.
 - Uses deterministic `Goal + Evidence + Permission` rules to show one primary recommendation plus alternatives.
-- Reuses existing Control Plane and Workspace workflows through deep links instead of duplicating dashboard panels.
+- Reuses existing Governance, Settings, and Workspace workflows through deep links instead of duplicating dashboard panels.
 - Keeps recommendations advisory, non-blocking, and explainable from loaded evidence.
 - Keeps AI as an explanation destination only; the Action Center recommendation is not LLM-driven.
 - Does not add backend endpoints, provider mutations, customer repository mutations, release blocking defaults, SonarCloud, Jenkins trigger-only setup, or OpenAPI/SDK work.
@@ -193,9 +227,9 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
     - unresolved violations rate + critical count
   - Includes composite risk score (`0-100`) with explicit signal coverage (`n/5`).
   - Public docs surface added in website (`/docs/risk-outcomes`, EN/ES) with KPI formulas and operating bands.
-- Tier-aware scoring + SLA profiles added in dashboard:
+- Tier-aware scoring + SLA profiles added to governance reporting:
   - New risk/readiness scoring model centralizes weights, bands, and thresholds by repo tier (`Critical`, `Standard`, `Internal`).
-  - Admin dashboard now includes tier selector with persisted profile.
+  - Governance reporting uses the persisted tier profile.
   - `Pipeline Health` and `Risk Outcomes` now apply tier-specific readiness/risk bands and SLA thresholds.
   - Risk outcomes docs (EN/ES) now include baseline SLA targets by tier.
 - Weekly calibration automation added for tier baselines:
@@ -215,11 +249,11 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
   - GitHub Actions scheduler/manual trigger added: `.github/workflows/domain-slo-validation.yml` (weekly Monday 12:45 UTC + manual dispatch).
   - Local evidence generated at `docs/reports/domain-slo-validation-local-2026-04-20/domain-slo-summary.md`.
   - Production evidence generated on 2026-04-25 at `docs/reports/domain-slo-validation-prod-2026-04-25/domain-slo-summary.md`; all three domains passed with traceability gap `11.8%`.
-- Export surface (`UX-01`) enabled in Control Plane dashboard:
-  - `ExportPanel` is now mounted in `ServerDashboard` (admin view), enabling direct audit export and export history visibility from the main dashboard flow.
+- Export surface (`UX-01`) enabled historically in the Control Plane dashboard, then moved by the KAN-69 Desktop runtime QA information architecture decision:
+  - Audit export and export history remain product capabilities, but the operational governance surfaces now live under `/governance` instead of the old `ServerDashboard` composition.
 - Role UX/API alignment improvement:
   - `/chat/ask` now allows `Admin`, `Architect`, and `PM` roles (previously admin-only).
-  - Dashboard renders `ConversationalChatPanel` for `Architect` and `PM` in non-admin view.
+  - The governance copilot surface is now organized under `/governance/copilot`; this preserves the copilot capability without keeping it mixed into Control Plane configuration.
 - Authorization semantics normalized for admin gates:
   - `require_admin` now returns explicit `403 FORBIDDEN` (instead of `401`) when API key is valid but role is insufficient.
   - Added auth regression test to lock expected forbidden behavior.
@@ -510,8 +544,8 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 ## Current Operating State
 
-- Consolidating governance telemetry in dashboards and executive reporting.
-  - GitHub evidence now has an executive coverage summary in the admin dashboard, local dashboard trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
+- Consolidating governance telemetry in Governance Evidence and executive reporting.
+  - GitHub evidence now has an executive coverage summary in Governance Evidence, local evidence trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
   - Operational adoption baseline completed on 2026-04-25: manual report, artifact monitor, and trend workflows passed; local monitor/trend scripts passed; evidence captured in `docs/reports/github-evidence-operational-adoption-2026-04-25.md`.
   - No implementation gap remains for the GitHub evidence operating path; recurring work is weekly operation through `docs/runbooks/github-evidence-operations.md`.
   - `KAN-7` stats visibility gap is closed: `supabase_schema_v22.sql` was applied in production and report/trend artifacts no longer show `0/4`.
@@ -620,30 +654,32 @@ If a website claim is not reflected here, treat it as unverified and do not publ
 
 - `Implemented with scope limits`
 - What is real:
-  - Control Plane dashboard includes pipeline health, ticket coverage, risk outcomes, recent commits, policy editor, export panel, and chat panel.
-  - Dashboard reporting surfaces GitHub PR lifecycle, review, PR comment, and status-check evidence counts.
-  - Dashboard reporting includes operator-captured local GitHub evidence trend snapshots for coverage delta/history.
+  - The old Control Plane dashboard composition was retired during KAN-69 Desktop runtime QA because it mixed configuration, evidence, policy, adoption, release decisions, export, and copilot into one oversized page.
+  - Control Plane is now connection/configuration and lives in `Settings > System`; `/control-plane` redirects to `/settings#control-plane`.
+  - Operational governance now lives in `/governance` with sections for `Evidence`, `Policy`, `Adoption`, `Releases`, and `Copilot`.
+  - Governance Evidence surfaces traceability, pipeline evidence, GitHub PR lifecycle, review, PR comment, status-check evidence counts, evidence packets, recent commits, event breakdown, trend evidence, and audit export.
+  - Governance Releases owns release readiness, release approvals, evidence hash binding, governance evaluation, and recent decisions.
   - Ticket coverage UI explains that commit-ticket coverage can come from commits, branches, PR titles, and PR comments when ticket IDs are present.
   - Release readiness scoring exists.
   - Tier-aware scoring and SLA profiles exist.
   - Export flow exists with content hash generation and export history.
-  - Dashboard JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
+  - Governance JSON exports include an executive GitHub evidence summary snapshot alongside raw audit records.
   - Standalone Markdown report generation exists for GitHub executive evidence coverage.
   - GitHub Actions artifact monitoring and trend reporting exist for executive GitHub evidence reports.
   - GitHub evidence operational cadence is documented in `docs/runbooks/github-evidence-operations.md`.
   - Post-merge validation for the runbook rollout passed on `main` commit `7577f90`: CI `24940874607`, Quality Gate Policy Matrix `24940874602`, Release Readiness Gate `24940874616`, Secret Scan `24940874599`, SonarQube Governance `24940874600`, Public Naming Guard `24940874603`, Governance Correlation Smoke `24940874611`, and Desktop Updater Readiness `24940874597`.
-  - Risk outcomes widget is operational.
-  - Risk outcomes widget surfaces informational `MTTR pipeline` and `Time-to-Evidence` from Jenkins commit-pipeline correlations.
+  - Risk outcomes calculations remain part of the reporting model, but the unmounted `RiskOutcomesWidget` was removed from the Desktop app during KAN-69 Desktop runtime QA.
+  - Risk outcomes reporting surfaces informational `MTTR pipeline` and `Time-to-Evidence` from Jenkins commit-pipeline correlations where that evidence sample is available.
   - `Time-to-Evidence` is calculated as commit timestamp to correlated pipeline ingestion timestamp, with duplicate pipeline evidence ignored.
   - `MTTR pipeline` is calculated as recoverable non-green pipeline event to the next successful run for the same job.
   - These operational metrics render `N/A` when the evidence sample is insufficient.
-- Source files:
-  - `gitgov/src/components/control_plane/ServerDashboard.tsx`
+- Current source files:
+  - `gitgov/src/pages/GovernancePage.tsx`
+  - `gitgov/src/pages/SettingsPage.tsx`
+  - `gitgov/src/pages/ControlPlanePage.tsx`
   - `gitgov/src/components/control_plane/PipelineHealthWidget.tsx`
   - `gitgov/src/components/control_plane/EventBreakdownGrid.tsx`
   - `gitgov/src/components/control_plane/GitHubEvidenceTrendWidget.tsx`
-  - `gitgov/src/components/control_plane/TicketCoverageWidget.tsx`
-  - `gitgov/src/components/control_plane/RiskOutcomesWidget.tsx`
   - `gitgov/src/components/control_plane/dashboard-helpers.ts`
   - `gitgov/src/components/control_plane/risk-scoring.ts`
   - `gitgov/src/components/control_plane/ExportPanel.tsx`

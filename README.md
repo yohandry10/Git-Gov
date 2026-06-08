@@ -4,7 +4,7 @@
 
 ## Estado del Proyecto
 
-**✅ Funcional** - El pipeline Desktop → Server → Dashboard está operativo.
+**✅ Funcional** - El pipeline Desktop → Control Plane → Governance/Action Center está operativo.
 
 ## Inicio Rápido
 
@@ -39,20 +39,23 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 
 ## Funcionalidades
 
-- ✅ Dashboard principal con commits y pushes
-- ✅ Control Plane conectado
+- ✅ Workspace Desktop con CLI, pipeline visual local, commit/push controls y audit trail
+- ✅ Action Center dedicado (`/action-center`) para la recomendación global y el siguiente paso
+- ✅ Governance dedicado (`/governance`) para evidencia, políticas, adopción, releases y copilot
+- ✅ Settings/System para conexión al Control Plane, API key, rol, org scope, transporte y updates
+- ✅ Control Plane conectado como servidor de ingesta/configuración
 - ✅ Pipeline de eventos E2E
 - ✅ Autenticación GitHub OAuth
 - ✅ Outbox offline con reintentos
 - ✅ Auditoría centralizada
 - ✅ Sitio público (marketing/docs/download) en Next.js 15.5
-- ✅ Chat de gobernanza en dashboard desktop (`/chat/ask`) para consultas tipo:
+- ✅ Governance copilot (`/governance/copilot`, backend `/chat/ask`) para consultas tipo:
   - Operacionales: quién hizo commits/pushes, rangos de fechas, actividad por usuario
   - Riesgo/calidad: pushes bloqueados/sin ticket, quality gates no verdes, tickets en riesgo
   - Readiness: resumen de release-readiness y ranking de repos/ramas con fallos
   - Acceso: perfil de usuario y estado de clave (sin exponer secretos)
   - Roles permitidos: `Admin`, `Architect`, `PM`
-- ✅ Editor de políticas en dashboard desktop para definir ramas y reglas (guardado en Control Plane)
+- ✅ Editor de políticas en Governance para definir ramas y reglas (guardado en Control Plane)
 - ✅ SSE (Server-Sent Events) para actualizaciones en tiempo real con fallback a polling
 - ✅ Enterprise adoption profiles — self-service onboarding enterprise
 - ✅ Enterprise release approvals — aprobaciones formales con evidence packets
@@ -66,14 +69,17 @@ Ver [QUICKSTART.md](./docs/QUICKSTART.md) para guía completa.
 - ✅ Pipeline visual local en Desktop (ticket → branch → stage → commit → push/PR → CI)
 - ✅ Métricas Prometheus (`/metrics`)
 - ✅ 32 GitHub Actions workflows (CI, security, governance, monitoring, trends)
-- ✅ 193 server tests + 296 desktop frontend tests across 25 files + 23 Tauri tests
+- ✅ 193 server tests + 332 desktop frontend tests across 32 files + 23 Tauri tests
 
 > Nota: métricas de quality gate/readiness dependen de tener telemetría Jenkins/Jira/Sonar configurada.
 
-### Alcance del Dashboard Desktop
+### Alcance de la App Desktop
 
-- El botón de chat en el dashboard sí está implementado y conectado al backend (`/chat/ask`).
-- El flujo de reglas es **manual/asistido** desde `Policy Editor` (UI + API de políticas).
+- Action Center es el único dueño del `Next Action` global.
+- Workspace conserva la ejecución local: CLI, pipeline visual, audit trail, commit/push controls y `Next local step`.
+- Governance agrupa evidencia, policy editor, adoption, releases y copilot por dominio.
+- Control Plane ya no es un dashboard primario; su conexión/configuración vive en Settings > System.
+- El flujo de reglas es **manual/asistido** desde Governance Policy (UI + API de políticas).
 - No existe, hoy, un conversor automático de "diagrama de arquitectura/repos/ramas" a ramas/reglas Git.
 
 ## Documentación

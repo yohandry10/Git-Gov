@@ -125,7 +125,7 @@ curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:3000/stats
 - Iniciar sesión con GitHub
 - Seleccionar un repositorio
 - Hacer un commit/push
-- Verificar que aparece en el Dashboard
+- Verificar que aparece en Workspace/Governance Evidence
 
 ## Estructura del Proyecto
 
@@ -134,7 +134,7 @@ GitGov/
 ├── gitgov/                        # Desktop App (Tauri v2)
 │   ├── src/                       # Frontend React 19
 │   │   ├── components/            # Componentes UI
-│   │   │   ├── control_plane/     # Dashboard & widgets
+│   │   │   ├── control_plane/     # Governance, adoption, policy, release panels
 │   │   │   └── git/               # Vista de git
 │   │   ├── store/                 # Estado Zustand v5
 │   │   └── lib/                   # Utilidades y tipos
@@ -351,7 +351,7 @@ La lista completa y actual de knobs operativos vive en `gitgov/gitgov-server/.en
 | 401 Unauthorized | Usar `Authorization: Bearer`, no `X-API-Key` |
 | Serialization error | Verificar structs cliente/servidor coinciden |
 | Outbox no envía | Verificar `GITGOV_SERVER_URL` y `GITGOV_API_KEY` en `gitgov/.env` |
-| Dashboard vacío pero outbox OK | Verificar `VITE_SERVER_URL` y `VITE_API_KEY` en `gitgov/.env` |
+| Governance vacío pero outbox OK | Verificar `VITE_SERVER_URL` y `VITE_API_KEY` en `gitgov/.env` |
 | DB error | Ejecutar supabase_schema.sql (base) + todas `supabase_schema_v*.sql` en orden (actualmente hasta v25) |
 | App no abre | `npm install` y verificar Node.js 20+ |
 | 429 Too Many Requests | Rate limit alcanzado — ajustar `GITGOV_RATE_LIMIT_*_PER_MIN` en .env del servidor |

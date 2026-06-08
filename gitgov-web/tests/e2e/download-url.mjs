@@ -7,7 +7,7 @@
  *   node gitgov-web/tests/e2e/download-url.mjs
  *
  *   # With a custom base URL:
- *   TEST_BASE_URL=https://git-gov.vercel.app node gitgov-web/tests/e2e/download-url.mjs
+ *   TEST_BASE_URL=https://gitgov.cloud node gitgov-web/tests/e2e/download-url.mjs
  *
  *   # To also check external URL matching:
  *   NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL=https://github.com/.../GitGov_0.1.0_x64-setup.exe \

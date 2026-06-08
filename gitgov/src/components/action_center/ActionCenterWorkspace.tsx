@@ -165,7 +165,6 @@ export function ActionCenterWorkspace() {
 
   useEffect(() => {
     if (!isConnected) return
-    void refreshForCurrentRole({ forceHeavy: true })
     if (userRole !== 'Admin') return
     void loadEnterpriseAdoptionProfile(selectedOrgName || undefined)
     void loadEnterpriseOnboardingChecklistTracking(selectedOrgName || undefined)

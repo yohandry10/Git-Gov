@@ -115,13 +115,13 @@ The table is append-only in this MVP. There is no update or delete endpoint. A c
 - The admin audit entry stores only release metadata, decision, risk level, ticket ID and approval hash.
 - Evidence URIs deliberately reject `file://` and custom protocol values.
 
-## KAN-43 Dashboard Follow-Up
+## KAN-43 Desktop Follow-Up
 
-KAN-43 adds the first dashboard release approval wizard on top of this backend API.
+KAN-43 adds the first Desktop release approval wizard on top of this backend API. After the KAN-69 Desktop runtime QA information-architecture decision, release approval operations live under `Governance > Releases`.
 
 The follow-up adds:
 
-- recent approval list in the admin dashboard.
+- recent approval list in the Desktop releases surface.
 - create approval form with evidence hash, approver, decision, risk, expiration and explicit operator confirmation.
 - Tauri client commands for the existing list/create backend routes.
 
@@ -137,7 +137,7 @@ Default behavior is `record-only`:
 
 - approval records can be stored.
 - evidence hashes can be bound to approval decisions.
-- dashboards and reports can show approval status.
+- Governance and reports can show approval status.
 - GitGov does not block a release by default.
 - GitGov does not require multiple approvers by default.
 

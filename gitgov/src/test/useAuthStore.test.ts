@@ -95,6 +95,33 @@ describe('useAuthStore', () => {
     })
   })
 
+  describe('checkExistingSession', () => {
+    it('restores an existing GitHub session by default', async () => {
+      const user = { login: 'dev1', name: 'Developer', avatar_url: 'https://avatar', is_admin: false }
+      mockInvoke
+        .mockResolvedValueOnce(null) // cmd_pin_get
+        .mockResolvedValueOnce(user) // cmd_get_current_user
+
+      await useAuthStore.getState().checkExistingSession()
+
+      expect(useAuthStore.getState().user).toEqual(user)
+      expect(useAuthStore.getState().authStep).toBe('authenticated')
+      expect(useAuthStore.getState().error).toBeNull()
+    })
+
+    it('shows a recoverable error when local GitHub session restore fails', async () => {
+      mockInvoke
+        .mockResolvedValueOnce(null) // cmd_pin_get
+        .mockRejectedValueOnce(new Error('keyring unavailable')) // cmd_get_current_user
+
+      await useAuthStore.getState().checkExistingSession()
+
+      expect(useAuthStore.getState().user).toBeNull()
+      expect(useAuthStore.getState().authStep).toBe('idle')
+      expect(useAuthStore.getState().error).toContain('No se pudo restaurar')
+    })
+  })
+
   describe('logout', () => {
     it('clears user and resets to idle', async () => {
       useAuthStore.setState({

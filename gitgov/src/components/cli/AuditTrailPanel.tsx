@@ -116,7 +116,8 @@ export function AuditTrailPanel() {
   }, [mode, loadHistory])
 
   useEffect(() => {
-    return onCliLine(({ lineType, text }) => {
+    return onCliLine(({ lineType, text, auditable }) => {
+      if (auditable === false) return
       if (lineType === 'command') {
         const command = text.startsWith('$ ') ? text.slice(2).trim() : text.trim()
         if (!command) return

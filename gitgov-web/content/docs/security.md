@@ -91,7 +91,7 @@ All communication between GitGov Desktop and the Control Plane is protected by *
 
 GitGov enforces **role-based access control (RBAC)** at the API level. Every request requires a valid `Authorization: Bearer` token.
 
-| Role | Own Events | All Events | Stats/Dashboard | Integrations | API Key Management | Team & Org Management |
+| Role | Own Events | All Events | Stats/Governance | Integrations | API Key Management | Team & Org Management |
 |------|-----------|------------|----------------|-------------|-------------------|-----------------------|
 | **Developer** | Read | — | — | — | — | — |
 | **Architect** | Read | — | — | — | — | — |
@@ -101,7 +101,7 @@ GitGov enforces **role-based access control (RBAC)** at the API level. Every req
 ### Access Control Details
 
 - **Developers** can only see their own event records (`GET /logs` is scoped by `user_login`). They cannot see other developers' data, statistics, or integration information.
-- **Admins** have full visibility: all events, statistics, dashboard, integrations, compliance signals, API key management, team overview, and organization settings.
+- **Admins** have full visibility: all events, statistics, Governance evidence, integrations, compliance signals, API key management, team overview, and organization settings.
 - There is **no superuser bypass** — the Admin role is the highest privilege level, and it is still subject to authentication.
 - API keys are hashed (SHA-256) before storage. The server never stores or logs plaintext keys.
 - **Organization scoping** — all data is scoped to the organization. An admin of one organization cannot see another organization's data.
@@ -153,7 +153,7 @@ This design supports compliance frameworks including **SOC 2**, **ISO 27001**, a
 | Audit stream (`/audit-stream/github`) | 60 req/min |
 | Jenkins integration | 120 req/min |
 | Jira integration | 120 req/min |
-| Admin endpoints (logs, stats, dashboard) | 60 req/min |
+| Admin endpoints (logs, stats, governance data) | 60 req/min |
 
 All limits are configurable via environment variables.
 

@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://git-gov.vercel.app/sitemap.xml
+Sitemap: https://gitgov.cloud/sitemap.xml

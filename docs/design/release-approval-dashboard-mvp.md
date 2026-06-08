@@ -1,16 +1,16 @@
-# KAN-43 Release Approval Dashboard MVP
+# KAN-43 Release Approval UI MVP
 
 Updated: 2026-05-01
 
 ## Summary
 
-KAN-43 adds the first operator dashboard flow for formal enterprise release approvals.
+KAN-43 adds the first operator Desktop flow for formal enterprise release approvals.
 
-KAN-37 created the backend approval record. KAN-43 makes that record usable from the GitGov dashboard so an admin can list recent approvals and create a formal release decision without calling the API manually.
+KAN-37 created the backend approval record. KAN-43 makes that record usable from GitGov Desktop so an admin can list recent approvals and create a formal release decision without calling the API manually.
 
 ## Scope
 
-- Dashboard panel: `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
+- Desktop panel: `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`. After the KAN-69 Desktop runtime QA information-architecture decision, release approval operations belong in `Governance > Releases`.
 - Store actions: `loadEnterpriseReleaseApprovals` and `createEnterpriseReleaseApproval`.
 - Tauri commands:
   - `cmd_server_list_enterprise_release_approvals`.
@@ -23,7 +23,7 @@ KAN-37 created the backend approval record. KAN-43 makes that record usable from
 
 ## User Flow
 
-1. Admin opens the Control Plane dashboard.
+1. Admin opens `Governance > Releases`.
 2. GitGov loads recent release approvals for the selected organization and repository.
 3. Admin fills release, repository, branch, environment, decision, approver, evidence hash, and optional ticket/SHA/URI.
 4. For accepted risk, admin must provide risk severity, reason, and expiration.
@@ -33,7 +33,7 @@ KAN-37 created the backend approval record. KAN-43 makes that record usable from
 
 ## Client Validation
 
-The dashboard validates before submit:
+The Desktop release approval UI validates before submit:
 
 - release is required.
 - repository must look like `owner/repo`.
@@ -52,7 +52,7 @@ Backend KAN-37 validation remains the source of truth. Client validation is an o
 
 ## Security Notes
 
-- The dashboard does not read provider secrets or local env files.
+- The Desktop release approval UI does not read provider secrets or local env files.
 - The Tauri commands forward only the configured GitGov API key as Bearer auth.
 - Approval records store evidence hashes and metadata, not raw provider credentials.
 - The UI requires explicit confirmation before creating a formal decision.
@@ -60,7 +60,7 @@ Backend KAN-37 validation remains the source of truth. Client validation is an o
 
 ## Configurable Governance Defaults
 
-The KAN-43 dashboard creates and lists approval records. It does not silently turn release approvals into a blocking deployment gate.
+The KAN-43 Desktop release approval flow creates and lists approval records. It does not silently turn release approvals into a blocking deployment gate.
 
 Default behavior remains `record-only`:
 
@@ -72,7 +72,7 @@ Default behavior remains `record-only`:
 
 Future quorum and release gate enforcement must be customer-configurable opt-in behavior.
 
-KAN-46 adds the first dashboard evaluation view for those opt-in policies. It still keeps `record-only` as the default and only reports blocking status when the customer profile selects blocking release governance.
+KAN-46 adds the first evaluation view for those opt-in policies. It still keeps `record-only` as the default and only reports blocking status when the customer profile selects blocking release governance.
 
 Examples:
 

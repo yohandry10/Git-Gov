@@ -10,6 +10,7 @@ import {
   type EnterpriseProviderHealthCheck,
 } from '@/components/control_plane/dashboard-helpers'
 import {
+  ACTION_CENTER_TARGETS,
   buildActionCenterGuidance,
   type ActionCenterBuildInput,
 } from '@/components/action_center/action-center-helpers'
@@ -81,6 +82,14 @@ function makeInput(overrides: Partial<ActionCenterBuildInput> = {}): ActionCente
 }
 
 describe('action-center-helpers', () => {
+  it('routes operational governance actions outside the technical Control Plane surface', () => {
+    expect(ACTION_CENTER_TARGETS.enterpriseAdoption).toBe('/governance/adoption')
+    expect(ACTION_CENTER_TARGETS.evidencePacket).toBe('/governance/evidence')
+    expect(ACTION_CENTER_TARGETS.releaseApprovals).toBe('/governance/releases')
+    expect(ACTION_CENTER_TARGETS.governanceCopilot).toBe('/governance/copilot')
+    expect(ACTION_CENTER_TARGETS.controlPlane).toBe('/settings#control-plane')
+  })
+
   it('prioritizes the adoption profile when profile validation fails', () => {
     const profile: EnterpriseAdoptionProfile = {
       ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
@@ -146,6 +155,7 @@ describe('action-center-helpers', () => {
     }))
 
     expect(guidance.primary.id).toBe('review-pipeline-health')
+    expect(guidance.primary.primaryAction.to).toBe('/governance/evidence')
     expect(guidance.primary.evidence.map((line) => line.label)).toContain('Success rate')
   })
 
@@ -163,6 +173,7 @@ describe('action-center-helpers', () => {
     }))
 
     expect(guidance.primary.id).toBe('repair-traceability-coverage')
+    expect(guidance.primary.primaryAction.to).toBe('/governance/evidence')
     expect(guidance.primary.confidence).toBe('high')
   })
 
