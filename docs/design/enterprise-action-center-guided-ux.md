@@ -1,6 +1,6 @@
 # KAN-69 Enterprise Action Center Guided UX
 
-Updated: 2026-06-07
+Updated: 2026-06-08
 
 ## Decision
 
@@ -10,9 +10,9 @@ KAN-69 implements the Enterprise Action Center as a dedicated desktop route:
 /action-center
 ```
 
-It is not another panel inside the existing Workspace dashboard and it is not another section squeezed into the Control Plane dashboard.
+It is not another panel inside the existing Workspace dashboard and it is not another section squeezed into Control Plane configuration.
 
-The Workspace dashboard already has the file list, CLI, pipeline visualizer, audit trail, and commit/push controls. The Control Plane dashboard already has metrics, provider health, adoption profile, evidence packets, release approvals, copilot, exports, and chat. Adding the Action Center inside either surface would make the product harder to scan.
+The Workspace already has the file list, CLI, pipeline visualizer, audit trail, and commit/push controls. Governance now owns operational evidence/admin surfaces by domain: Evidence, Policy, Adoption, Releases, and Copilot. Settings owns Control Plane connection/system configuration. Adding the Action Center inside any of those surfaces would make the product harder to scan.
 
 The Action Center is a guided operations surface that reads existing GitGov evidence and sends the operator to the right existing workflow.
 
@@ -90,11 +90,13 @@ KAN-69 adds:
 - Sidebar navigation entry.
 - `ActionCenterWorkspace` React surface.
 - Pure recommendation helper with unit tests.
-- Deep links to existing Control Plane panels:
-  - Enterprise Adoption.
-  - Evidence Packet.
-  - Release Approvals.
+- Deep links to existing GitGov workflows:
+  - Governance Adoption.
+  - Governance Evidence.
+  - Governance Releases.
   - Governance Copilot.
+  - Workspace local execution.
+  - Settings System for Control Plane connection/configuration.
 - Documentation and report updates.
 
 Follow-up verification keeps release guidance conservative when Jira ticket coverage is not loaded and avoids admin-only adoption-profile/checklist reads for non-admin users. Non-admin users can still see advisory guidance, but the UI does not issue known-forbidden admin reads just to build that guidance.
@@ -115,8 +117,26 @@ KAN-69 does not add:
 - A user can open a first-class Action Center space from the sidebar.
 - The first screen shows the current goal, role/lens context, primary recommendation, reason, evidence, permission, and alternatives.
 - The primary recommendation is deterministic and explainable from loaded evidence.
-- Actions navigate to existing GitGov workflows instead of duplicating the full Control Plane.
+- Actions navigate to existing GitGov workflows instead of duplicating Governance, Workspace, or Settings.
 - The Workspace dashboard remains focused on repo/CLI/commit/push work.
-- The Control Plane dashboard remains the detailed evidence/admin surface.
+- Governance remains the detailed evidence/admin surface.
+- Settings System remains the Control Plane connection/update configuration surface.
 - No secrets are displayed, exported, or logged.
 - The Action Center remains advisory and non-blocking.
+
+## Desktop Runtime QA Addendum
+
+Desktop runtime QA after merge is tracked in `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
+
+Important UI rule: do not remove existing useful product information to fix a visual defect. If `Next Action`, `Gates / Blockers`, or another Workspace/Action Center element clips or overflows, classify it as a layout issue and fix wrapping, responsive sizing, overflow, or scroll behavior.
+
+Important session rule: do not restart or relaunch the Tauri/Desktop app while a user is manually logged in and validating a flow unless the user explicitly asks for that runtime action.
+
+Post-QA information architecture:
+
+- `/action-center` is the only global `Next Action` owner.
+- Workspace uses `Next local step` for local execution and does not repeat the global recommendation inside `Gates / Blockers`.
+- `/governance` defaults to `Evidence`; there is no generic Governance Dashboard tab.
+- `/control-plane` redirects to `/settings#control-plane`.
+- Settings tabs are `Preferences`, `Organization`, `Account`, `Repository`, and `System`; `System` merges Control Plane connection/configuration with Desktop updates.
+- Help/FAQ uses the canonical `https://gitgov.cloud` URL and a full-width support layout.

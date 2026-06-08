@@ -485,12 +485,12 @@ done
 
 Topología recomendada:
 - **3 instancias** `gitgov-server` (mismo build) detrás de un balanceador L7 (Nginx upstream o ALB).
-- URL pública única para Desktop/dashboard.
+- URL pública única para Desktop y APIs de Governance/Settings.
 - Supabase PostgreSQL compartido (o PostgreSQL 16 self-hosted/RDS).
 
 Contrato operativo:
 - No cambiar contratos HTTP de `/events`, `/logs`, `/stats`, `/chat/ask`, `/sse`.
-- Mantener Golden Path: Desktop -> `/events` -> DB -> Dashboard.
+- Mantener Golden Path: Desktop -> `/events` -> DB -> Governance/Action Center.
 
 Ejemplo Nginx upstream (3 nodos backend):
 

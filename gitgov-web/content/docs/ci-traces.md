@@ -149,7 +149,7 @@ By using CI Traceability, you can generate automated reports for compliance audi
 |---------|----------|--------|
 | Link commits to Jenkins builds | `POST /integrations/jenkins` | Live (V1.2-A) |
 | Commit–pipeline correlation query | `GET /integrations/jenkins/correlations` | Live (V1.2-A) |
-| Pipeline health dashboard widget | `GET /integrations/jenkins/status` | Live (V1.2-A) |
+| Pipeline health governance data | `GET /integrations/jenkins/status` | Live (V1.2-A) |
 | Jira ticket coverage | `GET /integrations/jira/ticket-coverage` | Preview (V1.2-B) |
 | Jira batch correlation | `POST /integrations/jira/correlate` | Preview (V1.2-B) |
 | GitHub webhook ingest | `POST /webhooks/github` | Live |

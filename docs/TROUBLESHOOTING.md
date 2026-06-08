@@ -31,7 +31,7 @@ Esta guía te ayuda a resolver problemas comunes. Cada sección explica:
 
 **Qué verás:**
 - En los logs: "WARN Outbox flush failed: status 401 Unauthorized"
-- El dashboard no carga datos del servidor
+- Governance/Settings no carga datos del servidor
 - Los eventos no aparecen en el servidor
 
 **Por qué pasa:**
@@ -88,7 +88,7 @@ El middleware de autenticación no encontró ningún header de autorización en 
 
 **Qué verás:**
 - En los logs: "WARN Outbox flush failed: status XXX"
-- El dashboard del servidor no muestra tus eventos
+- Governance Evidence no muestra tus eventos
 - El archivo outbox.jsonl crece pero los eventos no llegan
 
 **Por qué pasa:**
@@ -126,7 +126,7 @@ El worker en background intentó enviar eventos al servidor pero falló.
 ### Error: Events not being sent
 
 **Qué verás:**
-- El dashboard no muestra nuevos eventos
+- Governance Evidence no muestra nuevos eventos
 - Haces commits/pushes pero no aparecen en el servidor
 - No hay errores en los logs
 
@@ -158,14 +158,14 @@ Forzar un flush manual puede ayudar a diagnosticar. Si funciona manualmente, el 
 
 **Qué verás:**
 - Haces commit/push desde la app GitGov y GitHub sí recibe el commit
-- El dashboard de GitGov no muestra ese commit
+- Governance/Workspace no muestra ese commit
 - En otro momento sí aparecen commits normalmente
 
 **Por qué pasa (causa real frecuente en local):**
 
 Estás corriendo **dos servidores distintos** en `:3000` (por ejemplo, server local + Docker/WSL), y:
 - el Desktop/outbox envía a `http://localhost:3000`
-- el Dashboard/Control Plane consulta `http://127.0.0.1:3000`
+- Governance/Settings consulta `http://127.0.0.1:3000`
 
 En algunas máquinas `localhost` puede resolver por IPv6 (`::1`) y terminar pegándole a otro proceso diferente.
 
@@ -180,7 +180,7 @@ En algunas máquinas `localhost` puede resolver por IPv6 (`::1`) y terminar peg�
 
 1. Usar una sola URL canónica en todo el proyecto local: `http://127.0.0.1:3000`
 2. Verificar `src-tauri/.env` y configuración del Control Plane
-3. Reiniciar la app Desktop para que el outbox tome la URL nueva
+3. Si no hay validación manual activa, reiniciar la app Desktop para que el outbox tome la URL nueva. Si un usuario está validando manualmente, no reiniciar sin pedir permiso.
 4. Evitar correr dos instancias de GitGov server en el mismo puerto `3000`
 
 **Prevención:**
@@ -341,7 +341,7 @@ El certificado SSL no es válido o es auto-firmado.
 
 ## Problemas de Variables de Entorno
 
-### El Outbox envía eventos pero el Dashboard no muestra nada (o viceversa)
+### El Outbox envía eventos pero Governance no muestra nada (o viceversa)
 
 **Síntomas:**
 - Haces commit/push, los logs del servidor muestran que llegan eventos (status 200)
@@ -354,14 +354,14 @@ La Desktop App tiene dos contextos de ejecución con fuentes de configuración d
 | Capa | Variables | Qué lee | Para qué |
 |------|-----------|---------|----------|
 | Rust/Tauri (backend) | `GITGOV_SERVER_URL`, `GITGOV_API_KEY`, `GITHUB_CLIENT_ID` | `gitgov/.env` (lado Rust) | Outbox, git commands, envío de eventos, Device Flow |
-| Vite/React (frontend) | `VITE_SERVER_URL`, `VITE_API_KEY` | `gitgov/.env` (lado Vite) | Dashboard UI, consultas desde el navegador |
+| Vite/React (frontend) | `VITE_SERVER_URL`, `VITE_API_KEY` | `gitgov/.env` (lado Vite) | Governance/Settings UI, consultas desde el navegador |
 
-Si configuras solo `VITE_*`, el outbox (Rust) no sabe a dónde enviar. Si configuras solo `GITGOV_*`, el dashboard (React) no sabe a dónde consultar.
+Si configuras solo `VITE_*`, el outbox (Rust) no sabe a dónde enviar. Si configuras solo `GITGOV_*`, Governance/Settings (React) no sabe a dónde consultar.
 
 **Solución: definir ambos pares en `gitgov/.env`:**
 
 ```env
-# Para el frontend React (dashboard UI)
+# Para el frontend React (Governance/Settings UI)
 VITE_SERVER_URL=http://127.0.0.1:3000
 VITE_API_KEY=tu-api-key-aqui
 
@@ -372,8 +372,8 @@ GITHUB_CLIENT_ID=tu-github-oauth-client-id
 ```
 
 **Diagnóstico rápido:**
-- Si el servidor recibe eventos (logs muestran 200) pero dashboard no carga → falta `VITE_*`
-- Si dashboard carga pero no llegan eventos al servidor → falta `GITGOV_*`
+- Si el servidor recibe eventos (logs muestran 200) pero Governance/Settings no carga → falta `VITE_*`
+- Si Governance/Settings carga pero no llegan eventos al servidor → falta `GITGOV_*`
 - Si nada funciona → faltan ambos pares o la URL tiene `localhost` en vez de `127.0.0.1`
 
 ---
@@ -704,10 +704,10 @@ Cuando algo no funciona, verifica en orden:
 6. [ ] El archivo `{data_local_dir}/gitgov/outbox.jsonl` existe y tiene eventos con `"sent": false`
 7. [ ] No hay mensaje `Outbox flush failed: status 401` en los logs de la app
 
-**Dashboard (llegan eventos pero UI no muestra):**
+**Governance/Settings (llegan eventos pero UI no muestra):**
 8. [ ] `VITE_SERVER_URL` y `VITE_API_KEY` configurados en `gitgov/.env`
 9. [ ] No estás mezclando `localhost` y `127.0.0.1` (usar solo `127.0.0.1`)
-10. [ ] El auto-refresh (30s) no está bloqueado por CORS o red
+10. [ ] Las consultas frontend no están bloqueadas por CORS o red
 
 **Base de datos:**
 11. [ ] Se aplicó `supabase_schema.sql` + todas las migraciones `supabase_schema_v*.sql` en orden (actualmente hasta v25)
@@ -727,7 +727,7 @@ Si el outbox está atascado:
 
 1. Hacer backup del archivo outbox.jsonl
 2. Eliminar eventos ya enviados (líneas con "sent":true)
-3. Reiniciar la aplicación
+3. Reiniciar la aplicación solo si no hay una sesión Desktop bajo validación manual activa.
 
 ### Regenerar API key
 
@@ -742,7 +742,7 @@ Si la API key está corrupta o perdida:
 Solo para desarrollo - eliminar eventos de testing:
 1. Conectar a la base de datos
 2. Eliminar eventos con user_login de prueba
-3. Verificar que el dashboard se actualiza
+3. Verificar que Governance Evidence se actualiza
 
 ---
 

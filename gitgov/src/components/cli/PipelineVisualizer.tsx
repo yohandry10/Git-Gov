@@ -310,7 +310,8 @@ export function PipelineVisualizer() {
   }, [graphData, serverConfig, loadJiraTicketDetail])
 
   useEffect(() => {
-    return onCliLine(({ lineType, text }) => {
+    return onCliLine(({ lineType, text, auditable }) => {
+      if (auditable === false) return
       if (lineType === 'command') {
         const command = text.startsWith('$ ') ? text.slice(2).trim() : text.trim()
         const step = detectStepFromCommand(command)
@@ -654,13 +655,8 @@ export function PipelineVisualizer() {
           : 'No Jenkins signal received yet',
         status: pipelineStep?.status ?? 'pending',
       },
-      {
-        label: 'Next Action',
-        detail: currentFocus.nextAction,
-        status: currentFocus.status === 'failed' ? 'failed' : currentFocus.status === 'warning' ? 'warning' : 'active',
-      },
     ]
-  }, [currentFocus, latestCommit, latestPipelineRun, latestPrEvidence, primaryTicket, primaryTicketId, steps])
+  }, [latestCommit, latestPipelineRun, latestPrEvidence, primaryTicket, primaryTicketId, steps])
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface-950">
@@ -744,7 +740,7 @@ export function PipelineVisualizer() {
                 <p className="mt-1 text-[11px] text-surface-300">{currentFocus.detail}</p>
               </div>
               <div className="mt-4 rounded-lg border border-white/6 bg-surface-950/70 p-2.5">
-                <p className="text-[9px] uppercase tracking-wider text-surface-500">Next action</p>
+                <p className="text-[9px] uppercase tracking-wider text-surface-500">Next local step</p>
                 <p className="mt-1 text-[11px] text-surface-200">{currentFocus.nextAction}</p>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
@@ -786,14 +782,14 @@ export function PipelineVisualizer() {
               </div>
             </div>
 
-            <div className="min-h-0 rounded-xl border border-white/6 bg-white/[0.02] p-3">
+            <div className="flex min-h-0 flex-col rounded-xl border border-white/6 bg-white/[0.02] p-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={13} className="text-surface-400" />
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-surface-400">
                   Gates / Blockers
                 </span>
               </div>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                 {gateItems.map((item) => (
                   <div
                     key={item.label}
@@ -803,7 +799,7 @@ export function PipelineVisualizer() {
                       <StatusGlyph status={item.status} />
                       <span className="text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
                     </div>
-                    <p className="mt-1 text-[11px] text-surface-200">{item.detail}</p>
+                    <p className="mt-1 break-words text-[11px] leading-relaxed text-surface-200">{item.detail}</p>
                   </div>
                 ))}
               </div>

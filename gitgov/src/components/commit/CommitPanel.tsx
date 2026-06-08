@@ -4,16 +4,18 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { Button } from '@/components/shared/Button'
 import { COMMIT_TYPES } from '@/lib/constants'
-import { AlertTriangle, ArrowDown, ArrowUp, GitCommit, Upload, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, GitCommit, Upload, RotateCcw, TerminalSquare } from 'lucide-react'
 import { toast } from '@/components/shared/Toast'
 import { tauriInvoke, parseCommandError } from '@/lib/tauri'
 import { emitCliLine } from '@/lib/cliEvents'
+import {
+  buildGitIdentityEvidenceLines,
+  evaluateGitIdentity,
+  formatGitIdentityBlockToast,
+  formatGitIdentityScope,
+  type GitIdentity,
+} from '@/lib/gitIdentityPolicy'
 import clsx from 'clsx'
-
-interface GitIdentity {
-  name: string | null
-  email: string | null
-}
 
 interface CliCommandAuditPayload {
   command: string
@@ -83,24 +85,7 @@ export function CommitPanel() {
       .catch(() => setGitIdentity(null))
   }, [repoPath])
 
-  // Mismatch: la identidad local del repo difiere de la cuenta GitHub autenticada.
-  // La Desktop App siempre usa el usuario autenticado para commits, pero si el dev
-  // tambien usa git CLI en este repo, sus commits tendran el autor del git config local.
-  const identityMismatch = (() => {
-    if (!gitIdentity || !user) return null
-    const localEmail = gitIdentity.email ?? ''
-    const localName  = gitIdentity.name  ?? ''
-    const emailOk  = localEmail.toLowerCase().includes(user.login.toLowerCase())
-    const nameOk   = localName.toLowerCase().includes(user.login.toLowerCase()) ||
-                     (user.name && localName.toLowerCase().includes(user.name.toLowerCase()))
-    if (!localName || !localEmail) {
-      return { localName, localEmail, reason: 'incomplete' as const }
-    }
-    if (!emailOk && !nameOk) {
-      return { localName, localEmail, reason: 'mismatch' as const }
-    }
-    return null
-  })()
+  const identityFinding = evaluateGitIdentity(gitIdentity, user)
 
   const fullMessage = useMemo(() => {
     if (!message.trim()) return ''
@@ -122,12 +107,22 @@ export function CommitPanel() {
   const hasStagedFiles = stagedFiles.size > 0
   const hasUncommittedChanges = fileChanges.some((f) => f.staged) || stagedFiles.size > 0
   const canPush = Boolean(currentBranch) && (hasLocalCommits || lastCommitHash !== null || hasUncommittedChanges)
-  const isIdentityBlocked = Boolean(identityMismatch)
+  const isIdentityBlocked = Boolean(identityFinding)
+  const hasIdentityOrigin = Boolean(identityFinding?.nameScope || identityFinding?.emailScope)
+
+  const handleShowIdentityProof = () => {
+    if (!gitIdentity || !user) return
+
+    buildGitIdentityEvidenceLines(gitIdentity, user, identityFinding).forEach((line) => {
+      emitCliLine(line)
+    })
+    toast('info', 'Prueba de identidad Git escrita en el panel CLI.')
+  }
 
   const handleCommit = async () => {
     if (!user || !isValidMessage) return
-    if (isIdentityBlocked) {
-      toast('error', 'Commit bloqueado: la identidad git local no coincide con tu cuenta GitGov. Corrige user.name y user.email del repo para continuar.')
+    if (identityFinding) {
+      toast('error', formatGitIdentityBlockToast('Commit', identityFinding, user.login))
       return
     }
     emitCliLine({
@@ -202,8 +197,8 @@ export function CommitPanel() {
 
   const handlePush = async () => {
     if (!user || !currentBranch) return
-    if (isIdentityBlocked) {
-      toast('error', 'Push bloqueado: la identidad git local no coincide con tu cuenta GitGov. Corrige user.name y user.email del repo para continuar.')
+    if (identityFinding) {
+      toast('error', formatGitIdentityBlockToast('Push', identityFinding, user.login))
       return
     }
     emitCliLine({
@@ -318,34 +313,47 @@ export function CommitPanel() {
 
   return (
     <div className="shrink-0 min-w-0 border-t border-surface-700/30 bg-surface-900/50 px-5 py-4">
-      {identityMismatch && (
+      {identityFinding && (
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2">
           <AlertTriangle size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-warning-400" />
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-warning-300">
-              {identityMismatch.reason === 'incomplete'
-                ? 'Identidad git incompleta en este repo'
-                : 'Identidad git difiere de tu cuenta GitGov'}
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] font-medium text-warning-300">
+                {identityFinding.reason === 'incomplete'
+                  ? 'Identidad Git efectiva incompleta'
+                  : 'Identidad Git no alineada de forma verificable'}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleShowIdentityProof}
+                className="h-6 px-2 text-[10px] text-warning-200 hover:bg-warning-500/10 hover:text-warning-100"
+                title="Mostrar prueba de git config en el panel CLI"
+              >
+                <TerminalSquare size={12} strokeWidth={1.75} />
+                Ver prueba
+              </Button>
+            </div>
             <p className="mt-0.5 text-[10px] text-surface-400">
-              {identityMismatch.reason === 'incomplete'
-                ? 'Commits por CLI no tendrán autor válido. '
-                : `CLI usará "${identityMismatch.localName} <${identityMismatch.localEmail}>" en vez de @${user?.login}. `}
+              {identityFinding.reason === 'incomplete'
+                ? 'Git CLI no tiene autor efectivo completo para commits manuales en este repo. '
+                : `Git CLI resolverá "${identityFinding.effectiveName} <${identityFinding.effectiveEmail}>" para commits manuales, mientras GitGov Desktop está autenticado como @${user?.login}. `}
               Ejecuta{' '}
               <code className="rounded bg-surface-800 px-1 text-warning-300">
-                git config --local user.name "Tu Nombre"
+                git config --local user.name "{identityFinding.suggestedName}"
               </code>{' '}
               y{' '}
               <code className="rounded bg-surface-800 px-1 text-warning-300">
-                git config --local user.email "tu@email.com"
-              </code>
-              {' '}o{' '}
-              <code className="rounded bg-surface-800 px-1 text-surface-300">
-                .\scripts\setup-dev.ps1
+                git config --local user.email "{identityFinding.suggestedEmail}"
               </code>
             </p>
+            {hasIdentityOrigin && (
+              <p className="mt-1 text-[10px] text-surface-500">
+                Origen observado: user.name {formatGitIdentityScope(identityFinding.nameScope)}; user.email {formatGitIdentityScope(identityFinding.emailScope)}.
+              </p>
+            )}
             <p className="mt-1 text-[10px] text-warning-200">
-              Regla de bloqueo: GitGov Desktop no permite Commit ni Push hasta que la identidad local del repo esté completa y alineada con tu cuenta autenticada.
+              Bloqueo de política: Commit y Push quedan deshabilitados hasta que la identidad Git efectiva sea completa y verificable frente al usuario GitHub autenticado.
             </p>
           </div>
         </div>

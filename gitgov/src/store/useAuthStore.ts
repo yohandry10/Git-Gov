@@ -8,8 +8,10 @@ let authPollTimer: ReturnType<typeof setTimeout> | null = null
 let authPollInFlight = false
 let cachedLocalPin: string | null = null
 const REQUIRE_DEVICE_FLOW_ON_START =
-  String(import.meta.env.VITE_REQUIRE_DEVICE_FLOW_ON_START ?? 'true').toLowerCase() !== 'false'
+  String(import.meta.env.VITE_REQUIRE_DEVICE_FLOW_ON_START ?? 'false').toLowerCase() === 'true'
 const MIN_POLLING_VISUAL_MS = 900
+const DEVICE_FLOW_MAX_WAIT_MS = 2 * 60 * 1000
+let authPollStartedAt: number | null = null
 
 interface AuthState {
   user: AuthenticatedUser | null
@@ -114,6 +116,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       clearTimeout(authPollTimer)
       authPollTimer = null
     }
+    authPollStartedAt = null
     set({ isLoading: true, error: null })
     try {
       const info = await tauriInvoke<DeviceFlowInfo>('cmd_start_auth')
@@ -134,6 +137,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     }
 
     authPollInFlight = true
+    authPollStartedAt = authPollStartedAt ?? Date.now()
     set({ authStep: 'polling' })
 
     try {
@@ -147,6 +151,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         await new Promise((resolve) => setTimeout(resolve, MIN_POLLING_VISUAL_MS - elapsed))
       }
       const hasPin = (await hydratePinFromSecureStorage()) !== null
+      authPollStartedAt = null
       set({
         user,
         authStep: 'authenticated',
@@ -159,6 +164,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     } catch (e) {
       const error = parseCommandError(String(e))
       if (error.code === 'PENDING') {
+        if (authPollStartedAt && Date.now() - authPollStartedAt >= DEVICE_FLOW_MAX_WAIT_MS) {
+          set({
+            error: 'GitHub no confirmó la autorización a tiempo. Abre GitHub, autoriza el código y pulsa Continuar otra vez.',
+            authStep: 'waiting_device',
+            isLoading: false,
+          })
+          return
+        }
         if (authPollTimer) {
           clearTimeout(authPollTimer)
         }
@@ -167,6 +180,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           void get().pollAuth()
         }, deviceFlowInfo.interval * 1000)
       } else if (error.code === 'SLOW_DOWN') {
+        if (authPollStartedAt && Date.now() - authPollStartedAt >= DEVICE_FLOW_MAX_WAIT_MS) {
+          set({
+            error: 'GitHub pidió pausar la validación varias veces. Espera unos segundos y pulsa Continuar otra vez.',
+            authStep: 'waiting_device',
+            isLoading: false,
+          })
+          return
+        }
         if (authPollTimer) {
           clearTimeout(authPollTimer)
         }
@@ -179,6 +200,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           clearTimeout(authPollTimer)
           authPollTimer = null
         }
+        authPollStartedAt = null
         set({ error: error.message, authStep: 'idle', isLoading: false })
       }
     } finally {
@@ -191,14 +213,21 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       clearTimeout(authPollTimer)
       authPollTimer = null
     }
+    authPollStartedAt = null
     set({ authStep: 'idle', deviceFlowInfo: null, isLoading: false, error: null })
   },
 
   checkExistingSession: async () => {
+    if (authPollTimer) {
+      clearTimeout(authPollTimer)
+      authPollTimer = null
+    }
+    authPollStartedAt = null
+    authPollInFlight = false
     set({ isLoading: true })
     const hasPin = (await hydratePinFromSecureStorage()) !== null
     if (REQUIRE_DEVICE_FLOW_ON_START) {
-      // Product decision: every desktop restart must pass through GitHub Device Flow.
+      // Enterprise hardening mode: force re-authentication on every desktop start.
       set({
         user: null,
         authStep: 'idle',
@@ -226,7 +255,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
         set({ authStep: 'idle', isLoading: false, pinUnlocked: true, pinError: null })
       }
     } catch {
-      set({ authStep: 'idle', isLoading: false, pinUnlocked: true, pinError: null })
+      set({
+        authStep: 'idle',
+        deviceFlowInfo: null,
+        isLoading: false,
+        pinUnlocked: true,
+        pinError: null,
+        error: 'No se pudo restaurar la sesión local de GitHub. Conecta GitHub de nuevo para continuar.',
+      })
     }
   },
 
@@ -235,6 +271,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       clearTimeout(authPollTimer)
       authPollTimer = null
     }
+    authPollStartedAt = null
     const { user } = get()
     if (user) {
       try {

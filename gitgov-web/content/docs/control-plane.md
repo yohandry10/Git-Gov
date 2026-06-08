@@ -5,7 +5,7 @@ order: 3
 category: Deploy
 ---
 
-The Control Plane is the heart of the GitGov ecosystem. It acts as a secure, centralized ingestion point for events captured by all Desktop agents across your organization. Once connected, it enables real-time monitoring, audit logging, and global policy enforcement.
+The Control Plane is the secure server behind GitGov. It ingests Desktop events, processes provider webhooks, stores audit evidence, and exposes the APIs used by Governance, Action Center, Workspace, and Settings. It is not the primary Desktop dashboard; connection and API-key configuration live in **Settings > System**.
 
 ---
 
@@ -42,7 +42,7 @@ curl http://your-control-plane/health
 
 ### 2. Desktop Authentication
 1. Launch **GitGov Desktop**.
-2. Navigate to **Settings > Sync & Control Plane**.
+2. Navigate to **Settings > System**.
 3. Enter the **Server URL** provided by your DevOps team.
 4. Enter your **API Token**. The app will verify the connection immediately.
 
@@ -56,7 +56,7 @@ GitGov performs a lightweight health check to verify latency and protocol compat
 | Behaviour | Details |
 |-----------|---------|
 | **Event Dispatch** | Events are dispatched to the Control Plane as they occur, in batches via the `/events` endpoint. |
-| **Dashboard Refresh** | The Control Plane dashboard auto-refreshes every **30 seconds**. |
+| **Governance Refresh** | Governance views refresh through explicit user actions and lightweight route-level polling where available. Heavy evidence refresh is user-controlled. |
 | **Offline Buffer** | When the server is unreachable, the local outbox queues events in a JSONL file on disk. |
 | **Retry Logic** | Failed dispatches use exponential backoff, capped at **32×** the base interval. Events are never lost. |
 | **Rate Limit** | Default: **240 events/minute** per API key. Configurable via `GITGOV_RATE_LIMIT_EVENTS_PER_MIN`. |
@@ -69,10 +69,10 @@ The Control Plane enforces role-based access on all authenticated endpoints:
 
 | Role | Access |
 |------|--------|
-| **Admin** | Full access — stats, dashboard, integrations, policy management, all events |
+| **Admin** | Full access — stats, Governance evidence, integrations, policy management, all events |
 | **Developer** | Scoped access — only sees their own events on `/logs` |
-| **Architect** | Governance read access + conversational governance chat in Control Plane |
-| **PM** | Governance read access + conversational governance chat in Control Plane |
+| **Architect** | Governance read access + conversational governance copilot |
+| **PM** | Governance read access + conversational governance copilot |
 
 API keys carry a role assignment. Ensure your developers are issued keys with the `Developer` role, and your DevOps/security team with the `Admin` role.
 

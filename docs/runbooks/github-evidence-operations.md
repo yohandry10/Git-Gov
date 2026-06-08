@@ -6,8 +6,8 @@ Date: 2026-04-25
 
 Operate the GitHub evidence reporting path after implementation:
 
-- dashboard executive coverage
-- dashboard local trend snapshots
+- Governance Evidence executive coverage
+- Governance Evidence local trend snapshots
 - audit export packaging
 - Markdown report artifact
 - artifact freshness monitor
@@ -46,11 +46,11 @@ Status mapping:
 | `Parcial` | At least one, but not all, signal families are present. |
 | `Sin evidencia` | No signal family is present in the observed stats/report. |
 
-## Dashboard Procedure
+## Governance Evidence Procedure
 
-Use this when reviewing GitHub evidence from the admin dashboard.
+Use this when reviewing GitHub evidence from the Desktop Governance module.
 
-1. Open the Control Plane dashboard as an admin.
+1. Open Desktop Governance > Evidence as an admin.
 2. Confirm `GitHub por Tipo` shows the executive coverage badge and `n/4 señales`.
 3. Review missing signal labels. If any are missing, verify repository webhook events and recent repository activity.
 4. In `Trend evidencia GitHub`, click `Capturar` after validating the current dashboard state.
@@ -62,13 +62,13 @@ Use this when reviewing GitHub evidence from the admin dashboard.
 
 Storage note:
 
-- Dashboard snapshots are browser-local.
+- Governance snapshots are browser-local.
 - Key: `gitgov.dashboard.github_evidence_trend`.
 - This path does not read GitHub Actions artifacts and does not require a GitHub token in the frontend.
 
 Acceptance criteria:
 
-- Operator can explain the current GitHub evidence status from the dashboard.
+- Operator can explain the current GitHub evidence status from Governance Evidence.
 - Operator captures a snapshot after each release/readiness review.
 - Missing signals are treated as data-quality follow-up, not automatically as code failure.
 

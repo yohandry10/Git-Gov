@@ -39,6 +39,7 @@ import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 describe('useControlPlaneStore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
     localStorage.clear()
     // Reset key state fields
     useControlPlaneStore.setState({
@@ -100,6 +101,19 @@ describe('useControlPlaneStore', () => {
         url: 'http://127.0.0.1:3000',
         api_key: 'test-key',
       })
+    })
+
+    it('uses VITE_SERVER_URL instead of stale localhost when no URL is provided', async () => {
+      vi.stubEnv('VITE_SERVER_URL', 'https://gitgov-api.onrender.com')
+      mockInvoke
+        .mockResolvedValueOnce(null) // cmd_cp_get_api_key
+        .mockResolvedValueOnce(undefined) // cmd_cp_clear_api_key
+        .mockResolvedValueOnce(undefined) // cmd_server_sync_outbox
+        .mockResolvedValueOnce(false) // cmd_server_health
+
+      await useControlPlaneStore.getState().initFromEnv()
+
+      expect(useControlPlaneStore.getState().serverConfig?.url).toBe('https://gitgov-api.onrender.com')
     })
   })
 

@@ -1,12 +1,32 @@
-import { createBrowserRouter, Link, RouterProvider, useRouteError } from 'react-router-dom'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { createBrowserRouter, Link, Navigate, RouterProvider, useRouteError } from 'react-router-dom'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { AuditPage } from '@/pages/AuditPage'
 import { SettingsPage } from '@/pages/SettingsPage'
-import { ControlPlanePage } from '@/pages/ControlPlanePage'
-import { ActionCenterPage } from '@/pages/ActionCenterPage'
 import { HelpPage } from '@/pages/HelpPage'
 import { AlertCircle } from 'lucide-react'
+
+const ActionCenterPage = lazy(() =>
+  import('@/pages/ActionCenterPage').then((module) => ({ default: module.ActionCenterPage })),
+)
+const GovernancePage = lazy(() =>
+  import('@/pages/GovernancePage').then((module) => ({ default: module.GovernancePage })),
+)
+
+function RouteSuspense({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={(
+        <div className="flex h-full items-center justify-center text-xs text-surface-500">
+          Loading view...
+        </div>
+      )}
+    >
+      {children}
+    </Suspense>
+  )
+}
 
 function NotFoundPage() {
   return (
@@ -87,7 +107,37 @@ const appRouter = createBrowserRouter([
     path: '/control-plane',
     element: (
       <MainLayout>
-        <ControlPlanePage />
+        <Navigate to="/settings#control-plane" replace />
+      </MainLayout>
+    ),
+    errorElement: (
+      <MainLayout>
+        <RouteErrorPage />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/governance',
+    element: (
+      <MainLayout>
+        <RouteSuspense>
+          <GovernancePage />
+        </RouteSuspense>
+      </MainLayout>
+    ),
+    errorElement: (
+      <MainLayout>
+        <RouteErrorPage />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/governance/:section',
+    element: (
+      <MainLayout>
+        <RouteSuspense>
+          <GovernancePage />
+        </RouteSuspense>
       </MainLayout>
     ),
     errorElement: (
@@ -100,7 +150,9 @@ const appRouter = createBrowserRouter([
     path: '/action-center',
     element: (
       <MainLayout>
-        <ActionCenterPage />
+        <RouteSuspense>
+          <ActionCenterPage />
+        </RouteSuspense>
       </MainLayout>
     ),
     errorElement: (

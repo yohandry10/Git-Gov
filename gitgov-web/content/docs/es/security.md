@@ -91,7 +91,7 @@ Toda comunicación entre GitGov Desktop y el Control Plane está protegida por *
 
 GitGov aplica **control de acceso basado en roles (RBAC)** a nivel de API. Cada solicitud requiere un token `Authorization: Bearer` válido.
 
-| Rol | Eventos Propios | Todos los Eventos | Stats/Dashboard | Integraciones | Gestión API Keys | Gestión Equipo y Org |
+| Rol | Eventos Propios | Todos los Eventos | Stats/Governance | Integraciones | Gestión API Keys | Gestión Equipo y Org |
 |-----|----------------|-------------------|----------------|-------------|-----------------|---------------------|
 | **Developer** | Lectura | — | — | — | — | — |
 | **Architect** | Lectura | — | — | — | — | — |
@@ -101,7 +101,7 @@ GitGov aplica **control de acceso basado en roles (RBAC)** a nivel de API. Cada 
 ### Detalles del Control de Acceso
 
 - Los **Developers** solo pueden ver sus propios registros de eventos (`GET /logs` está filtrado por `user_login`). No pueden ver datos de otros developers, estadísticas ni información de integraciones.
-- Los **Admins** tienen visibilidad completa: todos los eventos, estadísticas, dashboard, integraciones, señales de cumplimiento, gestión de API keys, vista de equipo y configuración de organización.
+- Los **Admins** tienen visibilidad completa: todos los eventos, estadísticas, evidencia Governance, integraciones, señales de cumplimiento, gestión de API keys, vista de equipo y configuración de organización.
 - **No existe bypass de superusuario** — el rol Admin es el nivel de privilegio más alto, y sigue sujeto a autenticación.
 - Las API keys se hashean (SHA-256) antes del almacenamiento. El servidor nunca almacena ni loguea claves en texto plano.
 - **Scoping por organización** — todos los datos están delimitados por organización. Un admin de una organización no puede ver datos de otra organización.
@@ -153,7 +153,7 @@ Este diseño soporta frameworks de cumplimiento incluyendo **SOC 2**, **ISO 2700
 | Audit stream (`/audit-stream/github`) | 60 req/min |
 | Integración Jenkins | 120 req/min |
 | Integración Jira | 120 req/min |
-| Endpoints admin (logs, stats, dashboard) | 60 req/min |
+| Endpoints admin (logs, stats, datos Governance) | 60 req/min |
 
 Todos los límites son configurables mediante variables de entorno.
 

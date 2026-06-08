@@ -28,9 +28,9 @@ GitGov es desarrollado por **Yohandry Chirinos**, ingeniero de software venezola
 ### ¿Qué stack tecnológico usa GitGov?
 
 - **Desktop App**: Tauri v2 + React 19 + Tailwind v4 + Zustand v5 — app nativa para Windows, macOS y Linux.
-- **Control Plane Server**: Axum (Rust) — API REST de alto rendimiento para ingesta de eventos, verificación de políticas y dashboard admin.
+- **Control Plane Server**: Axum (Rust) — API REST de alto rendimiento para ingesta de eventos, verificación de políticas, webhooks de proveedores y evidencia de gobernanza.
 - **Base de datos**: PostgreSQL (Supabase o self-hosted) — almacena eventos de auditoría, datos de organización e integraciones.
-- **Web App**: Next.js 15.5 — sitio de marketing y documentación en git-gov.vercel.app.
+- **Web App**: Next.js 15.5 — sitio de marketing y documentación en gitgov.cloud.
 
 ---
 
@@ -174,7 +174,7 @@ Dos métodos:
 
 | Rol | Acceso |
 |-----|--------|
-| **Admin** | Completo: eventos, stats, dashboard, integraciones, equipo, API keys, políticas |
+| **Admin** | Completo: eventos, stats, evidencia Governance, integraciones, equipo, API keys, políticas |
 | **Developer** | Solo sus propios eventos |
 | **Architect** | Igual que Developer (reservado para permisos granulares futuros) |
 | **PM** | Igual que Developer (reservado para acceso futuro a reportes) |
@@ -193,21 +193,19 @@ Configuración > API Keys: listar, crear (con rol), revocar (efecto inmediato), 
 
 ---
 
-## Dashboard y Analítica
+## Governance, Action Center y Analítica
 
-### ¿Qué muestra el Dashboard de Admin?
+### ¿Qué muestra Governance?
 
-- **Métricas** — Total eventos, tasa de éxito, repos activos, pushes, eventos bloqueados, developers activos.
-- **Pipeline Health** — Métricas Jenkins 7 días: total builds, tasa de éxito, fallos, duración promedio.
-- **Actividad Diaria** — Tendencias de commits/pushes (14 días).
-- **Cobertura de Tickets** — Porcentaje de commits vinculados a tickets Jira.
-- **Desglose de Eventos** — Distribución por tipo/estado, commits sin ticket, tickets sin commits.
-- **Tabla de Commits Recientes** — Eventos paginados con badges CI, badges PR y links a tickets Jira.
-- **Chat de Gobernanza** — Asistente IA integrado.
+- **Evidence** — trazabilidad, evidencia de pipeline, señales GitHub, evidence packets, commits recientes, desglose de eventos, exports y tendencias de evidencia.
+- **Policy** — reglas de ramas, revisión, trazabilidad y enforcement.
+- **Adoption** — configuración enterprise, provider health, workflow packs, checklist de onboarding, readiness y remediación.
+- **Releases** — release readiness, aprobaciones, hashes de evidencia, evaluación de gobernanza y decisiones recientes.
+- **Copilot** — explicaciones de gobernanza basadas en evidencia.
 
-### ¿Cada cuánto se refresca?
+### ¿Qué muestra Action Center?
 
-Cada **30 segundos** por defecto. Se puede activar/desactivar.
+Action Center es dueño del **Next Action** global. Muestra el objetivo actual, el siguiente movimiento recomendado, por qué importa, la evidencia que lo soporta y el workflow destino. El refresco pesado de evidencia es explícito, no automático al entrar a la ruta.
 
 ### ¿Qué significan los badges CI?
 
@@ -222,9 +220,9 @@ Referencias Jira detectadas en ramas o metadatos de commit (ej. `PROJ-123`). Cli
 
 ### ¿Qué ve un Developer?
 
-Sus propios commits/pushes y opción de aceptar invitaciones. Sin stats de org ni gestión de equipo.
+Su contexto local de Workspace, flujo de commit/push y guía de gobernanza acotada. Sin gestión de equipo a nivel organización.
 
-### ¿Qué timezone usa el Dashboard?
+### ¿Qué timezone usa GitGov?
 
 Almacenado en **UTC**. Timezone de visualización configurable en Configuración (12 zonas IANA). Solo afecta la vista — datos en UTC.
 
@@ -236,7 +234,7 @@ Almacenado en **UTC**. Timezone de visualización configurable en Configuración
 
 - **Analítica**: "¿Quién hizo push a main sin ticket esta semana?", "¿Cuántos commits tiene alice?"
 - **Configuración**: "¿Cómo configuro Jenkins?", "¿Cómo protejo una rama?"
-- **Troubleshooting**: "¿Por qué recibo 401?", "¿Por qué mi dashboard está vacío?"
+- **Troubleshooting**: "¿Por qué recibo 401?", "¿Por qué Governance está vacío?"
 - **Producto**: "¿Qué integraciones existen?", "¿Qué roles hay?"
 
 ### ¿El chat accede a mi código?
@@ -253,7 +251,7 @@ Indica datos insuficientes u ofrece registrar un **feature request** para el equ
 
 ### ¿Qué es el Control Plane?
 
-El servidor central **Axum (Rust)** — recibe eventos, procesa webhooks, ejecuta verificaciones de política, sirve el dashboard.
+El servidor central **Axum (Rust)** — recibe eventos, procesa webhooks, ejecuta verificaciones de política y sirve las APIs usadas por Governance, Action Center, Workspace y Settings.
 
 ### ¿Puedo self-hostear el Control Plane?
 

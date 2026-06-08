@@ -5,6 +5,7 @@ export const CLI_LINE_EVENT = 'gitgov:cli-line'
 export interface CliLinePayload {
   lineType: TerminalLineType
   text: string
+  auditable?: boolean
 }
 
 export function emitCliLine(payload: CliLinePayload): void {
@@ -28,4 +29,3 @@ export function onCliLine(handler: (payload: CliLinePayload) => void): () => voi
     window.removeEventListener(CLI_LINE_EVENT, listener)
   }
 }
-

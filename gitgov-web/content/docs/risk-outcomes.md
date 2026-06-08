@@ -120,7 +120,7 @@ Interpretation:
 
 ## Composite Risk Score (0–100)
 
-The dashboard computes a weighted score from currently available signals:
+Governance computes a weighted score from currently available signals:
 
 - blocked push rate,
 - traceability gap,
@@ -142,9 +142,9 @@ These bands are operational defaults. Tune thresholds per repository criticality
 
 ---
 
-## Tier Profiles (Now in Dashboard)
+## Tier Profiles
 
-The Control Plane now supports tier-aware scoring profiles in the admin dashboard selector (`Critical`, `Standard`, `Internal`).
+GitGov supports tier-aware scoring profiles (`Critical`, `Standard`, `Internal`) in the governance reporting model.
 
 Each profile changes:
 - score weights (readiness and composite risk),
@@ -175,7 +175,7 @@ Use `Standard` as baseline, then move each repository to `Critical` or `Internal
 
 ## Operational Metrics Already Surfaced
 
-The admin dashboard already surfaces two informational operational metrics from correlated Jenkins evidence:
+Governance reporting already surfaces two informational operational metrics from correlated Jenkins evidence:
 
 - **Time-to-Evidence** — commit timestamp to correlated pipeline ingestion timestamp.
 - **MTTR pipeline** — recoverable non-green pipeline event to the next successful run for the same job.

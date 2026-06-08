@@ -8,6 +8,12 @@ import type {
 import { detectBrowserTimezone, persistTimezone, readStoredTimezone } from '@/lib/timezone'
 import { useAuthStore } from '@/store/useAuthStore'
 import { notifyNewEvents } from '@/lib/notifications'
+import {
+  formatControlPlaneConnectionError,
+  getEnvControlPlaneUrl,
+  normalizeControlPlaneUrl,
+  resolveControlPlaneUrl,
+} from '@/lib/controlPlaneConfig'
 
 interface ServerConfig {
   url: string
@@ -704,7 +710,6 @@ const JIRA_COVERAGE_FILTERS_STORAGE_KEY = 'gitgov.jira_coverage_filters'
 const LEGACY_CHAT_MESSAGES_STORAGE_KEY = 'gitgov.chat_messages'
 const CHAT_MESSAGES_STORAGE_KEY_PREFIX = 'gitgov.chat_messages.v2.'
 const JIRA_TICKET_DETAIL_TTL_MS = 2 * 60 * 1000
-const DEV_LOCAL_SERVER_URL = 'http://127.0.0.1:3000'
 const IS_DEV_MODE = Boolean(import.meta.env.DEV)
 const FOUNDER_GITHUB_LOGIN = (
   import.meta.env.VITE_FOUNDER_GITHUB_LOGIN ||
@@ -878,28 +883,6 @@ async function fetchLogsKeysetWindow(
   }
 
   return collected.slice(0, safeLimit)
-}
-
-function normalizeLoopbackUrl(url: string): string {
-  const trimmed = url.trim()
-  if (!trimmed) return trimmed
-
-  try {
-    const parsed = new URL(trimmed)
-    if (parsed.hostname === 'localhost') {
-      parsed.hostname = '127.0.0.1'
-    }
-    // Control Plane config must be a base URL only (scheme + host + optional port).
-    // Strip path/query/hash so outbox and dashboard don't diverge (e.g. /docs, /health).
-    parsed.pathname = '/'
-    parsed.search = ''
-    parsed.hash = ''
-    return parsed.origin
-  } catch {
-    // Ignore invalid URLs here; validation happens later in Tauri/server calls.
-  }
-
-  return trimmed
 }
 
 function readStoredServerConfig(): ServerConfig | null {
@@ -1275,15 +1258,14 @@ function resolveServerConfig(
   secureApiKey?: string | null,
 ): ServerConfig {
   const stored = readStoredServerConfig()
-  const envUrl = normalizeLoopbackUrl(import.meta.env.VITE_SERVER_URL || '')
+  const envUrl = getEnvControlPlaneUrl()
   const envApiKey = (import.meta.env.VITE_API_KEY || '').trim()
-  const candidateUrl =
-    normalizeLoopbackUrl(input?.url ?? '') ||
-    normalizeLoopbackUrl(previous?.url ?? '') ||
-    envUrl ||
-    normalizeLoopbackUrl(stored?.url ?? '') ||
-    DEV_LOCAL_SERVER_URL
-  const url = IS_DEV_MODE ? DEV_LOCAL_SERVER_URL : normalizeLoopbackUrl(candidateUrl)
+  const url = resolveControlPlaneUrl({
+    inputUrl: input?.url,
+    previousUrl: previous?.url,
+    storedUrl: stored?.url,
+    envUrl,
+  })
 
   const apiKey =
     input?.api_key?.trim() ||
@@ -1295,7 +1277,7 @@ function resolveServerConfig(
     (ALLOW_LEGACY_DEFAULT_API_KEY ? LEGACY_DEFAULT_API_KEY : '')
 
   return {
-    url: normalizeLoopbackUrl(url),
+    url: normalizeControlPlaneUrl(url),
     api_key: apiKey || undefined,
   }
 }
@@ -1448,7 +1430,6 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
 
     const next = resolveServerConfig(
       {
-        url: serverConfig?.url ?? DEV_LOCAL_SERVER_URL,
         api_key: envApiKey,
       },
       serverConfig,
@@ -1472,7 +1453,7 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
     }
     const next = resolveServerConfig(
       {
-        url: url?.trim() || serverConfig?.url || DEV_LOCAL_SERVER_URL,
+        url: url?.trim() || undefined,
         api_key: normalizedKey,
       },
       serverConfig,
@@ -1577,7 +1558,10 @@ export const useControlPlaneStore = create<ControlPlaneState & ControlPlaneActio
           }
         }
       } catch (e) {
-        const errMsg = parseCommandError(String(e)).message
+        const errMsg = formatControlPlaneConnectionError(
+          parseCommandError(String(e)).message,
+          serverConfig.url,
+        )
         // If previously connected and now failing → server is likely restarting (maintenance)
         if (wasConnected) {
           set((s) => ({

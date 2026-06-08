@@ -149,7 +149,7 @@ Al usar la Trazabilidad CI, puedes generar informes automatizados para auditorí
 |---------------|----------|--------|
 | Vincular commits a builds Jenkins | `POST /integrations/jenkins` | Disponible (V1.2-A) |
 | Consulta de correlación commit–pipeline | `GET /integrations/jenkins/correlations` | Disponible (V1.2-A) |
-| Widget de salud del pipeline | `GET /integrations/jenkins/status` | Disponible (V1.2-A) |
+| Datos Governance de salud del pipeline | `GET /integrations/jenkins/status` | Disponible (V1.2-A) |
 | Cobertura de tickets Jira | `GET /integrations/jira/ticket-coverage` | Preview (V1.2-B) |
 | Correlación Jira en lote | `POST /integrations/jira/correlate` | Preview (V1.2-B) |
 | Ingestión de webhooks GitHub | `POST /webhooks/github` | Disponible |

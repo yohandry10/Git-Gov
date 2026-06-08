@@ -120,7 +120,7 @@ Interpretación:
 
 ## Score Compuesto de Riesgo (0–100)
 
-El dashboard calcula un score ponderado con las señales disponibles:
+Governance calcula un score ponderado con las señales disponibles:
 
 - tasa de push bloqueado,
 - brecha de trazabilidad,
@@ -142,9 +142,9 @@ Son umbrales operativos iniciales. Ajusta por criticidad de repositorio cuando t
 
 ---
 
-## Perfiles por Tier (Ya en Dashboard)
+## Perfiles por Tier
 
-El Control Plane ya permite seleccionar perfiles por tier en el dashboard admin (`Critical`, `Standard`, `Internal`).
+GitGov soporta perfiles por tier (`Critical`, `Standard`, `Internal`) en el modelo de reporting de gobernanza.
 
 Cada perfil ajusta:
 - pesos del score (readiness y riesgo compuesto),
@@ -175,7 +175,7 @@ Usa `Standard` como baseline y mueve cada repositorio a `Critical` o `Internal` 
 
 ## Métricas Operativas Ya Visibles
 
-El dashboard admin ya muestra dos métricas operativas informativas a partir de evidencia Jenkins correlacionada:
+El reporting de Governance ya muestra dos métricas operativas informativas a partir de evidencia Jenkins correlacionada:
 
 - **Time-to-Evidence** — desde el timestamp del commit hasta la ingesta del pipeline correlacionado.
 - **MTTR pipeline** — desde un evento de pipeline no verde recuperable hasta el siguiente run exitoso del mismo job.

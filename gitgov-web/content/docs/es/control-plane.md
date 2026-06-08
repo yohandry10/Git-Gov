@@ -5,7 +5,7 @@ order: 3
 category: Deploy
 ---
 
-El Control Plane es el corazón del ecosistema GitGov. Actúa como punto de ingestión centralizado y seguro para los eventos capturados por todos los agentes Desktop de tu organización. Una vez conectado, habilita monitorización en tiempo real, auditoría y aplicación global de políticas.
+El Control Plane es el servidor seguro detrás de GitGov. Ingresa eventos Desktop, procesa webhooks de proveedores, almacena evidencia de auditoría y expone las APIs usadas por Governance, Action Center, Workspace y Settings. No es el dashboard principal de Desktop; la conexión y la API key viven en **Configuración > System**.
 
 ---
 
@@ -42,7 +42,7 @@ curl http://tu-control-plane/health
 
 ### 2. Autenticación en Desktop
 1. Inicia **GitGov Desktop**.
-2. Ve a **Configuración > Sync y Control Plane**.
+2. Ve a **Configuración > System**.
 3. Ingresa la **URL del Servidor** proporcionada por tu equipo de DevOps.
 4. Ingresa tu **Token API**. La aplicación verificará la conexión de inmediato.
 
@@ -56,7 +56,7 @@ GitGov realiza un health check ligero para verificar latencia y compatibilidad d
 | Comportamiento | Detalles |
 |----------------|---------|
 | **Despacho de Eventos** | Los eventos se despachan al Control Plane a medida que ocurren, en lotes mediante el endpoint `/events`. |
-| **Actualización del Dashboard** | El dashboard del Control Plane se actualiza automáticamente cada **30 segundos**. |
+| **Actualización de Governance** | Las vistas de Governance refrescan mediante acciones explícitas del usuario y polling ligero cuando aplica. El refresco pesado de evidencia queda bajo control del usuario. |
 | **Buffer Offline** | Cuando el servidor no está disponible, la bandeja de salida local encola los eventos en un archivo JSONL en disco. |
 | **Reintentos** | Los despachos fallidos usan backoff exponencial, con un máximo de **32×** el intervalo base. Los eventos nunca se pierden. |
 | **Límite de Tasa** | Por defecto: **240 eventos/minuto** por API key. Configurable mediante `GITGOV_RATE_LIMIT_EVENTS_PER_MIN`. |
@@ -69,10 +69,10 @@ El Control Plane aplica control de acceso basado en roles en todos los endpoints
 
 | Rol | Acceso |
 |-----|--------|
-| **Admin** | Acceso completo — estadísticas, dashboard, integraciones, gestión de políticas, todos los eventos |
+| **Admin** | Acceso completo — estadísticas, evidencia Governance, integraciones, gestión de políticas, todos los eventos |
 | **Developer** | Acceso limitado — solo ve sus propios eventos en `/logs` |
-| **Architect** | Acceso de lectura de gobernanza + chat conversacional de gobernanza en Control Plane |
-| **PM** | Acceso de lectura de gobernanza + chat conversacional de gobernanza en Control Plane |
+| **Architect** | Acceso de lectura de gobernanza + copilot conversacional de gobernanza |
+| **PM** | Acceso de lectura de gobernanza + copilot conversacional de gobernanza |
 
 Las API keys llevan asignado un rol. Asegúrate de que los desarrolladores tengan keys con rol `Developer` y que el equipo de DevOps/seguridad tenga rol `Admin`.
 

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { Button } from '@/components/shared/Button'
 import { Server, Link, Unlink, RefreshCw, Wrench } from 'lucide-react'
-
-const DEV_LOCAL_SERVER_URL = 'http://127.0.0.1:3000'
-const IS_DEV_MODE = Boolean(import.meta.env.DEV)
+import {
+  DEFAULT_CONTROL_PLANE_URL,
+  resolveControlPlaneUrl,
+} from '@/lib/controlPlaneConfig'
 
 export function ServerConfigPanel() {
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
@@ -17,12 +18,12 @@ export function ServerConfigPanel() {
   const setServerConfig = useControlPlaneStore((s) => s.setServerConfig)
   const checkConnection = useControlPlaneStore((s) => s.checkConnection)
   const disconnect = useControlPlaneStore((s) => s.disconnect)
-  const [url, setUrl] = useState(IS_DEV_MODE ? DEV_LOCAL_SERVER_URL : (serverConfig?.url || DEV_LOCAL_SERVER_URL))
+  const [url, setUrl] = useState(resolveControlPlaneUrl({ previousUrl: serverConfig?.url }))
   const [apiKey, setApiKey] = useState(serverConfig?.api_key || '')
 
   const handleConnect = () => {
     setServerConfig({
-      url: IS_DEV_MODE ? DEV_LOCAL_SERVER_URL : url,
+      url: resolveControlPlaneUrl({ inputUrl: url, previousUrl: serverConfig?.url }),
       api_key: apiKey || undefined,
     })
   }
@@ -114,17 +115,14 @@ export function ServerConfigPanel() {
           <input
             id="server-url-input"
             type="text"
-            value={IS_DEV_MODE ? DEV_LOCAL_SERVER_URL : url}
+            value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="http://127.0.0.1:3000"
-            disabled={IS_DEV_MODE}
+            placeholder={DEFAULT_CONTROL_PLANE_URL}
             className="input"
           />
-          {IS_DEV_MODE && (
-            <p className="mt-1 text-xs text-warning-400">
-              Modo desarrollo: la URL está fijada a {DEV_LOCAL_SERVER_URL} para evitar apuntar a servidores remotos.
-            </p>
-          )}
+          <p className="mt-1 text-xs text-surface-500">
+            Usa localhost solo si el Control Plane local está levantado; de lo contrario usa la URL configurada del servidor.
+          </p>
         </div>
         
         <div>

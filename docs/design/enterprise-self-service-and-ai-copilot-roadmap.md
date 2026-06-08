@@ -1,6 +1,6 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-05-02
+Updated: 2026-06-08
 
 Ticket: `KAN-68`
 
@@ -29,19 +29,19 @@ The Action Center should make the existing capabilities obvious to a customer by
 - evidence behind the recommendation.
 - which actions are read-only and which require explicit operator approval.
 
-The candidate next implementation ticket is:
+This was implemented as:
 
 ```text
 KAN-69 - Enterprise Action Center guided UX
 ```
 
-This should be a dedicated `/action-center` product surface and should reuse existing capabilities from `KAN-29` through `KAN-67`. It should not introduce another independent monitor, trend, or enforcement chain unless required to make the Action Center accurate.
+KAN-69 is a dedicated `/action-center` product surface that reuses existing capabilities from `KAN-29` through `KAN-67`. It did not introduce another independent monitor, trend, or enforcement chain. The follow-up Desktop runtime QA then clarified the surrounding IA: Action Center owns the global recommendation, Governance owns operational governance tools, and Settings owns Control Plane connection/configuration.
 
 ## Next Product Features
 
 ### 1. Enterprise Self-Service Adoption
 
-Status: started in `KAN-29`; dashboard profile builder added in `KAN-30`; persisted profiles added in `KAN-31`; provider health evidence MVP added in `KAN-32`; workflow template generation added in `KAN-33`; dashboard workflow template pack download added in `KAN-34`; reviewed workflow installation added in `KAN-35`; direct provider connection validation added in `KAN-36`; formal release approval backend MVP added in `KAN-37`; dashboard release approval wizard added in `KAN-43`; release governance profile policy added in `KAN-45`; release governance evaluator added in `KAN-46`; optional release governance enforcement gate added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`; remote workflow installation PRs start in `KAN-50`; remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; onboarding readiness automation starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; dashboard remediation export starts in `KAN-58`; guided dashboard onboarding checklist starts in `KAN-59`; persisted guided checklist tracking starts in `KAN-60`; route auth hardening/smoke/trend/enforcement safety chain completed through `KAN-67`; post-`KAN-67` focus moves to Enterprise Action Center UX through `KAN-68` documentation and candidate `KAN-69` implementation.
+Status: started in `KAN-29`; the first Desktop adoption profile builder was added in `KAN-30`; persisted profiles were added in `KAN-31`; provider health evidence MVP was added in `KAN-32`; workflow template generation was added in `KAN-33`; Desktop workflow template pack download was added in `KAN-34`; reviewed workflow installation was added in `KAN-35`; direct provider connection validation was added in `KAN-36`; formal release approval backend MVP was added in `KAN-37`; Desktop release approval wizard was added in `KAN-43`; release governance profile policy was added in `KAN-45`; release governance evaluator was added in `KAN-46`; optional release governance enforcement gate was added in `KAN-47`; environment-scoped release governance policy overrides start in `KAN-48`; release governance gate artifact monitoring starts in `KAN-49`; remote workflow installation PRs start in `KAN-50`; remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; onboarding readiness automation starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; Desktop remediation export starts in `KAN-58`; guided Desktop onboarding checklist starts in `KAN-59`; persisted guided checklist tracking starts in `KAN-60`; route auth hardening/smoke/trend/enforcement safety chain completed through `KAN-67`; Enterprise Action Center UX was documented in `KAN-68` and implemented in `KAN-69`; the current Desktop runtime QA organizes those capabilities into Action Center, Governance, Settings, and Workspace instead of one oversized Control Plane dashboard.
 
 Current state:
 
@@ -167,17 +167,17 @@ Release governance default:
 
 ### 2. Vercel AI SDK Copilot
 
-Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route; dashboard UI added in `KAN-39`; AI/fallback mode validation started in `KAN-40`; direct Google Gemini provider activation started in `KAN-41`.
+Status: first MVP implemented in `KAN-38` with a server-side Vercel AI SDK evidence brief route; Desktop copilot UI added in `KAN-39`; AI/fallback mode validation started in `KAN-40`; direct Google Gemini provider activation started in `KAN-41`.
 
 Current state:
 
 - GitGov already has enough structured evidence for an assistant to explain risk, readiness, tickets, pipelines, findings, and policy decisions.
-- The product already exposes the core dashboard, exports, and Evidence Packets MVP.
+- The product already exposes Governance, exports, and Evidence Packets MVP.
 - KAN-38 adds the first AI SDK route, `POST /api/copilot/governance`, which gathers bounded GitGov evidence and returns a cited governance brief.
-- KAN-39 starts the first admin dashboard UI for the copilot route through a secret-safe Tauri desktop proxy.
+- KAN-39 starts the first Desktop UI for the copilot route through a secret-safe Tauri desktop proxy. In the current IA this belongs under Governance Copilot.
 - KAN-40 adds a secret-safe validator and GitHub workflow for checking whether the route is healthy, evidence-grounded, and running in `mode=ai` or deterministic `fallback`.
 - KAN-41 selects direct Google Gemini through `@ai-sdk/google` as the practical production AI path because Vercel AI Gateway generation required billing-card activation. AI Gateway remains optional future infrastructure.
-- Production validation passed on `https://www.gitgov.cloud/api/copilot/governance` and `https://git-gov.vercel.app/api/copilot/governance` in deterministic fallback mode before KAN-41. KAN-41 validation should move production to `mode=ai` after deploy.
+- Production validation should use the canonical `https://www.gitgov.cloud/api/copilot/governance` route. Older Vercel deployment aliases were historical validation paths, not the public URL to document as current.
 
 Missing product packaging:
 
@@ -195,7 +195,7 @@ Missing product packaging:
   - summarize accepted risks.
 - First MVP:
   - server-side Next.js route.
-  - admin dashboard panel.
+  - Governance Copilot panel.
   - AI/fallback mode validator.
   - Vercel AI SDK `generateText()`.
   - direct Google Gemini provider through `@ai-sdk/google`.
@@ -222,14 +222,15 @@ The original agreed order through hardening and enterprise packaging was:
 5. Finish the Enterprise Self-Service Onboarding gaps before Vercel AI SDK Copilot. Reviewed local workflow installation is covered by `KAN-35`; direct provider checks are covered by `KAN-36`; formal release approval persistence is covered by `KAN-37`; remote PR-based workflow installation starts in `KAN-50`; read-only remote workflow readiness validation starts in `KAN-51`; consolidated onboarding readiness reporting starts in `KAN-52`; recurring onboarding readiness evidence starts in `KAN-53`; onboarding readiness artifact monitoring starts in `KAN-54`; onboarding readiness trend reporting starts in `KAN-55`; onboarding readiness trend monitoring starts in `KAN-56`; onboarding remediation planning starts in `KAN-57`; dashboard remediation export starts in `KAN-58`; guided dashboard onboarding checklist starts in `KAN-59`; persisted checklist tracking starts in `KAN-60`; direct GitHub App installation remains optional future packaging.
 6. Start the Vercel AI SDK Copilot feature when the onboarding/evidence surfaces are ready enough for the copilot to explain a complete adoption state. The first route is implemented in `KAN-38`, dashboard UI is implemented in `KAN-39`, AI-mode validation starts in `KAN-40`, and direct Google Gemini activation starts in `KAN-41`.
 
-The current agreed order after `KAN-67` is:
+The agreed order after `KAN-67` was:
 
 1. Stop adding incremental hardening/features by default.
 2. Keep existing scheduled evidence workflows running.
 3. Only open new hardening tickets for real bugs, confirmed vulnerabilities, production risks, or customer-selected enforcement requirements.
 4. Make the next product feature UX-focused: `KAN-69 - Enterprise Action Center guided UX`.
-5. Use a dedicated `/action-center` route with existing evidence/readiness/onboarding/release-governance/checklist/copilot capabilities to show a simple guided path.
-6. Treat AI work as useful only when it explains or simplifies the guided product experience.
+5. After KAN-69, use Desktop runtime QA to simplify information architecture before adding another feature chain.
+6. Use a dedicated `/action-center` route with existing evidence/readiness/onboarding/release-governance/checklist/copilot capabilities to show a simple guided path.
+7. Treat AI work as useful only when it explains or simplifies the guided product experience.
 
 ## Non-Goals
 
@@ -237,7 +238,8 @@ The current agreed order after `KAN-67` is:
 - Do not claim multi-approver enterprise release governance is complete until quorum rules, signatures, approval UI, and release-gate enforcement are productionized for customer-selected policies.
 - Do not make multi-approver quorum or release-blocking enforcement default behavior; both must be explicit customer choices.
 - Do not continue adding standalone monitor/trend/enforcement tickets by default after `KAN-67`.
-- Do not make the customer learn internal workflow names or artifact chains when a guided Action Center can explain the next step.
+- Do not make the customer learn internal workflow names or artifact chains when a guided Action Center can explain the next global step.
+- Do not turn Control Plane into an AWS-style dashboard. Control Plane is now connection/configuration in Settings; Governance owns evidence, policy, adoption, releases, and copilot work.
 - Do not start new capability work unless it improves usability, closes a real risk, or supports a customer-selected policy.
 - Do not require SonarCloud for this personal repository.
 - Do not make OpenAPI/SDK work a blocker unless generated SDKs or contract tests become explicit scope.

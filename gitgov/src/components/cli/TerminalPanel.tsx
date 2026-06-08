@@ -44,6 +44,8 @@ export function TerminalPanel() {
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const sessionCwdRef = useRef<string | null>(null)
+  const mountedRef = useRef(false)
+  const startRequestIdRef = useRef(0)
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const repoPath = useRepoStore((s) => s.repoPath)
@@ -68,7 +70,9 @@ export function TerminalPanel() {
       if (sessionIdRef.current === resolved) {
         sessionIdRef.current = null
         sessionCwdRef.current = null
-        setSessionId(null)
+        if (mountedRef.current) {
+          setSessionId(null)
+        }
       }
     }
   }, [])
@@ -101,6 +105,9 @@ export function TerminalPanel() {
       if (!repoPath) {
         await stopNativeSession()
         terminal.clear()
+        if (mountedRef.current) {
+          setIsConnecting(false)
+        }
         writeSystem('Select a repository to start native terminal session.')
         return
       }
@@ -115,6 +122,8 @@ export function TerminalPanel() {
 
       setIsConnecting(true)
       fitAddon.fit()
+      const startRequestId = startRequestIdRef.current + 1
+      startRequestIdRef.current = startRequestId
 
       try {
         const result = await tauriInvoke<CliNativeTerminalStartResult>('cmd_start_native_terminal', {
@@ -124,6 +133,15 @@ export function TerminalPanel() {
             rows: terminal.rows,
           },
         })
+
+        if (
+          !mountedRef.current ||
+          startRequestIdRef.current !== startRequestId ||
+          terminalRef.current !== terminal
+        ) {
+          await stopNativeSession(result.session_id)
+          return
+        }
 
         sessionIdRef.current = result.session_id
         sessionCwdRef.current = repoPath
@@ -136,13 +154,16 @@ export function TerminalPanel() {
       } catch (e) {
         writeSystem(`Failed to start native terminal: ${String(e)}`, ANSI.error)
       } finally {
-        setIsConnecting(false)
+        if (mountedRef.current && startRequestIdRef.current === startRequestId) {
+          setIsConnecting(false)
+        }
       }
     },
     [repoPath, sendResize, stopNativeSession, writeSystem],
   )
 
   useEffect(() => {
+    mountedRef.current = true
     const terminal = new XTerm({
       fontFamily: 'Geist Mono, JetBrains Mono, Consolas, monospace',
       fontSize: 12,
@@ -204,6 +225,8 @@ export function TerminalPanel() {
     })
 
     return () => {
+      mountedRef.current = false
+      startRequestIdRef.current += 1
       dataDisposable.dispose()
       resizeObserverRef.current?.disconnect()
       resizeObserverRef.current = null
@@ -248,7 +271,9 @@ export function TerminalPanel() {
         writeSystem(`[GitGov] Shell exited with code ${event.exit_code}`, ANSI.warning)
         sessionIdRef.current = null
         sessionCwdRef.current = null
-        setSessionId(null)
+        if (mountedRef.current) {
+          setSessionId(null)
+        }
       })
     }
 
@@ -287,6 +312,19 @@ export function TerminalPanel() {
     }
   }, [stopNativeSession])
 
+  const statusLabel = sessionId && !isConnecting
+    ? shellName
+    : isConnecting
+      ? 'connecting...'
+      : repoPath
+        ? 'offline'
+        : 'no repo'
+  const statusClass = sessionId && !isConnecting
+    ? 'border-success-500/30 bg-success-500/10 text-success-300'
+    : isConnecting
+      ? 'border-warning-500/30 bg-warning-500/10 text-warning-300'
+      : 'border-surface-700 bg-surface-800 text-surface-500'
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-950">
       <div className="flex items-center gap-2 border-b border-surface-800 bg-surface-900/60 px-3 py-1.5">
@@ -304,13 +342,9 @@ export function TerminalPanel() {
             Reconnect
           </button>
           <span
-            className={`rounded border px-1.5 py-0.5 text-[9px] ${
-              sessionId && !isConnecting
-                ? 'border-success-500/30 bg-success-500/10 text-success-300'
-                : 'border-warning-500/30 bg-warning-500/10 text-warning-300'
-            }`}
+            className={`rounded border px-1.5 py-0.5 text-[9px] ${statusClass}`}
           >
-            {sessionId && !isConnecting ? shellName : 'connecting...'}
+            {statusLabel}
           </span>
         </div>
       </div>

@@ -477,7 +477,7 @@ function ReportingSection() {
                             <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 pb-6 border-b border-white/5 gap-6">
                                 <div>
                                     <div className="text-2xl text-white font-bold tracking-tight">Live Compliance</div>
-                                    <div className="text-sm text-gray-500 mt-1 font-mono">Control Plane Monitoring</div>
+                                    <div className="text-sm text-gray-500 mt-1 font-mono">Governance Evidence</div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#050505] border border-white/10 shadow-inner">
