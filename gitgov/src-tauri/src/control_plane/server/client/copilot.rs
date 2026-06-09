@@ -1,5 +1,5 @@
 use super::super::models::*;
-use super::ControlPlaneClient;
+use super::{server_error_from_response, ControlPlaneClient};
 
 impl ControlPlaneClient {
     pub fn chat_ask(&self, request: &ChatAskRequest) -> Result<ChatAskResponse, ServerError> {
@@ -21,7 +21,16 @@ impl ControlPlaneClient {
         }
 
         if !status.is_success() {
-            let snippet = body.chars().take(180).collect::<String>();
+            let snippet = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("error")
+                        .or_else(|| value.get("message"))
+                        .and_then(|message| message.as_str())
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| body.chars().take(180).collect::<String>());
             return Err(ServerError::ServerError(format!(
                 "Server returned status: {} ({})",
                 status, snippet
@@ -46,10 +55,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()

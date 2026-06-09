@@ -12,6 +12,7 @@ use axum::{
 };
 use sha2::Digest;
 use sqlx::PgPool;
+pub(super) use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicI64;
 pub(super) use std::sync::Arc;
@@ -680,7 +681,13 @@ pub(super) fn build_test_app_with_options(
             post(handlers::trigger_detection),
         )
         .route("/me", get(handlers::get_me))
-        .route("/orgs", post(handlers::create_org))
+        .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
+        .route("/orgs/{login}", get(handlers::get_org))
+        .route(
+            "/api-keys",
+            get(handlers::list_api_keys).post(handlers::create_api_key),
+        )
+        .route("/api-keys/{id}/revoke", post(handlers::revoke_api_key))
         .route("/export", post(handlers::export_events))
         .route(
             "/enterprise/adoption-profile",

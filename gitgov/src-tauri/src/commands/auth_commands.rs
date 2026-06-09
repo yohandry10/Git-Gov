@@ -135,6 +135,7 @@ pub async fn cmd_poll_auth(
         );
 
         let user = AuthenticatedUser {
+            id: Some(gh_user.id),
             login: gh_user.login.clone(),
             name: gh_user.name.unwrap_or_else(|| "Unknown".to_string()),
             avatar_url: gh_user.avatar_url,
@@ -156,6 +157,7 @@ pub async fn cmd_get_current_user() -> Result<Option<AuthenticatedUser>, String>
             if let Ok(token) = load_token(&session_user.login) {
                 if let Ok(gh_user) = get_authenticated_user(&token) {
                     let refreshed_user = AuthenticatedUser {
+                        id: Some(gh_user.id).or(session_user.id),
                         login: gh_user.login,
                         name: gh_user.name.unwrap_or(session_user.name),
                         avatar_url: gh_user.avatar_url,
@@ -178,6 +180,7 @@ pub async fn cmd_get_current_user() -> Result<Option<AuthenticatedUser>, String>
 
 #[tauri::command]
 pub fn cmd_set_current_user(
+    id: Option<u64>,
     login: String,
     name: String,
     avatar_url: String,
@@ -185,6 +188,7 @@ pub fn cmd_set_current_user(
     is_admin: bool,
 ) -> Result<(), String> {
     let user = AuthenticatedUser {
+        id,
         login,
         name,
         avatar_url,
@@ -210,6 +214,7 @@ pub async fn cmd_validate_token(token: String) -> Result<AuthenticatedUser, Stri
             get_authenticated_user(&token).map_err(|e| to_command_error(e, "API_ERROR"))?;
 
         Ok(AuthenticatedUser {
+            id: Some(gh_user.id),
             login: gh_user.login,
             name: gh_user.name.unwrap_or_else(|| "Unknown".to_string()),
             avatar_url: gh_user.avatar_url,

@@ -183,7 +183,7 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 | `/export` | Bearer (admin) | Export de audit data |
 | `/exports` | Bearer (admin) | Historial de exports generados |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
-| `/api-keys` | Bearer (admin) | Gestión de API keys |
+| `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
 | `/integrations/jenkins/status` | Bearer (admin) | Health check Jenkins |
 | `/integrations/jenkins/correlations` | Bearer (admin) | Correlaciones commit↔pipeline |
@@ -202,8 +202,9 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 | `/stats/daily` | Bearer (admin) | Actividad diaria |
 | `/team/overview` | Bearer (admin) | Vista general del equipo |
 | `/team/repos` | Bearer (admin) | Repositorios del equipo |
-| `/me` | Bearer | Datos del usuario autenticado |
-| `/orgs` | Bearer (admin) | Crear organización |
+| `/me` | Bearer | Datos del usuario/API key autenticado, incluyendo `org_name` cuando la key está scoped |
+| `/orgs` | Bearer (admin) | Listar workspaces visibles o crear workspace |
+| `/orgs/{login}` | Bearer (admin) | Validar/obtener un workspace por login con enforcement de scope |
 | `/org-users` | Bearer (admin) | Listar/crear usuarios de organización |
 | `/org-users/{id}/status` | Bearer (admin) | Actualizar estado de usuario |
 | `/org-users/{id}/api-key` | Bearer (admin) | Crear API key para usuario |
@@ -397,6 +398,18 @@ Cuando la desktop app quiere enviar eventos al servidor:
 ```
 
 **IMPORTANTE:** El servidor SOLO acepta el header `Authorization: Bearer`, NO acepta `X-API-Key`.
+
+### Identidad, Rol y Workspace Activo
+
+La Desktop separa tres conceptos que no deben mezclarse:
+
+1. GitHub identifica a la persona que opera la app y aporta login/avatar.
+2. La API key de GitGov autoriza el rol de Control Plane y puede ser global o scoped a una organización.
+3. El workspace GitGov activo define el tenant contra el que se consultan evidencias, adopción, usuarios y API keys scoped.
+
+Una API key scoped ya trae `org_id` y `/me` devuelve también `org_name`. Una API key Admin global/founder trae `org_id=null`; en ese caso la Desktop debe pedir y validar un workspace activo antes de permitir las superficies admin dependientes de tenant. El workspace se valida con `GET /orgs/{login}` y se persiste localmente asociado a la combinación de usuario GitHub, URL de Control Plane y una huella no secreta de la API key. Si no hay GitHub Organization real, GitGov puede usar el owner/namespace GitHub del repo como workspace interno; por ejemplo `yohandry10` para `yohandry10/Git-Gov`.
+
+Para API keys, la vista de organización y la vista global son intencionalmente distintas. `GET /api-keys?org_name=<workspace>` lista solo keys de ese workspace; `GET /api-keys` con Admin global lista el catálogo global/cross-org y debe mostrarse como scope global explícito, no como la organización activa.
 
 **Roles del sistema:**
 

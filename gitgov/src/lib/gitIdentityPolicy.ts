@@ -19,6 +19,7 @@ export interface GitIdentity {
 }
 
 export interface GitIdentityUser {
+  id?: number | null
   login: string
   name?: string | null
   email?: string | null
@@ -94,6 +95,20 @@ function isGitIdentityAligned(identity: GitIdentity, user: GitIdentityUser): boo
   )
 }
 
+export function buildGitHubNoReplyEmail(user: GitIdentityUser): string {
+  const loginSignal = normalizeIdentitySignal(user.login)
+  if (!loginSignal) return ''
+
+  const idSignal = Number.isInteger(user.id) && Number(user.id) > 0 ? Number(user.id) : null
+  return idSignal
+    ? `${idSignal}+${loginSignal}@users.noreply.github.com`
+    : `${loginSignal}@users.noreply.github.com`
+}
+
+export function buildGitHubCommitAuthorName(user: GitIdentityUser): string {
+  return normalizeIdentitySignal(user.name) || normalizeIdentitySignal(user.login)
+}
+
 export function evaluateGitIdentity(
   identity: GitIdentity | null,
   user: GitIdentityUser | null,
@@ -102,9 +117,8 @@ export function evaluateGitIdentity(
 
   const effectiveName = normalize(identity.name)
   const effectiveEmail = normalize(identity.email)
-  const suggestedName = normalizeIdentitySignal(user.name) || normalizeIdentitySignal(user.login)
-  const loginSignal = normalizeIdentitySignal(user.login)
-  const suggestedEmail = loginSignal ? `${loginSignal}@users.noreply.github.com` : ''
+  const suggestedName = buildGitHubCommitAuthorName(user)
+  const suggestedEmail = buildGitHubNoReplyEmail(user)
 
   if (!effectiveName || !effectiveEmail) {
     return {

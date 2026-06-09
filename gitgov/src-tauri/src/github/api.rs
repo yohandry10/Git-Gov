@@ -17,6 +17,7 @@ pub enum ApiError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GithubUser {
+    pub id: u64,
     pub login: String,
     pub name: Option<String>,
     pub email: Option<String>,

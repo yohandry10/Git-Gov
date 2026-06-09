@@ -260,6 +260,8 @@ pub fn run() {
             commands::cmd_server_create_enterprise_release_approval,
             commands::cmd_server_get_me,
             commands::cmd_server_create_org,
+            commands::cmd_server_list_orgs,
+            commands::cmd_server_get_org,
             commands::cmd_server_create_org_user,
             commands::cmd_server_list_org_users,
             commands::cmd_server_update_org_user_status,

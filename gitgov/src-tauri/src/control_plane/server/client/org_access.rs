@@ -1,5 +1,5 @@
 use super::super::models::*;
-use super::ControlPlaneClient;
+use super::{server_error_from_response, ControlPlaneClient};
 
 impl ControlPlaneClient {
     pub fn get_me(&self) -> Result<MeResponse, ServerError> {
@@ -12,10 +12,41 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
+        }
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_orgs(&self) -> Result<Vec<OrgSummary>, ServerError> {
+        let url = format!("{}/orgs", self.config.url);
+        let mut request = self.client.get(&url);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_org(&self, login: &str) -> Result<OrgSummary, ServerError> {
+        let url = self.endpoint_url(&["orgs", login])?;
+        let mut request = self.client.get(url);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -32,10 +63,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -55,10 +83,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -91,10 +116,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -117,10 +139,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -140,10 +159,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -163,10 +179,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -199,10 +212,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -223,10 +233,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -243,10 +250,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -261,10 +265,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -283,19 +284,20 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
-    pub fn list_api_keys(&self) -> Result<Vec<ApiKeyInfo>, ServerError> {
+    pub fn list_api_keys(&self, org_name: Option<&str>) -> Result<Vec<ApiKeyInfo>, ServerError> {
         let url = format!("{}/api-keys", self.config.url);
-        let mut request = self.client.get(&url);
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
+        let mut request = self.client.get(&url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }
@@ -303,19 +305,24 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
-    pub fn revoke_api_key(&self, key_id: &str) -> Result<RevokeApiKeyResponse, ServerError> {
+    pub fn revoke_api_key(
+        &self,
+        key_id: &str,
+        org_name: Option<&str>,
+    ) -> Result<RevokeApiKeyResponse, ServerError> {
         let url = self.endpoint_url(&["api-keys", key_id, "revoke"])?;
-        let mut request = self.client.post(url).body("");
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
+        let mut request = self.client.post(url).query(&query_params).body("");
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }
@@ -323,10 +330,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() && response.status().as_u16() != 404 {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()

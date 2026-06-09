@@ -158,6 +158,7 @@ export interface PendingPushPreview {
 }
 
 export interface AuthenticatedUser {
+  id?: number | null
   login: string
   name: string
   avatar_url: string

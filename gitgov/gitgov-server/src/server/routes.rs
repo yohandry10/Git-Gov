@@ -201,7 +201,8 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
         .route("/export", post(handlers::export_events))
         .route("/exports", get(handlers::list_exports))
         .route("/me", get(handlers::get_me))
-        .route("/orgs", post(handlers::create_org))
+        .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
+        .route("/orgs/{login}", get(handlers::get_org))
         .route(
             "/enterprise/adoption-profile",
             get(handlers::get_enterprise_adoption_profile)

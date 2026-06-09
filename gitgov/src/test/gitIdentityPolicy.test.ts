@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildGitIdentityEvidenceLines,
+  buildGitHubCommitAuthorName,
+  buildGitHubNoReplyEmail,
   evaluateGitIdentity,
   formatGitIdentityBlockToast,
   formatGitIdentityValue,
@@ -35,6 +37,31 @@ describe('gitIdentityPolicy', () => {
     expect(finding).toBeNull()
   })
 
+  it('suggests the GitHub id-based noreply email when the authenticated user id is available', () => {
+    const finding = evaluateGitIdentity(
+      {
+        name: 'yohandrychirinos1',
+        email: 'yohandrychirinos1@gmail.com',
+        name_scope: 'global',
+        email_scope: 'global',
+      },
+      { id: 149753134, login: 'yohandry10', name: null, email: null },
+    )
+
+    expect(finding?.reason).toBe('not_provably_aligned')
+    expect(finding?.suggestedEmail).toBe('149753134+yohandry10@users.noreply.github.com')
+  })
+
+  it('falls back to the login-based noreply email when the GitHub id is unavailable', () => {
+    const finding = evaluateGitIdentity(
+      { name: 'yohandry10', email: null, name_scope: 'local', email_scope: null },
+      { login: 'yohandry10' },
+    )
+
+    expect(finding?.reason).toBe('incomplete')
+    expect(finding?.suggestedEmail).toBe('yohandry10@users.noreply.github.com')
+  })
+
   it('flags an incomplete effective Git identity', () => {
     const finding = evaluateGitIdentity(
       { name: 'yohandry10', email: null, name_scope: 'local', email_scope: null },
@@ -59,6 +86,13 @@ describe('gitIdentityPolicy', () => {
     expect(finding?.reason).toBe('not_provably_aligned')
     expect(finding?.suggestedName).toBe('yohandry10')
     expect(finding?.suggestedEmail).toBe('yohandry10@users.noreply.github.com')
+  })
+
+  it('uses the GitHub login as the commit author name when the public name is a placeholder', () => {
+    expect(buildGitHubCommitAuthorName({ login: 'yohandry10', name: 'Unknown' })).toBe('yohandry10')
+    expect(buildGitHubNoReplyEmail({ id: 149753134, login: 'yohandry10' })).toBe(
+      '149753134+yohandry10@users.noreply.github.com',
+    )
   })
 
   it('flags an identity that GitGov cannot prove belongs to the authenticated GitHub user', () => {

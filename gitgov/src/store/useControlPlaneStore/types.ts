@@ -289,6 +289,7 @@ export interface ApiKeyInfo {
   client_id: string
   role: string
   org_id: string | null
+  org_name?: string | null
   created_at: number
   last_used: number | null
   is_active: boolean
@@ -298,6 +299,7 @@ export interface MeResponse {
   client_id: string
   role: string
   org_id: string | null
+  org_name?: string | null
 }
 
 export interface PendingControlPlaneSession {
@@ -305,6 +307,15 @@ export interface PendingControlPlaneSession {
   role: string
   org_id: string | null
   org_name: string | null
+}
+
+export interface OrgSummary {
+  id: string
+  github_id?: number | null
+  login: string
+  name?: string | null
+  avatar_url?: string | null
+  created_at: number
 }
 
 export interface RevokeApiKeyResponse {
@@ -576,6 +587,9 @@ export interface ControlPlaneState {
   controlPlaneAuthConfirmed: boolean
   pendingControlPlaneSession: PendingControlPlaneSession | null
   selectedOrgName: string
+  selectedOrgValidated: boolean
+  availableOrgs: OrgSummary[]
+  isLoadingOrgs: boolean
   orgUsers: OrgUser[]
   orgUsersTotal: number
   orgInvitations: OrgInvitation[]
@@ -643,6 +657,9 @@ export interface ControlPlaneActions {
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
   loadMe: () => Promise<boolean>
+  loadOrgs: () => Promise<OrgSummary[]>
+  validateOrgName: (orgName: string) => Promise<OrgSummary | null>
+  activateOrgName: (orgName: string) => Promise<OrgSummary | null>
   createOrg: (payload: { login: string; name?: string }) => Promise<CreateOrgResponse | null>
   setSelectedOrgName: (orgName: string) => void
   loadOrgUsers: (params?: { orgName?: string; status?: string; limit?: number; offset?: number }) => Promise<void>
@@ -672,8 +689,8 @@ export interface ControlPlaneActions {
   loadTeamOverview: (params?: { orgName?: string; days?: number; status?: '' | 'active' | 'disabled'; limit?: number; offset?: number; append?: boolean }) => Promise<void>
   loadTeamRepos: (params?: { orgName?: string; days?: number; limit?: number; offset?: number; append?: boolean }) => Promise<void>
   refreshForCurrentRole: (options?: { forceHeavy?: boolean }) => Promise<void>
-  loadApiKeys: () => Promise<void>
-  revokeApiKey: (keyId: string) => Promise<boolean>
+  loadApiKeys: (params?: { orgName?: string | null; global?: boolean }) => Promise<void>
+  revokeApiKey: (keyId: string, params?: { orgName?: string | null; global?: boolean }) => Promise<boolean>
   exportAuditData: (params: { exportType?: string; startDate?: number; endDate?: number; orgName?: string }) => Promise<ExportResponse | null>
   loadExportLogs: () => Promise<void>
   clearError: () => void

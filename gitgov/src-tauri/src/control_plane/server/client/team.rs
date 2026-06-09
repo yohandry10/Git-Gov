@@ -1,5 +1,5 @@
 use super::super::models::*;
-use super::ControlPlaneClient;
+use super::{server_error_from_response, ControlPlaneClient};
 
 impl ControlPlaneClient {
     pub fn get_team_overview(
@@ -31,10 +31,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()
@@ -66,10 +63,7 @@ impl ControlPlaneClient {
             .send()
             .map_err(|e| ServerError::NetworkError(e.to_string()))?;
         if !response.status().is_success() {
-            return Err(ServerError::ServerError(format!(
-                "Server returned status: {}",
-                response.status()
-            )));
+            return Err(server_error_from_response(response));
         }
         response
             .json()

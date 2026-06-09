@@ -80,6 +80,9 @@ describe('useControlPlaneStore', () => {
       isPolicySaving: false,
       policyError: null,
       selectedOrgName: '',
+      selectedOrgValidated: false,
+      availableOrgs: [],
+      isLoadingOrgs: false,
       orgUsers: [],
       orgUsersTotal: 0,
       orgInvitations: [],
@@ -294,6 +297,143 @@ describe('useControlPlaneStore', () => {
     it('sets selected org name', () => {
       useControlPlaneStore.getState().setSelectedOrgName('my-org')
       expect(useControlPlaneStore.getState().selectedOrgName).toBe('my-org')
+    })
+
+    it('invalidates a previously validated workspace when edited', () => {
+      useControlPlaneStore.setState({
+        selectedOrgName: 'validated-org',
+        selectedOrgValidated: true,
+      })
+
+      useControlPlaneStore.getState().setSelectedOrgName('other-org')
+
+      expect(useControlPlaneStore.getState().selectedOrgName).toBe('other-org')
+      expect(useControlPlaneStore.getState().selectedOrgValidated).toBe(false)
+    })
+
+    it('validates and persists the active workspace through the backend', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+      })
+      mockInvoke.mockResolvedValueOnce({
+        id: 'org-1',
+        github_id: 123,
+        login: 'yohandry10',
+        name: 'Yohandry',
+        avatar_url: 'https://avatars.githubusercontent.com/u/123',
+        created_at: 1,
+      })
+
+      const response = await useControlPlaneStore.getState().activateOrgName(' yohandry10 ')
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_org', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        login: 'yohandry10',
+      })
+      expect(response?.login).toBe('yohandry10')
+      expect(useControlPlaneStore.getState().selectedOrgName).toBe('yohandry10')
+      expect(useControlPlaneStore.getState().selectedOrgValidated).toBe(true)
+      const storedValues = Array.from({ length: localStorage.length }, (_, index) => {
+        const key = localStorage.key(index)
+        return key ? localStorage.getItem(key) : null
+      })
+      expect(storedValues).toContain('yohandry10')
+    })
+
+    it('keeps an invalid workspace unvalidated with an actionable error', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+      })
+      mockInvoke.mockRejectedValueOnce('Organization not found')
+
+      const response = await useControlPlaneStore.getState().activateOrgName('missing-org')
+
+      expect(response).toBeNull()
+      expect(useControlPlaneStore.getState().selectedOrgName).toBe('missing-org')
+      expect(useControlPlaneStore.getState().selectedOrgValidated).toBe(false)
+      expect(useControlPlaneStore.getState().error).toBe('No existe un workspace GitGov llamado "missing-org".')
+    })
+
+    it('loads API keys by active workspace unless global scope is explicit', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        userRole: 'Admin',
+        userOrgId: null,
+        selectedOrgName: 'yohandry10',
+        selectedOrgValidated: true,
+      })
+      mockInvoke.mockResolvedValueOnce([
+        {
+          id: 'key-1',
+          client_id: 'developer',
+          role: 'Developer',
+          org_id: 'org-1',
+          org_name: 'yohandry10',
+          is_active: true,
+          created_at: 1,
+          revoked_at: null,
+          last_used_at: null,
+        },
+      ])
+
+      await useControlPlaneStore.getState().loadApiKeys()
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_api_keys', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        orgName: 'yohandry10',
+      })
+      expect(useControlPlaneStore.getState().apiKeys[0].org_name).toBe('yohandry10')
+
+      mockInvoke.mockClear()
+      mockInvoke.mockResolvedValueOnce([])
+
+      await useControlPlaneStore.getState().loadApiKeys({ global: true })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_api_keys', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        orgName: null,
+      })
+    })
+
+    it('does not fall back to global API key catalog without a validated workspace', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        userRole: 'Admin',
+        userOrgId: null,
+        selectedOrgName: '',
+        selectedOrgValidated: false,
+      })
+
+      await useControlPlaneStore.getState().loadApiKeys()
+
+      expect(mockInvoke).not.toHaveBeenCalled()
+      expect(useControlPlaneStore.getState().error).toBe(
+        'Valida un workspace GitGov antes de consultar API keys de organización.',
+      )
+
+      const revoked = await useControlPlaneStore.getState().revokeApiKey('key-1')
+
+      expect(revoked).toBe(false)
+      expect(mockInvoke).not.toHaveBeenCalled()
+      expect(useControlPlaneStore.getState().error).toBe(
+        'Valida un workspace GitGov antes de revocar API keys de organización.',
+      )
+    })
+
+    it('surfaces API key revoke failures returned by the server', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        userRole: 'Admin',
+        userOrgId: null,
+        selectedOrgName: 'yohandry10',
+        selectedOrgValidated: true,
+      })
+      mockInvoke.mockResolvedValueOnce({ success: false, message: 'API key not found or already revoked' })
+
+      const revoked = await useControlPlaneStore.getState().revokeApiKey('key-1')
+
+      expect(revoked).toBe(false)
+      expect(useControlPlaneStore.getState().error).toBe('API key not found or already revoked')
     })
   })
 

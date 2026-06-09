@@ -375,6 +375,11 @@ pub struct ApiKeyRequest {
     pub role: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ApiKeyScopeQuery {
+    pub org_name: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiKeyResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -416,10 +421,35 @@ pub async fn create_api_key(
 
     // Resolve requested org by login (if provided in payload).
     let requested_org_id = if let Some(ref org_name) = payload.org_name {
-        state.db.get_org_by_login(org_name).await
-            .ok()
-            .flatten()
-            .map(|o| o.id)
+        let trimmed = org_name.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            match state.db.get_org_by_login(trimmed).await {
+                Ok(Some(org)) => Some(org.id),
+                Ok(None) => {
+                    return (
+                        StatusCode::NOT_FOUND,
+                        Json(ApiKeyResponse {
+                            api_key: None,
+                            client_id: payload.client_id,
+                            error: Some("Organization not found".to_string()),
+                        }),
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, org_name = %trimmed, "Failed to resolve API key org");
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiKeyResponse {
+                            api_key: None,
+                            client_id: payload.client_id,
+                            error: Some("Internal database error".to_string()),
+                        }),
+                    );
+                }
+            }
+        }
     } else {
         None
     };
@@ -473,11 +503,24 @@ pub async fn create_api_key(
 
 pub async fn get_me(
     Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    let org_name = match auth_user.org_id.as_deref() {
+        Some(org_id) => match state.db.get_org_by_id(org_id).await {
+            Ok(Some(org)) => Some(org.login),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::warn!(error = %e, org_id = %org_id, "Failed to resolve /me org name");
+                None
+            }
+        },
+        None => None,
+    };
     let response = MeResponse {
         client_id: auth_user.client_id,
         role: auth_user.role.as_str().to_string(),
         org_id: auth_user.org_id,
+        org_name,
     };
     (StatusCode::OK, Json(response))
 }
@@ -485,12 +528,20 @@ pub async fn get_me(
 pub async fn list_api_keys(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
+    Query(query): Query<ApiKeyScopeQuery>,
 ) -> impl IntoResponse {
     if let Err(resp) = require_admin(&auth_user) {
         return resp.into_response();
     }
 
-    match state.db.list_api_keys(auth_user.org_id.as_deref()).await {
+    let scope_org_id = match resolve_optional_api_key_scope(&state, &auth_user, query.org_name.as_deref()).await {
+        Ok(scope) => scope,
+        Err((status, message)) => {
+            return (status, Json(serde_json::json!({ "error": message }))).into_response();
+        }
+    };
+
+    match state.db.list_api_keys(scope_org_id.as_deref()).await {
         Ok(keys) => (StatusCode::OK, Json(keys)).into_response(),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -503,15 +554,26 @@ pub async fn list_api_keys(
 pub async fn revoke_api_key(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
+    Query(query): Query<ApiKeyScopeQuery>,
     axum::extract::Path(key_id): axum::extract::Path<String>,
 ) -> impl IntoResponse {
     if let Err(resp) = require_admin(&auth_user) {
         return resp.into_response();
     }
 
+    let scope_org_id = match resolve_optional_api_key_scope(&state, &auth_user, query.org_name.as_deref()).await {
+        Ok(scope) => scope,
+        Err((status, message)) => {
+            return (status, Json(RevokeApiKeyResponse {
+                success: false,
+                message,
+            })).into_response();
+        }
+    };
+
     match state
         .db
-        .revoke_api_key(&key_id, auth_user.org_id.as_deref())
+        .revoke_api_key(&key_id, scope_org_id.as_deref())
         .await
     {
         Ok(true) => {
@@ -556,3 +618,34 @@ pub async fn revoke_api_key(
     }
 }
 
+async fn resolve_optional_api_key_scope(
+    state: &Arc<AppState>,
+    auth_user: &AuthUser,
+    requested_org_name: Option<&str>,
+) -> Result<Option<String>, (StatusCode, String)> {
+    let requested = requested_org_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    match requested {
+        Some(org_name) => match resolve_and_check_org_scope(
+            state,
+            auth_user.org_id.as_deref(),
+            Some(org_name),
+            true,
+        ).await {
+            Ok(Some(org_id)) => Ok(Some(org_id)),
+            Ok(None) => Err((StatusCode::BAD_REQUEST, "org_name is required for global admin keys".to_string())),
+            Err(err) => {
+                let message = match err {
+                    OrgScopeError::BadRequest => "org_name is required for global admin keys",
+                    OrgScopeError::NotFound => "Organization not found",
+                    OrgScopeError::Forbidden => "Requested org is outside API key scope",
+                    OrgScopeError::Internal => "Internal database error",
+                };
+                Err((org_scope_status(err), message.to_string()))
+            }
+        },
+        None => Ok(auth_user.org_id.clone()),
+    }
+}

@@ -12,8 +12,8 @@ use crate::control_plane::{
     EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
     EvidencePacketResponse, ExportLogEntry, ExportResponse, FeatureRequestCreated,
     FeatureRequestInput, JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
-    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgUser,
-    OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
+    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
+    OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
     PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
     ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
     TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
@@ -804,6 +804,41 @@ pub async fn cmd_server_create_org(
 }
 
 #[tauri::command]
+pub async fn cmd_server_list_orgs(
+    config: ServerConnectionConfig,
+) -> Result<Vec<OrgSummary>, String> {
+    run_blocking_command("LIST_ORGS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+
+        client
+            .list_orgs()
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_org(
+    config: ServerConnectionConfig,
+    login: String,
+) -> Result<OrgSummary, String> {
+    run_blocking_command("GET_ORG", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+
+        client
+            .get_org(&login)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn cmd_server_create_org_user(
     config: ServerConnectionConfig,
     payload: CreateOrgUserRequest,
@@ -1008,6 +1043,7 @@ pub async fn cmd_server_accept_org_invitation(
 #[tauri::command]
 pub async fn cmd_server_list_api_keys(
     config: ServerConnectionConfig,
+    org_name: Option<String>,
 ) -> Result<Vec<ApiKeyInfo>, String> {
     run_blocking_command("LIST_API_KEYS", move || {
         let client = ControlPlaneClient::new(ServerConfig {
@@ -1016,7 +1052,7 @@ pub async fn cmd_server_list_api_keys(
         });
 
         client
-            .list_api_keys()
+            .list_api_keys(org_name.as_deref())
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
@@ -1026,6 +1062,7 @@ pub async fn cmd_server_list_api_keys(
 pub async fn cmd_server_revoke_api_key(
     config: ServerConnectionConfig,
     key_id: String,
+    org_name: Option<String>,
 ) -> Result<RevokeApiKeyResponse, String> {
     run_blocking_command("REVOKE_API_KEY", move || {
         let client = ControlPlaneClient::new(ServerConfig {
@@ -1034,7 +1071,7 @@ pub async fn cmd_server_revoke_api_key(
         });
 
         client
-            .revoke_api_key(&key_id)
+            .revoke_api_key(&key_id, org_name.as_deref())
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
