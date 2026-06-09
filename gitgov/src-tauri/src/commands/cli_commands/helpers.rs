@@ -372,10 +372,7 @@ fn redact_after_marker_case_insensitive(input: String, marker: &str) -> String {
 fn redact_token_prefix(input: String, prefix: &str) -> String {
     let mut output = input;
     let mut search_from = 0usize;
-    loop {
-        let Some(relative_idx) = output[search_from..].find(prefix) else {
-            break;
-        };
+    while let Some(relative_idx) = output[search_from..].find(prefix) {
         let token_start = search_from + relative_idx;
         let token_end = output[token_start..]
             .find(|c: char| {
