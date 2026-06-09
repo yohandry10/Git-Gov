@@ -1,13 +1,16 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { Button } from '@/components/shared/Button'
 import { Server, Link, Unlink, RefreshCw, Wrench } from 'lucide-react'
 import {
   DEFAULT_CONTROL_PLANE_URL,
   resolveControlPlaneUrl,
+  validateControlPlaneUrl,
 } from '@/lib/controlPlaneConfig'
 
 export function ServerConfigPanel() {
+  const { t } = useTranslation()
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const connectionStatus = useControlPlaneStore((s) => s.connectionStatus)
@@ -20,10 +23,18 @@ export function ServerConfigPanel() {
   const disconnect = useControlPlaneStore((s) => s.disconnect)
   const [url, setUrl] = useState(resolveControlPlaneUrl({ previousUrl: serverConfig?.url }))
   const [apiKey, setApiKey] = useState(serverConfig?.api_key || '')
+  const [localError, setLocalError] = useState<string | null>(null)
 
   const handleConnect = () => {
+    const resolvedUrl = resolveControlPlaneUrl({ inputUrl: url, previousUrl: serverConfig?.url })
+    const validationError = validateControlPlaneUrl(resolvedUrl)
+    if (validationError) {
+      setLocalError(validationError)
+      return
+    }
+    setLocalError(null)
     setServerConfig({
-      url: resolveControlPlaneUrl({ inputUrl: url, previousUrl: serverConfig?.url }),
+      url: resolvedUrl,
       api_key: apiKey || undefined,
     })
   }
@@ -34,7 +45,7 @@ export function ServerConfigPanel() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Wrench size={20} className="text-warning-400" />
-            <span className="text-white font-medium">Servidor en mantenimiento</span>
+            <span className="text-white font-medium">{t('serverConfig.maintenanceTitle')}</span>
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => void checkConnection()}>
@@ -44,26 +55,26 @@ export function ServerConfigPanel() {
         </div>
 
         <div className="bg-surface-900 rounded-lg p-3">
-          <p className="text-xs text-surface-400 mb-1">URL del servidor</p>
+          <p className="text-xs text-surface-400 mb-1">{t('serverConfig.serverUrl')}</p>
           <p className="text-sm text-white font-mono">{serverConfig.url}</p>
         </div>
 
         <div className="bg-surface-900 rounded-lg p-3 mt-3">
-          <p className="text-xs text-surface-400 mb-1">Identidad Control Plane</p>
+          <p className="text-xs text-surface-400 mb-1">{t('serverConfig.identity')}</p>
           <p className="text-sm text-white">
-            {userRole || 'sin rol'}{userClientId ? ` · ${userClientId}` : ''}
+            {userRole || t('common.noRole')}{userClientId ? ` · ${userClientId}` : ''}
           </p>
         </div>
 
         {userRole !== 'Admin' && (
           <div className="mt-3 p-2 bg-warning-500/20 border border-warning-500/50 rounded text-warning-300 text-sm">
-            Estás autenticado como {userRole || 'sin rol'}. Para founder/admin usa una API key Admin.
+            {t('serverConfig.adminRequired', { role: userRole || t('common.noRole') })}
           </div>
         )}
 
         <div className="mt-3 p-2 bg-warning-500/20 border border-warning-500/50 rounded text-warning-300 text-sm flex items-center gap-2">
           <Wrench size={14} className="shrink-0" />
-          El servidor se está actualizando. Reconectando cada 10 segundos...
+          {t('serverConfig.maintenanceBody')}
         </div>
       </div>
     )
@@ -75,7 +86,7 @@ export function ServerConfigPanel() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Server size={20} className="text-success-500" />
-            <span className="text-white font-medium">Conectado al Control Plane</span>
+            <span className="text-white font-medium">{t('serverConfig.connectedTitle')}</span>
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => void checkConnection()}>
@@ -83,19 +94,19 @@ export function ServerConfigPanel() {
             </Button>
             <Button variant="danger" size="sm" onClick={disconnect}>
               <Unlink size={14} className="mr-1" />
-              Desconectar
+              {t('serverConfig.disconnect')}
             </Button>
           </div>
         </div>
-        
+
         <div className="bg-surface-900 rounded-lg p-3">
-          <p className="text-xs text-surface-400 mb-1">URL del servidor</p>
+          <p className="text-xs text-surface-400 mb-1">{t('serverConfig.serverUrl')}</p>
           <p className="text-sm text-white font-mono">{serverConfig.url}</p>
         </div>
-        
-        {error && (
+
+        {(error || localError) && (
           <div className="mt-3 p-2 bg-danger-500/20 border border-danger-500/50 rounded text-danger-400 text-sm">
-            {error}
+            {error || localError}
           </div>
         )}
       </div>
@@ -106,12 +117,12 @@ export function ServerConfigPanel() {
     <div className="card">
       <div className="flex items-center gap-2 mb-4">
         <Link size={20} className="text-brand-500" />
-        <span className="text-white font-medium">Conectar al Control Plane</span>
+        <span className="text-white font-medium">{t('serverConfig.connectTitle')}</span>
       </div>
-      
+
       <div className="space-y-3">
         <div>
-          <label htmlFor="server-url-input" className="block text-sm text-surface-400 mb-1">URL del servidor</label>
+          <label htmlFor="server-url-input" className="block text-sm text-surface-400 mb-1">{t('serverConfig.serverUrl')}</label>
           <input
             id="server-url-input"
             type="text"
@@ -121,25 +132,31 @@ export function ServerConfigPanel() {
             className="input"
           />
           <p className="mt-1 text-xs text-surface-500">
-            Usa localhost solo si el Control Plane local está levantado; de lo contrario usa la URL configurada del servidor.
+            {t('serverConfig.urlHint')}
           </p>
         </div>
-        
+
         <div>
-          <label htmlFor="server-api-key-input" className="block text-sm text-surface-400 mb-1">API Key (opcional)</label>
+          <label htmlFor="server-api-key-input" className="block text-sm text-surface-400 mb-1">{t('serverConfig.apiKey')}</label>
           <input
             id="server-api-key-input"
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Tu API key"
+            placeholder={t('serverConfig.apiKeyPlaceholder')}
             className="input"
           />
         </div>
-        
+
+        {(error || localError) && (
+          <div className="p-2 bg-danger-500/20 border border-danger-500/50 rounded text-danger-400 text-sm">
+            {error || localError}
+          </div>
+        )}
+
         <Button onClick={handleConnect} loading={isLoading} className="w-full">
           <Link size={16} className="mr-2" />
-          Conectar
+          {t('serverConfig.connect')}
         </Button>
         {error && (
           <div className="p-2 bg-danger-500/20 border border-danger-500/50 rounded text-danger-400 text-sm">

@@ -33,6 +33,36 @@ export function normalizeControlPlaneUrl(url: string | null | undefined): string
   }
 }
 
+export function validateControlPlaneUrl(url: string | null | undefined): string | null {
+  const raw = (url ?? '').trim()
+  if (!raw) return 'Control Plane URL is required.'
+
+  let parsedRaw: URL
+  try {
+    parsedRaw = new URL(raw)
+  } catch {
+    return 'Control Plane URL must be a valid http(s) URL.'
+  }
+
+  if (parsedRaw.protocol !== 'http:' && parsedRaw.protocol !== 'https:') {
+    return 'Control Plane URL must use http or https.'
+  }
+
+  if (parsedRaw.username || parsedRaw.password) {
+    return 'Control Plane URL must not contain embedded credentials.'
+  }
+
+  const normalized = normalizeControlPlaneUrl(raw)
+  const parsed = new URL(normalized)
+  const host = parsed.hostname
+  const isLoopback = ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(host)
+  if (parsed.protocol === 'http:' && !isLoopback) {
+    return 'Non-local Control Plane URLs must use https.'
+  }
+
+  return null
+}
+
 export function getEnvControlPlaneUrl(): string {
   return normalizeControlPlaneUrl(import.meta.env.VITE_SERVER_URL as string | undefined)
 }

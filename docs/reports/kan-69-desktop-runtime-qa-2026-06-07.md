@@ -197,6 +197,74 @@ Validation:
 - `cargo check` passed.
 - `git diff --check` passed.
 
+## Settings, Governance, And Security Logic Follow-Up
+
+Date: 2026-06-08
+
+Classification: security plus data/state plus product concept plus performance.
+
+Additional audit findings after the Control Plane/Governance IA pass:
+
+- Control Plane API key persistence could fail silently in the frontend store while the UI continued as if the session was valid.
+- `/me` failure could fall back to `/stats` success and infer an Admin role without preserving `client_id` or `org_id`.
+- Control Plane URL inputs accepted invalid schemes, embedded credentials, and non-loopback `http://` until lower layers failed.
+- Structured CLI audit recorded raw command text plus stdout/stderr previews, which could capture secrets from otherwise allowed Git commands.
+- Settings and Governance exposed two policy editors for the same governance domain.
+- Organization Settings was gated by local GitHub admin state as well as Control Plane Admin, mixing two separate authorities.
+- Release approvals defaulted to real GitGov repo/ticket values when no evidence/profile context existed.
+- Governance route entry loaded more data than the active section needed.
+
+Corrected behavior:
+
+- API key keyring persistence is fail-closed for user-driven connection flows. Errors keep the Control Plane disconnected/degraded and visible to the operator.
+- Desktop now requires `/me` for role context and does not invent Admin from `/stats`.
+- Control Plane URL validation rejects invalid schemes, embedded credentials, and non-loopback `http://` before saving or connecting.
+- CLI audit redacts URL credentials, bearer/API/token/password/secret values, common token prefixes, and stdout/stderr previews before outbox or direct Control Plane ingestion.
+- Settings keeps organization onboarding, team management, and API keys; `Governance > Policy` is the single owner for governance rules.
+- Organization Settings now requires Control Plane `Admin`, not local GitHub admin, for admin surfaces.
+- `GovernanceRulesPanel` dirty-state tracking includes forbidden patterns.
+- Release approvals no longer default to `yohandry10/Git-Gov` or `KAN-43`; evidence URI validation allows relative API paths or `https://` only.
+- Governance route entry loads base stats and defers logs to the Evidence section with a smaller window.
+
+Validation:
+
+- `npm --prefix gitgov run typecheck` passed.
+- `npm --prefix gitgov run lint` passed.
+- Full frontend test suite passed: `333` tests in `32` files.
+- Focused Rust CLI redaction test passed.
+- Focused backend release approval URI validation test passed.
+- `cargo check --manifest-path gitgov/src-tauri/Cargo.toml` passed.
+- `cargo check --manifest-path gitgov/gitgov-server/Cargo.toml` passed.
+
+## Runtime Performance Follow-Up
+
+Date: 2026-06-08
+
+Classification: performance plus data/state.
+
+Additional bottleneck review after the Settings/Governance/security pass found avoidable client-side load pressure:
+
+- role refresh and SSE paths still used `500` log windows even after the old dashboard table was moved out of the primary experience;
+- general dashboard refresh still loaded daily commits/pushes telemetry even though `DailyActivityWidget` is no longer mounted;
+- SSE event bursts could schedule repeated logs/stats refresh work with only a `200 ms` batch window;
+- the Workspace pipeline visualizer could run interval, branch-change, and SSE-triggered graph/provider-signal refreshes concurrently.
+
+Corrected behavior:
+
+- default governance/event refresh windows are `120` logs; explicit heavy evidence paths remain available through manual refresh;
+- general dashboard refresh no longer loads daily activity telemetry unless a future diagnostic surface calls it directly;
+- SSE refresh batching is now `1000 ms` and uses the smaller log window;
+- incremental log refreshes are serialized so overlapping calls wait instead of duplicating API/store work;
+- the pipeline visualizer deduplicates concurrent graph and Control Plane signal refreshes and limits Jenkins/PR signal pulls to `50` records per source.
+
+Validation:
+
+- `npm --prefix gitgov run typecheck` passed.
+- `npm --prefix gitgov run lint` passed.
+- `npm --prefix gitgov test -- --run src/test/useControlPlaneStore.test.ts src/test/components/settings-navigation.test.tsx src/test/controlPlaneConfig.test.ts` passed with `36` tests.
+- Full `npm --prefix gitgov test -- --run` passed with `333` tests in `32` files.
+- `npm --prefix gitgov run build` passed; the existing Vite base chunk warning remains.
+
 ## Git Identity Policy Finding
 
 Classification: product concept plus data/state.

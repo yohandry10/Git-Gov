@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useRepoStore } from '@/store/useRepoStore'
 import { useUpdateStore } from '@/store/useUpdateStore'
@@ -13,7 +14,6 @@ import { TIMEZONES, detectBrowserTimezone, formatTs } from '@/lib/timezone'
 import { AdminOnboardingPanel } from '@/components/control_plane/AdminOnboardingPanel'
 import { TeamManagementPanel } from '@/components/control_plane/TeamManagementPanel'
 import { ApiKeyManagerWidget } from '@/components/control_plane/ApiKeyManagerWidget'
-import { GovernanceRulesPanel } from '@/components/control_plane/GovernanceRulesPanel'
 import { ServerConfigPanel } from '@/components/control_plane/ServerConfigPanel'
 import { loadNotificationPrefs, saveNotificationPrefs, type NotificationPrefs } from '@/lib/notifications'
 
@@ -76,6 +76,7 @@ function readSettingsTabFromHash(): SettingsTab {
 
 export function SettingsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { user, logout, isPinEnabled, setLocalPin, clearLocalPin, lockSession, pinError } = useAuthStore()
   const { repoPath, config, validation } = useRepoStore()
   const displayTimezone = useControlPlaneStore((s) => s.displayTimezone)
@@ -116,7 +117,7 @@ export function SettingsPage() {
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(loadNotificationPrefs)
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => readSettingsTabFromHash())
   const isControlPlaneAdmin = userRole === 'Admin'
-  const canManageOrgSettings = Boolean(user?.is_admin) || isControlPlaneAdmin
+  const canManageOrgSettings = isControlPlaneAdmin
   const remoteUrl = validation?.remote_url ?? ''
   const repoFullName = remoteUrl.match(/[/:]([^/]+\/[^/.]+?)(?:\.git)?$/)?.[1] ?? ''
   const settingsContentClass =
@@ -294,7 +295,7 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <ServerConfigPanel />
+            <ServerConfigPanel key={serverConfig?.url ?? 'none'} />
           </section>
 
           <section className={`${activeTab === 'preferences' ? '' : 'hidden'} rounded-2xl border border-surface-700/30 bg-surface-800/40 p-6`}>
@@ -384,7 +385,25 @@ export function SettingsPage() {
 
           {activeTab === 'organization' && canManageOrgSettings && isConnected && repoFullName && (
             <section className="rounded-2xl border border-surface-700/30 bg-surface-800/40 p-6">
-              <GovernanceRulesPanel repoFullName={repoFullName} />
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="card-header mb-2">
+                    <Shield size={12} strokeWidth={1.5} />
+                    {t('settings.organization.policyMovedTitle')}
+                  </div>
+                  <p className="text-xs text-surface-400">
+                    {t('settings.organization.policyMovedBody', { repo: repoFullName })}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => navigate('/governance/policy')}
+                >
+                  <ExternalLink size={13} strokeWidth={1.5} />
+                  {t('settings.organization.openGovernancePolicy')}
+                </Button>
+              </div>
             </section>
           )}
 

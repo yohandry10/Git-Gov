@@ -29,12 +29,13 @@ describe('Settings navigation', () => {
 
   it('keeps existing Settings surfaces assigned to tabs instead of deleting them', () => {
     expect(settingsSource).toContain('<LanguagePreferenceSelector />')
-    expect(settingsSource).toContain('<ServerConfigPanel />')
+    expect(settingsSource).toContain('<ServerConfigPanel key={serverConfig?.url ?? \'none\'} />')
     expect(settingsSource).toContain("activeTab === 'connection' ? '' : 'hidden'} rounded-2xl border border-surface-700/30 bg-surface-800/40 p-6`")
     expect(settingsSource).toContain('<AdminOnboardingPanel />')
     expect(settingsSource).toContain('<TeamManagementPanel />')
     expect(settingsSource).toContain('<ApiKeyManagerWidget />')
-    expect(settingsSource).toContain('<GovernanceRulesPanel repoFullName={repoFullName} />')
+    expect(settingsSource).toContain('/governance/policy')
+    expect(settingsSource).not.toContain('<GovernanceRulesPanel repoFullName={repoFullName} />')
   })
 
   it('uses i18n keys for Settings tab labels and descriptions', () => {

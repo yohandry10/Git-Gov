@@ -1,0 +1,530 @@
+import { parseCommandError, tauriInvoke } from '@/lib/tauri'
+import { useAuthStore } from '@/store/useAuthStore'
+import type {
+  AcceptOrgInvitationResponse,
+  ApiKeyInfo,
+  ControlPlaneActions,
+  CreateOrgInvitationResponse,
+  CreateOrgResponse,
+  CreateOrgUserResponse,
+  IssueOrgUserApiKeyResponse,
+  MeResponse,
+  OrgInvitation,
+  OrgInvitationsResponse,
+  OrgUser,
+  OrgUsersResponse,
+  RevokeApiKeyResponse,
+  TeamOverviewResponse,
+  TeamReposResponse,
+} from '../types'
+import type { ControlPlaneGet, ControlPlaneSet } from '../store-types'
+import { DEFAULT_GOVERNANCE_LOG_WINDOW } from '../constants'
+import { controlPlaneStoreRuntime } from '../runtime'
+import {
+  isControlPlaneIdentityCompatible,
+  isUnauthorizedError,
+  persistSecureControlPlaneApiKey,
+  persistServerConfig,
+  readStoredJiraCoverageFilters,
+  syncOutboxServerConfig,
+} from '../helpers'
+
+type OrganizationActionKeys =
+  | 'loadMe'
+  | 'createOrg'
+  | 'setSelectedOrgName'
+  | 'loadOrgUsers'
+  | 'upsertOrgUser'
+  | 'updateOrgUserStatus'
+  | 'issueApiKeyForOrgUser'
+  | 'loadOrgInvitations'
+  | 'createOrgInvitation'
+  | 'resendOrgInvitation'
+  | 'revokeOrgInvitation'
+  | 'previewOrgInvitation'
+  | 'acceptOrgInvitation'
+  | 'setTeamFilters'
+  | 'loadTeamOverview'
+  | 'loadTeamRepos'
+  | 'refreshForCurrentRole'
+  | 'loadApiKeys'
+  | 'revokeApiKey'
+  | 'clearError'
+  | 'disconnect'
+
+export function createOrganizationActions(
+  set: ControlPlaneSet,
+  get: ControlPlaneGet,
+): Pick<ControlPlaneActions, OrganizationActionKeys> {
+  return {
+  loadMe: async () => {
+    const { serverConfig } = get()
+    if (!serverConfig) return false
+    try {
+      const me = await tauriInvoke<MeResponse>('cmd_server_get_me', { config: serverConfig })
+      const githubLogin = useAuthStore.getState().user?.login ?? null
+      if (!isControlPlaneIdentityCompatible(me.client_id, githubLogin, me.role)) {
+        const founderHint = me.client_id === 'bootstrap-admin'
+          ? ' La key founder (bootstrap-admin) requiere sesión GitHub del founder configurado en VITE_FOUNDER_GITHUB_LOGIN.'
+          : ''
+        set({
+          userRole: null,
+          userClientId: null,
+          userOrgId: null,
+          controlPlaneAuthConfirmed: true,
+          pendingControlPlaneSession: null,
+          error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.${founderHint}`,
+        })
+        return false
+      }
+      set({ userRole: me.role, userClientId: me.client_id, userOrgId: me.org_id ?? null, error: null })
+      return true
+    } catch (e) {
+      const meError = parseCommandError(String(e)).message
+      set({
+        userRole: null,
+        userClientId: null,
+        userOrgId: null,
+        controlPlaneAuthConfirmed: true,
+        pendingControlPlaneSession: null,
+        error: isUnauthorizedError(meError)
+          ? 'API key inválida o expirada para Control Plane. Usa una key válida para tu rol.'
+          : meError,
+      })
+      return false
+    }
+  },
+
+  createOrg: async (payload) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      const response = await tauriInvoke<CreateOrgResponse>('cmd_server_create_org', {
+        config: serverConfig,
+        payload: {
+          login: payload.login.trim(),
+          name: payload.name?.trim() || null,
+        },
+      })
+      if (response.login) {
+        set({ selectedOrgName: response.login })
+      }
+      return response
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  setSelectedOrgName: (orgName) => {
+    set({ selectedOrgName: orgName.trim() })
+  },
+
+  loadOrgUsers: async (params) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return
+    const orgName = params?.orgName?.trim() || selectedOrgName.trim() || undefined
+    try {
+      const response = await tauriInvoke<OrgUsersResponse>('cmd_server_list_org_users', {
+        config: serverConfig,
+        orgName,
+        status: params?.status ?? null,
+        limit: params?.limit ?? 50,
+        offset: params?.offset ?? 0,
+      })
+      set({ orgUsers: response.entries, orgUsersTotal: response.total })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+    }
+  },
+
+  upsertOrgUser: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = payload.orgName?.trim() || selectedOrgName.trim() || undefined
+    try {
+      const response = await tauriInvoke<CreateOrgUserResponse>('cmd_server_create_org_user', {
+        config: serverConfig,
+        payload: {
+          login: payload.login.trim(),
+          email: payload.email?.trim() || null,
+          display_name: payload.displayName?.trim() || null,
+          role: payload.role ?? null,
+          status: payload.status ?? null,
+          org_name: orgName ?? null,
+        },
+      })
+      await get().loadOrgUsers({ orgName })
+      return response.user
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  updateOrgUserStatus: async (userId, status) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      const response = await tauriInvoke<OrgUser>('cmd_server_update_org_user_status', {
+        config: serverConfig,
+        userId,
+        status,
+      })
+      await get().loadOrgUsers()
+      return response
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  issueApiKeyForOrgUser: async (userId) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      const response = await tauriInvoke<IssueOrgUserApiKeyResponse>('cmd_server_create_api_key_for_org_user', {
+        config: serverConfig,
+        userId,
+      })
+      return response
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  loadOrgInvitations: async (params) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return
+    const orgName = params?.orgName?.trim() || selectedOrgName.trim() || undefined
+    try {
+      const response = await tauriInvoke<OrgInvitationsResponse>('cmd_server_list_org_invitations', {
+        config: serverConfig,
+        orgName,
+        status: params?.status ?? null,
+        limit: params?.limit ?? 50,
+        offset: params?.offset ?? 0,
+      })
+      set({ orgInvitations: response.entries, orgInvitationsTotal: response.total })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+    }
+  },
+
+  createOrgInvitation: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = payload.orgName?.trim() || selectedOrgName.trim() || undefined
+    try {
+      const response = await tauriInvoke<CreateOrgInvitationResponse>('cmd_server_create_org_invitation', {
+        config: serverConfig,
+        payload: {
+          org_name: orgName ?? null,
+          invite_email: payload.inviteEmail?.trim() || null,
+          invite_login: payload.inviteLogin?.trim() || null,
+          role: payload.role ?? null,
+          expires_in_days: payload.expiresInDays ?? null,
+        },
+      })
+      set({ lastGeneratedInviteToken: response.invite_token })
+      await get().loadOrgInvitations({ orgName })
+      await get().loadOrgUsers({ orgName })
+      return response
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  resendOrgInvitation: async (invitationId, expiresInDays) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      const response = await tauriInvoke<CreateOrgInvitationResponse>('cmd_server_resend_org_invitation', {
+        config: serverConfig,
+        invitationId,
+        expiresInDays: expiresInDays ?? null,
+      })
+      set({ lastGeneratedInviteToken: response.invite_token })
+      await get().loadOrgInvitations()
+      return response
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  revokeOrgInvitation: async (invitationId) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return false
+    try {
+      await tauriInvoke<OrgInvitation>('cmd_server_revoke_org_invitation', {
+        config: serverConfig,
+        invitationId,
+      })
+      await get().loadOrgInvitations()
+      return true
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return false
+    }
+  },
+
+  previewOrgInvitation: async (token) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      const invite = await tauriInvoke<OrgInvitation>('cmd_server_preview_org_invitation', {
+        config: serverConfig,
+        token,
+      })
+      return invite
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  acceptOrgInvitation: async ({ token, login }) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+    try {
+      return await tauriInvoke<AcceptOrgInvitationResponse>('cmd_server_accept_org_invitation', {
+        config: serverConfig,
+        token,
+        login: login?.trim() || null,
+      })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return null
+    }
+  },
+
+  setTeamFilters: (filters) => {
+    set((state) => ({
+      teamWindowDays: typeof filters.days === 'number' ? Math.max(1, Math.min(180, Math.floor(filters.days))) : state.teamWindowDays,
+      teamStatusFilter: typeof filters.status === 'string' ? filters.status : state.teamStatusFilter,
+    }))
+  },
+
+  loadTeamOverview: async (params) => {
+    const { serverConfig, selectedOrgName, teamWindowDays, teamStatusFilter } = get()
+    if (!serverConfig) return
+    const orgName = params?.orgName?.trim() || selectedOrgName.trim() || undefined
+    const days = typeof params?.days === 'number' ? params.days : teamWindowDays
+    const status = params?.status ?? teamStatusFilter
+    try {
+      const response = await tauriInvoke<TeamOverviewResponse>('cmd_server_get_team_overview', {
+        config: serverConfig,
+        orgName,
+        status: status || null,
+        days,
+        limit: params?.limit ?? 100,
+        offset: params?.offset ?? 0,
+      })
+      set((state) => {
+        if (!params?.append) {
+          return {
+            teamOverview: response.entries,
+            teamOverviewTotal: response.total,
+          }
+        }
+
+        const merged = [...state.teamOverview]
+        const seen = new Set(merged.map((entry) => entry.login))
+        for (const entry of response.entries) {
+          if (seen.has(entry.login)) continue
+          seen.add(entry.login)
+          merged.push(entry)
+        }
+        return {
+          teamOverview: merged,
+          teamOverviewTotal: response.total,
+        }
+      })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+    }
+  },
+
+  loadTeamRepos: async (params) => {
+    const { serverConfig, selectedOrgName, teamWindowDays } = get()
+    if (!serverConfig) return
+    const orgName = params?.orgName?.trim() || selectedOrgName.trim() || undefined
+    const days = typeof params?.days === 'number' ? params.days : teamWindowDays
+    try {
+      const response = await tauriInvoke<TeamReposResponse>('cmd_server_get_team_repos', {
+        config: serverConfig,
+        orgName,
+        days,
+        limit: params?.limit ?? 100,
+        offset: params?.offset ?? 0,
+      })
+      set((state) => {
+        if (!params?.append) {
+          return {
+            teamRepos: response.entries,
+            teamReposTotal: response.total,
+          }
+        }
+
+        const merged = [...state.teamRepos]
+        const seen = new Set(merged.map((entry) => entry.repo_name))
+        for (const entry of response.entries) {
+          if (seen.has(entry.repo_name)) continue
+          seen.add(entry.repo_name)
+          merged.push(entry)
+        }
+        return {
+          teamRepos: merged,
+          teamReposTotal: response.total,
+        }
+      })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+    }
+  },
+
+  refreshForCurrentRole: async (options) => {
+    if (controlPlaneStoreRuntime.refreshForCurrentRoleInFlight) {
+      await controlPlaneStoreRuntime.refreshForCurrentRoleInFlight
+      if (options?.forceHeavy) {
+        await get().refreshForCurrentRole({ forceHeavy: true })
+      }
+      return
+    }
+
+    const run = (async () => {
+      const { userRole } = get()
+      if (userRole === 'Admin') {
+        await get().refreshDashboardData({
+          logLimit: DEFAULT_GOVERNANCE_LOG_WINDOW,
+          forceHeavy: options?.forceHeavy,
+        })
+        return
+      }
+
+      await get().loadLogsIncremental(DEFAULT_GOVERNANCE_LOG_WINDOW)
+    })()
+
+    controlPlaneStoreRuntime.refreshForCurrentRoleInFlight = run
+    try {
+      await run
+    } finally {
+      if (controlPlaneStoreRuntime.refreshForCurrentRoleInFlight === run) controlPlaneStoreRuntime.refreshForCurrentRoleInFlight = null
+    }
+  },
+
+  loadApiKeys: async () => {
+    const { serverConfig } = get()
+    if (!serverConfig) return
+    set({ isLoadingApiKeys: true })
+    try {
+      const keys = await tauriInvoke<ApiKeyInfo[]>('cmd_server_list_api_keys', { config: serverConfig })
+      set({ apiKeys: keys })
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+    } finally {
+      set({ isLoadingApiKeys: false })
+    }
+  },
+
+  revokeApiKey: async (keyId) => {
+    const { serverConfig } = get()
+    if (!serverConfig) return false
+    try {
+      const resp = await tauriInvoke<RevokeApiKeyResponse>('cmd_server_revoke_api_key', {
+        config: serverConfig,
+        keyId,
+      })
+      if (resp.success) {
+        await get().loadApiKeys()
+      }
+      return resp.success
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return false
+    }
+  },
+
+  clearError: () => set({ error: null }),
+
+  disconnect: () => {
+    // Teardown SSE connection
+    get().disconnectSse()
+    persistServerConfig(null)
+    void persistSecureControlPlaneApiKey(undefined)
+    void syncOutboxServerConfig(null)
+    set({
+      serverConfig: null,
+      isConnected: false,
+      sseConnected: false,
+      connectionStatus: 'disconnected',
+      maintenanceDetectedAt: null,
+      serverStats: null,
+      serverLogs: [],
+      activeDevs7d: [],
+      activeDevs7dUpdatedAt: null,
+      logsPage: 0,
+      jenkinsCorrelations: [],
+      prMergeEvidence: [],
+      dailyActivity: [],
+      ticketCoverage: null,
+      jiraCoverageFilters: readStoredJiraCoverageFilters(),
+      jiraTicketDetails: {},
+      jiraTicketDetailFetchedAt: {},
+      jiraTicketDetailLoading: {},
+      evidencePacket: null,
+      evidencePacketTicketId: '',
+      isEvidencePacketLoading: false,
+      enterpriseAdoptionProfile: null,
+      enterpriseAdoptionProfileUpdatedAt: null,
+      isEnterpriseAdoptionProfileLoading: false,
+      isEnterpriseAdoptionProfileSaving: false,
+      enterpriseAdoptionProfileError: null,
+      enterpriseOnboardingChecklistTracking: null,
+      enterpriseOnboardingChecklistTrackingUpdatedAt: null,
+      isEnterpriseOnboardingChecklistTrackingLoading: false,
+      isEnterpriseOnboardingChecklistTrackingSaving: false,
+      enterpriseOnboardingChecklistTrackingError: null,
+      releaseApprovals: [],
+      releaseApprovalsTotal: 0,
+      releaseApprovalsFilters: { limit: 10, offset: 0 },
+      releaseGovernanceEvaluation: null,
+      isReleaseGovernanceEvaluating: false,
+      isReleaseApprovalsLoading: false,
+      isReleaseApprovalSubmitting: false,
+      releaseApprovalError: null,
+      userRole: null,
+      userClientId: null,
+      userOrgId: null,
+      controlPlaneAuthConfirmed: true,
+      pendingControlPlaneSession: null,
+      selectedOrgName: '',
+      orgUsers: [],
+      orgUsersTotal: 0,
+      orgInvitations: [],
+      orgInvitationsTotal: 0,
+      lastGeneratedInviteToken: null,
+      teamOverview: [],
+      teamOverviewTotal: 0,
+      teamRepos: [],
+      teamReposTotal: 0,
+      teamWindowDays: 30,
+      teamStatusFilter: '',
+      apiKeys: [],
+      isLoadingApiKeys: false,
+      exportLogs: [],
+      isRefreshingDashboard: false,
+      error: null,
+      isChatLoading: false,
+      governanceCopilotResponse: null,
+      isGovernanceCopilotLoading: false,
+      governanceCopilotError: null,
+    })
+  },
+
+  // ── Chat actions ─────────────────────────────────────────────────────────
+  }
+}

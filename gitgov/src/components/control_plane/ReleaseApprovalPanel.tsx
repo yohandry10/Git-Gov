@@ -63,7 +63,7 @@ function isValidEvidenceUri(value: string): boolean {
   const trimmed = value.trim()
   if (!trimmed) return true
   if (/\s/.test(trimmed)) return false
-  return trimmed.startsWith('/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')
+  return trimmed.startsWith('/') || trimmed.startsWith('https://')
 }
 
 function validateApprovalForm(form: ApprovalForm): string[] {
@@ -78,7 +78,7 @@ function validateApprovalForm(form: ApprovalForm): string[] {
   if (!HEX_64_RE.test(form.evidencePacketHash.trim())) errors.push('Evidence hash must be a 64 character SHA-256 hex value.')
   if (form.targetSha.trim() && !SHA_RE.test(form.targetSha.trim())) errors.push('Target SHA must be 7 to 64 hex characters.')
   if (form.ticketId.trim() && !TICKET_RE.test(form.ticketId.trim().toUpperCase())) errors.push('Ticket must look like KAN-43.')
-  if (!isValidEvidenceUri(form.evidencePacketUri)) errors.push('Evidence URI must be a relative API path or http(s) URL.')
+  if (!isValidEvidenceUri(form.evidencePacketUri)) errors.push('Evidence URI must be a relative API path or https URL.')
   if (form.decision === 'approved' && ['high', 'critical'].includes(form.riskSeverity)) {
     errors.push('High or critical risk cannot be approved directly.')
   }
@@ -146,13 +146,13 @@ export function ReleaseApprovalPanel() {
   const defaultRepository =
     enterpriseAdoptionProfile?.repository_full_name ||
     jiraCoverageFilters.repo_full_name ||
-    'yohandry10/Git-Gov'
+    ''
   const defaultBranch =
     enterpriseAdoptionProfile?.default_branch ||
     jiraCoverageFilters.branch ||
     'main'
-  const defaultTicket = evidencePacket?.subject || evidencePacketTicketId || 'KAN-43'
-  const defaultEvidenceUri = `/evidence/packets/tickets/${defaultTicket}`
+  const defaultTicket = evidencePacket?.subject || evidencePacketTicketId || ''
+  const defaultEvidenceUri = defaultTicket ? `/evidence/packets/tickets/${defaultTicket}` : ''
 
   const [form, setForm] = useState<ApprovalForm>({
     releaseId: defaultTicket,

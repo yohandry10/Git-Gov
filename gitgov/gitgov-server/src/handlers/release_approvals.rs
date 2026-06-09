@@ -68,9 +68,7 @@ fn is_valid_release_approval_ticket_id(value: &str) -> bool {
 
 fn is_valid_release_approval_evidence_uri(value: &str) -> bool {
     let lower = value.to_ascii_lowercase();
-    value.starts_with('/')
-        || lower.starts_with("http://")
-        || lower.starts_with("https://")
+    value.starts_with('/') || lower.starts_with("https://")
 }
 
 fn normalize_and_validate_release_approval(
@@ -160,7 +158,7 @@ fn normalize_and_validate_release_approval(
 
     if let Some(uri) = payload.evidence_packet_uri.as_deref() {
         if uri.len() > 500 || uri.contains(char::is_whitespace) || !is_valid_release_approval_evidence_uri(uri) {
-            errors.push("evidence_packet_uri must be a relative API path or http(s) URL.".to_string());
+            errors.push("evidence_packet_uri must be a relative API path or https URL.".to_string());
         }
     }
 
@@ -1020,7 +1018,7 @@ mod release_approval_tests {
         let errors = normalize_and_validate_release_approval(&mut payload).unwrap_err();
 
         assert!(errors.contains(
-            &"evidence_packet_uri must be a relative API path or http(s) URL.".to_string()
+            &"evidence_packet_uri must be a relative API path or https URL.".to_string()
         ));
     }
 
