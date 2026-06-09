@@ -35,7 +35,7 @@ import {
 
 type GovernanceSection = 'evidence' | 'policy' | 'adoption' | 'releases' | 'copilot'
 
-const GOVERNANCE_LOG_LIMIT = 500
+const GOVERNANCE_LOG_LIMIT = 120
 const GITHUB_EVIDENCE_TREND_STORAGE_KEY = 'gitgov.dashboard.github_evidence_trend'
 
 const GOVERNANCE_SECTIONS: Array<{
@@ -166,7 +166,7 @@ export function GovernancePage() {
   const jenkinsCorrelations = useControlPlaneStore((s) => s.jenkinsCorrelations)
   const userRole = useControlPlaneStore((s) => s.userRole)
   const isConnected = useControlPlaneStore((s) => s.isConnected)
-  const refreshForCurrentRole = useControlPlaneStore((s) => s.refreshForCurrentRole)
+  const loadStats = useControlPlaneStore((s) => s.loadStats)
   const loadLogsIncremental = useControlPlaneStore((s) => s.loadLogsIncremental)
   const connectSse = useControlPlaneStore((s) => s.connectSse)
   const disconnectSse = useControlPlaneStore((s) => s.disconnectSse)
@@ -238,11 +238,12 @@ export function GovernancePage() {
   useEffect(() => {
     if (!isConnected) return
     if (userRole === 'Admin') {
-      void refreshForCurrentRole()
-      return
+      void loadStats()
     }
-    void loadLogsIncremental(GOVERNANCE_LOG_LIMIT)
-  }, [isConnected, loadLogsIncremental, refreshForCurrentRole, userRole])
+    if (activeSection === 'evidence') {
+      void loadLogsIncremental(GOVERNANCE_LOG_LIMIT)
+    }
+  }, [activeSection, isConnected, loadLogsIncremental, loadStats, userRole])
 
   const renderSection = () => {
     if (activeSection === 'evidence') {

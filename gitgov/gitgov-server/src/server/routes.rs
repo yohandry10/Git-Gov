@@ -1,0 +1,411 @@
+use axum::{
+    extract::DefaultBodyLimit,
+    middleware,
+    routing::{get, patch, post, put},
+    Router,
+};
+use metrics_exporter_prometheus::PrometheusHandle;
+use std::sync::Arc;
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
+
+use crate::handlers::AppState;
+use crate::server::http_middleware::{request_metrics_middleware, security_headers};
+use crate::server::rate_limit::{rate_limit_middleware, RateLimiterState};
+use crate::{auth, db, handlers, openapi};
+
+pub(crate) struct RouteConfig {
+    pub(crate) state: Arc<AppState>,
+    pub(crate) db: Arc<db::Database>,
+    pub(crate) prometheus_handle: PrometheusHandle,
+    pub(crate) cors_layer: CorsLayer,
+    pub(crate) events_rate_limit: Arc<RateLimiterState>,
+    pub(crate) audit_stream_rate_limit: Arc<RateLimiterState>,
+    pub(crate) jenkins_rate_limit: Arc<RateLimiterState>,
+    pub(crate) jira_rate_limit: Arc<RateLimiterState>,
+    pub(crate) github_webhook_rate_limit: Arc<RateLimiterState>,
+    pub(crate) org_invitation_public_rate_limit: Arc<RateLimiterState>,
+    pub(crate) admin_rate_limit: Arc<RateLimiterState>,
+    pub(crate) logs_rate_limit: Arc<RateLimiterState>,
+    pub(crate) stats_rate_limit: Arc<RateLimiterState>,
+    pub(crate) chat_rate_limit: Arc<RateLimiterState>,
+    pub(crate) events_body_limit_bytes: usize,
+    pub(crate) jenkins_body_limit_bytes: usize,
+    pub(crate) jira_body_limit_bytes: usize,
+}
+
+pub(crate) fn build_app(config: RouteConfig) -> Router {
+    let RouteConfig {
+        state,
+        db,
+        prometheus_handle,
+        cors_layer,
+        events_rate_limit,
+        audit_stream_rate_limit,
+        jenkins_rate_limit,
+        jira_rate_limit,
+        github_webhook_rate_limit,
+        org_invitation_public_rate_limit,
+        admin_rate_limit,
+        logs_rate_limit,
+        stats_rate_limit,
+        chat_rate_limit,
+        events_body_limit_bytes,
+        jenkins_body_limit_bytes,
+        jira_body_limit_bytes,
+    } = config;
+    let auth_routes = Router::new()
+        .route(
+            "/logs",
+            get(handlers::get_logs).layer(middleware::from_fn_with_state(
+                Arc::clone(&logs_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/sse",
+            get(handlers::sse_stream).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/stats",
+            get(handlers::get_stats).layer(middleware::from_fn_with_state(
+                Arc::clone(&stats_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/stats/daily",
+            get(handlers::get_daily_activity).layer(middleware::from_fn_with_state(
+                Arc::clone(&stats_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/dashboard",
+            get(handlers::get_dashboard).layer(middleware::from_fn_with_state(
+                Arc::clone(&stats_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/team/overview",
+            get(handlers::get_team_overview).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/team/repos",
+            get(handlers::get_team_repos).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/integrations/jenkins",
+            post(handlers::ingest_jenkins_pipeline_event)
+                .layer(DefaultBodyLimit::max(jenkins_body_limit_bytes))
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&jenkins_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/integrations/jenkins/status",
+            get(handlers::get_jenkins_integration_status),
+        )
+        .route(
+            "/integrations/jenkins/correlations",
+            get(handlers::get_jenkins_commit_correlations),
+        )
+        .route(
+            "/integrations/correlations/v2",
+            get(handlers::get_correlation_v2),
+        )
+        .route(
+            "/integrations/jira",
+            post(handlers::ingest_jira_webhook)
+                .layer(DefaultBodyLimit::max(jira_body_limit_bytes))
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&jira_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/integrations/jira/status",
+            get(handlers::get_jira_integration_status),
+        )
+        .route(
+            "/integrations/jira/tickets/{ticket_id}",
+            get(handlers::get_jira_ticket_detail),
+        )
+        .route(
+            "/integrations/jira/correlate",
+            post(handlers::correlate_jira_tickets),
+        )
+        .route(
+            "/integrations/jira/ticket-coverage",
+            get(handlers::get_jira_ticket_coverage),
+        )
+        .route(
+            "/evidence/packets/tickets/{ticket_id}",
+            get(handlers::get_ticket_evidence_packet),
+        )
+        .route(
+            "/compliance/{org_name}",
+            get(handlers::get_compliance_dashboard),
+        )
+        .route("/signals", get(handlers::get_signals))
+        .route("/signals/{signal_id}", post(handlers::update_signal))
+        .route(
+            "/signals/{signal_id}/confirm",
+            post(handlers::confirm_signal),
+        )
+        .route(
+            "/signals/detect/{org_name}",
+            post(handlers::trigger_detection),
+        )
+        .route(
+            "/violations/{violation_id}/decisions",
+            get(handlers::get_violation_decisions),
+        )
+        .route(
+            "/violations/{violation_id}/decisions",
+            post(handlers::add_violation_decision),
+        )
+        .route("/policy/{repo_name}", get(handlers::get_policy))
+        .route("/policy/check", post(handlers::policy_check))
+        .route(
+            "/policy/{repo_name}/history",
+            get(handlers::get_policy_history),
+        )
+        .route(
+            "/policy/{repo_name}/override",
+            put(handlers::override_policy),
+        )
+        .route(
+            "/policy/{repo_name}/requests",
+            post(handlers::create_policy_change_request).get(handlers::list_policy_change_requests),
+        )
+        .route(
+            "/policy/requests/{request_id}/approve",
+            post(handlers::approve_policy_change_request),
+        )
+        .route(
+            "/policy/requests/{request_id}/reject",
+            post(handlers::reject_policy_change_request),
+        )
+        .route("/export", post(handlers::export_events))
+        .route("/exports", get(handlers::list_exports))
+        .route("/me", get(handlers::get_me))
+        .route("/orgs", post(handlers::create_org))
+        .route(
+            "/enterprise/adoption-profile",
+            get(handlers::get_enterprise_adoption_profile)
+                .put(handlers::upsert_enterprise_adoption_profile),
+        )
+        .route(
+            "/enterprise/onboarding-checklist-tracking",
+            get(handlers::get_enterprise_onboarding_checklist_tracking)
+                .put(handlers::upsert_enterprise_onboarding_checklist_tracking),
+        )
+        .route(
+            "/enterprise/release-approvals",
+            get(handlers::list_enterprise_release_approvals)
+                .post(handlers::create_enterprise_release_approval),
+        )
+        .route(
+            "/enterprise/release-governance/evaluate",
+            get(handlers::evaluate_enterprise_release_governance),
+        )
+        .route(
+            "/org-users",
+            get(handlers::list_org_users).post(handlers::create_org_user),
+        )
+        .route(
+            "/org-users/{id}/status",
+            patch(handlers::update_org_user_status),
+        )
+        .route(
+            "/org-users/{id}/api-key",
+            post(handlers::create_api_key_for_org_user),
+        )
+        .route(
+            "/org-invitations",
+            get(handlers::list_org_invitations).post(handlers::create_org_invitation),
+        )
+        .route(
+            "/org-invitations/{id}/resend",
+            post(handlers::resend_org_invitation),
+        )
+        .route(
+            "/org-invitations/{id}/revoke",
+            post(handlers::revoke_org_invitation),
+        )
+        .route(
+            "/api-keys",
+            get(handlers::list_api_keys)
+                .post(handlers::create_api_key)
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&admin_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/api-keys/{id}/revoke",
+            post(handlers::revoke_api_key).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/events",
+            post(handlers::ingest_client_events)
+                .layer(DefaultBodyLimit::max(events_body_limit_bytes))
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&events_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/outbox/lease",
+            post(handlers::acquire_outbox_flush_lease).layer(middleware::from_fn_with_state(
+                Arc::clone(&events_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/outbox/lease/metrics",
+            get(handlers::get_outbox_lease_metrics).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/audit-stream/github",
+            post(handlers::ingest_audit_stream).layer(middleware::from_fn_with_state(
+                Arc::clone(&audit_stream_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route("/governance-events", get(handlers::get_governance_events))
+        .route(
+            "/pr-merges",
+            get(handlers::list_pr_merges).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/admin-audit-log",
+            get(handlers::list_admin_audit_log).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/jobs/metrics",
+            get(handlers::get_job_metrics).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/jobs/dead",
+            get(handlers::get_dead_jobs).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/jobs/{job_id}/retry",
+            post(handlers::retry_dead_job).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        // GDPR — T2
+        .route("/users/{login}/erase", post(handlers::erase_user))
+        .route("/users/{login}/export", get(handlers::export_user))
+        // Client sessions — T3.A
+        .route("/clients", get(handlers::get_clients))
+        // Identity aliases — T3.B
+        .route(
+            "/identities/aliases",
+            post(handlers::create_identity_alias).get(handlers::list_identity_aliases),
+        )
+        // Conversational Chat (MVP)
+        .route(
+            "/chat/ask",
+            post(handlers::chat_ask).layer(middleware::from_fn_with_state(
+                Arc::clone(&chat_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/feature-requests",
+            post(handlers::create_feature_request_handler),
+        )
+        // CLI Command Audit
+        .route(
+            "/cli/commands",
+            post(handlers::ingest_cli_command).get(handlers::list_cli_commands),
+        )
+        .route(
+            "/policy/drift-events",
+            post(handlers::ingest_policy_drift_event).get(handlers::list_policy_drift_events),
+        )
+        .layer(middleware::from_fn_with_state(
+            Arc::clone(&db),
+            auth::auth_middleware,
+        ));
+
+    Router::new()
+        .route("/health", get(handlers::health))
+        .route("/health/detailed", get(handlers::detailed_health))
+        .route(
+            "/webhooks/github",
+            post(handlers::handle_github_webhook).layer(middleware::from_fn_with_state(
+                Arc::clone(&github_webhook_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/webhooks/jira",
+            post(handlers::handle_jira_signed_webhook)
+                .layer(DefaultBodyLimit::max(jira_body_limit_bytes))
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&jira_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route("/metrics", get(handlers::prometheus_metrics))
+        .route(
+            "/org-invitations/preview/{token}",
+            get(handlers::preview_org_invitation).layer(middleware::from_fn_with_state(
+                Arc::clone(&org_invitation_public_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/org-invitations/accept",
+            post(handlers::accept_org_invitation).layer(middleware::from_fn_with_state(
+                Arc::clone(&org_invitation_public_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .merge(auth_routes)
+        .merge(
+            utoipa_swagger_ui::SwaggerUi::new("/api-docs")
+                .url("/api-docs/openapi.json", openapi::build_openapi_spec()),
+        )
+        .layer(axum::Extension(prometheus_handle))
+        .layer(cors_layer)
+        .layer(middleware::from_fn(security_headers))
+        .layer(middleware::from_fn(request_metrics_middleware))
+        .layer(TraceLayer::new_for_http())
+        .with_state(Arc::clone(&state))
+}

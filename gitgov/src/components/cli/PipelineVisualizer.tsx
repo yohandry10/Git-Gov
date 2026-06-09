@@ -21,6 +21,7 @@ import {
 
 const REFRESH_INTERVAL_MS = 30_000
 const LIVE_TTL_MS = 10 * 60 * 1000
+const CONTROL_PLANE_SIGNAL_LIMIT = 50
 const TICKET_ID_REGEX = /\b([A-Z][A-Z0-9]{1,9}-\d+)\b/g
 
 type FlowStepKey = 'ticket' | 'branch' | 'stage' | 'commit' | 'push' | 'pipeline'
@@ -217,6 +218,8 @@ export function PipelineVisualizer() {
 
   const pendingStepByCommandIdRef = useRef<Map<string, FlowStepKey>>(new Map())
   const lastUiStepRef = useRef<FlowStepKey | null>(null)
+  const graphRequestInFlightRef = useRef<Promise<void> | null>(null)
+  const controlPlaneSignalsInFlightRef = useRef<Promise<void> | null>(null)
 
   const pushFeed = useCallback((status: PipelineNodeStatus, text: string) => {
     const entry: LiveFeedEntry = {
@@ -241,26 +244,57 @@ export function PipelineVisualizer() {
 
   const loadGraph = useCallback(async () => {
     if (!repoPath) return
+    if (graphRequestInFlightRef.current) {
+      await graphRequestInFlightRef.current
+      return
+    }
+    const run = (async () => {
+      try {
+        const data = await tauriInvoke<PipelineGraphData>('cmd_get_pipeline_graph', {
+          repoPath,
+          maxCommits: 30,
+        })
+        setGraphData(data)
+        setError(null)
+      } catch (e) {
+        setError(String(e))
+      } finally {
+        setLoading(false)
+      }
+    })()
+    graphRequestInFlightRef.current = run
     try {
-      const data = await tauriInvoke<PipelineGraphData>('cmd_get_pipeline_graph', {
-        repoPath,
-        maxCommits: 30,
-      })
-      setGraphData(data)
-      setError(null)
-    } catch (e) {
-      setError(String(e))
+      await run
     } finally {
-      setLoading(false)
+      if (graphRequestInFlightRef.current === run) {
+        graphRequestInFlightRef.current = null
+      }
     }
   }, [repoPath])
 
   const refreshControlPlaneSignals = useCallback(async () => {
     if (!serverConfig?.url || !serverConfig.api_key) return
+    if (controlPlaneSignalsInFlightRef.current) {
+      await controlPlaneSignalsInFlightRef.current
+      return
+    }
+    const run = (async () => {
+      try {
+        await Promise.all([
+          loadJenkinsCorrelations(CONTROL_PLANE_SIGNAL_LIMIT),
+          loadPrMergeEvidence(CONTROL_PLANE_SIGNAL_LIMIT),
+        ])
+      } catch {
+        // Non-fatal for visual panel.
+      }
+    })()
+    controlPlaneSignalsInFlightRef.current = run
     try {
-      await Promise.all([loadJenkinsCorrelations(100), loadPrMergeEvidence(100)])
-    } catch {
-      // Non-fatal for visual panel.
+      await run
+    } finally {
+      if (controlPlaneSignalsInFlightRef.current === run) {
+        controlPlaneSignalsInFlightRef.current = null
+      }
     }
   }, [serverConfig, loadJenkinsCorrelations, loadPrMergeEvidence])
 

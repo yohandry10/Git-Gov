@@ -5,6 +5,7 @@ import {
   isLocalControlPlaneUrl,
   normalizeControlPlaneUrl,
   resolveControlPlaneUrl,
+  validateControlPlaneUrl,
 } from '@/lib/controlPlaneConfig'
 
 describe('controlPlaneConfig', () => {
@@ -37,6 +38,14 @@ describe('controlPlaneConfig', () => {
     expect(isLocalControlPlaneUrl('http://localhost:3000')).toBe(true)
     expect(isLocalControlPlaneUrl('http://[::1]:3000')).toBe(true)
     expect(isLocalControlPlaneUrl('https://gitgov-api.onrender.com')).toBe(false)
+  })
+
+  it('rejects unsafe Control Plane URLs before persistence', () => {
+    expect(validateControlPlaneUrl('ftp://gitgov.cloud')).toContain('http or https')
+    expect(validateControlPlaneUrl('https://user:pass@gitgov.cloud')).toContain('must not contain embedded credentials')
+    expect(validateControlPlaneUrl('http://gitgov.cloud')).toContain('must use https')
+    expect(validateControlPlaneUrl('http://127.0.0.1:3000')).toBeNull()
+    expect(validateControlPlaneUrl('https://gitgov.cloud')).toBeNull()
   })
 
   it('formats localhost connection failures as actionable product messages', () => {

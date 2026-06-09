@@ -397,11 +397,12 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
     const cfg = policyData.config
     return (
       JSON.stringify(rules) !== JSON.stringify({ ...defaultRules(), ...cfg.rules }) ||
+      JSON.stringify(forbiddenPatterns) !== JSON.stringify(cfg.rules?.forbidden_patterns ?? []) ||
       JSON.stringify(enforcement) !== JSON.stringify({ ...defaultEnforcement(), ...cfg.enforcement }) ||
       JSON.stringify(protectedBranches) !== JSON.stringify(cfg.branches?.protected ?? []) ||
       JSON.stringify(branchPatterns) !== JSON.stringify(cfg.branches?.patterns ?? [])
     )
-  }, [rules, enforcement, protectedBranches, branchPatterns, policyData])
+  }, [rules, forbiddenPatterns, enforcement, protectedBranches, branchPatterns, policyData])
 
   if (isPolicyLoading) {
     return (
