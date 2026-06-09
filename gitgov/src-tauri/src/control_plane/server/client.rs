@@ -46,6 +46,32 @@ fn normalize_loopback_url(url: &str) -> String {
     trimmed.to_string()
 }
 
+fn server_error_from_response(response: reqwest::blocking::Response) -> ServerError {
+    let status = response.status();
+    let body = response.text().unwrap_or_default();
+    let message = serde_json::from_str::<serde_json::Value>(&body)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("error")
+                .or_else(|| value.get("message"))
+                .and_then(|error| error.as_str())
+                .map(str::to_string)
+        })
+        .filter(|message| !message.trim().is_empty())
+        .unwrap_or_else(|| {
+            let body = body.trim();
+            if body.is_empty() {
+                format!("Server returned status: {}", status)
+            } else {
+                let snippet = body.chars().take(240).collect::<String>();
+                format!("Server returned status: {} ({})", status, snippet)
+            }
+        });
+
+    ServerError::ServerError(message)
+}
+
 impl ControlPlaneClient {
     pub fn new(mut config: ServerConfig) -> Self {
         config.url = normalize_loopback_url(&config.url);

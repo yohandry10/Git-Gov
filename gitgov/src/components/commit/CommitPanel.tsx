@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRepoStore } from '@/store/useRepoStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
@@ -10,6 +10,8 @@ import { tauriInvoke, parseCommandError } from '@/lib/tauri'
 import { emitCliLine } from '@/lib/cliEvents'
 import {
   buildGitIdentityEvidenceLines,
+  buildGitHubCommitAuthorName,
+  buildGitHubNoReplyEmail,
   evaluateGitIdentity,
   formatGitIdentityBlockToast,
   formatGitIdentityScope,
@@ -75,15 +77,38 @@ export function CommitPanel() {
   const [commitType, setCommitType] = useState('feat')
   const [isCommitting, setIsCommitting] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
+  const [isRefreshingGitIdentity, setIsRefreshingGitIdentity] = useState(false)
   const [lastCommitHash, setLastCommitHash] = useState<string | null>(null)
   const [gitIdentity, setGitIdentity] = useState<GitIdentity | null>(null)
 
-  useEffect(() => {
-    if (!repoPath) { setGitIdentity(null); return }
-    tauriInvoke<GitIdentity>('cmd_get_git_identity', { repoPath })
-      .then(setGitIdentity)
-      .catch(() => setGitIdentity(null))
+  const refreshGitIdentity = useCallback(async (notify = false) => {
+    if (!repoPath) {
+      setGitIdentity(null)
+      return null
+    }
+
+    setIsRefreshingGitIdentity(true)
+    try {
+      const nextIdentity = await tauriInvoke<GitIdentity>('cmd_get_git_identity', { repoPath })
+      setGitIdentity(nextIdentity)
+      if (notify) {
+        toast('success', 'Identidad Git revalidada.')
+      }
+      return nextIdentity
+    } catch {
+      setGitIdentity(null)
+      if (notify) {
+        toast('error', 'No se pudo leer la identidad Git efectiva para este repo.')
+      }
+      return null
+    } finally {
+      setIsRefreshingGitIdentity(false)
+    }
   }, [repoPath])
+
+  useEffect(() => {
+    void refreshGitIdentity()
+  }, [refreshGitIdentity])
 
   const identityFinding = evaluateGitIdentity(gitIdentity, user)
 
@@ -110,10 +135,13 @@ export function CommitPanel() {
   const isIdentityBlocked = Boolean(identityFinding)
   const hasIdentityOrigin = Boolean(identityFinding?.nameScope || identityFinding?.emailScope)
 
-  const handleShowIdentityProof = () => {
-    if (!gitIdentity || !user) return
+  const handleShowIdentityProof = async () => {
+    if (!user) return
+    const currentIdentity = await refreshGitIdentity()
+    if (!currentIdentity) return
 
-    buildGitIdentityEvidenceLines(gitIdentity, user, identityFinding).forEach((line) => {
+    const currentFinding = evaluateGitIdentity(currentIdentity, user)
+    buildGitIdentityEvidenceLines(currentIdentity, user, currentFinding).forEach((line) => {
       emitCliLine(line)
     })
     toast('info', 'Prueba de identidad Git escrita en el panel CLI.')
@@ -134,8 +162,8 @@ export function CommitPanel() {
     try {
       const hash = await commit(
         fullMessage,
-        user.name || user.login,
-        `${user.login}@users.noreply.github.com`,
+        buildGitHubCommitAuthorName(user),
+        buildGitHubNoReplyEmail(user),
         user.login
       )
       setLastCommitHash(hash)
@@ -326,12 +354,24 @@ export function CommitPanel() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={handleShowIdentityProof}
+                onClick={() => void handleShowIdentityProof()}
+                loading={isRefreshingGitIdentity}
                 className="h-6 px-2 text-[10px] text-warning-200 hover:bg-warning-500/10 hover:text-warning-100"
-                title="Mostrar prueba de git config en el panel CLI"
+                title="Revalidar y mostrar prueba de git config en el panel CLI"
               >
                 <TerminalSquare size={12} strokeWidth={1.75} />
                 Ver prueba
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void refreshGitIdentity(true)}
+                loading={isRefreshingGitIdentity}
+                className="h-6 px-2 text-[10px] text-warning-200 hover:bg-warning-500/10 hover:text-warning-100"
+                title="Revalidar identidad Git efectiva"
+              >
+                <RotateCcw size={12} strokeWidth={1.75} />
+                Revalidar
               </Button>
             </div>
             <p className="mt-0.5 text-[10px] text-surface-400">

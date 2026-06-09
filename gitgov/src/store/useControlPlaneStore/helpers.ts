@@ -5,6 +5,7 @@ import type { CombinedEvent } from '@/lib/types'
 import type { ActiveDev7dEntry, ChatMessage, ChatSession, JiraCoverageFilters, ServerConfig } from './types'
 import {
   ALLOW_LEGACY_DEFAULT_API_KEY,
+  CONTROL_PLANE_ACTIVE_ORG_STORAGE_KEY_PREFIX,
   CHAT_MESSAGES_STORAGE_KEY_PREFIX,
   CONTROL_PLANE_CONFIG_STORAGE_KEY,
   DEFAULT_CHAT_SESSION_TITLE,
@@ -197,6 +198,51 @@ export function persistServerConfig(config: ServerConfig | null) {
     window.localStorage.setItem(CONTROL_PLANE_CONFIG_STORAGE_KEY, JSON.stringify({
       url: config.url,
     }))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function stableConfigFingerprint(value: string | null | undefined): string {
+  const input = (value ?? '').trim()
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+export function buildActiveOrgStorageKey(config: ServerConfig | null): string | null {
+  if (!config) return null
+  const login = (useAuthStore.getState().user?.login ?? '').trim().toLowerCase()
+  if (!login) return null
+  const urlPart = stableConfigFingerprint(config.url)
+  const keyPart = stableConfigFingerprint(config.api_key)
+  return `${CONTROL_PLANE_ACTIVE_ORG_STORAGE_KEY_PREFIX}${encodeURIComponent(login)}.${urlPart}.${keyPart}`
+}
+
+export function readStoredSelectedOrgName(config: ServerConfig | null): string {
+  try {
+    const key = buildActiveOrgStorageKey(config)
+    if (!key) return ''
+    const raw = window.localStorage.getItem(key)
+    return typeof raw === 'string' ? raw.trim() : ''
+  } catch {
+    return ''
+  }
+}
+
+export function persistSelectedOrgName(config: ServerConfig | null, orgName: string) {
+  try {
+    const key = buildActiveOrgStorageKey(config)
+    if (!key) return
+    const normalized = orgName.trim()
+    if (!normalized) {
+      window.localStorage.removeItem(key)
+      return
+    }
+    window.localStorage.setItem(key, normalized)
   } catch {
     // ignore storage errors
   }

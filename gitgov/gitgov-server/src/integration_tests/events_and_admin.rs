@@ -406,6 +406,65 @@ async fn create_org_requires_founder_global_admin_key() {
 }
 
 #[tokio::test]
+async fn org_discovery_and_me_return_human_scope() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_a = insert_test_org(&pool, "enterprise-a").await;
+    let _org_b = insert_test_org(&pool, "enterprise-b").await;
+    let global_admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    let scoped_admin_key =
+        insert_test_api_key_for_org(&pool, "enterprise-a-admin", "Admin", &org_a).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, body) = json_request(&app, "GET", "/orgs", None, Some(&global_admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "global org list failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let logins: Vec<String> = parsed
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|org| org["login"].as_str().map(str::to_string))
+        .collect();
+    assert!(logins.contains(&"enterprise-a".to_string()));
+    assert!(logins.contains(&"enterprise-b".to_string()));
+
+    let (status, body) = json_request(
+        &app,
+        "GET",
+        "/orgs/enterprise-a",
+        None,
+        Some(&scoped_admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "scoped org lookup failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(parsed["login"], "enterprise-a");
+
+    let (status, body) = json_request(
+        &app,
+        "GET",
+        "/orgs/enterprise-b",
+        None,
+        Some(&scoped_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "cross-org lookup should fail: {}",
+        body
+    );
+
+    let (status, body) = json_request(&app, "GET", "/me", None, Some(&scoped_admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "me failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(parsed["org_id"], org_a);
+    assert_eq!(parsed["org_name"], "enterprise-a");
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
 async fn create_api_key_rejects_invalid_role_instead_of_silent_fallback() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
@@ -450,6 +509,135 @@ async fn create_api_key_rejects_invalid_role_instead_of_silent_fallback() {
         "api_key should be present for valid role"
     );
     assert_eq!(parsed["client_id"], "role-case-test-valid");
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn api_keys_respect_requested_org_scope() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_a = insert_test_org(&pool, "enterprise-a").await;
+    let org_b = insert_test_org(&pool, "enterprise-b").await;
+    let global_admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    let enterprise_a_key =
+        insert_test_api_key_for_org(&pool, "enterprise-a-dev", "Developer", &org_a).await;
+    let enterprise_b_key =
+        insert_test_api_key_for_org(&pool, "enterprise-b-dev", "Developer", &org_b).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, body) = json_request(
+        &app,
+        "GET",
+        "/api-keys?org_name=enterprise-a",
+        None,
+        Some(&global_admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "scoped list failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let keys = parsed.as_array().unwrap();
+    assert!(
+        keys.iter().all(|key| key["org_name"] == "enterprise-a"),
+        "scoped list should contain only enterprise-a keys: {}",
+        body
+    );
+    assert!(
+        keys.iter()
+            .any(|key| key["client_id"] == "enterprise-a-dev"),
+        "enterprise-a key should be visible: {}",
+        body
+    );
+    assert!(
+        keys.iter()
+            .all(|key| key["client_id"] != "enterprise-b-dev"),
+        "enterprise-b key should not be visible in enterprise-a scope: {}",
+        body
+    );
+
+    let invalid_payload = serde_json::json!({
+        "client_id": "invalid-org-key",
+        "role": "Developer",
+        "org_name": "does-not-exist"
+    });
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/api-keys",
+        Some(&invalid_payload.to_string()),
+        Some(&global_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "invalid org should fail: {}",
+        body
+    );
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/api-keys/00000000-0000-0000-0000-000000000000/revoke?org_name=enterprise-a",
+        None,
+        Some(&global_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "missing key revoke should be scoped 404: {}",
+        body
+    );
+
+    let all_keys = sqlx::query(
+        "SELECT id::text, client_id FROM api_keys WHERE client_id = $1 OR client_id = $2",
+    )
+    .bind("enterprise-a-dev")
+    .bind("enterprise-b-dev")
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let enterprise_b_id: String = all_keys
+        .iter()
+        .find(|row| row.get::<String, _>("client_id") == "enterprise-b-dev")
+        .unwrap()
+        .get("id");
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        &format!("/api-keys/{}/revoke?org_name=enterprise-a", enterprise_b_id),
+        None,
+        Some(&global_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "cross-scope revoke should fail: {}",
+        body
+    );
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        &format!("/api-keys/{}/revoke?org_name=enterprise-b", enterprise_b_id),
+        None,
+        Some(&global_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "matching scope revoke should pass: {}",
+        body
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(parsed["success"], true);
+
+    assert!(!enterprise_a_key.trim().is_empty());
+    assert!(!enterprise_b_key.trim().is_empty());
 
     teardown(&admin_pool, &schema).await;
 }

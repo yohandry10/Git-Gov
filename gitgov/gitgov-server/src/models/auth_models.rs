@@ -10,6 +10,8 @@ pub struct ApiKeyInfo {
     pub role: String,
     #[serde(default)]
     pub org_id: Option<String>,
+    #[serde(default)]
+    pub org_name: Option<String>,
     pub created_at: i64,
     #[serde(default)]
     pub last_used: Option<i64>,
@@ -22,6 +24,8 @@ pub struct MeResponse {
     pub role: String,
     #[serde(default)]
     pub org_id: Option<String>,
+    #[serde(default)]
+    pub org_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

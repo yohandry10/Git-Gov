@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-06-08
-Ticket: `KAN-69` completed
+Updated: 2026-06-09
+Ticket: `Control Plane workspace/auth flow` in local implementation
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -82,6 +82,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Current unmerged Desktop QA code changes are limited to Action Center mount behavior, Desktop auth/session UX, Workspace pipeline visualizer layout/copy, Control Plane technical connection/configuration UX, Governance information architecture, Control Plane Enterprise Adoption layout, and focused auth/navigation/product-copy tests. Do not stage or revert unrelated user documentation changes.
 - Current Desktop QA implementation plan: stabilize startup/auth, preserve Workspace local execution flow, keep heavy evidence refresh explicit, reduce Action Center route mount pressure, move Control Plane connection/configuration into Settings, keep `/control-plane` only as a redirect to `/settings#control-plane`, move operational governance to `/governance/*`, keep `Governance > Evidence` first with no generic Governance Dashboard tab, keep Action Center as the only global `Next Action` owner, and validate without relaunching Desktop unless the user permits runtime interaction.
 - Current Control Plane/auth decision: GitHub identifies the Desktop operator; the GitGov API key authorizes Control Plane role/org/evidence. Restore valid local GitHub sessions by default, preserve saved Control Plane config, explain the split in UI, and reserve forced Device Flow on every launch for explicit hardening mode.
+- Current Control Plane workspace/auth implementation: Desktop now treats GitHub identity, GitGov API key authorization, and active workspace/tenant as separate product concepts. Scoped API keys get `org_name` from `/me`; global/founder Admin keys with `org_id=null` must validate an active workspace via `/orgs/{login}` before admin tenant surfaces unlock. The active workspace is persisted locally per GitHub login, Control Plane URL, and a non-secret API-key fingerprint. `/orgs` now lists visible workspaces, `/orgs/{login}` validates scope, and `/api-keys?org_name=...` is scoped while unqualified `/api-keys` remains the explicit global Admin catalog.
 - Runtime QA finding: Supabase and local backend health were validated as healthy; the observed Action Center freeze is more likely Desktop/Tauri/WebView/client mount pressure than database or backend failure. Opening Action Center must not trigger heavy background refresh automatically; manual Refresh remains the explicit path for heavier evidence refresh.
 - Runtime QA product decision: Desktop should reuse a valid local GitHub session by default. GitHub identifies the human operator; the GitGov API key authorizes Control Plane role/org/evidence. The two-step model is acceptable only when it is explained and persisted; it should not force GitHub Device Flow on every app start unless an explicit hardening env flag enables that behavior.
 - Runtime QA Control Plane URL finding: GitHub Device Flow can succeed while Step 2 fails if Desktop is forced to `http://127.0.0.1:3000` and no local Control Plane is listening. The fix direction is centralized URL resolution, editable Control Plane URL fields, localhost as fallback only, IPv4/localhost/IPv6 loopback detection for local-target hints, and actionable connection errors instead of raw `Network error ... /health` output.

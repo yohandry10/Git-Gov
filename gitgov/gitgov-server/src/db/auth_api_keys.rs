@@ -238,16 +238,18 @@ impl Database {
         let rows = sqlx::query(
             r#"
             SELECT
-                id::text,
-                client_id,
-                role,
-                org_id::text,
-                EXTRACT(EPOCH FROM created_at)::bigint * 1000 AS created_at_ms,
-                EXTRACT(EPOCH FROM last_used)::bigint * 1000 AS last_used_ms,
-                is_active
-            FROM api_keys
-            WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
-            ORDER BY created_at DESC
+                ak.id::text,
+                ak.client_id,
+                ak.role,
+                ak.org_id::text,
+                o.login AS org_name,
+                EXTRACT(EPOCH FROM ak.created_at)::bigint * 1000 AS created_at_ms,
+                EXTRACT(EPOCH FROM ak.last_used)::bigint * 1000 AS last_used_ms,
+                ak.is_active
+            FROM api_keys ak
+            LEFT JOIN orgs o ON o.id = ak.org_id
+            WHERE ($1::uuid IS NULL OR ak.org_id = $1::uuid)
+            ORDER BY ak.created_at DESC
             "#,
         )
         .bind(org_id)
@@ -262,6 +264,7 @@ impl Database {
                 client_id: row.get("client_id"),
                 role: row.get("role"),
                 org_id: row.get("org_id"),
+                org_name: row.get("org_name"),
                 created_at: row.get::<i64, _>("created_at_ms"),
                 last_used: row.get("last_used_ms"),
                 is_active: row.get("is_active"),

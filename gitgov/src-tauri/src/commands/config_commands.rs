@@ -75,6 +75,7 @@ pub fn cmd_validate_branch_name(
     };
 
     let user = AuthenticatedUser {
+        id: None,
         login: developer_login,
         name: String::new(),
         avatar_url: String::new(),

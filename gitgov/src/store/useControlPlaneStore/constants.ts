@@ -1,4 +1,5 @@
 export const CONTROL_PLANE_CONFIG_STORAGE_KEY = 'gitgov.control_plane_config'
+export const CONTROL_PLANE_ACTIVE_ORG_STORAGE_KEY_PREFIX = 'gitgov.control_plane.active_org.'
 export const JIRA_COVERAGE_FILTERS_STORAGE_KEY = 'gitgov.jira_coverage_filters'
 export const LEGACY_CHAT_MESSAGES_STORAGE_KEY = 'gitgov.chat_messages'
 export const CHAT_MESSAGES_STORAGE_KEY_PREFIX = 'gitgov.chat_messages.v2.'

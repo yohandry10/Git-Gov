@@ -11,6 +11,7 @@ import type {
   MeResponse,
   OrgInvitation,
   OrgInvitationsResponse,
+  OrgSummary,
   OrgUser,
   OrgUsersResponse,
   RevokeApiKeyResponse,
@@ -24,13 +25,18 @@ import {
   isControlPlaneIdentityCompatible,
   isUnauthorizedError,
   persistSecureControlPlaneApiKey,
+  persistSelectedOrgName,
   persistServerConfig,
+  readStoredSelectedOrgName,
   readStoredJiraCoverageFilters,
   syncOutboxServerConfig,
 } from '../helpers'
 
 type OrganizationActionKeys =
   | 'loadMe'
+  | 'loadOrgs'
+  | 'validateOrgName'
+  | 'activateOrgName'
   | 'createOrg'
   | 'setSelectedOrgName'
   | 'loadOrgUsers'
@@ -71,13 +77,30 @@ export function createOrganizationActions(
           userRole: null,
           userClientId: null,
           userOrgId: null,
+          selectedOrgValidated: false,
           controlPlaneAuthConfirmed: true,
           pendingControlPlaneSession: null,
           error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.${founderHint}`,
         })
         return false
       }
-      set({ userRole: me.role, userClientId: me.client_id, userOrgId: me.org_id ?? null, error: null })
+      const meOrgName = me.org_name?.trim() || ''
+      const storedOrgName = !meOrgName && me.role === 'Admin' && !me.org_id
+        ? readStoredSelectedOrgName(serverConfig)
+        : ''
+      set({
+        userRole: me.role,
+        userClientId: me.client_id,
+        userOrgId: me.org_id ?? null,
+        selectedOrgName: meOrgName || storedOrgName || get().selectedOrgName,
+        selectedOrgValidated: Boolean(meOrgName),
+        error: null,
+      })
+      if (meOrgName) {
+        persistSelectedOrgName(serverConfig, meOrgName)
+      } else if (storedOrgName) {
+        await get().activateOrgName(storedOrgName)
+      }
       return true
     } catch (e) {
       const meError = parseCommandError(String(e)).message
@@ -85,6 +108,7 @@ export function createOrganizationActions(
         userRole: null,
         userClientId: null,
         userOrgId: null,
+        selectedOrgValidated: false,
         controlPlaneAuthConfirmed: true,
         pendingControlPlaneSession: null,
         error: isUnauthorizedError(meError)
@@ -93,6 +117,65 @@ export function createOrganizationActions(
       })
       return false
     }
+  },
+
+  loadOrgs: async () => {
+    const { serverConfig } = get()
+    if (!serverConfig) return []
+    set({ isLoadingOrgs: true })
+    try {
+      const orgs = await tauriInvoke<OrgSummary[]>('cmd_server_list_orgs', { config: serverConfig })
+      set({ availableOrgs: orgs, error: null })
+      return orgs
+    } catch (e) {
+      set({ error: parseCommandError(String(e)).message })
+      return []
+    } finally {
+      set({ isLoadingOrgs: false })
+    }
+  },
+
+  validateOrgName: async (orgName) => {
+    const { serverConfig } = get()
+    const login = orgName.trim()
+    if (!serverConfig || !login) {
+      set({ error: 'Selecciona un workspace GitGov para continuar.' })
+      return null
+    }
+    try {
+      const org = await tauriInvoke<OrgSummary>('cmd_server_get_org', {
+        config: serverConfig,
+        login,
+      })
+      set((state) => ({
+        availableOrgs: state.availableOrgs.some((item) => item.login === org.login)
+          ? state.availableOrgs.map((item) => item.login === org.login ? org : item)
+          : [...state.availableOrgs, org],
+        error: null,
+      }))
+      return org
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      const friendly = message.includes('Organization not found')
+        ? `No existe un workspace GitGov llamado "${login}".`
+        : message.includes('outside API key scope')
+          ? `La API key actual no tiene permiso para el workspace "${login}".`
+          : message
+      set({ error: friendly, selectedOrgValidated: false })
+      return null
+    }
+  },
+
+  activateOrgName: async (orgName) => {
+    const { serverConfig } = get()
+    const org = await get().validateOrgName(orgName)
+    if (!org) {
+      set({ selectedOrgName: orgName.trim(), selectedOrgValidated: false })
+      return null
+    }
+    persistSelectedOrgName(serverConfig, org.login)
+    set({ selectedOrgName: org.login, selectedOrgValidated: true, error: null })
+    return org
   },
 
   createOrg: async (payload) => {
@@ -107,7 +190,8 @@ export function createOrganizationActions(
         },
       })
       if (response.login) {
-        set({ selectedOrgName: response.login })
+        persistSelectedOrgName(serverConfig, response.login)
+        set({ selectedOrgName: response.login, selectedOrgValidated: true })
       }
       return response
     } catch (e) {
@@ -117,7 +201,7 @@ export function createOrganizationActions(
   },
 
   setSelectedOrgName: (orgName) => {
-    set({ selectedOrgName: orgName.trim() })
+    set({ selectedOrgName: orgName.trim(), selectedOrgValidated: false })
   },
 
   loadOrgUsers: async (params) => {
@@ -416,12 +500,21 @@ export function createOrganizationActions(
     }
   },
 
-  loadApiKeys: async () => {
-    const { serverConfig } = get()
+  loadApiKeys: async (params) => {
+    const { serverConfig, selectedOrgName, selectedOrgValidated, userRole, userOrgId } = get()
     if (!serverConfig) return
+    const isExplicitGlobal = params?.global === true
+    if (!isExplicitGlobal && userRole === 'Admin' && !userOrgId && !selectedOrgValidated) {
+      set({ error: 'Valida un workspace GitGov antes de consultar API keys de organización.' })
+      return
+    }
+    const orgName = isExplicitGlobal ? undefined : (params?.orgName?.trim() || selectedOrgName.trim() || undefined)
     set({ isLoadingApiKeys: true })
     try {
-      const keys = await tauriInvoke<ApiKeyInfo[]>('cmd_server_list_api_keys', { config: serverConfig })
+      const keys = await tauriInvoke<ApiKeyInfo[]>('cmd_server_list_api_keys', {
+        config: serverConfig,
+        orgName: orgName ?? null,
+      })
       set({ apiKeys: keys })
     } catch (e) {
       set({ error: parseCommandError(String(e)).message })
@@ -430,16 +523,25 @@ export function createOrganizationActions(
     }
   },
 
-  revokeApiKey: async (keyId) => {
-    const { serverConfig } = get()
+  revokeApiKey: async (keyId, params) => {
+    const { serverConfig, selectedOrgName, selectedOrgValidated, userRole, userOrgId } = get()
     if (!serverConfig) return false
+    const isExplicitGlobal = params?.global === true
+    if (!isExplicitGlobal && userRole === 'Admin' && !userOrgId && !selectedOrgValidated) {
+      set({ error: 'Valida un workspace GitGov antes de revocar API keys de organización.' })
+      return false
+    }
+    const orgName = isExplicitGlobal ? undefined : (params?.orgName?.trim() || selectedOrgName.trim() || undefined)
     try {
       const resp = await tauriInvoke<RevokeApiKeyResponse>('cmd_server_revoke_api_key', {
         config: serverConfig,
         keyId,
+        orgName: orgName ?? null,
       })
       if (resp.success) {
-        await get().loadApiKeys()
+        await get().loadApiKeys(params)
+      } else {
+        set({ error: resp.message || 'No se pudo revocar la API key.' })
       }
       return resp.success
     } catch (e) {
@@ -502,6 +604,9 @@ export function createOrganizationActions(
       controlPlaneAuthConfirmed: true,
       pendingControlPlaneSession: null,
       selectedOrgName: '',
+      selectedOrgValidated: false,
+      availableOrgs: [],
+      isLoadingOrgs: false,
       orgUsers: [],
       orgUsersTotal: 0,
       orgInvitations: [],

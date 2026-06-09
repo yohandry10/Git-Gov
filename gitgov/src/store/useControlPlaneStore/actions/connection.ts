@@ -7,6 +7,7 @@ import {
   cachedSecureControlPlaneApiKey,
   persistSecureControlPlaneApiKey,
   persistServerConfig,
+  readStoredSelectedOrgName,
   readSecureControlPlaneApiKey,
   resolveServerConfig,
   syncOutboxServerConfig,
@@ -37,7 +38,11 @@ export function createConnectionActions(
     } catch (e) {
       set({ error: parseCommandError(String(e)).message })
     }
-    set({ serverConfig: config })
+    set({
+      serverConfig: config,
+      selectedOrgName: readStoredSelectedOrgName(config),
+      selectedOrgValidated: false,
+    })
     await syncOutboxServerConfig(config)
     await get().checkConnection()
   },
@@ -53,11 +58,18 @@ export function createConnectionActions(
         userRole: null,
         userClientId: null,
         userOrgId: null,
+        selectedOrgName: '',
+        selectedOrgValidated: false,
       })
       return
     }
     persistServerConfig(merged)
-    set({ serverConfig: merged, error: null })
+    set({
+      serverConfig: merged,
+      selectedOrgName: readStoredSelectedOrgName(merged),
+      selectedOrgValidated: false,
+      error: null,
+    })
     void (async () => {
       try {
         await persistSecureControlPlaneApiKey(merged.api_key)
@@ -70,6 +82,7 @@ export function createConnectionActions(
           userRole: null,
           userClientId: null,
           userOrgId: null,
+          selectedOrgValidated: false,
           error: parseCommandError(String(e)).message,
         })
       }
@@ -98,7 +111,12 @@ export function createConnectionActions(
       set({ error: parseCommandError(String(e)).message })
       return false
     }
-    set({ serverConfig: next, error: null })
+    set({
+      serverConfig: next,
+      selectedOrgName: readStoredSelectedOrgName(next),
+      selectedOrgValidated: false,
+      error: null,
+    })
     await syncOutboxServerConfig(next)
     await get().checkConnection()
     const state = get()
@@ -132,7 +150,12 @@ export function createConnectionActions(
       set({ error: parseCommandError(String(e)).message })
       return false
     }
-    set({ serverConfig: next, error: null })
+    set({
+      serverConfig: next,
+      selectedOrgName: readStoredSelectedOrgName(next),
+      selectedOrgValidated: false,
+      error: null,
+    })
     await syncOutboxServerConfig(next)
     await get().checkConnection()
     const state = get()
@@ -210,6 +233,7 @@ export function createConnectionActions(
               userRole: null,
               userClientId: null,
               userOrgId: null,
+              selectedOrgValidated: false,
               controlPlaneAuthConfirmed: true,
               pendingControlPlaneSession: null,
               error: get().error ?? (isBackground ? null : 'No se pudo autenticar con el Control Plane. Verifica la API key.'),

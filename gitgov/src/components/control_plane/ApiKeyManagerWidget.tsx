@@ -15,12 +15,23 @@ export function ApiKeyManagerWidget() {
   const loadApiKeys = useControlPlaneStore((s) => s.loadApiKeys)
   const revokeApiKey = useControlPlaneStore((s) => s.revokeApiKey)
   const displayTimezone = useControlPlaneStore((s) => s.displayTimezone)
+  const userRole = useControlPlaneStore((s) => s.userRole)
+  const userOrgId = useControlPlaneStore((s) => s.userOrgId)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
+  const selectedOrgValidated = useControlPlaneStore((s) => s.selectedOrgValidated)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [revokingId, setRevokingId] = useState<string | null>(null)
+  const [scopeMode, setScopeMode] = useState<'org' | 'global'>('org')
+
+  const isGlobalAdmin = userRole === 'Admin' && !userOrgId
+  const activeOrgName = selectedOrgName.trim()
+  const canUseOrgScope = Boolean(activeOrgName && selectedOrgValidated)
+  const effectiveScopeMode = scopeMode === 'global' && isGlobalAdmin ? 'global' : 'org'
 
   useEffect(() => {
-    void loadApiKeys()
-  }, [loadApiKeys])
+    if (effectiveScopeMode === 'org' && !canUseOrgScope) return
+    void loadApiKeys(effectiveScopeMode === 'global' ? { global: true } : { orgName: activeOrgName })
+  }, [activeOrgName, canUseOrgScope, effectiveScopeMode, loadApiKeys])
 
   const handleRevoke = async (key: ApiKeyInfo) => {
     if (confirmingId !== key.id) {
@@ -29,7 +40,10 @@ export function ApiKeyManagerWidget() {
     }
     setRevokingId(key.id)
     setConfirmingId(null)
-    await revokeApiKey(key.id)
+    await revokeApiKey(
+      key.id,
+      effectiveScopeMode === 'global' ? { global: true } : { orgName: activeOrgName },
+    )
     setRevokingId(null)
   }
 
@@ -40,9 +54,27 @@ export function ApiKeyManagerWidget() {
           <Key size={14} className="text-surface-400" />
           <span className="card-header">API Keys</span>
         </div>
+        {isGlobalAdmin && (
+          <div className="inline-flex rounded border border-white/10 p-0.5 text-[11px]">
+            <button
+              type="button"
+              className={`px-2 py-1 rounded ${effectiveScopeMode === 'org' ? 'bg-white/10 text-surface-100' : 'text-surface-500 hover:text-surface-300'}`}
+              onClick={() => setScopeMode('org')}
+            >
+              Organización
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 rounded ${effectiveScopeMode === 'global' ? 'bg-white/10 text-surface-100' : 'text-surface-500 hover:text-surface-300'}`}
+              onClick={() => setScopeMode('global')}
+            >
+              Global
+            </button>
+          </div>
+        )}
         <button
-          onClick={() => void loadApiKeys()}
-          disabled={isLoadingApiKeys}
+          onClick={() => void loadApiKeys(effectiveScopeMode === 'global' ? { global: true } : { orgName: activeOrgName })}
+          disabled={isLoadingApiKeys || (effectiveScopeMode === 'org' && !canUseOrgScope)}
           className="p-1 rounded text-surface-500 hover:text-surface-300 transition-colors"
           title="Refrescar"
         >
@@ -50,7 +82,9 @@ export function ApiKeyManagerWidget() {
         </button>
       </div>
 
-      {isLoadingApiKeys && apiKeys.length === 0 ? (
+      {effectiveScopeMode === 'org' && !canUseOrgScope ? (
+        <div className="py-8 text-center text-surface-500 text-xs">Selecciona un workspace validado para ver sus API keys.</div>
+      ) : isLoadingApiKeys && apiKeys.length === 0 ? (
         <div className="py-8 text-center text-surface-500 text-xs">Cargando...</div>
       ) : apiKeys.length === 0 ? (
         <div className="py-8 text-center text-surface-500 text-xs">Sin API keys registradas</div>
@@ -61,6 +95,7 @@ export function ApiKeyManagerWidget() {
               <tr className="border-b border-surface-700">
                 <th className="text-left pb-2 text-surface-500 font-medium">Client ID</th>
                 <th className="text-left pb-2 text-surface-500 font-medium">Rol</th>
+                <th className="text-left pb-2 text-surface-500 font-medium">Scope</th>
                 <th className="text-left pb-2 text-surface-500 font-medium">Creada</th>
                 <th className="text-left pb-2 text-surface-500 font-medium">Último uso</th>
                 <th className="text-left pb-2 text-surface-500 font-medium">Estado</th>
@@ -77,6 +112,9 @@ export function ApiKeyManagerWidget() {
                     <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-medium ${roleBadgeClass(key.role)}`}>
                       {key.role}
                     </span>
+                  </td>
+                  <td className="py-2 pr-3 text-surface-400 whitespace-nowrap">
+                    {key.org_name || (key.org_id ? 'Organización' : 'Global')}
                   </td>
                   <td className="py-2 pr-3 text-surface-400 whitespace-nowrap">
                     {formatTs(key.created_at, displayTimezone)}

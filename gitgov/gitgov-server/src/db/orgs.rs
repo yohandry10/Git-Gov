@@ -107,6 +107,60 @@ impl Database {
         }
     }
 
+    pub async fn get_org_by_id(&self, org_id: &str) -> Result<Option<Org>, DbError> {
+        let result = sqlx::query(
+            "SELECT id::text, github_id, login, name, avatar_url, created_at FROM orgs WHERE id = $1::uuid",
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        match result {
+            Some(row) => {
+                let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+                Ok(Some(Org {
+                    id: row.get("id"),
+                    github_id: row.get("github_id"),
+                    login: row.get("login"),
+                    name: row.get("name"),
+                    avatar_url: row.get("avatar_url"),
+                    created_at: created_at.timestamp_millis(),
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub async fn list_orgs(&self, org_id: Option<&str>) -> Result<Vec<Org>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id::text, github_id, login, name, avatar_url, created_at
+            FROM orgs
+            WHERE ($1::uuid IS NULL OR id = $1::uuid)
+            ORDER BY login ASC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        rows.iter()
+            .map(|row| {
+                let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+                Ok(Org {
+                    id: row.get("id"),
+                    github_id: row.get("github_id"),
+                    login: row.get("login"),
+                    name: row.get("name"),
+                    avatar_url: row.get("avatar_url"),
+                    created_at: created_at.timestamp_millis(),
+                })
+            })
+            .collect()
+    }
+
     pub async fn upsert_repo(
         &self,
         org_id: Option<&str>,

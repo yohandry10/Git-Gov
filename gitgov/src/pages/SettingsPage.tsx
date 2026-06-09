@@ -85,6 +85,7 @@ export function SettingsPage() {
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const connectionStatus = useControlPlaneStore((s) => s.connectionStatus)
   const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
+  const selectedOrgValidated = useControlPlaneStore((s) => s.selectedOrgValidated)
   const userRole = useControlPlaneStore((s) => s.userRole)
   const userClientId = useControlPlaneStore((s) => s.userClientId)
   const sseConnected = useControlPlaneStore((s) => s.sseConnected)
@@ -127,7 +128,9 @@ export function SettingsPage() {
         ? 'grid grid-cols-1 gap-4 xl:grid-cols-2'
         : 'space-y-4'
   const controlPlaneEndpoint = serverConfig?.url || t('common.notConfigured')
-  const controlPlaneScope = selectedOrgName || userClientId || t('common.notSelected')
+  const controlPlaneScope = selectedOrgName
+    ? `${selectedOrgName}${selectedOrgValidated ? '' : ' (pendiente)'}`
+    : t('common.notSelected')
   const controlPlaneTransport = sseConnected
     ? t('settings.connection.liveStream')
     : connectionStatus === 'connected'

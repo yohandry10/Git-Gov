@@ -6,6 +6,8 @@ import { formatTs } from '@/lib/timezone'
 export function AdminOnboardingPanel() {
   const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
   const setSelectedOrgName = useControlPlaneStore((s) => s.setSelectedOrgName)
+  const selectedOrgValidated = useControlPlaneStore((s) => s.selectedOrgValidated)
+  const activateOrgName = useControlPlaneStore((s) => s.activateOrgName)
   const createOrg = useControlPlaneStore((s) => s.createOrg)
   const orgUsers = useControlPlaneStore((s) => s.orgUsers)
   const orgInvitations = useControlPlaneStore((s) => s.orgInvitations)
@@ -31,30 +33,32 @@ export function AdminOnboardingPanel() {
   const [issuedKeys, setIssuedKeys] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    const orgName = selectedOrgName.trim() || undefined
+    if (!selectedOrgValidated) return
+    const orgName = selectedOrgName.trim()
+    if (!orgName) return
     void Promise.all([
       loadOrgUsers({ orgName, limit: 100 }),
       loadOrgInvitations({ orgName, limit: 100 }),
     ])
-  }, [selectedOrgName, loadOrgUsers, loadOrgInvitations])
+  }, [selectedOrgName, selectedOrgValidated, loadOrgUsers, loadOrgInvitations])
 
-  const hasOrg = selectedOrgName.trim().length > 0
+  const hasOrg = selectedOrgName.trim().length > 0 && selectedOrgValidated
   const activeMembers = useMemo(() => orgUsers.filter((u) => u.status === 'active'), [orgUsers])
 
   return (
     <div className="glass-panel p-5 space-y-4">
       <div>
         <div className="card-header">Onboarding Admin</div>
-        <p className="text-xs text-surface-400 mt-1">Crea organización, invita developers y administra acceso por rol.</p>
+        <p className="text-xs text-surface-400 mt-1">Crea workspaces, invita developers y administra acceso por rol.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="rounded-lg border border-white/8 p-3 bg-white/2 space-y-2">
-          <div className="text-[11px] text-surface-300 uppercase tracking-widest">1. Crear organización</div>
+          <div className="text-[11px] text-surface-300 uppercase tracking-widest">1. Crear workspace</div>
           <input
             value={orgLogin}
             onChange={(e) => setOrgLogin(e.target.value)}
-            placeholder="login org (ej: acme)"
+            placeholder="workspace (ej: acme)"
             className="w-full bg-surface-900 border border-white/10 rounded px-2 py-1.5 text-xs text-surface-100"
           />
           <input
@@ -74,20 +78,33 @@ export function AdminOnboardingPanel() {
                 }
               }}
             >
-              Crear/Upsert Org
+              Crear workspace
             </button>
-            {hasOrg && <Badge variant="success">Org activa: {selectedOrgName}</Badge>}
+            {hasOrg && <Badge variant="success">Activo: {selectedOrgName}</Badge>}
           </div>
         </div>
 
         <div className="rounded-lg border border-white/8 p-3 bg-white/2 space-y-2">
-          <div className="text-[11px] text-surface-300 uppercase tracking-widest">2. Definir org activa</div>
+          <div className="text-[11px] text-surface-300 uppercase tracking-widest">2. Definir workspace activo</div>
           <input
             value={selectedOrgName}
             onChange={(e) => setSelectedOrgName(e.target.value)}
-            placeholder="org_name para scope admin"
+            onBlur={(e) => {
+              const value = e.target.value.trim()
+              if (value) void activateOrgName(value)
+            }}
+            placeholder="workspace GitGov"
             className="w-full bg-surface-900 border border-white/10 rounded px-2 py-1.5 text-xs text-surface-100"
           />
+          {!selectedOrgValidated && selectedOrgName.trim() && (
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded bg-white/8 border border-white/15 text-surface-100 text-xs"
+              onClick={() => void activateOrgName(selectedOrgName)}
+            >
+              Validar workspace
+            </button>
+          )}
           <div className="flex items-center gap-2 text-[11px] text-surface-400">
             <span>Miembros activos:</span>
             <span className="mono-data text-surface-200">{activeMembers.length}</span>

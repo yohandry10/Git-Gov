@@ -172,12 +172,21 @@ curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:3000/stats
 | **Policy Versioning** | Historial automático de cambios de gitgov.toml | ✅ |
 | **Export** | JSON/CSV con hash SHA256 | ✅ |
 | **Offline Queue** | Outbox JSONL + backoff exponencial | ✅ |
-| **Control Plane Dashboard** | Estadísticas y eventos en tiempo real | ✅ |
-| **Event Pipeline E2E** | Desktop → Server → Dashboard | ✅ |
+| **Governance y Action Center** | Evidencia, policy, adoption, releases, copilot y siguiente acción guiada | ✅ |
+| **Event Pipeline E2E** | Desktop → Server → Governance/Action Center | ✅ |
 
-### Dashboard del Control Plane
+### Superficies actuales del Desktop
 
-El dashboard actual vive en `src/components/control_plane/ServerDashboard.tsx` y monta `27` módulos bajo `src/components/control_plane`. Además de métricas base, incluye widgets de pipeline, Jira coverage, evidencia GitHub, risk outcomes, policy editor, evidence packets, enterprise adoption, release approvals, governance copilot, export y chat.
+La app Desktop ya no usa un dashboard monolítico de Control Plane como superficie primaria. `Control Plane` es configuración técnica y vive en `Settings > System`; la ruta `/control-plane` se conserva como compatibilidad y redirige a `/settings#control-plane`.
+
+Superficies operativas:
+
+| Superficie | Ruta | Propósito |
+|------------|------|-----------|
+| Workspace | `/` | CLI, pipeline visual local, diff, audit trail, commit/push controls y `Next local step` |
+| Action Center | `/action-center` | Único dueño del `Next Action` global con recomendaciones determinísticas |
+| Governance | `/governance` | Evidencia, policy, adoption, releases y copilot por dominio |
+| Settings | `/settings` | Preferencias, organización, cuenta, repositorio, conexión Control Plane y updater |
 
 Métricas base:
 
@@ -205,7 +214,8 @@ Métricas base:
                                                         │
                                                         ▼
                                                 ┌─────────────────┐
-                                                │   Dashboard     │
+                                                │   Governance    │
+                                                │ Action Center   │
                                                 │                 │
                                                 │  GET /stats     │
                                                 │  GET /logs      │
@@ -358,7 +368,10 @@ cargo run
 | PUT | `/policy/:repo/override` | Bearer + Admin | Override policy (logged) |
 | GET | `/policy/:repo/history` | Bearer | Policy change history |
 | POST | `/export` | Bearer | Export events |
-| POST | `/api-keys` | Bearer + Admin | Create API key |
+| GET/POST | `/api-keys` | Bearer + Admin | List/create API keys; pass `org_name` to scope to a workspace, omit it only for explicit global Admin catalog |
+| GET/POST | `/orgs` | Bearer + Admin | List/create GitGov workspaces visible to the API key |
+| GET | `/orgs/:login` | Bearer + Admin | Validate a GitGov workspace and enforce API-key scope |
+| GET | `/me` | Bearer | Return authenticated API key role plus `org_name` when scoped |
 
 ## Configuración (`gitgov.toml`)
 

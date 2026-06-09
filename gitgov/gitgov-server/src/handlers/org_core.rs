@@ -18,6 +18,83 @@ pub struct CreateOrgResponse {
     pub created: bool,
 }
 
+pub async fn list_orgs(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+
+    match state.db.list_orgs(auth_user.org_id.as_deref()).await {
+        Ok(orgs) => (StatusCode::OK, Json(orgs)).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to list orgs");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Internal database error" })),
+            ).into_response()
+        }
+    }
+}
+
+pub async fn get_org(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(login): Path<String>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+
+    let requested = login.trim();
+    if requested.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "organization login is required" })),
+        ).into_response();
+    }
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        Some(requested),
+        true,
+    ).await {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": "org_name is required for global admin keys" })),
+            ).into_response();
+        }
+        Err(err) => {
+            let error = match err {
+                OrgScopeError::BadRequest => "org_name is required for global admin keys",
+                OrgScopeError::NotFound => "Organization not found",
+                OrgScopeError::Forbidden => "Requested org is outside API key scope",
+                OrgScopeError::Internal => "Internal database error",
+            };
+            return (org_scope_status(err), Json(serde_json::json!({ "error": error }))).into_response();
+        }
+    };
+
+    match state.db.get_org_by_id(&org_id).await {
+        Ok(Some(org)) => (StatusCode::OK, Json(org)).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Organization not found" })),
+        ).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to load org");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "Internal database error" })),
+            ).into_response()
+        }
+    }
+}
+
 pub async fn create_org(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -31,22 +108,31 @@ pub async fn create_org(
             .into_response();
     }
 
+    let login = payload.login.trim();
+    if login.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "organization login is required" })),
+        )
+            .into_response();
+    }
+
     // Check if org already exists — upsert_org is idempotent on (login)
-    let already_exists = state.db.get_org_by_login(&payload.login).await
+    let already_exists = state.db.get_org_by_login(login).await
         .unwrap_or(None)
         .is_some();
 
     // Manually provisioned orgs must upsert by login (not by github_id) to avoid collisions.
     match state
         .db
-        .upsert_org_by_login(&payload.login, payload.name.as_deref(), None)
+        .upsert_org_by_login(login, payload.name.as_deref(), None)
         .await
     {
         Ok(org_id) => (
             if already_exists { StatusCode::OK } else { StatusCode::CREATED },
             Json(CreateOrgResponse {
                 org_id,
-                login: payload.login,
+                login: login.to_string(),
                 created: !already_exists,
             }),
         ).into_response(),

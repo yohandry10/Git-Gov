@@ -102,6 +102,7 @@ pub fn cmd_create_branch(
 
     if let Ok(cfg) = &config {
         let user = AuthenticatedUser {
+            id: None,
             login: actor.developer_login.clone(),
             name: actor.developer_login.clone(),
             avatar_url: String::new(),

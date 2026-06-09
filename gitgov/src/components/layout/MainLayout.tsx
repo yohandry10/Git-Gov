@@ -20,7 +20,9 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { repoPath } = useRepoStore()
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const userRole = useControlPlaneStore((s) => s.userRole)
+  const userOrgId = useControlPlaneStore((s) => s.userOrgId)
   const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
+  const selectedOrgValidated = useControlPlaneStore((s) => s.selectedOrgValidated)
   const resetControlPlaneAuthGate = useControlPlaneStore((s) => s.resetControlPlaneAuthGate)
   const refreshChatMessagesForActiveUser = useControlPlaneStore((s) => s.refreshChatMessagesForActiveUser)
 
@@ -105,7 +107,9 @@ export function MainLayout({ children }: MainLayoutProps) {
     return <PinUnlockScreen />
   }
 
-  const requiresOrgNameForAdminScope = userRole === 'Admin' && !selectedOrgName.trim()
+  const requiresOrgNameForAdminScope = userRole === 'Admin' && !userOrgId && (
+    !selectedOrgName.trim() || !selectedOrgValidated
+  )
   const requiresControlPlaneAuth = Boolean(
     user &&
     authStep === 'authenticated' &&
