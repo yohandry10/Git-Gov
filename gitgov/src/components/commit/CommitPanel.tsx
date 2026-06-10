@@ -20,6 +20,7 @@ import {
 import clsx from 'clsx'
 
 interface CliCommandAuditPayload {
+  org_name?: string | null
   command: string
   origin: 'button_click' | 'manual_input'
   branch: string
@@ -73,6 +74,7 @@ export function CommitPanel() {
   } = useRepoStore()
   const { user } = useAuthStore()
   const controlPlaneConfig = useControlPlaneStore((s) => s.serverConfig)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
   const [message, setMessage] = useState('')
   const [commitType, setCommitType] = useState('feat')
   const [isCommitting, setIsCommitting] = useState(false)
@@ -176,6 +178,7 @@ export function CommitPanel() {
       if (controlPlaneConfig?.url && controlPlaneConfig.api_key) {
         const payload: CliCommandAuditPayload = {
           command: `git commit -m "${fullMessage}"`,
+          org_name: selectedOrgName.trim() || null,
           origin: 'button_click',
           branch: currentBranch ?? 'unknown',
           repo_name: inferRepoNameFromPath(repoPath),
@@ -206,6 +209,7 @@ export function CommitPanel() {
       if (controlPlaneConfig?.url && controlPlaneConfig.api_key) {
         const payload: CliCommandAuditPayload = {
           command: `git commit -m "${fullMessage}"`,
+          org_name: selectedOrgName.trim() || null,
           origin: 'button_click',
           branch: currentBranch ?? 'unknown',
           repo_name: inferRepoNameFromPath(repoPath),
@@ -258,6 +262,7 @@ export function CommitPanel() {
       if (controlPlaneConfig?.url && controlPlaneConfig.api_key) {
         const payload: CliCommandAuditPayload = {
           command: `git push origin ${currentBranch}`,
+          org_name: selectedOrgName.trim() || null,
           origin: 'button_click',
           branch: currentBranch,
           repo_name: inferRepoNameFromPath(repoPath),
@@ -282,6 +287,7 @@ export function CommitPanel() {
       if (controlPlaneConfig?.url && controlPlaneConfig.api_key) {
         const payload: CliCommandAuditPayload = {
           command: `git push origin ${currentBranch}`,
+          org_name: selectedOrgName.trim() || null,
           origin: 'button_click',
           branch: currentBranch,
           repo_name: inferRepoNameFromPath(repoPath),
@@ -325,6 +331,7 @@ export function CommitPanel() {
     if (controlPlaneConfig?.url && controlPlaneConfig.api_key) {
       const payload: CliCommandAuditPayload = {
         command: 'git restore --staged .',
+        org_name: selectedOrgName.trim() || null,
         origin: 'button_click',
         branch: currentBranch ?? 'unknown',
         repo_name: inferRepoNameFromPath(repoPath),

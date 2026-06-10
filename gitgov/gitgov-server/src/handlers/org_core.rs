@@ -474,7 +474,7 @@ pub async fn preview_org_invitation(
     }
 
     let token_hash = format!("{:x}", Sha256::digest(trimmed.as_bytes()));
-    match state.db.get_org_invitation_by_token_hash(&token_hash).await {
+    match state.db.get_active_org_invitation_by_token_hash(&token_hash).await {
         Ok(Some(invitation)) => (StatusCode::OK, Json(invitation)).into_response(),
         Ok(None) => (
             StatusCode::NOT_FOUND,
@@ -504,7 +504,30 @@ pub async fn accept_org_invitation(
     let login = payload.login.as_deref().map(str::trim).filter(|s| !s.is_empty());
     let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
 
-    match state.db.accept_org_invitation(&token_hash, login).await {
+    if let Some(requested_login) = login {
+        match state.db.get_active_org_invitation_by_token_hash(&token_hash).await {
+            Ok(Some(invitation)) if !invitation.accepts_requested_login(Some(requested_login)) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({
+                        "error": "login does not match the invitation target"
+                    })),
+                )
+                    .into_response();
+            }
+            Ok(_) => {}
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to validate invitation login");
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": "Internal database error" })),
+                )
+                    .into_response();
+            }
+        }
+    }
+
+    match state.db.accept_org_invitation(&token_hash).await {
         Ok(Some(result)) => {
             let audit = AdminAuditLogEntry {
                 id: Uuid::new_v4().to_string(),

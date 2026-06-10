@@ -4,8 +4,7 @@
 
 const RELEASE_APPROVAL_EVIDENCE_SUMMARY_MAX_BYTES: usize = 16 * 1024;
 const RELEASE_APPROVAL_DECISIONS: &[&str] = &["approved", "rejected", "accepted-risk"];
-const RELEASE_APPROVAL_RISK_SEVERITIES: &[&str] =
-    &["none", "low", "medium", "high", "critical"];
+const RELEASE_APPROVAL_RISK_SEVERITIES: &[&str] = &["none", "low", "medium", "high", "critical"];
 const RELEASE_GOVERNANCE_MODES: &[&str] = &[
     "record-only",
     "advisory",
@@ -52,7 +51,7 @@ fn is_valid_release_approval_repo(value: &str) -> bool {
 }
 
 fn is_valid_release_approval_sha(value: &str) -> bool {
-    (7..=64).contains(&value.len()) && value.chars().all(|ch| ch.is_ascii_hexdigit())
+    matches!(value.len(), 40 | 64) && value.chars().all(|ch| ch.is_ascii_hexdigit())
 }
 
 fn is_valid_release_approval_hex_hash(value: &str) -> bool {
@@ -116,16 +115,20 @@ fn normalize_and_validate_release_approval(
         errors.push("repository_full_name is too long.".to_string());
     }
 
-    if let Some(branch) = payload.branch.as_deref() {
-        if branch.len() > 200 || has_control_chars(branch) {
-            errors.push("branch is invalid or too long.".to_string());
-        }
+    match payload.branch.as_deref() {
+        Some(branch) if branch.len() <= 200 && !has_control_chars(branch) => {}
+        Some(_) => errors.push("branch is invalid or too long.".to_string()),
+        None => errors.push("branch is required.".to_string()),
     }
 
-    if let Some(target_sha) = payload.target_sha.as_deref() {
-        if !is_valid_release_approval_sha(target_sha) {
-            errors.push("target_sha must be 7 to 64 hexadecimal characters.".to_string());
+    match payload.target_sha.as_mut() {
+        Some(target_sha) if is_valid_release_approval_sha(target_sha) => {
+            *target_sha = target_sha.to_ascii_lowercase();
         }
+        Some(_) => errors.push(
+            "target_sha must be a full 40 or 64 character hexadecimal commit SHA.".to_string(),
+        ),
+        None => errors.push("target_sha is required.".to_string()),
     }
 
     if payload.environment.is_empty() {
@@ -144,21 +147,33 @@ fn normalize_and_validate_release_approval(
         errors.push("approver is invalid or too long.".to_string());
     }
 
-    if let Some(ticket_id) = payload.ticket_id.as_deref() {
-        if ticket_id.len() > 32 || !is_valid_release_approval_ticket_id(ticket_id) {
-            errors.push("ticket_id must look like KAN-37.".to_string());
+    match payload.ticket_id.as_mut() {
+        Some(ticket_id)
+            if ticket_id.len() <= 32 && is_valid_release_approval_ticket_id(ticket_id) =>
+        {
+            *ticket_id = ticket_id.to_ascii_uppercase();
         }
+        Some(_) => errors.push("ticket_id must look like KAN-37.".to_string()),
+        None => errors.push("ticket_id is required.".to_string()),
     }
 
-    match payload.evidence_packet_hash.as_deref() {
-        Some(hash) if is_valid_release_approval_hex_hash(hash) => {}
-        Some(_) => errors.push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string()),
+    match payload.evidence_packet_hash.as_mut() {
+        Some(hash) if is_valid_release_approval_hex_hash(hash) => {
+            *hash = hash.to_ascii_lowercase();
+        }
+        Some(_) => {
+            errors.push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string())
+        }
         None => errors.push("evidence_packet_hash is required.".to_string()),
     }
 
     if let Some(uri) = payload.evidence_packet_uri.as_deref() {
-        if uri.len() > 500 || uri.contains(char::is_whitespace) || !is_valid_release_approval_evidence_uri(uri) {
-            errors.push("evidence_packet_uri must be a relative API path or https URL.".to_string());
+        if uri.len() > 500
+            || uri.contains(char::is_whitespace)
+            || !is_valid_release_approval_evidence_uri(uri)
+        {
+            errors
+                .push("evidence_packet_uri must be a relative API path or https URL.".to_string());
         }
     }
 
@@ -179,7 +194,8 @@ fn normalize_and_validate_release_approval(
     }
 
     if payload.decision == "approved" && matches!(risk_severity, "high" | "critical") {
-        errors.push("high or critical risk requires rejected or accepted-risk decision.".to_string());
+        errors
+            .push("high or critical risk requires rejected or accepted-risk decision.".to_string());
     }
 
     if payload.decision == "accepted-risk" {
@@ -224,9 +240,12 @@ fn normalize_release_approval_query(
     let mut errors = Vec::new();
     normalize_release_approval_optional_text(&mut query.org_name);
     normalize_release_approval_optional_text(&mut query.repository_full_name);
+    normalize_release_approval_optional_text(&mut query.branch);
+    normalize_release_approval_optional_text(&mut query.target_sha);
     normalize_release_approval_optional_text(&mut query.release_id);
     normalize_release_approval_optional_text(&mut query.environment);
     normalize_release_approval_optional_text(&mut query.decision);
+    normalize_release_approval_optional_text(&mut query.evidence_packet_hash);
 
     if let Some(repo) = query.repository_full_name.as_deref() {
         if !is_valid_release_approval_repo(repo) {
@@ -236,10 +255,32 @@ fn normalize_release_approval_query(
     if let Some(environment) = query.environment.as_mut() {
         *environment = environment.to_ascii_lowercase();
     }
+    if let Some(branch) = query.branch.as_deref() {
+        if branch.len() > 200 || has_control_chars(branch) {
+            errors.push("branch is invalid or too long.".to_string());
+        }
+    }
+    if let Some(target_sha) = query.target_sha.as_mut() {
+        if is_valid_release_approval_sha(target_sha) {
+            *target_sha = target_sha.to_ascii_lowercase();
+        } else {
+            errors.push(
+                "target_sha must be a full 40 or 64 character hexadecimal commit SHA.".to_string(),
+            );
+        }
+    }
     if let Some(decision) = query.decision.as_mut() {
         *decision = decision.to_ascii_lowercase();
         if !RELEASE_APPROVAL_DECISIONS.contains(&decision.as_str()) {
             errors.push("decision must be approved, rejected, or accepted-risk.".to_string());
+        }
+    }
+    if let Some(hash) = query.evidence_packet_hash.as_mut() {
+        if is_valid_release_approval_hex_hash(hash) {
+            *hash = hash.to_ascii_lowercase();
+        } else {
+            errors
+                .push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string());
         }
     }
 
@@ -258,6 +299,8 @@ fn normalize_release_governance_evaluation_query(
 ) -> Result<(), Vec<String>> {
     let mut errors = Vec::new();
     normalize_release_approval_optional_text(&mut query.org_name);
+    normalize_release_approval_optional_text(&mut query.branch);
+    normalize_release_approval_optional_text(&mut query.target_sha);
     query.repository_full_name = query.repository_full_name.trim().to_string();
     query.release_id = query.release_id.trim().to_string();
     query.environment = query.environment.trim().to_ascii_lowercase();
@@ -278,10 +321,28 @@ fn normalize_release_governance_evaluation_query(
     {
         errors.push("environment is required and must be valid.".to_string());
     }
-    if let Some(hash) = query.evidence_packet_hash.as_deref() {
-        if !is_valid_release_approval_hex_hash(hash) {
-            errors.push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string());
+    match query.branch.as_deref() {
+        Some(branch) if branch.len() <= 200 && !has_control_chars(branch) => {}
+        Some(_) => errors.push("branch is invalid or too long.".to_string()),
+        None => errors.push("branch is required.".to_string()),
+    }
+    match query.target_sha.as_mut() {
+        Some(target_sha) if is_valid_release_approval_sha(target_sha) => {
+            *target_sha = target_sha.to_ascii_lowercase();
         }
+        Some(_) => errors.push(
+            "target_sha must be a full 40 or 64 character hexadecimal commit SHA.".to_string(),
+        ),
+        None => errors.push("target_sha is required.".to_string()),
+    }
+    match query.evidence_packet_hash.as_mut() {
+        Some(hash) if is_valid_release_approval_hex_hash(hash) => {
+            *hash = hash.to_ascii_lowercase();
+        }
+        Some(_) => {
+            errors.push("evidence_packet_hash must be a 64-character hex SHA-256 hash.".to_string())
+        }
+        None => errors.push("evidence_packet_hash is required.".to_string()),
     }
 
     if errors.is_empty() {
@@ -321,7 +382,8 @@ fn release_governance_policy_from_object(
         .unwrap_or(environment)
         .to_ascii_lowercase();
 
-    let expected_approval_required = matches!(mode.as_str(), "approval-required" | "quorum-required");
+    let expected_approval_required =
+        matches!(mode.as_str(), "approval-required" | "quorum-required");
     let expected_enforcement = match mode.as_str() {
         "advisory" => "advisory",
         "approval-required" | "quorum-required" => "blocking",
@@ -429,23 +491,29 @@ fn release_approval_role(record: &EnterpriseReleaseApprovalRecord) -> Option<Str
 
 fn release_approval_counts_toward_policy(
     record: &EnterpriseReleaseApprovalRecord,
-    expected_hash: Option<&str>,
+    query: &EnterpriseReleaseGovernanceEvaluationQuery,
     now_ms: i64,
 ) -> bool {
     let positive_decision = matches!(record.decision.as_str(), "approved" | "accepted-risk");
     if !positive_decision {
         return false;
     }
-    if record.expires_at.is_some_and(|expires_at| expires_at <= now_ms) {
+    if record
+        .expires_at
+        .is_some_and(|expires_at| expires_at <= now_ms)
+    {
         return false;
     }
-    if let Some(expected_hash) = expected_hash {
-        return record
+    record.repository_full_name == query.repository_full_name
+        && record.release_id == query.release_id
+        && record.environment.eq_ignore_ascii_case(&query.environment)
+        && record.branch.as_deref() == query.branch.as_deref()
+        && record.target_sha.as_deref() == query.target_sha.as_deref()
+        && record
             .evidence_packet_hash
             .as_deref()
-            .is_some_and(|hash| hash.eq_ignore_ascii_case(expected_hash));
-    }
-    true
+            .zip(query.evidence_packet_hash.as_deref())
+            .is_some_and(|(actual, expected)| actual.eq_ignore_ascii_case(expected))
 }
 
 fn evaluate_release_governance_policy(
@@ -463,12 +531,15 @@ fn evaluate_release_governance_policy(
     let mut rejected_count = 0_i64;
     let mut expired_count = 0_i64;
     let mut hash_mismatch_count = 0_i64;
+    let mut binding_mismatch_count = 0_i64;
 
     let approval_summaries = approvals
         .iter()
         .map(|approval| {
             let role = release_approval_role(approval);
-            let expired = approval.expires_at.is_some_and(|expires_at| expires_at <= now_ms);
+            let expired = approval
+                .expires_at
+                .is_some_and(|expires_at| expires_at <= now_ms);
             if expired {
                 expired_count += 1;
             }
@@ -484,8 +555,13 @@ fn evaluate_release_governance_policy(
                     hash_mismatch_count += 1;
                 }
             }
+            if approval.branch.as_deref() != query.branch.as_deref()
+                || approval.target_sha.as_deref() != query.target_sha.as_deref()
+            {
+                binding_mismatch_count += 1;
+            }
             let counts_toward_policy =
-                release_approval_counts_toward_policy(approval, expected_hash, now_ms);
+                release_approval_counts_toward_policy(approval, query, now_ms);
             if counts_toward_policy {
                 valid_approval_count += 1;
                 if let Some(role) = role.as_deref() {
@@ -511,13 +587,25 @@ fn evaluate_release_governance_policy(
         .collect::<Vec<_>>();
 
     if rejected_count > 0 && valid_approval_count == 0 {
-        issues.push("A rejected release approval exists and no valid positive approval was found.".to_string());
+        issues.push(
+            "A rejected release approval exists and no valid positive approval was found."
+                .to_string(),
+        );
     }
     if expired_count > 0 {
         issues.push("One or more matching release approval records are expired.".to_string());
     }
     if hash_mismatch_count > 0 && expected_hash.is_some() {
-        issues.push("One or more release approval records do not match the requested evidence packet hash.".to_string());
+        issues.push(
+            "One or more release approval records do not match the requested evidence packet hash."
+                .to_string(),
+        );
+    }
+    if binding_mismatch_count > 0 {
+        issues.push(
+            "One or more release approval records do not match the requested branch or target SHA."
+                .to_string(),
+        );
     }
     if !policy_applies {
         issues.push(format!(
@@ -545,7 +633,11 @@ fn evaluate_release_governance_policy(
 
     let advisory_approval_expected = policy.mode == "advisory" && policy_applies;
     let required_approval_count = if policy.mode == "quorum-required" && policy_applies {
-        policy.quorum_rules.iter().map(|(_, required)| *required).sum()
+        policy
+            .quorum_rules
+            .iter()
+            .map(|(_, required)| *required)
+            .sum()
     } else if policy_applies
         && policy.mode != "record-only"
         && (policy.approval_required || advisory_approval_expected)
@@ -559,7 +651,8 @@ fn evaluate_release_governance_policy(
         || !policy_applies
         || (!quorum_rules.is_empty() && quorum_rules.iter().all(|rule| rule.satisfied));
     if policy.mode == "quorum-required" && policy_applies && quorum_rules.is_empty() {
-        issues.push("Quorum-required release governance has no quorum rules configured.".to_string());
+        issues
+            .push("Quorum-required release governance has no quorum rules configured.".to_string());
         next_steps.push("Add quorum role rules to the release governance profile.".to_string());
     }
     if policy.mode == "quorum-required" && policy_applies {
@@ -588,18 +681,25 @@ fn evaluate_release_governance_policy(
         && valid_approval_count == 0
     {
         issues.push("No valid release approval or accepted-risk record was found.".to_string());
-        next_steps.push("Create a release approval bound to the current evidence packet hash.".to_string());
+        next_steps.push(
+            "Create a release approval bound to the current evidence packet hash.".to_string(),
+        );
     }
     if policy.mode == "record-only" && valid_approval_count == 0 {
-        next_steps.push("Create an optional release approval to strengthen audit evidence.".to_string());
+        next_steps
+            .push("Create an optional release approval to strengthen audit evidence.".to_string());
     }
     if !policy_applies {
         next_steps.push("Use record-only behavior for this environment or configure a policy for it explicitly.".to_string());
     }
 
-    let blocking = policy_applies && policy.enforcement == "blocking" && !approval_requirement_satisfied;
+    let blocking =
+        policy_applies && policy.enforcement == "blocking" && !approval_requirement_satisfied;
     let would_block = policy_applies
-        && matches!(policy.mode.as_str(), "advisory" | "approval-required" | "quorum-required")
+        && matches!(
+            policy.mode.as_str(),
+            "advisory" | "approval-required" | "quorum-required"
+        )
         && !approval_requirement_satisfied;
     let status = if !policy_applies || policy.mode == "record-only" {
         "recorded"
@@ -615,7 +715,8 @@ fn evaluate_release_governance_policy(
     .to_string();
 
     if approval_requirement_satisfied && next_steps.is_empty() {
-        next_steps.push("No release governance action required for the current policy.".to_string());
+        next_steps
+            .push("No release governance action required for the current policy.".to_string());
     }
 
     if policy.mode != "quorum-required" {
@@ -674,6 +775,77 @@ fn compute_release_approval_hash(
             .expect("canonical enterprise release approval JSON should serialize"),
     );
     format!("{digest:x}")
+}
+
+fn release_evidence_binding_mismatches(
+    binding: &ReleaseEvidencePacketBinding,
+    payload: &CreateEnterpriseReleaseApprovalRequest,
+) -> Vec<String> {
+    let mut mismatches = Vec::new();
+    if binding.release_id != payload.release_id {
+        mismatches.push("release_id".to_string());
+    }
+    if binding.repository_full_name != payload.repository_full_name {
+        mismatches.push("repository_full_name".to_string());
+    }
+    if Some(binding.branch.as_str()) != payload.branch.as_deref() {
+        mismatches.push("branch".to_string());
+    }
+    if Some(binding.target_sha.as_str()) != payload.target_sha.as_deref() {
+        mismatches.push("target_sha".to_string());
+    }
+    if !binding
+        .environment
+        .eq_ignore_ascii_case(&payload.environment)
+    {
+        mismatches.push("environment".to_string());
+    }
+    if Some(binding.ticket_id.as_str()) != payload.ticket_id.as_deref() {
+        mismatches.push("ticket_id".to_string());
+    }
+    if !payload
+        .evidence_packet_hash
+        .as_deref()
+        .is_some_and(|hash| hash.eq_ignore_ascii_case(&binding.evidence_packet_hash))
+    {
+        mismatches.push("evidence_packet_hash".to_string());
+    }
+    if let Some(uri) = payload.evidence_packet_uri.as_deref() {
+        if uri != binding.evidence_packet_uri {
+            mismatches.push("evidence_packet_uri".to_string());
+        }
+    }
+    mismatches
+}
+
+fn release_evidence_binding_query_mismatches(
+    binding: &ReleaseEvidencePacketBinding,
+    query: &EnterpriseReleaseGovernanceEvaluationQuery,
+) -> Vec<String> {
+    let mut mismatches = Vec::new();
+    if binding.release_id != query.release_id {
+        mismatches.push("release_id".to_string());
+    }
+    if binding.repository_full_name != query.repository_full_name {
+        mismatches.push("repository_full_name".to_string());
+    }
+    if Some(binding.branch.as_str()) != query.branch.as_deref() {
+        mismatches.push("branch".to_string());
+    }
+    if Some(binding.target_sha.as_str()) != query.target_sha.as_deref() {
+        mismatches.push("target_sha".to_string());
+    }
+    if !binding.environment.eq_ignore_ascii_case(&query.environment) {
+        mismatches.push("environment".to_string());
+    }
+    if !query
+        .evidence_packet_hash
+        .as_deref()
+        .is_some_and(|hash| hash.eq_ignore_ascii_case(&binding.evidence_packet_hash))
+    {
+        mismatches.push("evidence_packet_hash".to_string());
+    }
+    mismatches
 }
 
 pub async fn list_enterprise_release_approvals(
@@ -789,6 +961,54 @@ pub async fn evaluate_enterprise_release_governance(
         }
     };
 
+    let evidence_packet_hash = query
+        .evidence_packet_hash
+        .as_deref()
+        .expect("validated release governance query should have evidence_packet_hash");
+    let binding = match state
+        .db
+        .get_release_evidence_packet_binding(&org_id, evidence_packet_hash)
+        .await
+    {
+        Ok(Some(binding)) => binding,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "Invalid release governance evaluation query",
+                    "details": ["evidence_packet_hash is not a known release evidence packet for this organization."]
+                })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                org_id = %org_id,
+                "Failed to verify release governance evidence packet binding"
+            );
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+    let binding_mismatches = release_evidence_binding_query_mismatches(&binding, &query);
+    if !binding_mismatches.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Invalid release governance evaluation query",
+                "details": binding_mismatches
+                    .into_iter()
+                    .map(|field| format!("evidence packet binding does not match {field}."))
+                    .collect::<Vec<_>>()
+            })),
+        )
+            .into_response();
+    }
+
     let profile = match state.db.get_enterprise_adoption_profile(&org_id).await {
         Ok(profile) => profile,
         Err(e) => {
@@ -804,9 +1024,12 @@ pub async fn evaluate_enterprise_release_governance(
     let approval_query = EnterpriseReleaseApprovalQuery {
         org_name: None,
         repository_full_name: Some(query.repository_full_name.clone()),
+        branch: query.branch.clone(),
+        target_sha: query.target_sha.clone(),
         release_id: Some(query.release_id.clone()),
         environment: Some(query.environment.clone()),
         decision: None,
+        evidence_packet_hash: query.evidence_packet_hash.clone(),
         limit: Some(100),
         offset: Some(0),
     };
@@ -882,6 +1105,58 @@ pub async fn create_enterprise_release_approval(
         }
     };
 
+    let evidence_packet_hash = payload
+        .evidence_packet_hash
+        .as_deref()
+        .expect("validated release approval should have evidence_packet_hash");
+    let binding = match state
+        .db
+        .get_release_evidence_packet_binding(&org_id, evidence_packet_hash)
+        .await
+    {
+        Ok(Some(binding)) => binding,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "Invalid release approval",
+                    "details": ["evidence_packet_hash is not a known release evidence packet for this organization."]
+                })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                org_id = %org_id,
+                "Failed to verify release evidence packet binding"
+            );
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let binding_mismatches = release_evidence_binding_mismatches(&binding, &payload);
+    if !binding_mismatches.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Invalid release approval",
+                "details": binding_mismatches
+                    .into_iter()
+                    .map(|field| format!("evidence packet binding does not match {field}."))
+                    .collect::<Vec<_>>()
+            })),
+        )
+            .into_response();
+    }
+    if payload.evidence_packet_uri.is_none() {
+        payload.evidence_packet_uri = Some(binding.evidence_packet_uri);
+    }
+
     let approval_id = Uuid::new_v4().to_string();
     let approval_hash =
         compute_release_approval_hash(&approval_id, &org_id, &auth_user.client_id, &payload);
@@ -948,14 +1223,13 @@ mod release_approval_tests {
             release_id: "release-2026.04.30".to_string(),
             repository_full_name: "yohandry10/Git-Gov".to_string(),
             branch: Some("main".to_string()),
-            target_sha: Some("abcdef1234567890".to_string()),
+            target_sha: Some("abcdef1234567890abcdef1234567890abcdef12".to_string()),
             environment: "production".to_string(),
             decision: "approved".to_string(),
             approver: "release.manager@example.com".to_string(),
             ticket_id: Some("KAN-37".to_string()),
             evidence_packet_hash: Some(
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-                    .to_string(),
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
             ),
             evidence_packet_uri: Some("/evidence/packets/tickets/KAN-37".to_string()),
             evidence_summary: json!({
@@ -985,6 +1259,18 @@ mod release_approval_tests {
         let errors = normalize_and_validate_release_approval(&mut payload).unwrap_err();
 
         assert!(errors.contains(&"evidence_packet_hash is required.".to_string()));
+    }
+
+    #[test]
+    fn enterprise_release_approval_validation_rejects_abbreviated_target_sha() {
+        let mut payload = valid_release_approval();
+        payload.target_sha = Some("abcdef1".to_string());
+
+        let errors = normalize_and_validate_release_approval(&mut payload).unwrap_err();
+
+        assert!(errors.contains(
+            &"target_sha must be a full 40 or 64 character hexadecimal commit SHA.".to_string()
+        ));
     }
 
     #[test]
@@ -1033,14 +1319,13 @@ mod release_approval_tests {
             release_id: "release-2026.05.01".to_string(),
             repository_full_name: "yohandry10/Git-Gov".to_string(),
             branch: Some("main".to_string()),
-            target_sha: Some("abcdef1234567890".to_string()),
+            target_sha: Some("abcdef1234567890abcdef1234567890abcdef12".to_string()),
             environment: "production".to_string(),
             decision: decision.to_string(),
             approver: approver.to_string(),
             ticket_id: Some("KAN-46".to_string()),
             evidence_packet_hash: Some(
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-                    .to_string(),
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
             ),
             evidence_packet_uri: Some("/evidence/packets/tickets/KAN-46".to_string()),
             evidence_summary: role
@@ -1059,11 +1344,12 @@ mod release_approval_tests {
         EnterpriseReleaseGovernanceEvaluationQuery {
             org_name: Some("yohandry10".to_string()),
             repository_full_name: "yohandry10/Git-Gov".to_string(),
+            branch: Some("main".to_string()),
+            target_sha: Some("abcdef1234567890abcdef1234567890abcdef12".to_string()),
             release_id: "release-2026.05.01".to_string(),
             environment: "production".to_string(),
             evidence_packet_hash: Some(
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-                    .to_string(),
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
             ),
         }
     }
@@ -1221,10 +1507,7 @@ mod release_approval_tests {
                 environment: "production".to_string(),
                 approval_required: true,
                 enforcement: "blocking".to_string(),
-                quorum_rules: vec![
-                    ("engineering".to_string(), 1),
-                    ("security".to_string(), 1),
-                ],
+                quorum_rules: vec![("engineering".to_string(), 1), ("security".to_string(), 1)],
             },
             &approvals,
             chrono::Utc::now().timestamp_millis(),
@@ -1234,6 +1517,38 @@ mod release_approval_tests {
         assert!(evaluation.policy_satisfied);
         assert!(!evaluation.blocking);
         assert_eq!(evaluation.valid_approval_count, 2);
-        assert!(evaluation.policy.quorum_rules.iter().all(|rule| rule.satisfied));
+        assert!(evaluation
+            .policy
+            .quorum_rules
+            .iter()
+            .all(|rule| rule.satisfied));
+    }
+
+    #[test]
+    fn release_governance_does_not_count_wrong_branch_or_target_sha() {
+        let mut wrong_branch = approval_record("approved", "eng@example.com", Some("engineering"));
+        wrong_branch.branch = Some("develop".to_string());
+        let mut wrong_sha = approval_record("approved", "sec@example.com", Some("security"));
+        wrong_sha.target_sha = Some("1234567890abcdef1234567890abcdef12345678".to_string());
+
+        let evaluation = evaluate_release_governance_policy(
+            &evaluation_query(),
+            ReleaseGovernancePolicy {
+                mode: "approval-required".to_string(),
+                environment: "production".to_string(),
+                approval_required: true,
+                enforcement: "blocking".to_string(),
+                quorum_rules: Vec::new(),
+            },
+            &[wrong_branch, wrong_sha],
+            chrono::Utc::now().timestamp_millis(),
+        );
+
+        assert_eq!(evaluation.valid_approval_count, 0);
+        assert!(evaluation.blocking);
+        assert!(evaluation
+            .issues
+            .iter()
+            .any(|issue| issue.contains("branch or target SHA")));
     }
 }

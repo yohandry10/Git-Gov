@@ -283,7 +283,7 @@ impl Database {
                     MAX(we.created_at) AS last_seen,
                     COUNT(*)::bigint AS total_events,
                     COUNT(*) FILTER (WHERE we.event_type = 'commit')::bigint AS commits,
-                    COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'push'))::bigint AS pushes,
+                    COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'blocked_push', 'governance_blocked_push', 'governance_warned_push', 'push_failed', 'push'))::bigint AS pushes,
                     COUNT(*) FILTER (WHERE we.event_type = 'blocked_push' OR we.status = 'blocked')::bigint AS blocked_pushes
                 FROM window_events we
                 GROUP BY we.user_login
@@ -294,7 +294,7 @@ impl Database {
                     we.repo_name,
                     COUNT(*)::bigint AS events,
                     COUNT(*) FILTER (WHERE we.event_type = 'commit')::bigint AS commits,
-                    COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'push'))::bigint AS pushes,
+                    COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'blocked_push', 'governance_blocked_push', 'governance_warned_push', 'push_failed', 'push'))::bigint AS pushes,
                     COUNT(*) FILTER (WHERE we.event_type = 'blocked_push' OR we.status = 'blocked')::bigint AS blocked_pushes,
                     EXTRACT(EPOCH FROM MAX(we.created_at))::bigint * 1000 AS last_seen_ms
                 FROM window_events we
@@ -416,7 +416,7 @@ impl Database {
                 COUNT(DISTINCT we.user_login)::bigint AS developers_active,
                 COUNT(*)::bigint AS total_events,
                 COUNT(*) FILTER (WHERE we.event_type = 'commit')::bigint AS commits,
-                COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'push'))::bigint AS pushes,
+                COUNT(*) FILTER (WHERE we.event_type IN ('attempt_push', 'successful_push', 'blocked_push', 'governance_blocked_push', 'governance_warned_push', 'push_failed', 'push'))::bigint AS pushes,
                 COUNT(*) FILTER (WHERE we.event_type = 'blocked_push' OR we.status = 'blocked')::bigint AS blocked_pushes,
                 EXTRACT(EPOCH FROM MAX(we.created_at))::bigint * 1000 AS last_seen_ms
             FROM window_events we

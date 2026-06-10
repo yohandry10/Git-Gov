@@ -36,6 +36,37 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         .await
         .ok()?;
 
+    let mut extension_conn = admin_pool
+        .acquire()
+        .await
+        .expect("acquire extension setup connection");
+    sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(9_021_001_i64)
+        .execute(&mut *extension_conn)
+        .await
+        .expect("lock shared test database extensions");
+    for extension in ["uuid-ossp", "pgcrypto"] {
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = $1)")
+                .bind(extension)
+                .fetch_one(&mut *extension_conn)
+                .await
+                .expect("check shared test database extension");
+        if !exists {
+            let ddl = format!(r#"CREATE EXTENSION "{}""#, extension);
+            sqlx::query(&ddl)
+                .execute(&mut *extension_conn)
+                .await
+                .expect("create shared test database extension");
+        }
+    }
+    sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(9_021_001_i64)
+        .execute(&mut *extension_conn)
+        .await
+        .expect("unlock shared test database extensions");
+    drop(extension_conn);
+
     let schema = format!("test_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
 
     // Create schema using admin pool.
@@ -64,9 +95,6 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
     // Apply minimal DDL needed for the Golden Path tests.
     let ddl = r#"
-        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-        CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
         CREATE TABLE IF NOT EXISTS orgs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             github_id BIGINT UNIQUE,
@@ -114,6 +142,46 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             created_by TEXT NOT NULL,
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        CREATE INDEX IF NOT EXISTS idx_enterprise_release_approvals_binding
+            ON enterprise_release_approvals(
+                org_id,
+                repository_full_name,
+                release_id,
+                environment,
+                branch,
+                target_sha,
+                evidence_packet_hash
+            );
+
+        CREATE TABLE IF NOT EXISTS release_evidence_packets (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            ticket_id TEXT NOT NULL,
+            release_id TEXT NOT NULL,
+            repository_full_name TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            target_sha TEXT NOT NULL,
+            environment TEXT NOT NULL,
+            evidence_packet_hash TEXT NOT NULL,
+            evidence_packet_uri TEXT NOT NULL,
+            packet JSONB NOT NULL,
+            generated_by TEXT NOT NULL,
+            generated_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (org_id, evidence_packet_hash)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_release_evidence_packets_binding
+            ON release_evidence_packets(
+                org_id,
+                repository_full_name,
+                release_id,
+                environment,
+                branch,
+                target_sha,
+                evidence_packet_hash
+            );
 
         CREATE TABLE IF NOT EXISTS repos (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -222,48 +290,61 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID,
             pipeline_id TEXT NOT NULL,
-            pipeline_name TEXT NOT NULL,
+            job_name TEXT NOT NULL,
             status TEXT NOT NULL,
             branch TEXT,
             commit_sha TEXT,
-            trigger_user TEXT,
-            stages JSONB DEFAULT '[]',
+            repo_full_name TEXT,
             duration_ms BIGINT,
-            url TEXT,
-            metadata JSONB DEFAULT '{}',
+            triggered_by TEXT,
+            stages JSONB DEFAULT '[]',
+            artifacts JSONB DEFAULT '[]',
+            payload JSONB DEFAULT '{}',
             ingested_at TIMESTAMPTZ DEFAULT NOW(),
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_pipeline_events_dedupe
+            ON pipeline_events (pipeline_id, job_name, (COALESCE(commit_sha, '')), ingested_at);
 
         CREATE TABLE IF NOT EXISTS project_tickets (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID,
-            ticket_id TEXT UNIQUE NOT NULL,
+            ticket_id TEXT NOT NULL,
             project_key TEXT NOT NULL,
-            summary TEXT,
+            ticket_url TEXT,
+            title TEXT,
             status TEXT,
             assignee TEXT,
             reporter TEXT,
             ticket_type TEXT,
             priority TEXT,
             labels JSONB DEFAULT '[]',
-            related_commits JSONB DEFAULT '[]',
-            related_prs JSONB DEFAULT '[]',
-            url TEXT,
+            related_commits TEXT[] NOT NULL DEFAULT '{}',
+            related_prs TEXT[] NOT NULL DEFAULT '{}',
+            related_branches TEXT[] NOT NULL DEFAULT '{}',
             raw_payload JSONB DEFAULT '{}',
             created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW()
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_project_tickets_org_ticket
+            ON project_tickets(org_id, ticket_id);
 
         CREATE TABLE IF NOT EXISTS commit_ticket_correlations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID,
             commit_sha TEXT NOT NULL,
             ticket_id TEXT NOT NULL,
-            source TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            UNIQUE(commit_sha, ticket_id)
+            correlation_source TEXT NOT NULL,
+            confidence DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
         );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_commit_ticket_unique_org
+            ON commit_ticket_correlations (
+                COALESCE(org_id, '00000000-0000-0000-0000-000000000000'::uuid),
+                commit_sha,
+                ticket_id
+            );
 
         CREATE TABLE IF NOT EXISTS export_logs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -274,6 +355,28 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             event_count INTEGER DEFAULT 0,
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
+
+        CREATE TABLE IF NOT EXISTS cli_commands (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID REFERENCES orgs(id),
+            user_login TEXT NOT NULL,
+            command TEXT NOT NULL,
+            origin TEXT NOT NULL DEFAULT 'manual_input',
+            branch TEXT NOT NULL DEFAULT '',
+            repo_name TEXT,
+            exit_code INTEGER,
+            duration_ms BIGINT,
+            metadata JSONB NOT NULL DEFAULT '{}',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT cli_commands_origin_check
+                CHECK (origin IN ('button_click', 'manual_input'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_cli_commands_org_created
+            ON cli_commands(org_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_cli_commands_user_created
+            ON cli_commands(user_login, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_cli_commands_repo
+            ON cli_commands(repo_name, created_at DESC);
 
         CREATE TABLE IF NOT EXISTS governance_events (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -346,11 +449,12 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         );
 
         CREATE TABLE IF NOT EXISTS identity_aliases (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            primary_login TEXT NOT NULL,
-            alias_login TEXT UNIQUE NOT NULL,
-            created_by TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW()
+            canonical_login TEXT NOT NULL,
+            alias_login TEXT NOT NULL,
+            org_id UUID REFERENCES orgs(id),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (canonical_login, alias_login),
+            UNIQUE (alias_login)
         );
 
         CREATE TABLE IF NOT EXISTS noncompliance_signals (
@@ -486,6 +590,34 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_client_events_type ON client_events(event_type);
         CREATE INDEX IF NOT EXISTS idx_client_events_user ON client_events(user_login);
         CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+
+        -- Minimal stats function mirroring the production get_audit_stats JSON shape.
+        CREATE OR REPLACE FUNCTION get_audit_stats(p_org_id UUID DEFAULT NULL)
+        RETURNS JSON AS $func$
+            SELECT json_build_object(
+                'github_events', json_build_object(
+                    'total', (SELECT COUNT(*) FROM github_events WHERE p_org_id IS NULL OR org_id = p_org_id),
+                    'today', (SELECT COUNT(*) FROM github_events WHERE (p_org_id IS NULL OR org_id = p_org_id) AND created_at >= date_trunc('day', NOW())),
+                    'pushes_today', 0,
+                    'by_type', '{}'::json
+                ),
+                'client_events', json_build_object(
+                    'total', (SELECT COUNT(*) FROM client_events WHERE p_org_id IS NULL OR org_id = p_org_id),
+                    'today', (SELECT COUNT(*) FROM client_events WHERE (p_org_id IS NULL OR org_id = p_org_id) AND created_at >= date_trunc('day', NOW())),
+                    'blocked_today', (SELECT COUNT(*) FROM client_events WHERE (p_org_id IS NULL OR org_id = p_org_id) AND status = 'blocked' AND created_at >= date_trunc('day', NOW())),
+                    'desktop_pushes_today', (SELECT COUNT(*) FROM client_events WHERE (p_org_id IS NULL OR org_id = p_org_id) AND event_type = 'successful_push' AND created_at >= date_trunc('day', NOW())),
+                    'by_type', '{}'::json,
+                    'by_status', '{}'::json
+                ),
+                'violations', json_build_object(
+                    'total', (SELECT COUNT(*) FROM violations WHERE p_org_id IS NULL OR org_id = p_org_id),
+                    'unresolved', (SELECT COUNT(*) FROM violations WHERE (p_org_id IS NULL OR org_id = p_org_id) AND resolved = FALSE),
+                    'critical', (SELECT COUNT(*) FROM violations WHERE (p_org_id IS NULL OR org_id = p_org_id) AND severity = 'critical')
+                ),
+                'active_devs_week', (SELECT COUNT(DISTINCT user_login) FROM client_events WHERE (p_org_id IS NULL OR org_id = p_org_id) AND created_at >= NOW() - INTERVAL '7 days'),
+                'active_repos', (SELECT COUNT(*) FROM repos WHERE p_org_id IS NULL OR org_id = p_org_id)
+            );
+        $func$ LANGUAGE sql STABLE;
     "#;
 
     sqlx::raw_sql(ddl)
@@ -556,7 +688,13 @@ pub(super) async fn insert_test_org(pool: &PgPool, login: &str) -> String {
 pub(super) async fn insert_test_repo(pool: &PgPool, full_name: &str) -> (String, String) {
     let org_id = uuid::Uuid::new_v4().to_string();
     let repo_id = uuid::Uuid::new_v4().to_string();
-    let org_login = format!("org-{}", uuid::Uuid::new_v4().simple());
+    let org_login = full_name
+        .split('/')
+        .next()
+        .map(str::trim)
+        .filter(|owner| !owner.is_empty())
+        .unwrap_or("org")
+        .to_string();
     let repo_name = full_name.split('/').nth(1).unwrap_or("repo").to_string();
 
     sqlx::query("INSERT INTO orgs (id, login, name) VALUES ($1::uuid, $2, $3)")
@@ -683,6 +821,47 @@ pub(super) fn build_test_app_with_options(
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))
+        .route(
+            "/integrations/jenkins",
+            post(handlers::ingest_jenkins_pipeline_event),
+        )
+        .route(
+            "/integrations/jenkins/status",
+            get(handlers::get_jenkins_integration_status),
+        )
+        .route(
+            "/integrations/jenkins/correlations",
+            get(handlers::get_jenkins_commit_correlations),
+        )
+        .route(
+            "/integrations/correlations/v2",
+            get(handlers::get_correlation_v2),
+        )
+        .route(
+            "/integrations/jira/tickets/{ticket_id}",
+            get(handlers::get_jira_ticket_detail),
+        )
+        .route(
+            "/integrations/jira/status",
+            get(handlers::get_jira_integration_status),
+        )
+        .route(
+            "/integrations/jira/correlate",
+            post(handlers::correlate_jira_tickets),
+        )
+        .route(
+            "/integrations/jira/ticket-coverage",
+            get(handlers::get_jira_ticket_coverage),
+        )
+        .route(
+            "/evidence/packets/tickets/{ticket_id}",
+            get(handlers::get_ticket_evidence_packet),
+        )
+        .route("/pr-merges", get(handlers::list_pr_merges))
+        .route(
+            "/cli/commands",
+            post(handlers::ingest_cli_command).get(handlers::list_cli_commands),
+        )
         .route(
             "/api-keys",
             get(handlers::list_api_keys).post(handlers::create_api_key),

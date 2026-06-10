@@ -130,6 +130,8 @@ pub async fn auth_middleware(
 
 fn is_sensitive_admin_path(path: &str) -> bool {
     path.starts_with("/api-keys")
+        || path.starts_with("/org-users")
+        || path.starts_with("/org-invitations")
         || path.starts_with("/dashboard")
         || path.starts_with("/enterprise/")
         || path.starts_with("/jobs/metrics")
@@ -235,6 +237,10 @@ mod tests {
     fn sensitive_admin_path_detection_matches_expected_routes() {
         assert!(is_sensitive_admin_path("/api-keys"));
         assert!(is_sensitive_admin_path("/api-keys/revoke"));
+        assert!(is_sensitive_admin_path("/org-users"));
+        assert!(is_sensitive_admin_path("/org-users/user-1/api-key"));
+        assert!(is_sensitive_admin_path("/org-invitations"));
+        assert!(is_sensitive_admin_path("/org-invitations/inv-1/revoke"));
         assert!(is_sensitive_admin_path("/dashboard"));
         assert!(is_sensitive_admin_path("/enterprise/adoption-profile"));
         assert!(is_sensitive_admin_path(

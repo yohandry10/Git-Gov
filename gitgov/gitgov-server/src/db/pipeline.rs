@@ -55,6 +55,7 @@ impl Database {
 
     pub async fn get_jenkins_integration_status(
         &self,
+        org_id: Option<&str>,
     ) -> Result<JenkinsIntegrationStatusResponse, DbError> {
         let row = sqlx::query(
             r#"
@@ -62,8 +63,10 @@ impl Database {
                 MAX(ingested_at) AS last_ingest_at,
                 COUNT(*) FILTER (WHERE ingested_at >= NOW() - INTERVAL '24 hours')::bigint AS recent_events_24h
             FROM pipeline_events
+            WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
             "#,
         )
+        .bind(org_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -98,6 +101,8 @@ impl Database {
                 pe.pipeline_id,
                 pe.job_name,
                 pe.status AS pipeline_status,
+                pe.branch AS pipeline_branch,
+                pe.repo_full_name AS pipeline_repo_full_name,
                 pe.duration_ms,
                 pe.triggered_by,
                 pe.ingested_at
@@ -129,6 +134,8 @@ impl Database {
                 pipeline_id: row.get("pipeline_id"),
                 job_name: row.get("job_name"),
                 status: row.get("pipeline_status"),
+                branch: row.get("pipeline_branch"),
+                repo_full_name: row.get("pipeline_repo_full_name"),
                 duration_ms: row.get("duration_ms"),
                 triggered_by: row.get("triggered_by"),
                 ingested_at,

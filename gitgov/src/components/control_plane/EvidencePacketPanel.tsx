@@ -34,6 +34,7 @@ export function EvidencePacketPanel() {
   const isEvidencePacketLoading = useControlPlaneStore((s) => s.isEvidencePacketLoading)
   const loadTicketEvidencePacket = useControlPlaneStore((s) => s.loadTicketEvidencePacket)
   const displayTimezone = useControlPlaneStore((s) => s.displayTimezone)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
   const [ticketId, setTicketId] = useState(evidencePacketTicketId || 'KAN-23')
 
   const normalizedTicket = ticketId.trim().toUpperCase()
@@ -42,6 +43,7 @@ export function EvidencePacketPanel() {
       hours: jiraCoverageFilters.hours,
       repo_full_name: jiraCoverageFilters.repo_full_name.trim() || undefined,
       branch: jiraCoverageFilters.branch.trim() || undefined,
+      org_name: selectedOrgName.trim() || undefined,
     })
   }
 
@@ -51,6 +53,8 @@ export function EvidencePacketPanel() {
   }
 
   const completeness = evidencePacket?.completeness
+  const reconstruction = evidencePacket?.reconstruction
+  const sources = reconstruction?.sources
   const packetStatus = completeness ? statusLabel(completeness.missing) : 'Sin generar'
 
   return (
@@ -135,6 +139,29 @@ export function EvidencePacketPanel() {
               Hash: <span className="text-surface-200 mono-data">{evidencePacket.content_hash.slice(0, 12)}</span>
             </div>
           </div>
+
+          {sources && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] text-surface-400">
+              <div>
+                Client events: <span className="text-surface-200 mono-data">{sources.client_events}</span>
+              </div>
+              <div>
+                PR merge commits: <span className="text-surface-200 mono-data">{sources.pull_request_merge_commits}</span>
+              </div>
+              <div>
+                Pipeline events: <span className="text-surface-200 mono-data">{sources.pipeline_events}</span>
+              </div>
+              <div>
+                Scope fallbacks: <span className="text-surface-200 mono-data">{sources.legacy_pipeline_scope_fallbacks}</span>
+              </div>
+            </div>
+          )}
+
+          {reconstruction?.warnings?.length ? (
+            <p className="text-[10px] text-warning-400">
+              Reconstrucción: {reconstruction.warnings.join(', ')}
+            </p>
+          ) : null}
 
           {evidencePacket.completeness.missing.length > 0 && (
             <p className="text-[10px] text-warning-400">

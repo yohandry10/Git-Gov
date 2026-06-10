@@ -51,7 +51,7 @@ El sistema está compuesto por **cuatro componentes** que trabajan juntas: una a
 - Almacenamiento local: SQLite para auditoría offline (`{data_local_dir}/gitgov/audit.db`)
 - Credenciales: usa el keyring del sistema operativo
 - Actualizaciones: tauri-plugin-updater v2 con endpoint GitHub Releases `latest.json` configurado en `tauri.conf.json`
-- Tests: vitest 4 + @testing-library/react 16; `npm test -- --run` reporta `25` archivos y `296` tests
+- Tests: vitest 4 + @testing-library/react 16; `npm test -- --run` reporta `32` archivos y `332` tests
 
 **Responsabilidades principales:**
 
@@ -265,7 +265,7 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 **URL:** `https://<your-domain>`
 
 **Tecnologías:**
-- Framework: Next.js 15.5.10 (App Router)
+- Framework: Next.js 15.5.15 (App Router)
 - Frontend: React 18 + TypeScript + Tailwind CSS v3
 - Animaciones: framer-motion
 - Documentación: gray-matter + remark (markdown)
@@ -639,6 +639,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v23.sql` | Enterprise adoption profiles (`enterprise_adoption_profiles`) |
 | `supabase_schema_v24.sql` | Enterprise release approvals (`enterprise_release_approvals`) — append-only |
 | `supabase_schema_v25.sql` | Enterprise onboarding checklist tracking (`enterprise_onboarding_checklist_tracking`) |
+| `supabase_schema_v26.sql` | Tenant isolation: scope `commit_ticket_correlations` uniqueness to `(org_id, commit_sha, ticket_id)` so the same commit/ticket in different orgs no longer collide |
 
 ### Relaciones entre Entidades
 

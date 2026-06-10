@@ -48,7 +48,7 @@ pub async fn chat_ask(
 
     let org_name = payload.org_name.as_deref();
     let scoped_org_id =
-        match resolve_and_check_org_scope(&state, auth_user.org_id.as_deref(), org_name, false)
+        match resolve_and_check_org_scope(&state, auth_user.org_id.as_deref(), org_name, true)
             .await
         {
             Ok(org_id) => org_id,
@@ -592,6 +592,10 @@ pub async fn chat_ask(
     match llm_result {
         Ok(Ok(mut resp)) => {
             resp = normalize_llm_response(resp, &question, &nlp.entities.language);
+            // Track whether the answer text is the model's own output. When the
+            // KB override replaces it, the answer is grounded in project docs,
+            // not LLM-generated.
+            let mut answer_is_llm_generated = true;
             if should_override_llm_answer_with_kb(&resp, &question) {
                 if let Some(answer) =
                     build_grounded_knowledge_answer(&question, &nlp.entities.language)
@@ -602,10 +606,16 @@ pub async fn chat_ask(
                     resp.can_report_feature = false;
                     resp.data_refs.push("project_docs_kb".to_string());
                     resp.data_refs.push("web_docs_faq".to_string());
+                    answer_is_llm_generated = false;
                 }
             }
+            // The LLM must never claim deterministic/server-only provenance.
+            let llm_refs = sanitize_llm_data_refs(
+                std::mem::take(&mut resp.data_refs),
+                answer_is_llm_generated,
+            );
             let mut refs = data_refs.clone();
-            refs.extend(resp.data_refs.clone());
+            refs.extend(llm_refs);
             refs.sort();
             refs.dedup();
             resp.data_refs = refs;

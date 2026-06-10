@@ -6,6 +6,7 @@ import { formatTs } from '@/lib/timezone'
 import {
   useControlPlaneStore,
   type CreateEnterpriseReleaseApprovalRequest,
+  type EvidencePacket,
   type EnterpriseReleaseApprovalDecision,
   type EnterpriseReleaseApprovalRiskSeverity,
 } from '@/store/useControlPlaneStore'
@@ -13,7 +14,7 @@ import {
 const DECISIONS: EnterpriseReleaseApprovalDecision[] = ['approved', 'rejected', 'accepted-risk']
 const RISK_SEVERITIES: EnterpriseReleaseApprovalRiskSeverity[] = ['none', 'low', 'medium', 'high', 'critical']
 const HEX_64_RE = /^[a-fA-F0-9]{64}$/
-const SHA_RE = /^[a-fA-F0-9]{7,64}$/
+const SHA_RE = /^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$/
 const TICKET_RE = /^[A-Z][A-Z0-9]+-[1-9][0-9]*$/
 
 interface ApprovalForm {
@@ -66,17 +67,51 @@ function isValidEvidenceUri(value: string): boolean {
   return trimmed.startsWith('/') || trimmed.startsWith('https://')
 }
 
+function encodeEvidenceUriComponent(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+}
+
+function buildEvidencePacketUri(form: ApprovalForm, hours: number): string {
+  const params = [
+    ['repo_full_name', form.repositoryFullName.trim()],
+    ['branch', form.branch.trim()],
+    ['target_sha', form.targetSha.trim().toLowerCase()],
+    ['release_id', form.releaseId.trim()],
+    ['environment', form.environment.trim().toLowerCase()],
+    ['hours', String(hours)],
+  ]
+  const query = params
+    .map(([key, value]) => `${key}=${encodeEvidenceUriComponent(value)}`)
+    .join('&')
+  return `/evidence/packets/tickets/${encodeEvidenceUriComponent(form.ticketId.trim().toUpperCase())}?${query}`
+}
+
+function isReleaseBoundEvidencePacket(packet: EvidencePacket | null | undefined): packet is EvidencePacket {
+  return Boolean(
+    packet &&
+      isValidRepo(packet.repo_full_name || '') &&
+      packet.branch?.trim() &&
+      SHA_RE.test(packet.target_sha || '') &&
+      packet.release_id?.trim() &&
+      packet.environment?.trim(),
+  )
+}
+
 function validateApprovalForm(form: ApprovalForm): string[] {
   const errors: string[] = []
   if (!form.releaseId.trim()) errors.push('Release is required.')
   if (!isValidRepo(form.repositoryFullName)) errors.push('Repository must look like owner/repo.')
+  if (!form.branch.trim()) errors.push('Branch is required.')
+  if (!form.targetSha.trim()) errors.push('Target SHA is required.')
   if (!form.environment.trim()) errors.push('Environment is required.')
   if (!form.approver.trim()) errors.push('Approver is required.')
   if (form.approverRole.trim() && !/^[A-Za-z0-9_.-]{1,64}$/.test(form.approverRole.trim())) {
     errors.push('Approver role must be 1 to 64 letters, numbers, dots, underscores, or dashes.')
   }
   if (!HEX_64_RE.test(form.evidencePacketHash.trim())) errors.push('Evidence hash must be a 64 character SHA-256 hex value.')
-  if (form.targetSha.trim() && !SHA_RE.test(form.targetSha.trim())) errors.push('Target SHA must be 7 to 64 hex characters.')
+  if (!SHA_RE.test(form.targetSha.trim())) errors.push('Target SHA must be a full 40 or 64 character hex commit SHA.')
   if (form.ticketId.trim() && !TICKET_RE.test(form.ticketId.trim().toUpperCase())) errors.push('Ticket must look like KAN-43.')
   if (!isValidEvidenceUri(form.evidencePacketUri)) errors.push('Evidence URI must be a relative API path or https URL.')
   if (form.decision === 'approved' && ['high', 'critical'].includes(form.riskSeverity)) {
@@ -130,6 +165,7 @@ export function ReleaseApprovalPanel() {
   const jiraCoverageFilters = useControlPlaneStore((state) => state.jiraCoverageFilters)
   const evidencePacket = useControlPlaneStore((state) => state.evidencePacket)
   const evidencePacketTicketId = useControlPlaneStore((state) => state.evidencePacketTicketId)
+  const isEvidencePacketLoading = useControlPlaneStore((state) => state.isEvidencePacketLoading)
   const enterpriseAdoptionProfile = useControlPlaneStore((state) => state.enterpriseAdoptionProfile)
   const approvals = useControlPlaneStore((state) => state.releaseApprovals)
   const approvalsTotal = useControlPlaneStore((state) => state.releaseApprovalsTotal)
@@ -142,6 +178,7 @@ export function ReleaseApprovalPanel() {
   const loadApprovals = useControlPlaneStore((state) => state.loadEnterpriseReleaseApprovals)
   const evaluateGovernance = useControlPlaneStore((state) => state.evaluateEnterpriseReleaseGovernance)
   const createApproval = useControlPlaneStore((state) => state.createEnterpriseReleaseApproval)
+  const loadTicketEvidencePacket = useControlPlaneStore((state) => state.loadTicketEvidencePacket)
 
   const defaultRepository =
     enterpriseAdoptionProfile?.repository_full_name ||
@@ -151,8 +188,9 @@ export function ReleaseApprovalPanel() {
     enterpriseAdoptionProfile?.default_branch ||
     jiraCoverageFilters.branch ||
     'main'
+  const currentPacketIsReleaseBound = isReleaseBoundEvidencePacket(evidencePacket)
   const defaultTicket = evidencePacket?.subject || evidencePacketTicketId || ''
-  const defaultEvidenceUri = defaultTicket ? `/evidence/packets/tickets/${defaultTicket}` : ''
+  const defaultEvidenceUri = ''
 
   const [form, setForm] = useState<ApprovalForm>({
     releaseId: defaultTicket,
@@ -164,7 +202,7 @@ export function ReleaseApprovalPanel() {
     approver: '',
     approverRole: 'engineering',
     ticketId: defaultTicket,
-    evidencePacketHash: evidencePacket?.content_hash ?? '',
+    evidencePacketHash: currentPacketIsReleaseBound ? evidencePacket.content_hash : '',
     evidencePacketUri: defaultEvidenceUri,
     riskSeverity: 'none',
     riskAcceptanceReason: '',
@@ -183,22 +221,81 @@ export function ReleaseApprovalPanel() {
 
   const validationErrors = useMemo(() => validateApprovalForm(form), [form])
   const canSubmit = validationErrors.length === 0 && !isSubmitting
-  const canEvaluate = Boolean(isValidRepo(form.repositoryFullName) && form.releaseId.trim() && form.environment.trim())
+  const canEvaluate = Boolean(
+    isValidRepo(form.repositoryFullName) &&
+    form.branch.trim() &&
+    SHA_RE.test(form.targetSha.trim()) &&
+    form.releaseId.trim() &&
+    form.environment.trim() &&
+    HEX_64_RE.test(form.evidencePacketHash.trim()),
+  )
 
   const updateForm = <K extends keyof ApprovalForm>(field: K, value: ApprovalForm[K]) => {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
   const applyCurrentEvidencePacket = () => {
-    if (!evidencePacket) return
+    if (!isReleaseBoundEvidencePacket(evidencePacket)) return
     setForm((current) => ({
       ...current,
-      releaseId: evidencePacket.subject,
       repositoryFullName: evidencePacket.repo_full_name || current.repositoryFullName || defaultRepository,
       branch: evidencePacket.branch || current.branch || defaultBranch,
+      targetSha: evidencePacket.target_sha || current.targetSha,
+      environment: evidencePacket.environment || current.environment,
       ticketId: evidencePacket.subject,
+      releaseId: evidencePacket.release_id || evidencePacket.subject,
       evidencePacketHash: evidencePacket.content_hash,
-      evidencePacketUri: `/evidence/packets/tickets/${evidencePacket.subject}`,
+      evidencePacketUri: buildEvidencePacketUri({
+        ...current,
+        releaseId: evidencePacket.release_id || evidencePacket.subject,
+        repositoryFullName: evidencePacket.repo_full_name || current.repositoryFullName || defaultRepository,
+        branch: evidencePacket.branch || current.branch || defaultBranch,
+        targetSha: evidencePacket.target_sha || current.targetSha,
+        environment: evidencePacket.environment || current.environment,
+        ticketId: evidencePacket.subject,
+      }, jiraCoverageFilters.hours),
+      operatorConfirmed: false,
+    }))
+  }
+
+  const generateBoundEvidencePacket = async () => {
+    const ticketId = form.ticketId.trim().toUpperCase()
+    if (
+      !ticketId ||
+      !form.releaseId.trim() ||
+      !form.environment.trim() ||
+      !isValidRepo(form.repositoryFullName) ||
+      !form.branch.trim() ||
+      !SHA_RE.test(form.targetSha.trim())
+    ) return
+    const packet = await loadTicketEvidencePacket(ticketId, {
+      hours: jiraCoverageFilters.hours,
+      repo_full_name: form.repositoryFullName.trim(),
+      branch: form.branch.trim(),
+      target_sha: form.targetSha.trim().toLowerCase(),
+      release_id: form.releaseId.trim(),
+      environment: form.environment.trim().toLowerCase(),
+      org_name: selectedOrgName.trim() || undefined,
+    })
+    if (!packet) return
+    setForm((current) => ({
+      ...current,
+      releaseId: packet.release_id || current.releaseId,
+      repositoryFullName: packet.repo_full_name || current.repositoryFullName,
+      branch: packet.branch || current.branch,
+      targetSha: packet.target_sha || current.targetSha,
+      environment: packet.environment || current.environment,
+      ticketId: packet.subject,
+      evidencePacketHash: packet.content_hash,
+      evidencePacketUri: buildEvidencePacketUri({
+        ...current,
+        releaseId: packet.release_id || current.releaseId,
+        repositoryFullName: packet.repo_full_name || current.repositoryFullName,
+        branch: packet.branch || current.branch,
+        targetSha: packet.target_sha || current.targetSha,
+        environment: packet.environment || current.environment,
+        ticketId: packet.subject,
+      }, jiraCoverageFilters.hours),
       operatorConfirmed: false,
     }))
   }
@@ -208,6 +305,8 @@ export function ReleaseApprovalPanel() {
     await evaluateGovernance({
       org_name: selectedOrgName || null,
       repository_full_name: form.repositoryFullName,
+      branch: form.branch,
+      target_sha: form.targetSha,
       release_id: form.releaseId,
       environment: form.environment,
       evidence_packet_hash: HEX_64_RE.test(form.evidencePacketHash.trim()) ? form.evidencePacketHash.trim() : null,
@@ -241,7 +340,17 @@ export function ReleaseApprovalPanel() {
           size="sm"
           variant="outline"
           loading={isLoading}
-          onClick={() => void loadApprovals({ org_name: selectedOrgName || null, repository_full_name: form.repositoryFullName, limit: 10, offset: 0 })}
+          onClick={() => void loadApprovals({
+            org_name: selectedOrgName || null,
+            repository_full_name: form.repositoryFullName,
+            branch: form.branch || null,
+            target_sha: form.targetSha || null,
+            release_id: form.releaseId || null,
+            environment: form.environment || null,
+            evidence_packet_hash: HEX_64_RE.test(form.evidencePacketHash.trim()) ? form.evidencePacketHash.trim() : null,
+            limit: 10,
+            offset: 0,
+          })}
           title="Refresh release approvals"
         >
           <RefreshCw size={14} />
@@ -276,7 +385,7 @@ export function ReleaseApprovalPanel() {
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-surface-500">
               Target SHA
-              <input value={form.targetSha} onChange={(event) => updateForm('targetSha', event.target.value)} placeholder="optional" className="rounded border border-surface-600 bg-surface-800 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none" />
+              <input value={form.targetSha} onChange={(event) => updateForm('targetSha', event.target.value)} placeholder="release commit SHA" className="rounded border border-surface-600 bg-surface-800 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none" />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-surface-500">
               Environment
@@ -312,9 +421,14 @@ export function ReleaseApprovalPanel() {
             </label>
           </div>
 
-          <Button size="sm" variant="outline" disabled={!evidencePacket} onClick={applyCurrentEvidencePacket} title="Use current evidence packet">
+          <Button size="sm" variant="outline" disabled={!currentPacketIsReleaseBound} onClick={applyCurrentEvidencePacket} title="Use current release-bound evidence packet">
             <ClipboardCheck size={14} />
             Use current packet
+          </Button>
+
+          <Button size="sm" variant="secondary" loading={isEvidencePacketLoading} disabled={!form.ticketId.trim() || !form.releaseId.trim() || !form.environment.trim() || !isValidRepo(form.repositoryFullName) || !form.branch.trim() || !SHA_RE.test(form.targetSha.trim())} onClick={() => void generateBoundEvidencePacket()} title="Generate release-bound evidence packet">
+            <ClipboardCheck size={14} />
+            Generate bound packet
           </Button>
 
           <Button size="sm" variant="outline" loading={isEvaluating} disabled={!canEvaluate} onClick={() => void evaluateCurrentRelease()} title="Evaluate release governance">

@@ -2,6 +2,20 @@
 // CLIENT EVENTS (Batch Ingest)
 // ============================================================================
 
+/// Maximum clock skew tolerated for a client-supplied event timestamp that
+/// claims to be in the future. No legitimate event happens ahead of the
+/// server's clock, so events beyond this skew are rejected. This prevents
+/// postdating the (client-controlled) `created_at` to push events into future
+/// time-window governance queries or to corrupt audit ordering. Past timestamps
+/// remain allowed because the offline outbox legitimately backfills older events.
+const EVENT_FUTURE_SKEW_MS: i64 = 5 * 60 * 1000;
+
+/// Returns true when a client-supplied event timestamp is implausibly in the
+/// future (beyond the allowed clock skew) relative to `now_ms`.
+fn event_timestamp_too_far_in_future(timestamp_ms: i64, now_ms: i64) -> bool {
+    timestamp_ms > now_ms.saturating_add(EVENT_FUTURE_SKEW_MS)
+}
+
 pub async fn ingest_client_events(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -36,9 +50,49 @@ pub async fn ingest_client_events(
     let mut pre_validation_errors: Vec<EventError> = Vec::new();
     let strict_actor_match = state.strict_actor_match;
     let mut org_id_cache: HashMap<String, Option<String>> = HashMap::new();
+    let mut org_login_cache: HashMap<String, Option<String>> = HashMap::new();
     let mut repo_cache: HashMap<String, Option<Repo>> = HashMap::new();
 
     for input in batch.events {
+        let event_type = match ClientEventType::parse(&input.event_type) {
+            Some(event_type) => event_type,
+            None => {
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: format!("unsupported event_type '{}'", input.event_type),
+                });
+                continue;
+            }
+        };
+        let status = match EventStatus::parse(&input.status) {
+            Some(status) => status,
+            None => {
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: format!("unsupported status '{}'", input.status),
+                });
+                continue;
+            }
+        };
+
+        if let Some(timestamp_ms) = input.timestamp {
+            let now_ms = chrono::Utc::now().timestamp_millis();
+            if event_timestamp_too_far_in_future(timestamp_ms, now_ms) {
+                tracing::warn!(
+                    auth_user = %auth_user.client_id,
+                    event_uuid = %input.event_uuid,
+                    timestamp_ms,
+                    now_ms,
+                    "Rejecting client event with timestamp too far in the future"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "event timestamp is too far in the future".to_string(),
+                });
+                continue;
+            }
+        }
+
         if strict_actor_match
             && auth_user.role != UserRole::Admin
             && input.user_login != auth_user.client_id
@@ -89,33 +143,38 @@ pub async fn ingest_client_events(
         } else {
             None
         };
-
-        if auth_user.role != UserRole::Admin {
-            if let (Some(scoped_org_id), Some(requested_org_id)) =
-                (auth_user.org_id.as_deref(), requested_org_id.as_deref())
-            {
-                if scoped_org_id != requested_org_id {
-                    tracing::warn!(
-                        auth_user = %auth_user.client_id,
-                        requested_org_id = %requested_org_id,
-                        scoped_org_id = %scoped_org_id,
-                        event_uuid = %input.event_uuid,
-                        "Rejecting client event with org mismatch"
-                    );
-                    pre_validation_errors.push(EventError {
-                        event_uuid: input.event_uuid,
-                        error: "Event org_name is outside API key scope".to_string(),
-                    });
-                    continue;
-                }
-            }
+        if input.org_name.is_some() && requested_org_id.is_none() {
+            tracing::warn!(
+                auth_user = %auth_user.client_id,
+                requested_org_name = %input.org_name.as_deref().unwrap_or_default(),
+                event_uuid = %input.event_uuid,
+                "Rejecting client event with unknown org_name"
+            );
+            pre_validation_errors.push(EventError {
+                event_uuid: input.event_uuid,
+                error: "Event org_name was not found".to_string(),
+            });
+            continue;
         }
 
-        let org_id = if auth_user.role == UserRole::Admin {
-            requested_org_id
-        } else {
-            auth_user.org_id.clone().or(requested_org_id)
-        };
+        if let (Some(scoped_org_id), Some(requested_org_id)) =
+            (auth_user.org_id.as_deref(), requested_org_id.as_deref())
+        {
+            if scoped_org_id != requested_org_id {
+                tracing::warn!(
+                    auth_user = %auth_user.client_id,
+                    requested_org_id = %requested_org_id,
+                    scoped_org_id = %scoped_org_id,
+                    event_uuid = %input.event_uuid,
+                    "Rejecting client event with org mismatch"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "Event org_name is outside API key scope".to_string(),
+                });
+                continue;
+            }
+        }
 
         let inferred_repo_full_name = input.repo_full_name.clone().or_else(|| {
             input
@@ -127,6 +186,25 @@ pub async fn ingest_client_events(
                 .filter(|s| !s.is_empty())
                 .map(ToOwned::to_owned)
         });
+        let repo_owner = if let Some(repo_full_name) = inferred_repo_full_name.as_deref() {
+            match repo_full_name_owner(repo_full_name) {
+                Some(owner) => Some(owner.to_string()),
+                None => {
+                    tracing::warn!(
+                        repo = %repo_full_name,
+                        event_uuid = %input.event_uuid,
+                        "Rejecting client event with malformed repo_full_name"
+                    );
+                    pre_validation_errors.push(EventError {
+                        event_uuid: input.event_uuid,
+                        error: "repo_full_name must be in owner/repo format".to_string(),
+                    });
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
 
         let repo = if let Some(ref repo_full_name) = inferred_repo_full_name {
             if let Some(cached) = repo_cache.get(repo_full_name) {
@@ -139,24 +217,121 @@ pub async fn ingest_client_events(
         } else {
             None
         };
-        if auth_user.role != UserRole::Admin {
-            if let (Some(scoped_org_id), Some(repo)) = (auth_user.org_id.as_deref(), repo.as_ref())
-            {
-                if repo.org_id.as_deref() != Some(scoped_org_id) {
-                    tracing::warn!(
-                        auth_user = %auth_user.client_id,
-                        repo = %repo.full_name,
-                        event_uuid = %input.event_uuid,
-                        "Rejecting client event with repo outside API key scope"
-                    );
-                    pre_validation_errors.push(EventError {
-                        event_uuid: input.event_uuid,
-                        error: "Event repo_full_name is outside API key scope".to_string(),
-                    });
-                    continue;
-                }
+        let repo_org_id = repo.as_ref().and_then(|repo| repo.org_id.clone());
+        if let (Some(scoped_org_id), Some(repo_org_id)) =
+            (auth_user.org_id.as_deref(), repo_org_id.as_deref())
+        {
+            if scoped_org_id != repo_org_id {
+                tracing::warn!(
+                    auth_user = %auth_user.client_id,
+                    repo = %repo.as_ref().map(|r| r.full_name.as_str()).unwrap_or("unknown"),
+                    event_uuid = %input.event_uuid,
+                    "Rejecting client event with repo outside API key scope"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "Event repo_full_name is outside API key scope".to_string(),
+                });
+                continue;
             }
         }
+        if let (Some(requested_org_id), Some(repo_org_id)) =
+            (requested_org_id.as_deref(), repo_org_id.as_deref())
+        {
+            if requested_org_id != repo_org_id {
+                tracing::warn!(
+                    requested_org_id = %requested_org_id,
+                    repo_org_id = %repo_org_id,
+                    event_uuid = %input.event_uuid,
+                    "Rejecting client event with repo/org mismatch"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "Event org_name does not match repo_full_name organization".to_string(),
+                });
+                continue;
+            }
+        }
+        let owner_org_id = if auth_user.org_id.is_none()
+            && requested_org_id.is_none()
+            && repo_org_id.is_none()
+        {
+            if let Some(owner) = repo_owner.as_deref() {
+                if let Some(cached) = org_id_cache.get(owner) {
+                    cached.clone()
+                } else {
+                    let resolved = resolve_org_id_with_cache(&state, owner).await;
+                    org_id_cache.insert(owner.to_string(), resolved.clone());
+                    resolved
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let org_id = auth_user
+            .org_id
+            .clone()
+            .or_else(|| requested_org_id.clone())
+            .or_else(|| repo_org_id.clone())
+            .or_else(|| owner_org_id.clone());
+        let effective_org_id = if let Some(org_id) = org_id.as_deref() {
+            org_id
+        } else {
+            tracing::warn!(
+                auth_user = %auth_user.client_id,
+                event_uuid = %input.event_uuid,
+                "Rejecting client event without tenant scope"
+            );
+            pre_validation_errors.push(EventError {
+                event_uuid: input.event_uuid,
+                error: "org_name or resolvable repo_full_name is required for global admin keys".to_string(),
+            });
+            continue;
+        };
+
+        if let (Some(repo_full_name), Some(repo_owner)) =
+            (inferred_repo_full_name.as_deref(), repo_owner.as_deref())
+        {
+            let effective_org_login = resolve_org_login_for_event(
+                &state,
+                effective_org_id,
+                input.org_name.as_deref(),
+                requested_org_id.as_deref(),
+                &mut org_login_cache,
+            )
+            .await;
+            let Some(effective_org_login) = effective_org_login else {
+                tracing::warn!(
+                    effective_org_id = %effective_org_id,
+                    event_uuid = %input.event_uuid,
+                    "Rejecting client event because tenant login could not be resolved"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "Event organization could not be resolved".to_string(),
+                });
+                continue;
+            };
+
+            if !repo_owner.eq_ignore_ascii_case(effective_org_login.trim()) {
+                tracing::warn!(
+                    repo = %repo_full_name,
+                    repo_owner = %repo_owner,
+                    org_login = %effective_org_login,
+                    event_uuid = %input.event_uuid,
+                    "Rejecting client event with repo owner outside effective organization"
+                );
+                pre_validation_errors.push(EventError {
+                    event_uuid: input.event_uuid,
+                    error: "repo_full_name owner does not match event organization".to_string(),
+                });
+                continue;
+            }
+        }
+
         let repo_id = if let Some(repo) = repo {
             Some(repo.id)
         } else if let (Some(full_name), Some(effective_org_id)) =
@@ -187,13 +362,13 @@ pub async fn ingest_client_events(
             org_id,
             repo_id,
             event_uuid: input.event_uuid,
-            event_type: ClientEventType::from_str(&input.event_type),
+            event_type,
             user_login: effective_user_login,
             user_name: input.user_name,
             branch: input.branch,
             commit_sha: input.commit_sha,
             files: input.files,
-            status: EventStatus::from_str(&input.status),
+            status,
             reason: input.reason,
             metadata: input.metadata.unwrap_or(serde_json::Value::Null),
             client_version: batch.client_version.clone(),
@@ -233,7 +408,7 @@ pub async fn ingest_client_events(
             // Single notification — frontend refreshes both logs and stats on new_events.
             let accepted_count = response.accepted.len() as u32;
             if accepted_count > 0 {
-                fanout_sse_new_events(&state, accepted_count).await;
+                fanout_sse_new_events(&state, accepted_count, auth_user.org_id.as_deref()).await;
             }
 
             // Fire-and-forget (debounced): update client_sessions last_seen + device metadata.
@@ -268,7 +443,10 @@ pub async fn ingest_client_events(
                 let accepted_event_ids: HashSet<&str> =
                     response.accepted.iter().map(String::as_str).collect();
                 for event in &events {
-                    if event.event_type == ClientEventType::BlockedPush
+                    if matches!(
+                        event.event_type,
+                        ClientEventType::BlockedPush | ClientEventType::GovernanceBlockedPush
+                    )
                         && accepted_event_ids.contains(event.event_uuid.as_str())
                     {
                         let text = notifications::format_blocked_push_alert(
@@ -303,6 +481,54 @@ pub async fn ingest_client_events(
             )
         }
     }
+}
+
+async fn resolve_org_login_for_event(
+    state: &AppState,
+    org_id: &str,
+    requested_org_name: Option<&str>,
+    requested_org_id: Option<&str>,
+    org_login_cache: &mut HashMap<String, Option<String>>,
+) -> Option<String> {
+    if requested_org_id == Some(org_id) {
+        if let Some(name) = requested_org_name.map(str::trim).filter(|name| !name.is_empty()) {
+            return Some(name.to_string());
+        }
+    }
+
+    if let Some(cached) = org_login_cache.get(org_id) {
+        return cached.clone();
+    }
+
+    let resolved = state
+        .db
+        .get_org_by_id(org_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|org| org.login);
+    org_login_cache.insert(org_id.to_string(), resolved.clone());
+    resolved
+}
+
+fn repo_full_name_owner(repo_full_name: &str) -> Option<&str> {
+    let mut parts = repo_full_name.trim().split('/');
+    let owner = parts.next()?.trim();
+    let repo = parts.next()?.trim();
+    if owner.is_empty()
+        || repo.is_empty()
+        || parts.next().is_some()
+        || !is_valid_repo_full_name_part(owner)
+        || !is_valid_repo_full_name_part(repo)
+    {
+        return None;
+    }
+    Some(owner)
+}
+
+fn is_valid_repo_full_name_part(part: &str) -> bool {
+    part.chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-'))
 }
 
 // ============================================================================

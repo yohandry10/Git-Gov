@@ -1,3 +1,30 @@
+/// Data refs that assert deterministic / server-side provenance. These are set
+/// ONLY by the backend on grounded paths (SQL results, logs, security policy,
+/// org scope). The LLM must never be able to claim them: otherwise a
+/// hallucinated or prompt-injected answer could masquerade as SQL-grounded and
+/// erode the "LLM explains, never decides" boundary.
+const RESERVED_PROVENANCE_REFS: &[&str] = &[
+    "deterministic_sql_results",
+    "logs_endpoint",
+    "security_policy",
+    "org_scope",
+];
+
+/// Sanitize the `data_refs` returned by the LLM before merging them into the
+/// final response. Strips any reserved server-only provenance marker the model
+/// tried to claim, and tags the answer as `llm_generated` when the answer text
+/// actually came from the model (so callers/UI can label it "AI explanation").
+fn sanitize_llm_data_refs(llm_refs: Vec<String>, mark_llm_generated: bool) -> Vec<String> {
+    let mut refs: Vec<String> = llm_refs
+        .into_iter()
+        .filter(|r| !RESERVED_PROVENANCE_REFS.contains(&r.as_str()))
+        .collect();
+    if mark_llm_generated && !refs.iter().any(|r| r == "llm_generated") {
+        refs.push("llm_generated".to_string());
+    }
+    refs
+}
+
 fn query_needs_explicit_org_scope(query: &ChatQuery) -> bool {
     matches!(
         query,

@@ -1,0 +1,2042 @@
+# GitGov Current Context - Archived Ticket Notes
+
+Archived: 2026-06-09
+Source: `docs/CURRENT_CONTEXT.md`
+
+These per-ticket implementation/validation notes (KAN-24 through KAN-68) were moved verbatim from `docs/CURRENT_CONTEXT.md` to keep that handoff compact. They are historical evidence snapshots for completed tickets, not active backlog. For current state, read `docs/CURRENT_CONTEXT.md` and `docs/IMPLEMENTATION_STATUS.md`.
+
+## Current KAN-29 Implementation Notes
+
+- Script: `scripts/control-plane/generate_enterprise_adoption_pack.ps1`.
+- Design: `docs/design/enterprise-self-service-adoption-mvp.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Example profile: `docs/examples/enterprise-adoption-profile.example.json`.
+- Report: `docs/reports/enterprise-self-service-adoption-mvp-2026-04-30.md`.
+- The generator supports policy presets `audit-only`, `moderate`, and `strict`.
+- Local validation generated a pack for `ExampleCo` / `example-org/example-repo` with preset `moderate`, `13` workflow recommendations, `3` variable names, `2` secret names, `6` policy rules, and `5` manual setup steps.
+- PR `#108` merged this MVP on `main` as `bf8e378`.
+
+## Current KAN-30 Implementation Notes
+
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helpers: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Design: `docs/design/adoption-profile-dashboard-mvp.md`.
+- Report: `docs/reports/adoption-profile-dashboard-mvp-2026-04-30.md`.
+- The dashboard builder uses the same profile/pack shape as the KAN-29 generator: customer, repository, default branch, Jira key, policy preset, providers, modules, workflow plan, variable names, secret names, policy rules, manual steps, and open product gaps.
+- The JSON export contains secret names only. It does not read local env files or provider tokens.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, and `npm run lint`.
+- Full local preflight also passed with `npm test -- --run`, `npm run build`, `git diff --check`, `.\scripts\security\publication_guard.ps1`, and a browser smoke at `http://127.0.0.1:5174/` with `0` console errors.
+- PR `#110` merged this MVP on `main` as `0412574`.
+
+## Current KAN-31 Implementation Notes
+
+- Backend routes: `GET /enterprise/adoption-profile` and `PUT /enterprise/adoption-profile`.
+- Backend files: `gitgov/gitgov-server/src/handlers/adoption_profiles.rs`, `models.rs`, `db.rs`, and `main.rs`.
+- Migration: `gitgov/gitgov-server/supabase/supabase_schema_v23.sql`.
+- Postcheck: `gitgov/gitgov-server/supabase/checks/v23_postcheck.sql`.
+- Desktop bridge: `gitgov/src-tauri/src/control_plane/server.rs`, `commands/server_commands.rs`, and command registration in `src-tauri/src/lib.rs`.
+- Dashboard: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx` now loads/saves persisted profiles while preserving JSON export.
+- Store: `gitgov/src/store/useControlPlaneStore.ts` tracks profile load/save state and errors.
+- Design: `docs/design/adoption-profile-persistence-mvp.md`.
+- Report: `docs/reports/adoption-profile-persistence-2026-04-30.md`.
+- Saved profiles contain configuration intent only: no API keys, tokens, webhook secrets, generated secret values, or `.env` values.
+- Production database migration `v23` was applied on 2026-04-30; use `v23_postcheck.sql` for revalidation or new environment provisioning.
+- Local validation passed with `cargo test enterprise_adoption_profile_validation`, backend `cargo check`, backend `cargo clippy -- -D warnings`, Tauri `cargo check`, Tauri `cargo clippy -- -D warnings`, `npm run typecheck`, `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run lint`, `npm run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
+- PR `#112` merged this MVP on `main` as `509e2a2`; post-merge `CI` run `25186881414` and `Release Readiness Gate` run `25186881375` passed.
+- PR `#113` recorded KAN-31 validation on `main` as `171d43d`; post-merge `CI` run `25187583892` and `Release Readiness Gate` run `25187583994` passed.
+- Production validation after `v23` migration: `/health` `200`, anonymous adoption-profile GET `401`, authenticated adoption-profile GET `200` with `found=false`.
+
+## Current KAN-32 Implementation Notes
+
+- Implementation commit: `1a16d88 product(KAN-32): add provider health validation`.
+- PR: `#115` - `product(KAN-32): add provider health validation`.
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helper: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Tests: `gitgov/src/test/components/dashboard-helpers.test.ts`.
+- Design: `docs/design/provider-health-validation-mvp.md`.
+- Report: `docs/reports/provider-health-validation-2026-04-30.md`.
+- Provider Health status values:
+  - `ready`: selected provider has required adoption intent and observable GitGov evidence.
+  - `needs-evidence`: selected provider is configured in the profile but telemetry has not arrived yet.
+  - `needs-config`: selected provider lacks required profile/module/config intent.
+- Evidence inputs are already-loaded dashboard data: GitHub event totals, Jira ticket coverage, Jenkins pipeline health, Sonar/quality evidence inferred from Jenkins correlations, and active repository count.
+- KAN-32 does not read `.env`, provider tokens, webhook secrets, or raw secret values, and it does not call external provider APIs directly.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, `npm run typecheck`, `npm run lint`, full `npm test -- --run`, and `npm run build`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25188414404`
+  - `Release Readiness Gate` - run `25188414418`
+  - `Quality Gate Policy Matrix (Optional)` - run `25188414443`
+  - `Secret Scan` - run `25188414428`
+  - `SonarQube Governance (Non-Blocking)` - run `25188414417`
+  - `Public Naming Guard` - run `25188414424`
+  - `Governance Correlation Smoke (Optional)` - run `25188414421`
+  - `Desktop Updater Readiness (Optional)` - run `25188414432`
+
+## Current KAN-33 Implementation Notes
+
+- Implementation commit: `62b67e5 product(KAN-33): generate enterprise workflow templates`.
+- PR: `#117` - `product(KAN-33): generate enterprise workflow templates`.
+- Script: `scripts/control-plane/generate_enterprise_workflow_templates.ps1`.
+- Design: `docs/design/workflow-template-generation-mvp.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Report: `docs/reports/workflow-template-generation-2026-04-30.md`.
+- Example command: `.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\enterprise-workflow-templates -Force`.
+- ExampleCo validation generated `13` workflow templates plus `README.md` and `workflow-template-manifest.json`.
+- Generated outputs are ignored under `out/`.
+- Safety: the generator records variable names and secret names only, does not read `.env`, does not print provider tokens, and does not mutate customer repositories automatically.
+- Local validation passed: ExampleCo generation, generated YAML parse with PyYAML, no unresolved template tokens, `git diff --check`, targeted secret-pattern scan over new files, and `.\scripts\security\publication_guard.ps1`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25189490341`
+  - `Release Readiness Gate` - run `25189490316`
+  - `Quality Gate Policy Matrix (Optional)` - run `25189490347`
+  - `Secret Scan` - run `25189490317`
+  - `SonarQube Governance (Non-Blocking)` - run `25189490329`
+  - `Public Naming Guard` - run `25189490343`
+  - `Governance Correlation Smoke (Optional)` - run `25189490321`
+  - `Desktop Updater Readiness (Optional)` - run `25189490319`
+
+## Current KAN-34 Implementation Notes
+
+- Implementation commit: `31b109d product(KAN-34): add dashboard workflow template pack`.
+- PR: `#119` - `product(KAN-34): add dashboard workflow template pack`.
+- Component: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Helpers: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Tests: `gitgov/src/test/components/dashboard-helpers.test.ts`.
+- Design: `docs/design/dashboard-workflow-template-pack-mvp.md`.
+- Report: `docs/reports/dashboard-workflow-template-pack-2026-04-30.md`.
+- Dashboard adds a `Workflows` download action next to existing profile save and adoption-pack JSON download.
+- Helper output shape: one JSON file with `manifest`, `files`, and `readme`.
+- Safety: no `.env` reads, no provider token reads, no secret value display, and no customer repository mutation.
+- Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts` (`13` tests), `npm run typecheck`, `npm run lint`, full `npm test -- --run` (`25` files, `276` tests), `npm run build` with the existing Vite large chunk warning, `git diff --check`, targeted secret-pattern scan, and `.\scripts\security\publication_guard.ps1`.
+- Vercel AI SDK Copilot later starts in `KAN-38` after the onboarding/evidence surfaces are ready enough.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Workflow Lint`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Sonar Scan + Quality Gate`.
+  - `Vercel`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25190963652`
+  - `Release Readiness Gate` - run `25190963636`
+  - `Quality Gate Policy Matrix (Optional)` - run `25190963623`
+  - `Secret Scan` - run `25190963646`
+  - `SonarQube Governance (Non-Blocking)` - run `25190963649`
+  - `Public Naming Guard` - run `25190963657`
+  - `Governance Correlation Smoke (Optional)` - run `25190963633`
+  - `Desktop Updater Readiness (Optional)` - run `25190963664`
+
+## Current KAN-35 Implementation Notes
+
+- Implementation commit: `c60c486 product(KAN-35): add reviewed workflow installation`.
+- PR: `#121` - `product(KAN-35): add reviewed workflow installation`.
+- Script: `scripts/control-plane/install_enterprise_workflow_templates.ps1`.
+- Design: `docs/design/reviewed-workflow-installation-mvp.md`.
+- Report: `docs/reports/reviewed-workflow-installation-2026-04-30.md`.
+- The installer supports both KAN-33 CLI output directories through `-PackDir` and KAN-34 dashboard JSON packs through `-PackPath`.
+- Default mode is dry-run. Workflow writes require `-Apply`; replacements require `-Overwrite`.
+- Target repository path must have a `.git` marker.
+- Writes are constrained to `.github/workflows/*.yml` and `.github/workflows/*.yaml`.
+- Unsafe paths, duplicate workflow paths, null bytes, declared secret-value packs, and declared repository-mutation packs are rejected.
+- Safety: no `.env` reads, no provider token reads, no secret value printing, and no remote GitHub repository mutation.
+- Local validation passed for CLI pack dry-run/apply, dashboard JSON pack dry-run/apply, unsafe path rejection, and differing existing workflow `blocked=1` planning.
+- Direct provider credential/reachability checks are covered by `KAN-36`; formal enterprise release approval persistence is covered by `KAN-37`; Vercel AI SDK Copilot later starts in `KAN-38`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25191857023`
+  - `Release Readiness Gate` - run `25191857006`
+  - `Quality Gate Policy Matrix (Optional)` - run `25191857008`
+  - `Secret Scan` - run `25191856999`
+  - `Public Naming Guard` - run `25191857012`
+  - `SonarQube Governance (Non-Blocking)` - run `25191857029`
+  - `Governance Correlation Smoke (Optional)` - run `25191857024`
+  - `Desktop Updater Readiness (Optional)` - run `25191857020`
+
+## Current KAN-36 Implementation Notes
+
+- Implementation commit: `8c075a4 product(KAN-36): add provider connection validation`.
+- PR: `#123` - `product(KAN-36): add provider connection validation`.
+- Script: `scripts/control-plane/validate_enterprise_provider_connections.ps1`.
+- Design: `docs/design/provider-connection-validation-mvp.md`.
+- Report: `docs/reports/provider-connection-validation-2026-04-30.md`.
+- The validator reads selected providers from an adoption profile by default and supports overrides for providers, repository, Jira project key, Jenkins job name, and Sonar project key.
+- Supported providers: GitHub, Jira, Jenkins, SonarQube, Render, and Vercel.
+- Status values are `ready`, `missing-config`, and `failed`.
+- Default mode exits non-zero unless all selected providers are `ready`; `-ReportOnly` writes evidence without failing the process.
+- Safety: no secret value printing, no secret value writing, no provider mutation, no webhook creation, no GitHub Actions variable/secret creation, and no customer repository mutation.
+- Local validation passed for GitHub/Jira ready path, full profile `-ReportOnly` with local Jenkins/Sonar offline findings, Vercel missing-config report, and strict-mode missing-config failure.
+- Formal enterprise release approval persistence is covered by `KAN-37`; Vercel AI SDK Copilot later starts in `KAN-38`.
+- Post-merge `main` checks passed:
+  - `CI` - run `25192626074`
+  - `Release Readiness Gate` - run `25192626059`
+  - `Quality Gate Policy Matrix (Optional)` - run `25192626048`
+  - `Secret Scan` - run `25192626067`
+  - `Public Naming Guard` - run `25192626061`
+  - `SonarQube Governance (Non-Blocking)` - run `25192626079`
+  - `Governance Correlation Smoke (Optional)` - run `25192626054`
+  - `Desktop Updater Readiness (Optional)` - run `25192626050`
+
+## Current KAN-37 Implementation Notes
+
+- Jira: `KAN-37 - Formal enterprise release approval MVP`.
+- Jira final comment: `10196`.
+- Implementation commit: `d7ae92e product(KAN-37): add formal release approvals`.
+- PR: `#125` - `product(KAN-37): add formal release approvals`.
+- API: `GET /enterprise/release-approvals` and `POST /enterprise/release-approvals`.
+- Backend table: `enterprise_release_approvals`.
+- Migration: `gitgov/gitgov-server/supabase/supabase_schema_v24.sql`.
+- Post-check: `gitgov/gitgov-server/supabase/checks/v24_postcheck.sql`.
+- Design: `docs/design/formal-release-approval-mvp.md`.
+- Report: `docs/reports/formal-release-approval-2026-04-30.md`.
+- Local validation already run:
+  - `cargo test enterprise_release_approval_validation` from `gitgov/gitgov-server`: `5` passed, `0` failed.
+  - `cargo test` from `gitgov/gitgov-server`: `178` passed, `0` failed.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Post-merge `main` checks passed:
+  - `CI` - run `25193460879`.
+  - `Release Readiness Gate` - run `25193460902`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25193460904`.
+  - `Secret Scan` - run `25193460915`.
+  - `Public Naming Guard` - run `25193460892`.
+  - `SonarQube Governance (Non-Blocking)` - run `25193460922`.
+  - `Governance Correlation Smoke (Optional)` - run `25193460903`.
+  - `Desktop Updater Readiness (Optional)` - run `25193460881`.
+- Production database migration `v24` was applied on 2026-04-30; `v24_postcheck.sql` passed all checks.
+- Production deploy `dep-d7ptsvhoagis738cj88g` for commit `d7ae92e` reached `live`.
+- Production validation:
+  - `/health` returned `200`.
+  - anonymous `GET /enterprise/release-approvals?org_name=yohandry10` returned `401`.
+  - authenticated `GET /evidence/packets/tickets/KAN-37` returned `found=true`.
+  - authenticated `POST /enterprise/release-approvals` created `KAN-37-runtime-smoke` with decision `approved`.
+  - authenticated follow-up list for `KAN-37-runtime-smoke` returned `total=1`.
+- Vercel AI SDK Copilot first server-side route is implemented in `KAN-38`.
+
+## Latest KAN-38 Validation Notes
+
+- Jira: `KAN-38 - Vercel AI SDK governance copilot MVP`.
+- Implementation branch: `product/KAN-38-ai-sdk-copilot`.
+- Implementation PR: `#127 - product(KAN-38): add AI SDK governance copilot`.
+- Implementation commit: `9742472 product(KAN-38): add AI SDK governance copilot`.
+- Jira final comment: `10197`.
+- Route: `POST /api/copilot/governance`.
+- Package: `gitgov-web` now depends on `ai@^6.0.0`.
+- Implementation:
+  - `gitgov-web/app/api/copilot/governance/route.ts`.
+  - `gitgov-web/lib/copilot/governance.ts`.
+- Design: `docs/design/ai-sdk-governance-copilot-mvp.md`.
+- Report: `docs/reports/ai-sdk-governance-copilot-2026-04-30.md`.
+- Evidence sources:
+  - `GET /evidence/packets/tickets/{ticket_id}`.
+  - `GET /integrations/jira/ticket-coverage`.
+  - `GET /enterprise/release-approvals`.
+  - `GET /enterprise/adoption-profile`.
+- Security defaults:
+  - caller Bearer token is required by default and forwarded only to GitGov backend.
+  - server-key mode requires explicit `GITGOV_COPILOT_USE_SERVER_API_KEY=true` and `GITGOV_COPILOT_ACCESS_TOKEN`.
+  - request body is limited to 12 KB.
+  - route does not log or return Authorization headers.
+- Local validation already run:
+  - `pnpm run typecheck` from `gitgov-web`: passed.
+  - `pnpm run lint` from `gitgov-web`: passed.
+  - `pnpm run build` from `gitgov-web`: passed and registered `/api/copilot/governance`.
+  - `pnpm audit --prod` from `gitgov-web`: no known vulnerabilities found.
+  - local `next start -p 3108` route smoke with `GITGOV_COPILOT_DISABLE_AI=true`: `success=true`, `mode=fallback`, `4` citations, `4` evidence sources.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Post-merge validation:
+  - `CI` run `25194421718`: passed.
+  - `Release Readiness Gate` run `25194421743`: passed.
+  - `Quality Gate Policy Matrix (Optional)` run `25194421721`: passed.
+  - `Secret Scan` run `25194421747`: passed.
+  - `Public Naming Guard` run `25194421752`: passed.
+  - `SonarQube Governance (Non-Blocking)` run `25194421756`: passed.
+  - `Governance Correlation Smoke (Optional)` run `25194421750`: passed.
+  - `Desktop Updater Readiness (Optional)` run `25194421717`: passed.
+- Vercel production deployment `https://git-ih2bzdqq5-trivia1.vercel.app` reached `Ready`.
+- Production route smoke:
+  - `POST https://www.gitgov.cloud/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
+  - `POST https://git-gov.vercel.app/api/copilot/governance`: `200`, `success=true`, `mode=fallback`, `4` citations, `4` evidence sources, `1` expected warning.
+  - Direct deployment URL returned `401` HTML and apex `https://gitgov.cloud/api/copilot/governance` returned `401`; canonical `www` and Vercel production aliases are the validated paths.
+- Production AI Gateway/OIDC was not active during KAN-38 validation, so the route used deterministic fallback mode. KAN-41 changes the selected production activation path to direct Google Gemini through `@ai-sdk/google`.
+
+Latest KAN-39 governance copilot dashboard baseline:
+
+- Implementation commit: `eda2f13 product(KAN-39): add governance copilot dashboard`.
+- PR: `#129` - `product(KAN-39): add governance copilot dashboard`.
+- Jira final comment: `10198`.
+- Post-merge checks passed:
+  - `CI` - run `25195469511`
+  - `Release Readiness Gate` - run `25195469482`
+  - `Quality Gate Policy Matrix (Optional)` - run `25195469485`
+  - `Secret Scan` - run `25195469486`
+  - `Governance Correlation Smoke (Optional)` - run `25195469490`
+  - `Desktop Updater Readiness (Optional)` - run `25195469496`
+  - `SonarQube Governance (Non-Blocking)` - run `25195469502`
+  - `Public Naming Guard` - run `25195469507`
+
+## Latest KAN-39 Validation Notes
+
+- Jira: `KAN-39 - Governance copilot dashboard UI MVP`.
+- Implementation branch: `product/KAN-39-governance-copilot-dashboard`.
+- Implementation PR: `#129 - product(KAN-39): add governance copilot dashboard`.
+- Implementation commit: `eda2f13 product(KAN-39): add governance copilot dashboard`.
+- Jira final comment: `10198`.
+- Design: `docs/design/governance-copilot-dashboard-mvp.md`.
+- Report: `docs/reports/governance-copilot-dashboard-2026-04-30.md`.
+- Scope:
+  - Tauri command `cmd_server_governance_copilot_ask`.
+  - dashboard store action `askGovernanceCopilot`.
+  - admin dashboard component `GovernanceCopilotPanel`.
+  - citations, source statuses, warnings, answer mode, and response text.
+- Security defaults:
+  - dashboard browser does not call the public copilot endpoint directly.
+  - desktop command forwards the configured GitGov API key only as a Bearer token.
+  - default copilot URL is `https://www.gitgov.cloud/api/copilot/governance`.
+  - optional `GITGOV_COPILOT_URL` is process-env controlled, host allowlisted, and must not contain embedded credentials.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: passed.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - local Vite smoke `GET http://127.0.0.1:5174/`: returned `200`.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Post-merge validation:
+  - `CI` run `25195469511`: passed.
+  - `Release Readiness Gate` run `25195469482`: passed.
+  - `Quality Gate Policy Matrix (Optional)` run `25195469485`: passed.
+  - `Secret Scan` run `25195469486`: passed.
+  - `Governance Correlation Smoke (Optional)` run `25195469490`: passed.
+  - `Desktop Updater Readiness (Optional)` run `25195469496`: passed.
+  - `SonarQube Governance (Non-Blocking)` run `25195469502`: passed.
+  - `Public Naming Guard` run `25195469507`: passed.
+
+## Current KAN-40 Implementation Notes
+
+- Jira: `KAN-40 - Governance copilot AI mode validation`.
+- Implementation branch: `product/KAN-40-governance-copilot-ai-validation`.
+- Implementation PR: `#131 - product(KAN-40): validate governance copilot AI mode`.
+- Implementation commit: `2b507bc product(KAN-40): validate governance copilot AI mode`.
+- Script: `scripts/control-plane/validate_governance_copilot_ai_mode.ps1`.
+- Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
+- Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
+- Report: `docs/reports/governance-copilot-ai-mode-validation-2026-04-30.md`.
+- Scope:
+  - validate the production copilot route without printing secrets.
+  - record HTTP status, response mode, source count, ok-source count, citation count, warning count, answer length, and answer SHA-256 hash.
+  - support `-RequireAiMode` for post-AI-Gateway/OIDC enforcement.
+  - add a weekly/manual GitHub Actions workflow that uploads sanitized validation evidence.
+- Local production validation already run:
+  - non-strict command returned `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, and `4` ok sources.
+  - strict mode returned the expected controlled failure because production still reports `mode=fallback`.
+- Post-merge checks passed:
+  - `CI` run `25196003313`.
+  - `Release Readiness Gate` run `25196003326`.
+  - `Quality Gate Policy Matrix (Optional)` run `25196003325`.
+  - `Secret Scan` run `25196003309`.
+  - `Governance Correlation Smoke (Optional)` run `25196003311`.
+  - `SonarQube Governance (Non-Blocking)` run `25196003302`.
+  - `Public Naming Guard` run `25196003318`.
+  - `Desktop Updater Readiness (Optional)` run `25196003351`.
+- First manual workflow validation passed:
+  - Run `25196010712`.
+  - Artifact `governance-copilot-ai-mode-validation`.
+  - Artifact ID `6742816838`.
+  - Artifact status: not expired; expires `2026-07-30T00:21:30Z`.
+  - Result: `status=fallback`, `ok=true`, HTTP `200`, `4` citations, `4` sources, `4` ok sources, and `1` warning.
+- Current interpretation:
+  - the copilot route is healthy and evidence-grounded.
+  - production AI generation mode moved to KAN-41 using direct Google Gemini because Vercel AI Gateway required billing-card activation.
+
+## Current KAN-41 Implementation Notes
+
+- Jira: `KAN-41 - Activate governance copilot AI mode on Vercel`.
+- Implementation PRs:
+  - `#133 - product(KAN-41): add Google AI SDK copilot provider`.
+  - `#134 - fix(KAN-41): add sanitized copilot AI failure diagnostics`.
+  - `#135 - fix(KAN-41): include sanitized copilot AI runtime cause`.
+  - `#136 - fix(KAN-41): sanitize Google AI env key`.
+- Final implementation commit: `ba61d16 fix(KAN-41): sanitize Google AI env key`.
+- Report: `docs/reports/google-ai-sdk-copilot-provider-2026-05-01.md`.
+- Scope:
+  - add direct Google Gemini support to `POST /api/copilot/governance` through `@ai-sdk/google`.
+  - keep AI Gateway as an optional provider path.
+  - keep deterministic fallback if no provider is configured or generation fails.
+  - do not change the existing Rust `/chat/ask` Gemini bot path.
+  - strip leading UTF-8 BOM and surrounding whitespace from server-side Google/Gemini env values before using them as provider keys.
+- Vercel production env configuration was updated without printing secret values:
+  - `GOOGLE_GENERATIVE_AI_API_KEY`.
+  - `GITGOV_COPILOT_PROVIDER=google`.
+  - `GITGOV_COPILOT_GOOGLE_MODEL=gemini-2.5-flash`.
+- Production env correction:
+  - first strict validation showed an invisible BOM in the uploaded Google key value.
+  - after the code stripped BOM/whitespace, strict validation showed the first local Gemini key was expired.
+  - the production secret was reconfigured from the effective local Gemini key used by the working local/server bot path.
+  - Vercel redeploy `https://git-8gwowu155-trivia1.vercel.app` reached `Ready` and is aliased to `https://www.gitgov.cloud`.
+- Preview remains fallback-only unless explicitly configured later.
+- Local validation already run:
+  - `pnpm run typecheck` from `gitgov-web`: passed.
+  - `pnpm run lint` from `gitgov-web`: passed.
+  - `pnpm run build` from `gitgov-web`: passed.
+  - `pnpm audit --prod` from `gitgov-web`: no known vulnerabilities.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+  - local route smoke with `GITGOV_COPILOT_PROVIDER=google` and Google key mapped from ignored local `GEMINI_API_KEY`: HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+- Final production strict validation passed:
+
+```powershell
+.\scripts\control-plane\validate_governance_copilot_ai_mode.ps1 `
+  -TicketId KAN-39 `
+  -ReleaseId KAN-39 `
+  -RequireAiMode `
+  -OutputPath out\KAN-41-governance-copilot-google-ai-mode-validation.json
+```
+
+Result: `status=ai`, `ok=true`, HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, `0` warnings, and no raw answer or secrets stored.
+
+- Post-merge checks for final commit `ba61d16` passed:
+  - `CI` - run `25199526039`.
+  - `Release Readiness Gate` - run `25199526047`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25199526028`.
+  - `Secret Scan` - run `25199526038`.
+  - `Governance Correlation Smoke (Optional)` - run `25199526055`.
+  - `SonarQube Governance (Non-Blocking)` - run `25199526033`.
+  - `Public Naming Guard` - run `25199526037`.
+  - `Desktop Updater Readiness (Optional)` - run `25199526031`.
+
+## Current KAN-42 Implementation Notes
+
+- Jira: `KAN-42 - Enforce governance copilot AI mode validation`.
+- Implementation branch: `ops/KAN-42-enforce-copilot-ai-validation`.
+- Implementation PR: `#138 - ops(KAN-42): enforce governance copilot AI validation`.
+- Implementation commit: `7ad1c9d ops(KAN-42): enforce governance copilot AI validation`.
+- Workflow: `.github/workflows/governance-copilot-ai-mode-validation.yml`.
+- Runbook: `docs/runbooks/governance-copilot-ai-mode-validation.md`.
+- Report: `docs/reports/governance-copilot-ai-mode-enforcement-2026-05-01.md`.
+- Scope:
+  - scheduled Governance Copilot AI Mode Validation runs now require `mode=ai`.
+  - manual dispatch defaults to `require_ai_mode=true`.
+  - manual `require_ai_mode=false` remains available only for fallback diagnostics.
+  - missing `GITGOV_API_KEY` fails strict runs instead of silently skipping.
+- Local validation already run:
+  - workflow YAML parsed successfully.
+  - strict production validator passed with HTTP `200`, `success=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+- Post-merge checks for commit `7ad1c9d` passed:
+  - `CI` - run `25200079701`.
+  - `Release Readiness Gate` - run `25200079686`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25200079694`.
+  - `Secret Scan` - run `25200079699`.
+  - `Governance Correlation Smoke (Optional)` - run `25200079688`.
+  - `SonarQube Governance (Non-Blocking)` - run `25200079685`.
+  - `Public Naming Guard` - run `25200079691`.
+  - `Desktop Updater Readiness (Optional)` - run `25200079696`.
+- First strict manual `Governance Copilot AI Mode Validation` workflow run on `main` passed:
+  - Run `25200126845`.
+  - Head SHA `7ad1c9dc947a2ff50e451f4caacc8125874527aa`.
+  - Result: `status=ai`, `ok=true`, `mode=ai`, `model=google/gemini-2.5-flash`, `4` citations, `4` sources, `4` ok sources, and `0` warnings.
+  - Artifact `governance-copilot-ai-mode-validation`, ID `6744359123`, expires `2026-07-30T02:58:40Z`.
+
+## Latest KAN-43 Validation Notes
+
+- Jira: `KAN-43 - Dashboard release approval wizard MVP`.
+- Implementation branch: `product/KAN-43-release-approval-dashboard`.
+- Implementation PR: `#140 - product(KAN-43): add release approval dashboard`.
+- Implementation commit: `10d0c4b product(KAN-43): add release approval dashboard`.
+- Design: `docs/design/release-approval-dashboard-mvp.md`.
+- Report: `docs/reports/release-approval-dashboard-2026-05-01.md`.
+- Scope:
+  - add `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
+  - add admin dashboard create/list UI for formal release approvals.
+  - add Zustand release approval state and list/create actions.
+  - add Tauri client structs, methods, commands and command registration for `GET /enterprise/release-approvals` and `POST /enterprise/release-approvals`.
+  - reuse the existing KAN-37 backend API and validation.
+- Client validation:
+  - release, repository, environment, approver and evidence hash are required.
+  - repository must look like `owner/repo`.
+  - evidence hash must be 64 hex characters.
+  - optional target SHA, ticket ID, and evidence URI are shape-validated.
+  - high/critical risk cannot be approved directly.
+  - accepted-risk requires non-`none` severity, reason and 1-366 day expiration.
+  - operator confirmation is required before submit.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: `23` passed.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: `21` passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: `25` test files passed, `280` tests passed.
+  - `npm run build` from `gitgov`: passed with existing Vite large chunk warning.
+- PR `#140` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `10d0c4b` passed:
+  - `CI` - run `25202577666`.
+  - `Release Readiness Gate` - run `25202577665`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25202577671`.
+  - `Secret Scan` - run `25202577668`.
+  - `SonarQube Governance (Non-Blocking)` - run `25202577669`.
+  - `Public Naming Guard` - run `25202577675`.
+  - `Governance Correlation Smoke (Optional)` - run `25202577688`.
+  - `Desktop Updater Readiness (Optional)` - run `25202577680`.
+- No new backend route, database migration, Render deploy, or Vercel production env change was needed; KAN-43 reuses the existing KAN-37 backend API.
+
+## Latest KAN-44 Validation Notes
+
+- Jira: `KAN-44 - Document configurable release governance defaults`.
+- Implementation branch: `docs/KAN-44-configurable-release-governance`.
+- Implementation PR: `#142 - docs(KAN-44): clarify release governance defaults`.
+- Implementation commit: `eb15b08 docs(KAN-44): clarify release governance defaults`.
+- Design: `docs/design/configurable-release-governance-defaults.md`.
+- Report: `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
+- Product decision:
+  - default release governance behavior remains `record-only`.
+  - release approval records can be stored, displayed and reported by default.
+  - release-blocking enforcement must be explicitly selected by customer policy.
+  - multi-approver quorum must be explicitly selected by customer policy.
+  - generated workflows should not block customer releases unless the adoption profile or equivalent policy clearly enables blocking behavior.
+- Current docs updated:
+  - `docs/design/configurable-release-governance-defaults.md`.
+  - `docs/design/formal-release-approval-mvp.md`.
+  - `docs/design/release-approval-dashboard-mvp.md`.
+  - `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+  - `docs/reports/configurable-release-governance-defaults-2026-05-01.md`.
+- Local validation:
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#142` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `eb15b08` passed:
+  - `CI` - run `25203116708`.
+  - `Release Readiness Gate` - run `25203116684`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25203116644`.
+  - `Secret Scan` - run `25203116635`.
+  - `SonarQube Governance (Non-Blocking)` - run `25203116668`.
+  - `Public Naming Guard` - run `25203116673`.
+  - `Governance Correlation Smoke (Optional)` - run `25203116650`.
+  - `Desktop Updater Readiness (Optional)` - run `25203116657`.
+- No code, database, Render, Vercel, provider, or customer workflow behavior changed; KAN-44 is documentation/product-default memory only.
+
+## Latest KAN-45 Validation Notes
+
+- Jira: `KAN-45 - Add configurable release governance profile policy`.
+- Implementation branch: `product/KAN-45-release-governance-profile-policy`.
+- Implementation PR: `#144 - product(KAN-45): add release governance profile policy`.
+- Implementation commit: `dc37e92 product(KAN-45): add release governance profile policy`.
+- Design: `docs/design/release-governance-profile-policy-mvp.md`.
+- Report: `docs/reports/release-governance-profile-policy-2026-05-01.md`.
+- Scope:
+  - add explicit `release_governance` to the Enterprise Adoption profile shape.
+  - preserve `record-only` / `disabled` as the default release governance mode.
+  - expose release governance mode and environment controls in the Enterprise Adoption dashboard.
+  - include release governance in dashboard adoption pack and workflow template pack exports.
+  - include release governance in the CLI adoption pack Markdown/JSON output.
+  - include release governance in the CLI workflow template README/manifest output.
+  - validate `release_governance` in `PUT /enterprise/adoption-profile` before persistence.
+  - keep non-`record-only` modes gated on the `formal-approval` module.
+- Product rule:
+  - default behavior remains non-blocking.
+  - `advisory`, `approval-required`, and `quorum-required` are customer-selected modes.
+  - KAN-45 stores and carries policy intent; it does not add active release blocking by itself.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo test adoption_profile_tests` from `gitgov/gitgov-server`: passed, `6` tests.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts` from `gitgov`: passed, `15` tests.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `.\scripts\control-plane\generate_enterprise_adoption_pack.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\KAN-45-enterprise-adoption-pack`: passed.
+  - `.\scripts\control-plane\generate_enterprise_workflow_templates.ps1 -ProfilePath docs\examples\enterprise-adoption-profile.example.json -OutputDir out\KAN-45-enterprise-workflow-templates -Force`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, or raw secret payload is read or printed by this change.
+- PR `#144` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `dc37e92` passed:
+  - `CI` - run `25203785504`.
+  - `Release Readiness Gate` - run `25203785499`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25203785520`.
+  - `Secret Scan` - run `25203785497`.
+  - `SonarQube Governance (Non-Blocking)` - run `25203785527`.
+  - `Public Naming Guard` - run `25203785483`.
+  - `Governance Correlation Smoke (Optional)` - run `25203785490`.
+  - `Desktop Updater Readiness (Optional)` - run `25203785503`.
+- No database migration, Render deploy, Vercel production env change, provider setting change, or customer workflow installation was needed.
+
+## Latest KAN-46 Validation Notes
+
+- Jira: `KAN-46 - Add release governance evaluator`.
+- Implementation branch: `product/KAN-46-release-governance-evaluator`.
+- Implementation PR: `#146 - product(KAN-46): add release governance evaluator`.
+- Implementation commit: `0252432 product(KAN-46): add release governance evaluator`.
+- Design: `docs/design/release-governance-evaluator-mvp.md`.
+- Report: `docs/reports/release-governance-evaluator-2026-05-01.md`.
+- Scope:
+  - add admin endpoint `GET /enterprise/release-governance/evaluate`.
+  - evaluate KAN-45 `release_governance` policy against KAN-37 formal release approval records.
+  - keep `record-only` non-blocking by default.
+  - return `recorded`, `advisory-warning`, `approved`, `would-block`, or `blocked`.
+  - include `blocking` and `would_block` booleans for future customer-selected workflow gates.
+  - count quorum roles through `evidence_summary.approver_role` without adding a database migration.
+  - add Tauri control-plane client structs, method, command, and registration.
+  - add dashboard release governance evaluation state, action, button, result panel, and approver role field.
+  - include `/enterprise/release-governance/evaluate` in the stale-auth-cache sensitive admin path set.
+- Product rule:
+  - KAN-46 reports release governance status; it does not mutate customer workflows or block deployments by itself.
+  - blocking status can only appear when the customer-selected profile policy is explicitly blocking.
+  - future workflow enforcement must opt in to consuming `blocking=true`.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo fmt` from `gitgov/src-tauri`: passed.
+  - `cargo test release_approval_tests` from `gitgov/gitgov-server`: passed, `9` tests.
+  - `cargo test sensitive_admin_path_detection_matches_expected_routes` from `gitgov/gitgov-server`: passed, `1` test.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `cargo check` from `gitgov/src-tauri`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/src-tauri`: passed.
+  - `cargo test` from `gitgov/src-tauri`: passed, `23` tests.
+  - `npm test -- --run src/test/useControlPlaneStore.test.ts` from `gitgov`: passed, `22` tests.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed, `25` test files and `283` tests.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read or printed by this change.
+- PR `#146` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `0252432` passed:
+  - `CI` - run `25207328590`.
+  - `Release Readiness Gate` - run `25207328587`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25207328585`.
+  - `Secret Scan` - run `25207328605`.
+  - `SonarQube Governance (Non-Blocking)` - run `25207328608`.
+  - `Public Naming Guard` - run `25207328592`.
+  - `Governance Correlation Smoke (Optional)` - run `25207328584`.
+  - `Desktop Updater Readiness (Optional)` - run `25207328581`.
+- Production validation:
+  - Render deploy `dep-d7q5qmkvikkc73cmfg0g` reached `live` for commit `025243214639757e901830d958e60e2ba3eb55cd`.
+  - `GET https://gitgov-api.onrender.com/health` returned `status=ok`.
+  - Anonymous `GET /enterprise/release-governance/evaluate?...` returned `401`.
+  - Authenticated `GET /enterprise/release-governance/evaluate?...` returned `200` with `status=recorded`, `policy_mode=record-only`, `blocking=false`, `would_block=false`, `valid=0`, and `required=0`.
+- No database migration, provider setting change, customer workflow installation, or Vercel production environment change was needed.
+
+## Latest KAN-48 Validation Notes
+
+- Jira: `KAN-48 - Add environment-scoped release governance policy overrides`.
+- Implementation branch: `product/KAN-48-environment-release-governance-policy`.
+- Implementation PR: `#150 - product(KAN-48): add environment release governance overrides`.
+- Implementation commit: `cba3f9d product(KAN-48): add environment release governance overrides`.
+- Design: `docs/design/environment-scoped-release-governance-policy-mvp.md`.
+- Report: `docs/reports/environment-scoped-release-governance-policy-2026-05-01.md`.
+- Scope:
+  - add optional `release_governance.environment_overrides` to enterprise adoption profiles.
+  - keep base/default release governance `record-only` and non-blocking.
+  - allow explicit per-environment opt-in policy, for example `production: approval-required` while `staging` remains record-only.
+  - make the KAN-46 evaluator resolve matching environment override first, then fall back to base policy.
+  - make adoption pack and workflow template generation include the release governance gate when any override is non-`record-only` and `formal-approval` is enabled.
+  - expose environment overrides in the Enterprise Adoption dashboard without reading `.env` or provider secrets.
+- Local validation already run:
+  - `cargo fmt` from `gitgov/gitgov-server`: passed.
+  - `cargo test release_governance` from `gitgov/gitgov-server`: passed, `6` tests.
+  - `cargo test enterprise_adoption_profile_validation` from `gitgov/gitgov-server`: passed, `8` tests.
+  - `cargo check` from `gitgov/gitgov-server`: passed.
+  - `cargo clippy -- -D warnings` from `gitgov/gitgov-server`: passed.
+  - `cargo test` from `gitgov/gitgov-server`: passed, `189` tests.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts` from `gitgov`: passed, `17` tests.
+  - `npm run typecheck` from `gitgov`: passed.
+  - `npm run lint` from `gitgov`: passed.
+  - `npm test -- --run` from `gitgov`: passed, `25` test files and `285` tests.
+  - `npm run build` from `gitgov`: passed with the existing Vite large chunk warning.
+  - CLI adoption pack generation with a production `approval-required` override: passed with `14` workflows and release governance gate included.
+  - CLI workflow template generation with a production `approval-required` override: passed with `14` templates; generated release governance gate defaulted to `production` and `enforce_gate=true`.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Remaining local validation before PR:
+  - none.
+- No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change is expected for KAN-48.
+- PR `#150` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `cba3f9d` passed:
+  - `CI` - run `25209198316`.
+  - `Release Readiness Gate` - run `25209198277`.
+
+## Latest KAN-49 Validation Notes
+
+- Jira: `KAN-49 - Monitor release governance gate artifacts`.
+- Implementation branch: `ops/KAN-49-release-governance-gate-artifact-monitor`.
+- Implementation PR: `#152 - ops(KAN-49): monitor release governance gate artifacts`.
+- Implementation commit: `4257a95 ops(KAN-49): monitor release governance gate artifacts`.
+- Design: `docs/design/release-governance-gate-artifact-monitor-mvp.md`.
+- Report: `docs/reports/release-governance-gate-artifact-monitor-2026-05-01.md`.
+- Runbook: `docs/runbooks/release-governance-gate.md`.
+- Scope:
+  - add manual workflow `.github/workflows/release-governance-gate-artifact-monitor.yml`.
+  - reuse `scripts/control-plane/validate_github_evidence_report_artifact.ps1` against `release-governance-gate.yml` artifacts named `release-governance-gate-*`.
+  - add CLI and dashboard workflow template support for `.github/workflows/release-governance-gate-artifact-monitor.yml`.
+  - generate the enterprise monitor only when `formal-approval`, non-`record-only` release governance, and `artifact-monitoring` are selected.
+  - keep `record-only` release approval evidence non-blocking and without generated release governance gate/monitor templates by default.
+- Local validation already run:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile release-governance-gate.yml -ArtifactNamePrefix release-governance-gate- -MaxAgeHours 720 -OutputPath out\release-governance-gate-artifact-monitor.json`: passed against run `25208470238`, artifact `release-governance-gate-25208470238`, ID `6747272652`.
+  - CLI workflow template generation with a production environment override profile: passed; generated both release governance gate and artifact monitor templates, with monitor max age `720`.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `18` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `286` tests.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#152` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `4257a95` passed:
+  - `CI` - run `25209672506`.
+  - `Release Readiness Gate` - run `25209672484`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25209672487`.
+  - `Secret Scan` - run `25209672489`.
+  - `Public Naming Guard` - run `25209672473`.
+  - `Governance Correlation Smoke (Optional)` - run `25209672471`.
+  - `Desktop Updater Readiness (Optional)` - run `25209672476`.
+  - `SonarQube Governance (Non-Blocking)` - run `25209672492`.
+- First manual `Release Governance Gate Artifact Monitor` workflow run on `main` passed:
+  - Run `25209735562`.
+  - Artifact `release-governance-gate-artifact-monitor`, ID `6747717581`, not expired.
+- No database migration, provider setting change, customer repository mutation, Render deploy, or Vercel production environment change was needed.
+
+## Latest KAN-50 Validation Notes
+
+- Jira: `KAN-50 - Remote workflow installation PR for customer repositories`.
+- Implementation branch: `product/KAN-50-remote-workflow-installation-pr`.
+- Implementation PR: `#154 - product(KAN-50): add remote workflow installation PR flow`.
+- Implementation commit: `eb7482b product(KAN-50): add remote workflow installation PR flow`.
+- Script: `scripts/control-plane/open_enterprise_workflow_template_pr.ps1`.
+- Design: `docs/design/remote-workflow-installation-pr-mvp.md`.
+- Report: `docs/reports/remote-workflow-installation-pr-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add dry-run-first remote PR creation for GitGov enterprise workflow template packs.
+  - support CLI-generated `-PackDir` and dashboard-style `-PackPath`.
+  - infer target repository/default branch from the pack manifest when explicit parameters are omitted.
+  - compare remote `.github/workflows/*.yml` and `.yaml` files against the target base branch.
+  - require `-Apply` before creating a remote branch, single commit, and draft PR.
+  - require `-Overwrite` before replacing differing existing workflow files.
+  - keep PRs draft by default unless `-ReadyForReview` is passed.
+  - avoid GitHub Actions variable/secret creation, branch protection mutation, provider mutation, or automatic merge.
+- Local validation already run:
+  - CLI workflow template generation with `docs/examples/enterprise-adoption-profile.example.json`: passed.
+  - `-PackDir` dry-run against `yohandry10/Git-Gov` on `main`: passed with `create=0`, `update=0`, `skip=0`, `blocked=13`; no remote mutation.
+  - `-PackDir -Overwrite` dry-run against `yohandry10/Git-Gov` on `main`: passed with `create=0`, `update=13`, `skip=0`, `blocked=0`; no remote mutation.
+  - minimal dashboard-style `-PackPath` dry-run: passed with `create=1`, `update=0`, `skip=0`, `blocked=0`; no remote mutation.
+  - PowerShell parse check for `open_enterprise_workflow_template_pr.ps1`: passed.
+  - dry-run plan secret/string scan: passed, no token/Authorization/secret-value assignment patterns found.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#154` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `eb7482b` passed:
+  - `CI` - run `25210329452`.
+  - `Release Readiness Gate` - run `25210329443`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25210329442`.
+  - `Secret Scan` - run `25210329455`.
+  - `Public Naming Guard` - run `25210329454`.
+  - `Governance Correlation Smoke (Optional)` - run `25210329459`.
+  - `Desktop Updater Readiness (Optional)` - run `25210329441`.
+  - `SonarQube Governance (Non-Blocking)` - run `25210329445`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, or remote apply run was needed.
+
+## Latest KAN-51 Validation Notes
+
+- Jira: `KAN-51 - Remote workflow installation readiness validation`.
+- Implementation branch: `product/KAN-51-remote-workflow-readiness-validation`.
+- Implementation PR: `#156 - product(KAN-51): validate remote workflow readiness`.
+- Implementation commit: `dcfb529 product(KAN-51): validate remote workflow readiness`.
+- Script: `scripts/control-plane/validate_enterprise_workflow_installation_readiness.ps1`.
+- Design: `docs/design/remote-workflow-readiness-validation-mvp.md`.
+- Report: `docs/reports/remote-workflow-readiness-validation-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add read-only GitHub repository readiness validation after workflow template installation.
+  - support CLI `-PackDir` and dashboard-style `-PackPath` sources.
+  - validate expected `.github/workflows/*.yml` / `.yaml` files at a selected ref.
+  - compare remote workflow content to the reviewed pack by SHA-256.
+  - validate GitHub Actions variable names from the manifest.
+  - validate GitHub Actions secret names from the manifest without reading secret values.
+  - support `-ReportOnly` for non-blocking onboarding reports.
+  - avoid file, branch, PR, variable, secret, provider, workflow dispatch, or branch-protection mutation.
+- Local validation already run:
+  - PowerShell parse check for `validate_enterprise_workflow_installation_readiness.ps1`: passed.
+  - CLI workflow template generation with `docs/examples/enterprise-adoption-profile.example.json`: passed.
+  - `-PackDir -ReportOnly` readiness against `yohandry10/Git-Gov` on `main`: passed with expected `needs-action`, `workflows_missing=0`, `workflows_different=13`, `variables_missing=0`, and `secrets_missing=1`.
+  - minimal dashboard-style `-PackPath -ReportOnly` readiness against `yohandry10/Git-Gov` on `main`: passed with expected `needs-action`, `workflows_missing=1`, `workflows_different=0`, `variables_missing=0`, and `secrets_missing=0`.
+  - output secret/header string scan: passed, no token values or Authorization headers stored.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#156` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `dcfb529` passed:
+  - `CI` - run `25210718116`.
+  - `Release Readiness Gate` - run `25210718113`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25210718112`.
+  - `Secret Scan` - run `25210718114`.
+  - `Public Naming Guard` - run `25210718108`.
+  - `Governance Correlation Smoke (Optional)` - run `25210718092`.
+  - `Desktop Updater Readiness (Optional)` - run `25210718096`.
+  - `SonarQube Governance (Non-Blocking)` - run `25210718107`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, or remote apply run was needed.
+
+## Latest KAN-52 Validation Notes
+
+- Jira: `KAN-52 - Enterprise onboarding readiness report`.
+- Implementation branch: `product/KAN-52-enterprise-onboarding-readiness`.
+- Implementation PR: `#158 - product(KAN-52): add onboarding readiness report`.
+- Implementation commit: `a64bb30 product(KAN-52): add onboarding readiness report`.
+- Main merge commit: `268770a product(KAN-52): add onboarding readiness report`.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1`.
+- Dashboard helper: `buildEnterpriseOnboardingReadinessReport`.
+- Dashboard UI: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Design: `docs/design/enterprise-onboarding-readiness-report-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-report-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add a consolidated Enterprise Self-Service Adoption readiness snapshot.
+  - combine adoption profile validity, provider readiness, workflow pack status, remote workflow readiness, GitHub Actions config-name readiness, and release governance posture.
+  - add dashboard `Onboarding` readiness card and `Readiness` JSON export.
+  - add CLI Markdown/JSON generator that can consume KAN-36 provider reports and KAN-51 workflow readiness reports.
+  - keep report generation read-only and secret-safe.
+- Local validation already run:
+  - PowerShell parse check for `generate_enterprise_onboarding_readiness_report.ps1`: passed.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `22` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `290` tests.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - profile-only readiness report: `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages.
+  - provider/workflow-input readiness report: `needs-action`, score `83`, `4` ready stages, `2` needs-action stages, `0` blocked stages.
+  - generated output scan for `Authorization`, `Bearer`, `GITGOV_API_KEY=`, `SONAR_TOKEN=`, `ATATT`, and `vck_`: passed with no matches.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#158` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `268770a` passed:
+  - `CI` - run `25211254174`.
+  - `Release Readiness Gate` - run `25211254160`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25211254185`.
+  - `Secret Scan` - run `25211254159`.
+  - `Public Naming Guard` - run `25211254165`.
+  - `Governance Correlation Smoke (Optional)` - run `25211254168`.
+  - `Desktop Updater Readiness (Optional)` - run `25211254172`.
+  - `SonarQube Governance (Non-Blocking)` - run `25211254202`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, remote apply run, or workflow dispatch was needed.
+
+## Latest KAN-53 Validation Notes
+
+- Jira: `KAN-53 - Automate enterprise onboarding readiness evidence`.
+- Implementation branch: `product/KAN-53-enterprise-onboarding-readiness-automation`.
+- Implementation PR: `#160 - ops(KAN-53): automate onboarding readiness evidence`.
+- Implementation commit: `85d63e1 ops(KAN-53): automate onboarding readiness evidence`.
+- Main merge commit: `027a10f Merge pull request #160 from yohandry10/product/KAN-53-enterprise-onboarding-readiness-automation`.
+- Workflow: `.github/workflows/enterprise-onboarding-readiness.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-automation-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-automation-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add manual and weekly Enterprise Onboarding Readiness automation.
+  - generate a temporary adoption profile from workflow inputs or safe GitGov defaults.
+  - run adoption pack generation, workflow template generation, optional KAN-51 read-only workflow readiness, and KAN-52 readiness reporting.
+  - upload `enterprise-onboarding-readiness-{run_id}` artifacts.
+  - keep release blocking opt-in and report-only by default.
+- Local validation already run:
+  - GitGov adoption pack generation: passed.
+  - GitGov workflow template generation: passed.
+  - default KAN-53 readiness generation: `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages.
+  - optional KAN-51 remote workflow readiness: `needs-action`, `workflows_missing=0`, `workflows_different=13`, `variables_missing=0`, `secrets_missing=1`.
+  - KAN-53 readiness generation with remote readiness input: `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages.
+  - generated output scan for `Authorization`, `Bearer`, `GITGOV_API_KEY=`, `SONAR_TOKEN=`, `ATATT`, and `vck_`: passed with no matches.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#160` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `027a10f` passed:
+  - `CI` - run `25211635818`.
+  - `Release Readiness Gate` - run `25211635807`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25211636125`.
+  - `Secret Scan` - run `25211635809`.
+  - `Public Naming Guard` - run `25211635814`.
+  - `Governance Correlation Smoke (Optional)` - run `25211635806`.
+  - `Desktop Updater Readiness (Optional)` - run `25211635830`.
+  - `SonarQube Governance (Non-Blocking)` - run `25211635803`.
+- First manual workflow validation passed:
+  - Run `25211644692`.
+  - Artifact `enterprise-onboarding-readiness-25211644692`.
+  - Artifact ID `6748421926`.
+  - Artifact status: not expired, expires at `2026-07-30T10:46:51Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, or provider webhook mutation was needed.
+
+## Latest KAN-54 Validation Notes
+
+- Jira: `KAN-54 - Monitor enterprise onboarding readiness evidence artifacts`.
+- Implementation branch: `ops/KAN-54-enterprise-onboarding-readiness-artifact-monitor`.
+- Implementation PR: `#162 - ops(KAN-54): monitor onboarding readiness artifacts`.
+- Implementation commit: `414f8b0 ops(KAN-54): monitor onboarding readiness artifacts`.
+- Main merge commit: `ec99b7c Merge pull request #162 from yohandry10/ops/KAN-54-enterprise-onboarding-readiness-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-onboarding-readiness-artifact-monitor.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-artifact-monitor-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Scope:
+  - add a weekly/manual monitor for KAN-53 readiness artifacts.
+  - validate the latest successful `enterprise-onboarding-readiness.yml` run uploaded a fresh `enterprise-onboarding-readiness-` artifact.
+  - upload `enterprise-onboarding-readiness-artifact-monitor`.
+  - keep onboarding `needs-action` non-blocking and release blocking opt-in only.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - no release blocking by default.
+- Local validation already run:
+  - command used existing `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+  - workflow file: `enterprise-onboarding-readiness.yml`.
+  - artifact prefix: `enterprise-onboarding-readiness-`.
+  - latest successful source run: `25211644692`.
+  - artifact: `enterprise-onboarding-readiness-25211644692`.
+  - artifact ID: `6748421926`.
+  - result: `PASS`, artifact age `0.19h`, not expired.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#162` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `ec99b7c` passed:
+  - `CI` - run `25212018101`.
+  - `Release Readiness Gate` - run `25212018102`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25212018092`.
+  - `Secret Scan` - run `25212018105`.
+  - `Public Naming Guard` - run `25212018093`.
+  - `Governance Correlation Smoke (Optional)` - run `25212018110`.
+  - `Desktop Updater Readiness (Optional)` - run `25212018091`.
+  - `SonarQube Governance (Non-Blocking)` - run `25212018095`.
+- First manual monitor workflow validation passed:
+  - Run `25212021793`.
+  - Artifact `enterprise-onboarding-readiness-artifact-monitor`.
+  - Artifact ID `6748551922`.
+  - Artifact status: not expired, expires at `2026-07-30T11:01:29Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-68 Product Direction Notes
+
+- Jira: `KAN-68 - Document Enterprise Action Center UX focus`.
+- Branch: `docs/KAN-68-enterprise-action-center-ux-focus`.
+- Design: `docs/design/enterprise-action-center-ux-focus.md`.
+- Report: `docs/reports/enterprise-action-center-ux-focus-2026-05-02.md`.
+- Roadmap updated: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+- Core decision:
+  - GitGov has enough core governance capability for the current stage.
+  - Do not keep adding standalone hardening workflows, monitors, trend reports, enforcement gates, or isolated features by default.
+  - The next product stage should make GitGov easier to use.
+  - The recommended next product implementation is `KAN-69 - Enterprise Action Center guided UX`.
+- Product rule going forward:
+  - accept new work when it makes the product easier for a customer to use.
+  - accept new work when it turns several existing technical pieces into one clear workflow.
+  - accept new work when it reduces onboarding steps or makes the next action obvious.
+  - accept new work when it fixes a real bug, confirmed vulnerability, or production risk.
+  - defer work that only adds another standalone artifact chain without improving UX or risk posture.
+- KAN-69 implementation shape:
+  - dedicated `/action-center` desktop route with sidebar navigation.
+  - deterministic `Goal + Evidence + Permission` recommendation helper.
+  - primary recommendation plus related alternatives.
+  - deep links to Enterprise Adoption, Evidence Packet, Release Approval, Governance Copilot, and Workspace surfaces.
+  - reuse existing adoption profile, provider health, workflow template, remote PR, readiness, remediation, checklist tracking, release governance, and copilot evidence.
+  - show current goal, state, next recommended action, why it matters, supporting evidence, permission, and alternatives.
+  - keep provider/customer repository mutations explicit, reviewed, and opt-in.
+  - keep release enforcement, quorum, and multi-approver rules optional and never default.
+  - Historical KAN-68 wording that suggested a dashboard-first Enterprise Adoption section is superseded.
+- Resume instruction:
+  - do not continue the KAN-61 through KAN-67 hardening chain unless there is a real security bug or production risk.
+  - start the next product discussion from: `How do we make the existing GitGov capabilities obvious and useful to a first customer?`
+  - default answer: build the Enterprise Action Center guided UX.
+- KAN-70 documentation audit:
+  - Jira: `KAN-70 - Documentation reality audit and stale docs cleanup`.
+  - Branch: `docs/KAN-70-documentation-reality-audit`.
+  - Purpose: update living docs in phases by checking them against code, routes, migrations, workflows, scripts, and current product decisions.
+  - First-pass verified facts: `.github/workflows` contains `32` workflows, backend schema migrations currently run through `supabase_schema_v25.sql`, backend `cargo test -- --list` reports `193` tests, and the desktop frontend has `25` test files.
+  - PR `#191` merged as `f39ea0e`; local `main` was clean afterward.
+- KAN-71 backend/API/schema documentation audit:
+  - Jira: `KAN-71 - Backend/API/schema documentation reality audit`.
+  - Branch: `docs/KAN-71-backend-api-schema-doc-audit`.
+  - Scope: verify backend route/API/schema/config documentation against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and tracked `.env.example` files.
+  - Verified facts: production router has `72` Axum `.route(...)` registrations plus `/api-docs`; handler modules count is `23`; schema files count is `21`; postcheck files count is `7`; latest migration remains `supabase_schema_v25.sql`; `cargo test -- --list` reports `193` tests.
+  - PR `#192` merged as `a920530`; local `main` was clean afterward.
+- KAN-72 Desktop/dashboard documentation audit:
+  - Jira: `KAN-72 - Desktop/dashboard documentation reality audit`.
+  - Branch: `docs/KAN-72-desktop-dashboard-doc-audit`.
+  - PR `#193` merged as `655478e`; Jira closure comment ID `10263`.
+  - Scope: verify Desktop React dashboard, Tauri backend, updater config, test counts, and desktop docs against `gitgov/src`, `gitgov/src-tauri`, `gitgov/package.json`, and `gitgov/src-tauri/tauri.conf.json`.
+  - Verified facts: React is `19.2.0`; `gitgov/src` has `99` TypeScript/TSX files; `gitgov/src/components/control_plane` has `27` component/helper modules; `src-tauri/src` has `31` Rust files; `src-tauri/src/lib.rs` registers `94` Tauri commands; `npm test -- --run` reports `25` files and `296` tests; `cargo test -- --list` in `src-tauri` reports `23` tests; updater endpoint/pubkey are configured in `tauri.conf.json`.
+  - Post-merge checks for `655478e` passed: `CI` run `25249226431`, `Release Readiness Gate` run `25249226413`, `Public Naming Guard` run `25249226412`, `Secret Scan` run `25249226425`, `SonarQube Governance` run `25249226427`, `Desktop Updater Readiness` run `25249226418`, `Governance Correlation Smoke` run `25249226410`, and `Quality Gate Policy Matrix` run `25249226420`.
+  - Non-goals: no runtime code change, no provider mutation, no secret printing, no web public docs audit beyond facts needed for Desktop comparisons, and no implementation of `KAN-69`.
+- KAN-73 CI/workflows/release automation documentation audit:
+  - Jira: `KAN-73 - CI/workflows/release automation documentation reality audit`.
+  - Branch: `docs/KAN-73-ci-workflows-doc-audit`.
+  - PR `#196` merged as `9952d47`.
+  - Scope: verify GitHub Actions workflow inventory, trigger families, artifact behavior, live branch-protection required checks, and release/readiness automation documentation against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and GitHub branch protection metadata.
+  - Verified facts so far: `.github/workflows` has `32` workflow files and GitHub reports the same `32` workflows active; trigger counts are `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, and `28` workflows using `actions/upload-artifact`; live `main` branch protection is strict and currently requires exactly `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+  - Post-merge checks for `9952d47` passed: `CI` run `25249588378`, `Release Readiness Gate` run `25249588369`, `Secret Scan` run `25249588396`, `Public Naming Guard` run `25249588388`, `SonarQube Governance` run `25249588373`, `Desktop Updater Readiness` run `25249588387`, `Governance Correlation Smoke` run `25249588376`, and `Quality Gate Policy Matrix` run `25249588382`.
+  - Observed follow-up: `Secret Scan` reported a non-failing GitHub Actions annotation that `gitleaks/gitleaks-action@v2` uses Node.js 20. GitHub says Node 24 becomes forced by default on June 2, 2026, and Node 20 is removed from the runner on September 16, 2026. Treat this as a small CI runtime follow-up, not as a KAN-73 failure.
+  - Non-goals: no workflow behavior change, no branch-protection mutation, no GitHub Actions variable/secret mutation, no provider mutation, no release-default change, no SonarCloud proposal, no Jenkins trigger-only work, and no implementation of `KAN-69`.
+- KAN-74 CI helper/runtime follow-up:
+  - Jira: `KAN-74 - CI helper/runtime follow-up`.
+  - Branch: `ci/KAN-74-helper-runtime-follow-up`.
+  - PR `#198` merged as `ae5771b`.
+  - Scope: align `scripts/github/set_required_checks.ps1` and `scripts/github/check_branch_protection.ps1` defaults with the live `main` required checks from KAN-73, and replace `gitleaks/gitleaks-action@v2` in Secret Scan with direct Gitleaks CLI execution to avoid the Node.js 20 action-runtime warning.
+  - Verified source facts: GitHub release `gitleaks/gitleaks` includes `gitleaks_8.30.0_linux_x64.tar.gz`; live `main` branch protection requires `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, and `Validate quality_gates warn/block matrix`.
+  - Implementation details: Secret Scan now downloads Gitleaks CLI `v8.30.0`, scans explicit PR/push commit ranges with `--log-opts`, and falls back when a force-push makes `github.event.before` unavailable in the checkout.
+  - Local validation passed: `git diff --check`, `.\scripts\security\publication_guard.ps1`, branch-protection helper read using the authenticated `gh` token, Gitleaks release tarball HEAD `200`, and local `gitleaks.exe detect --source . --log-opts 'main..HEAD'`.
+  - PR `#198` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+  - Post-merge checks for `ae5771b` passed: `CI` run `25250037671`, `Release Readiness Gate` run `25250037686`, `Secret Scan` run `25250037690`, `Public Naming Guard` run `25250037677`, `Quality Gate Policy Matrix` run `25250037685`, `Governance Correlation Smoke` run `25250037684`, `Desktop Updater Readiness` run `25250037688`, and `SonarQube Governance` run `25250037682`.
+  - Non-goals: no branch-protection mutation, no provider mutation, no secret or variable creation, no SonarCloud proposal, no Jenkins trigger-only work, no release-default change, and no implementation of `KAN-69`.
+- KAN-75 public web, roadmap, and stale-claim documentation audit:
+  - Jira: `KAN-75 - Public web roadmap claims documentation audit`.
+  - Branch: `docs/KAN-75-public-web-roadmap-claims-audit`.
+  - PR `#200` merged as `b393a82`.
+  - Scope: reconciled public web documentation and content architecture notes with actual repository state after the earlier backend/API, Desktop/dashboard, and workflows/scripts/ops documentation phases.
+  - Corrections completed: Next.js public web runtime from `15.5.10` to `15.5.15`; Jira maturity from preview wording to operational API/native signed webhook support; governance wording split across workstation blocking, advisory/default `/policy/check`, and opt-in release governance gates; Render-managed production wording separated from self-hosted reverse-proxy guidance; risk-outcome metrics described as surfaced/sample-based until SLO-calibrated; pricing reframed as enterprise evaluation/pilot fit; stale `/docs/privacy` references removed.
+  - Local validation passed: `git diff --check`, `.\scripts\security\publication_guard.ps1`, stale-claim search for corrected public phrases, `pnpm --dir gitgov-web build`, and `pnpm --dir gitgov-web typecheck` after Next regenerated `.next/types`.
+  - PR `#200` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+  - Post-merge checks for `b393a82` passed: `CI` run `25265387894`, `Release Readiness Gate` run `25265387888`, `Secret Scan` run `25265387889`, `Public Naming Guard` run `25265387885`, `Quality Gate Policy Matrix` run `25265387902`, `Governance Correlation Smoke` run `25265387895`, `Desktop Updater Readiness` run `25265387900`, and `SonarQube Governance` run `25265387890`.
+  - Non-goals: no runtime code change, no provider mutation, no secret printing, no branch-protection mutation, no SonarCloud proposal, no Jenkins trigger-only work, no OpenAPI/SDK blocker, and no implementation of `KAN-69`.
+- KAN-76 public agent documentation visibility map:
+  - Jira: `KAN-76 - Public agent documentation visibility map`.
+  - Branch: `docs/KAN-76-public-agent-doc-visibility`.
+  - PR `#202` merged as `8f311f2`.
+  - Scope: created `docs/AGENT_PUBLIC_CONTEXT.md`, a tracked public context document for external agents; summarized durable conclusions from ignored local strategy/forensic docs and the external deep-research report; clarified that restricted docs remain ignored by publication policy and `publication_guard`; and removed mitigated findings from the active-agent context so old issues are not treated as current backlog.
+  - Local validation passed: `git diff --check` and `.\scripts\security\publication_guard.ps1`.
+  - PR `#202` checks passed before merge, including `Security Guard`, `Server Clippy + Check`, `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`, `Validate quality_gates warn/block matrix`, `Workflow Lint`, `Sonar Scan + Quality Gate`, Vercel, and Vercel Preview Comments.
+  - Post-merge checks for `8f311f2` passed: `CI` run `25266101104`, `Release Readiness Gate` run `25266101089`, `Secret Scan` run `25266101093`, `Public Naming Guard` run `25266101097`, `Quality Gate Policy Matrix` run `25266101102`, `Governance Correlation Smoke` run `25266101092`, `Desktop Updater Readiness` run `25266101090`, and `SonarQube Governance` run `25266101101`.
+  - Non-goals: no force-add of `docs/ENTERPRISE_READINESS_DECISION.md`, `docs/AUDIT_*.md`, or `docs/INTEGRATIONS_AUDIT_*.md`; no runtime code change; no provider mutation; no secret printing; no branch-protection mutation; no SonarCloud proposal; no Jenkins trigger-only work; no OpenAPI/SDK blocker; and no implementation of `KAN-69`.
+
+## Latest KAN-67 Validation Notes
+
+- Jira: `KAN-67 - Monitor enterprise route auth smoke trend enforcement artifacts`.
+- Implementation branch: `hardening/KAN-67-enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`.
+- Implementation PR: `#188 - hardening(KAN-67): monitor auth smoke enforcement artifacts`.
+- Implementation commit: `0133ef2 hardening(KAN-67): monitor auth smoke enforcement artifacts`.
+- Main merge commit: `78d4878 Merge pull request #188 from yohandry10/hardening/KAN-67-enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.yml`.
+- Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-enforcement-artifact-monitor-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local monitor command passed:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke-trend-enforcement.yml -ArtifactName enterprise-route-auth-smoke-trend-enforcement -MaxAgeHours 192 -OutputPath out\enterprise-route-auth-smoke-trend-enforcement-artifact-monitor.json`
+- Local monitor result:
+  - status `PASS`
+  - source workflow run `25247747284`
+  - source artifact `enterprise-route-auth-smoke-trend-enforcement`
+  - source artifact ID `6761818040`
+  - artifact expired `false`
+  - artifact age `0.17h`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- PR `#188` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - Vercel preview: passed.
+- Post-merge checks on `main` commit `78d4878` passed:
+  - `CI` - run `25247988131`
+  - `Release Readiness Gate` - run `25247988122`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247988133`
+  - `Secret Scan` - run `25247988128`
+  - `Public Naming Guard` - run `25247988129`
+  - `Governance Correlation Smoke (Optional)` - run `25247988126`
+  - `Desktop Updater Readiness (Optional)` - run `25247988124`
+  - `SonarQube Governance (Non-Blocking)` - run `25247988127`
+- First manual monitor workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Enforcement Artifact Monitor`
+  - run `25248025190`
+  - artifact `enterprise-route-auth-smoke-trend-enforcement-artifact-monitor`
+  - artifact ID `6761892441`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T08:35:58Z`
+  - parsed result `status=PASS`, source enforcement run `25247747284`, source artifact `6761818040`, source age `0.28h`
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - no GitHub Actions variable or secret creation
+  - no provider, customer repository, branch protection, trend enforcement, or workflow dispatch mutation
+  - this monitor validates artifact freshness only; KAN-66 owns the enforcement decision
+
+## Latest KAN-66 Validation Notes
+
+- Jira: `KAN-66 - Enforce enterprise route auth smoke trend baseline`.
+- Implementation branch: `hardening/KAN-66-enterprise-route-auth-smoke-trend-enforcement`.
+- Implementation PR: `#186 - hardening(KAN-66): enforce enterprise auth smoke trend baseline`.
+- Implementation commit: `3c19b7f hardening(KAN-66): enforce enterprise auth smoke trend baseline`.
+- Main merge commit: `004eeea Merge pull request #186 from yohandry10/hardening/KAN-66-enterprise-route-auth-smoke-trend-enforcement`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-enforcement.yml`.
+- Trend script: `scripts/control-plane/generate_enterprise_route_auth_smoke_trend_report.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-enforcement-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-enforcement-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local enforcement command passed:
+  - `.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxReports 12 -Enforce -MaxLatestFailedChecks 0 -FailOnFailureIncrease -RequireLatestRunArtifact -OutputMarkdownPath out\KAN-66-enterprise-route-auth-smoke-trend-enforcement.md -OutputJsonPath out\KAN-66-enterprise-route-auth-smoke-trend-enforcement.json`
+- Local enforcement result:
+  - source run `25246304135`
+  - source artifact `enterprise-route-auth-smoke-25246304135`
+  - source artifact ID `6761394808`
+  - latest counts `9` passed, `0` failed
+  - failed-check delta `0`
+  - enforcement status `pass`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Post-merge checks on `main` commit `004eeea` passed:
+  - `CI` - run `25247711351`
+  - `Release Readiness Gate` - run `25247711349`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247711335`
+  - `Secret Scan` - run `25247711345`
+  - `Public Naming Guard` - run `25247711342`
+  - `Governance Correlation Smoke (Optional)` - run `25247711348`
+  - `Desktop Updater Readiness (Optional)` - run `25247711338`
+  - `SonarQube Governance (Non-Blocking)` - run `25247711340`
+- First manual workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Enforcement`
+  - run `25247747284`
+  - artifact `enterprise-route-auth-smoke-trend-enforcement`
+  - artifact ID `6761818040`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T08:19:25Z`
+  - enforcement status `pass`
+  - parsed latest successful source run `25246304135`
+  - parsed latest counts `9` passed, `0` failed
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - enforcement is workflow-scoped and opt-in, not a global release default
+  - clients can choose not to enable this gate
+
+## Latest KAN-65 Validation Notes
+
+- Jira: `KAN-65 - Monitor enterprise route auth smoke trend artifact freshness`.
+- Implementation branch: `hardening/KAN-65-enterprise-route-auth-smoke-trend-artifact-monitor`.
+- Implementation PR: `#184 - hardening(KAN-65): monitor enterprise auth smoke trend artifacts`.
+- Implementation commit: `1101e66 hardening(KAN-65): monitor enterprise auth smoke trend artifacts`.
+- Main merge commit: `8bd9cf0 Merge pull request #184 from yohandry10/hardening/KAN-65-enterprise-route-auth-smoke-trend-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-artifact-monitor.yml`.
+- Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-artifact-monitor-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local validation command passed:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke-trend-report.yml -ArtifactNamePrefix enterprise-route-auth-smoke-trend-report -MaxAgeHours 192 -OutputPath out\enterprise-route-auth-smoke-trend-artifact-monitor.json`
+- Local validation result:
+  - source run `25247310737`
+  - source artifact `enterprise-route-auth-smoke-trend-report`
+  - source artifact ID `6761702022`
+  - status `PASS`
+  - artifact age `0.13h`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Post-merge checks on `main` commit `8bd9cf0` passed:
+  - `CI` - run `25247484224`
+  - `Release Readiness Gate` - run `25247484227`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247484230`
+  - `Secret Scan` - run `25247484222`
+  - `Public Naming Guard` - run `25247484226`
+  - `Governance Correlation Smoke (Optional)` - run `25247484223`
+  - `Desktop Updater Readiness (Optional)` - run `25247484225`
+  - `SonarQube Governance (Non-Blocking)` - run `25247484231`
+- First manual workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Artifact Monitor`
+  - run `25247519159`
+  - artifact `enterprise-route-auth-smoke-trend-artifact-monitor`
+  - artifact ID `6761758944`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T08:05:56Z`
+  - parsed source trend run `25247310737`
+  - parsed source trend artifact `6761702022`
+  - parsed source age `0.2h`
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - no trend generation logic changed beyond KAN-64
+  - release blocking remains opt-in only; KAN-65 is freshness monitoring only
+
+## Latest KAN-64 Validation Notes
+
+- Jira: `KAN-64 - Trend enterprise route auth smoke artifacts`.
+- Implementation branch: `hardening/KAN-64-enterprise-route-auth-smoke-trend-report`.
+- Implementation PR: `#182 - hardening(KAN-64): add enterprise auth smoke trend report`.
+- Implementation commit: `af04995 hardening(KAN-64): add enterprise auth smoke trend report`.
+- Main merge commit: `45eec39 Merge pull request #182 from yohandry10/hardening/KAN-64-enterprise-route-auth-smoke-trend-report`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-trend-report.yml`.
+- Trend script: `scripts/control-plane/generate_enterprise_route_auth_smoke_trend_report.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-trend-report-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-trend-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Local validation command passed:
+  - `.\scripts\control-plane\generate_enterprise_route_auth_smoke_trend_report.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxReports 12 -GitHubToken <redacted> -OutputMarkdownPath out\KAN-64-enterprise-route-auth-smoke-trend.md -OutputJsonPath out\KAN-64-enterprise-route-auth-smoke-trend.json`
+- Local validation result:
+  - source run `25246304135`
+  - source artifact `enterprise-route-auth-smoke-25246304135`
+  - source artifact ID `6761394808`
+  - latest status `passed`
+  - `9` passed checks
+  - `0` failed checks
+  - trend `stable`
+- Local hygiene checks passed:
+  - `git diff --check`
+  - `.\scripts\security\publication_guard.ps1`
+- Post-merge checks on `main` commit `45eec39` passed:
+  - `CI` - run `25247275328`
+  - `Release Readiness Gate` - run `25247275146`
+  - `Quality Gate Policy Matrix (Optional)` - run `25247275134`
+  - `Secret Scan` - run `25247275150`
+  - `Public Naming Guard` - run `25247275137`
+  - `Governance Correlation Smoke (Optional)` - run `25247275132`
+  - `Desktop Updater Readiness (Optional)` - run `25247275133`
+  - `SonarQube Governance (Non-Blocking)` - run `25247275143`
+- First manual workflow validation passed:
+  - workflow `Enterprise Route Auth Smoke Trend Report`
+  - run `25247310737`
+  - artifact `enterprise-route-auth-smoke-trend-report`
+  - artifact ID `6761702022`
+  - artifact status: not expired
+  - artifact expires at `2026-07-31T07:53:51Z`
+  - parsed latest successful smoke run `25246304135`
+  - parsed latest check counts: `9` passed, `0` failed
+- Delivery notes:
+  - no Render deploy required
+  - no DB migration required
+  - no GitGov protected route probe was added beyond KAN-62
+  - release blocking remains opt-in only; KAN-64 is historical reporting only
+
+## Latest KAN-63 Validation Notes
+
+- Jira: `KAN-63 - Monitor enterprise route auth smoke artifact freshness`.
+- Implementation branch: `hardening/KAN-63-enterprise-route-auth-smoke-artifact-monitor`.
+- Implementation PR: `#180 - hardening(KAN-63): monitor enterprise auth smoke artifacts`.
+- Implementation commit: `800b906 hardening(KAN-63): monitor enterprise auth smoke artifacts`.
+- Main merge commit: `4342947 Merge pull request #180 from yohandry10/hardening/KAN-63-enterprise-route-auth-smoke-artifact-monitor`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke-artifact-monitor.yml`.
+- Shared validator: `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- Design: `docs/design/enterprise-route-auth-smoke-artifact-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-artifact-monitor-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Monitor behavior:
+  - `workflow_dispatch` with `max_age_hours`.
+  - weekly schedule at `47 15 * * 2`.
+  - monitors workflow `enterprise-route-auth-smoke.yml`.
+  - requires artifact prefix `enterprise-route-auth-smoke-`.
+  - uploads monitor artifact `enterprise-route-auth-smoke-artifact-monitor`.
+- Secret safety:
+  - no `.env` files are read.
+  - no provider secret values are read or printed.
+  - no GitGov API key is read or printed.
+  - only GitHub artifact metadata is read through the GitHub token.
+- Local validation passed:
+  - `.\scripts\control-plane\validate_github_evidence_report_artifact.ps1 -Repository yohandry10/Git-Gov -WorkflowFile enterprise-route-auth-smoke.yml -ArtifactNamePrefix enterprise-route-auth-smoke- -MaxAgeHours 192 -OutputPath out\enterprise-route-auth-smoke-artifact-monitor.json`.
+  - parsed result: `status=PASS`, source run `25246304135`, source artifact `6761394808`, observed age `0.15h`.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- PR `#180` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `4342947` passed:
+  - `CI` - run `25246990171`.
+  - `Release Readiness Gate` - run `25246990161`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25246990166`.
+  - `Secret Scan` - run `25246990197`.
+  - `Public Naming Guard` - run `25246990188`.
+  - `Governance Correlation Smoke (Optional)` - run `25246990170`.
+  - `Desktop Updater Readiness (Optional)` - run `25246990174`.
+  - `SonarQube Governance (Non-Blocking)` - run `25246990176`.
+- First manual workflow dispatch passed:
+  - Run `25247025700`.
+  - Artifact `enterprise-route-auth-smoke-artifact-monitor`.
+  - Artifact ID `6761616364`.
+  - Artifact status: not expired, expires at `2026-07-31T07:37:28Z`.
+  - Downloaded artifact parsed as `status=PASS`, source run `25246304135`, source artifact `6761394808`, source age `0.68h`.
+- No Render deploy, database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch against customer repositories, branch protection change, or release blocking default change was needed.
+
+## Latest KAN-62 Validation Notes
+
+- Jira: `KAN-62 - Automate enterprise route auth smoke evidence`.
+- Implementation branch: `hardening/KAN-62-enterprise-route-auth-smoke`.
+- Implementation PR: `#178 - hardening(KAN-62): automate enterprise route auth smoke`.
+- Implementation commit: `253f20d hardening(KAN-62): automate enterprise route auth smoke`.
+- Main merge commit: `e86c6bc Merge pull request #178 from yohandry10/hardening/KAN-62-enterprise-route-auth-smoke`.
+- Script: `scripts/control-plane/validate_enterprise_route_auth_smoke.ps1`.
+- Workflow: `.github/workflows/enterprise-route-auth-smoke.yml`.
+- Design: `docs/design/enterprise-route-auth-smoke-automation-mvp.md`.
+- Report: `docs/reports/enterprise-route-auth-smoke-automation-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Workflow behavior:
+  - `workflow_dispatch` with overrides for GitGov URL, org name, repository, release id, environment, and report-only mode.
+  - weekly schedule at `17 15 * * 1`.
+  - uploads `enterprise-route-auth-smoke-{run_id}`.
+  - uses repository variable `GITGOV_URL` when provided, otherwise production.
+  - uses repository secret `GITGOV_API_KEY`; missing key can be recorded as `skipped` with `-AllowMissingApiKey`.
+- Smoke matrix:
+  - public `GET /health` expects `200`.
+  - anonymous `GET /enterprise/adoption-profile?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/onboarding-checklist-tracking?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/release-approvals?org_name=...` expects `401`.
+  - anonymous `GET /enterprise/release-governance/evaluate?...` expects `401`.
+  - authenticated `GET /enterprise/adoption-profile?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/onboarding-checklist-tracking?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/release-approvals?org_name=...` expects `200`.
+  - authenticated `GET /enterprise/release-governance/evaluate?...` expects `200`.
+- Secret safety:
+  - no `.env` values are printed.
+  - no API key, Authorization header, provider token, or response body is written to artifacts.
+  - artifacts contain route ids, sanitized paths, expected/actual status codes, timing, and pass/fail status only.
+- Local validation passed:
+  - strict production smoke returned `status=passed`, `9` checks, `0` failures.
+  - missing-key mode with `-AllowMissingApiKey` returned `status=skipped`.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- PR `#178` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `e86c6bc` passed:
+  - `CI` - run `25246267909`.
+  - `Release Readiness Gate` - run `25246267897`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25246267908`.
+  - `Secret Scan` - run `25246267900`.
+  - `Public Naming Guard` - run `25246267906`.
+  - `Governance Correlation Smoke (Optional)` - run `25246267918`.
+  - `Desktop Updater Readiness (Optional)` - run `25246267904`.
+  - `SonarQube Governance (Non-Blocking)` - run `25246267912`.
+- First manual workflow dispatch passed:
+  - Run `25246304135`.
+  - Artifact `enterprise-route-auth-smoke-25246304135`.
+  - Artifact ID `6761394808`.
+  - Artifact status: not expired, expires at `2026-07-31T06:56:47Z`.
+  - Downloaded artifact parsed as `status=passed`, `checks=9`, `failures=0`.
+- No Render deploy, database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch against customer repositories, branch protection change, or release blocking default change was needed.
+
+## Latest KAN-61 Validation Notes
+
+- Jira: `KAN-61 - Enterprise route auth regression hardening`.
+- Implementation branch: `hardening/KAN-61-enterprise-route-auth-regression`.
+- Implementation PR: `#176 - hardening(KAN-61): cover enterprise route auth matrix`.
+- Implementation commits:
+  - `2de1fd8 hardening(KAN-61): cover enterprise route auth matrix`.
+  - `c92cd6b docs(KAN-61): record docker-backed validation`.
+- Main merge commit: `6483c53 Merge pull request #176 from yohandry10/hardening/KAN-61-enterprise-route-auth-regression`.
+- Backend hardening:
+  - `gitgov/gitgov-server/src/auth.rs` treats all `/enterprise/*` routes as sensitive admin paths for stale-auth-cache fail-closed behavior.
+  - `gitgov/gitgov-server/src/integration_tests.rs` adds a DB-backed Enterprise admin route auth/org-scope matrix.
+- Covered route classes:
+  - `GET /enterprise/adoption-profile`.
+  - `PUT /enterprise/adoption-profile`.
+  - `GET /enterprise/onboarding-checklist-tracking`.
+  - `PUT /enterprise/onboarding-checklist-tracking`.
+  - `GET /enterprise/release-approvals`.
+  - `GET /enterprise/release-governance/evaluate`.
+- Matrix assertions:
+  - anonymous caller returns `401`.
+  - scoped non-admin key returns `403`.
+  - global admin key without `org_name` returns `400`.
+  - org-scoped admin key cannot cross tenant boundaries and returns `403`.
+  - valid org-scoped admin access returns `200`.
+- Report: `docs/reports/enterprise-route-auth-regression-hardening-2026-05-02.md`.
+- Local validation passed:
+  - `cargo fmt` in `gitgov/gitgov-server`.
+  - `cargo check` in `gitgov/gitgov-server`.
+  - `cargo clippy -- -D warnings` in `gitgov/gitgov-server`.
+  - `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` in `gitgov/gitgov-server`.
+  - `cargo test enterprise_admin_routes_enforce_auth_and_org_scope -- --nocapture` with Docker-backed `TEST_DATABASE_URL` against temporary local Postgres on port `55433`.
+  - `cargo test` in `gitgov/gitgov-server`; `193` tests.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- Docker validation notes:
+  - Docker Desktop was restarted locally for DB-backed validation.
+  - Persistent `gitgov-db` was running, but host port `5433` was also held by a local `postgres` process.
+  - The DB-backed focused test therefore used an isolated temporary Postgres container on port `55433`, then removed it.
+  - Temporary `pg_hba.conf` changes tested on persistent `gitgov-db` were restored before continuing.
+- PR `#176` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `6483c53` passed:
+  - `CI` - run `25245741318`.
+  - `Release Readiness Gate` - run `25245741327`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25245741326`.
+  - `Secret Scan` - run `25245741329`.
+  - `Public Naming Guard` - run `25245741320`.
+  - `Governance Correlation Smoke (Optional)` - run `25245741322`.
+  - `Desktop Updater Readiness (Optional)` - run `25245741328`.
+  - `SonarQube Governance (Non-Blocking)` - run `25245741313`.
+- Render deploy `dep-d7qph6vlk1mc73d5lni0` reached `live` for commit `6483c53` on 2026-05-02.
+- Production route validation after deploy:
+  - `GET /health` returned `200`.
+  - Anonymous `GET /enterprise/adoption-profile?org_name=yohandry10` returned `401`.
+  - Authenticated `GET /enterprise/adoption-profile?org_name=yohandry10` returned `200`.
+  - Authenticated `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` returned `200`.
+- No database migration, provider API mutation, customer repository mutation, GitHub Actions variable/secret creation, workflow dispatch, branch protection change, or release blocking default change was needed.
+
+## Latest KAN-60 Validation Notes
+
+- Jira: `KAN-60 - Persist guided onboarding checklist tracking`.
+- Implementation branch: `product/KAN-60-guided-onboarding-checklist-tracking`.
+- Implementation PR: `#174 - product(KAN-60): persist guided onboarding checklist tracking`.
+- Implementation commit: `9b2afb8 product(KAN-60): persist guided onboarding checklist tracking`.
+- Main merge commit: `5ebbfa1 Merge pull request #174 from yohandry10/product/KAN-60-guided-onboarding-checklist-tracking`.
+- Backend routes:
+  - `GET /enterprise/onboarding-checklist-tracking`.
+  - `PUT /enterprise/onboarding-checklist-tracking`.
+- Database:
+  - table `enterprise_onboarding_checklist_tracking`.
+  - migration `gitgov/gitgov-server/supabase/supabase_schema_v25.sql`.
+  - postcheck `gitgov/gitgov-server/supabase/checks/v25_postcheck.sql`.
+- Dashboard:
+  - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+  - `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+  - `gitgov/src/store/useControlPlaneStore.ts`.
+- Tauri:
+  - `gitgov/src-tauri/src/control_plane/server.rs`.
+  - `gitgov/src-tauri/src/commands/server_commands.rs`.
+- Design: `docs/design/guided-onboarding-checklist-tracking-mvp.md`.
+- Report: `docs/reports/guided-onboarding-checklist-tracking-2026-05-02.md`.
+- Scope:
+  - persists per-org checklist tracking metadata.
+  - fields: status, owner, target date, external reference, notes.
+  - allowed statuses: `open`, `in-progress`, `waiting`, `done`.
+  - stage ids: `profile`, `providers`, `workflow-pack`, `remote-workflows`, `actions-config`, `release-governance`.
+  - tracking `done` is human/operator metadata only and does not change readiness scoring.
+- Safety:
+  - admin-only and org-scoped.
+  - global admin keys require `org_name`.
+  - new route is treated as a sensitive admin route for stale-auth-cache fail-closed behavior.
+  - no `.env` reads.
+  - no provider secret reads.
+  - no provider API calls.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - no release blocking by default.
+- Local validation passed:
+  - `cargo fmt`, `cargo check`, `cargo clippy -- -D warnings`, and `cargo test` in `gitgov/gitgov-server`; `192` tests.
+  - `cargo fmt`, `cargo check`, `cargo clippy -- -D warnings`, and `cargo test` in `gitgov/src-tauri`; `23` tests.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`; `28` tests.
+  - `npm run typecheck`.
+  - `npm run lint`.
+  - `npm test -- --run`; `25` files and `296` tests.
+  - `npm run build`; passed with existing Vite large chunk warning.
+  - `git diff --check`.
+  - `.\scripts\security\publication_guard.ps1`.
+- PR `#174` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `5ebbfa1` passed:
+  - `CI` - run `25244715786`.
+  - `Release Readiness Gate` - run `25244715777`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25244715780`.
+  - `Secret Scan` - run `25244715781`.
+  - `Public Naming Guard` - run `25244715778`.
+  - `Governance Correlation Smoke (Optional)` - run `25244715779`.
+  - `Desktop Updater Readiness (Optional)` - run `25244715903`.
+  - `SonarQube Governance (Non-Blocking)` - run `25244715783`.
+- Production DB migration `v25` was applied on 2026-05-02 using ignored local `DATABASE_URL` without printing credentials.
+- `gitgov/gitgov-server/supabase/checks/v25_postcheck.sql` passed:
+  - `enterprise_onboarding_checklist_tracking.table_exists` - `PASS`.
+  - `enterprise_onboarding_checklist_tracking.primary_key` - `PASS`.
+  - `enterprise_onboarding_checklist_tracking.updated_at_index` - `PASS`.
+- Render deploy `dep-d7qol80k1i2s73dpedag` reached `live` for commit `5ebbfa1` on 2026-05-02.
+- Production route validation after migration and deploy:
+  - `GET /health` returned `ok`.
+  - Anonymous `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` returned `401`.
+  - Authenticated initial `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` returned `200` with `found=false`.
+  - Authenticated `PUT /enterprise/onboarding-checklist-tracking` returned `200` with `org_id` and `updated_at` present.
+  - Authenticated final `GET /enterprise/onboarding-checklist-tracking?org_name=yohandry10` returned `200` with `found=true` and `item_count=0`.
+
+## Latest KAN-59 Validation Notes
+
+- Jira: `KAN-59 - Dashboard guided enterprise onboarding checklist`.
+- Implementation branch: `product/KAN-59-dashboard-guided-onboarding-checklist`.
+- Implementation PR: `#172 - product(KAN-59): add guided onboarding checklist`.
+- Implementation commit: `a24e34b product(KAN-59): add guided onboarding checklist`.
+- Main merge commit: `d2ce33b Merge pull request #172 from yohandry10/product/KAN-59-dashboard-guided-onboarding-checklist`.
+- Dashboard helper: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Dashboard UI: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Design: `docs/design/dashboard-guided-onboarding-checklist-mvp.md`.
+- Report: `docs/reports/dashboard-guided-onboarding-checklist-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no provider API calls.
+  - no secret value printing.
+  - secret names may be displayed, but values are never read or generated.
+  - no GitHub Actions variable/secret creation.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no workflow dispatch or branch protection mutation.
+  - advisory/non-blocking by default.
+  - no release blocking by default.
+- Local validation already run:
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `26` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `294` tests.
+  - `npm run build`: passed with existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#172` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `d2ce33b` passed:
+  - `CI` - run `25244188759`.
+  - `Release Readiness Gate` - run `25244188770`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25244188767`.
+  - `Secret Scan` - run `25244188764`.
+  - `Public Naming Guard` - run `25244188766`.
+  - `Governance Correlation Smoke (Optional)` - run `25244188774`.
+  - `Desktop Updater Readiness (Optional)` - run `25244188758`.
+  - `SonarQube Governance (Non-Blocking)` - run `25244188762`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-58 Validation Notes
+
+- Jira: `KAN-58 - Add dashboard onboarding remediation export`.
+- Implementation branch: `product/KAN-58-dashboard-onboarding-remediation-export`.
+- Implementation PR: `#170 - product(KAN-58): export onboarding remediation plan`.
+- Implementation commit: `43ac78e product(KAN-58): export onboarding remediation plan`.
+- Main merge commit: `4f0eff5 Merge pull request #170 from yohandry10/product/KAN-58-dashboard-onboarding-remediation-export`.
+- Dashboard helper: `gitgov/src/components/control_plane/dashboard-helpers.ts`.
+- Dashboard UI: `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
+- Design: `docs/design/dashboard-onboarding-remediation-export-mvp.md`.
+- Report: `docs/reports/dashboard-onboarding-remediation-export-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no provider API calls.
+  - no secret value printing.
+  - secret names may be listed, but values are never read or generated.
+  - placeholder commands use `<value>` only.
+  - no GitHub Actions variable/secret creation.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no workflow dispatch or branch protection mutation.
+  - advisory/non-blocking by default.
+  - no release blocking by default.
+- Local validation already run:
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `24` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test -- --run`: passed, `25` test files and `292` tests.
+  - `npm run build`: passed with existing Vite large chunk warning.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#170` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `4f0eff5` passed:
+  - `CI` - run `25243856927`.
+  - `Release Readiness Gate` - run `25243856920`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25243856933`.
+  - `Secret Scan` - run `25243856930`.
+  - `Public Naming Guard` - run `25243856934`.
+  - `Governance Correlation Smoke (Optional)` - run `25243856931`.
+  - `Desktop Updater Readiness (Optional)` - run `25243856923`.
+  - `SonarQube Governance (Non-Blocking)` - run `25243856915`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-57 Validation Notes
+
+- Jira: `KAN-57 - Generate enterprise onboarding remediation plan`.
+- Implementation branch: `product/KAN-57-enterprise-onboarding-remediation-plan`.
+- Implementation PR: `#168 - product(KAN-57): generate onboarding remediation plan`.
+- Implementation commit: `1ef7fce product(KAN-57): generate onboarding remediation plan`.
+- Main merge commit: `dca7e0b Merge pull request #168 from yohandry10/product/KAN-57-enterprise-onboarding-remediation-plan`.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_remediation_plan.ps1`.
+- Design: `docs/design/enterprise-onboarding-remediation-plan-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-remediation-plan-2026-05-02.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no secret value printing.
+  - secret names may be listed, but values are never read or generated.
+  - no GitHub Actions variable/secret creation.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no workflow dispatch or branch protection mutation.
+  - advisory/non-blocking by default.
+  - no release blocking by default.
+- Local validation already run:
+  - PowerShell parser check: passed.
+  - `scripts/control-plane/generate_enterprise_onboarding_readiness_report.ps1` produced ExampleCo readiness status `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, and `0` blocked stages.
+  - `scripts/control-plane/generate_enterprise_onboarding_remediation_plan.ps1` produced remediation status `needs-action`, `3` actions, `3` variable names, and `2` secret names with placeholder-only commands.
+  - generated output scan for `Authorization`, `Bearer`, `ATATT`, `vck_`, `gho_`, `JIRA_API_TOKEN=`, `GITGOV_API_KEY=`, and `SONAR_TOKEN=`: passed with no matches.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#168` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `dca7e0b` passed:
+  - `CI` - run `25243574261`.
+  - `Release Readiness Gate` - run `25243574245`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25243574251`.
+  - `Secret Scan` - run `25243574256`.
+  - `Public Naming Guard` - run `25243574262`.
+  - `Governance Correlation Smoke (Optional)` - run `25243574244`.
+  - `Desktop Updater Readiness (Optional)` - run `25243574236`.
+  - `SonarQube Governance (Non-Blocking)` - run `25243577058`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-56 Validation Notes
+
+- Jira: `KAN-56 - Monitor enterprise onboarding readiness trend deterioration`.
+- Implementation branch: `ops/KAN-56-enterprise-onboarding-readiness-trend-monitor`.
+- Implementation PR: `#166 - ops(KAN-56): monitor onboarding readiness trend`.
+- Implementation commit: `b120174 ops(KAN-56): monitor onboarding readiness trend`.
+- Main merge commit: `89175b3 Merge pull request #166 from yohandry10/ops/KAN-56-enterprise-onboarding-readiness-trend-monitor`.
+- Script: `scripts/control-plane/validate_enterprise_onboarding_readiness_trend_monitor.ps1`.
+- Workflow: `.github/workflows/enterprise-onboarding-readiness-trend-monitor.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-trend-monitor-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-trend-monitor-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - report-only by default.
+  - no release blocking by default.
+- Local validation already run:
+  - command used `scripts/control-plane/validate_enterprise_onboarding_readiness_trend_monitor.ps1`.
+  - source workflow file: `enterprise-onboarding-readiness-trend-report.yml`.
+  - source artifact: `enterprise-onboarding-readiness-trend-report`.
+  - source trend run: `25212387234`.
+  - source trend artifact ID: `6748686954`.
+  - result: monitor status `ready`, latest readiness status `needs-action`, score `75`, trend `stable`, `0` blocked stages, `0` findings.
+  - strict mode without `-ReportOnly` exited `0` because monitor status was `ready`.
+  - PowerShell parser check: passed.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#166` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `89175b3` passed:
+  - `CI` - run `25212797552`.
+  - `Release Readiness Gate` - run `25212797547`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25212797530`.
+  - `Secret Scan` - run `25212797571`.
+  - `Public Naming Guard` - run `25212797553`.
+  - `Governance Correlation Smoke (Optional)` - run `25212797545`.
+  - `Desktop Updater Readiness (Optional)` - run `25212797541`.
+  - `SonarQube Governance (Non-Blocking)` - run `25212797561`.
+  - scheduled `Release Readiness Gate` - run `25212844642`.
+- First manual trend monitor workflow validation passed:
+  - Run `25212805979`.
+  - Artifact `enterprise-onboarding-readiness-trend-monitor`.
+  - Artifact ID `6748834779`.
+  - Artifact status: not expired, expires at `2026-07-30T11:32:21Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-55 Validation Notes
+
+- Jira: `KAN-55 - Trend enterprise onboarding readiness evidence artifacts`.
+- Implementation branch: `ops/KAN-55-enterprise-onboarding-readiness-trend`.
+- Implementation PR: `#164 - ops(KAN-55): trend onboarding readiness artifacts`.
+- Implementation commit: `1699e95 ops(KAN-55): trend onboarding readiness artifacts`.
+- Main merge commit: `e5c259d Merge pull request #164 from yohandry10/ops/KAN-55-enterprise-onboarding-readiness-trend`.
+- Script: `scripts/control-plane/generate_enterprise_onboarding_readiness_trend_report.ps1`.
+- Workflow: `.github/workflows/enterprise-onboarding-readiness-trend-report.yml`.
+- Design: `docs/design/enterprise-onboarding-readiness-trend-mvp.md`.
+- Report: `docs/reports/enterprise-onboarding-readiness-trend-2026-05-01.md`.
+- Runbook: `docs/runbooks/enterprise-self-service-adoption.md`.
+- Safety:
+  - no `.env` reads.
+  - no provider secret reads.
+  - no customer repository mutation.
+  - no provider mutation.
+  - no GitHub Actions variable/secret creation.
+  - no workflow dispatch or branch protection mutation.
+  - no release blocking by default.
+- Local validation already run:
+  - command used `scripts/control-plane/generate_enterprise_onboarding_readiness_trend_report.ps1`.
+  - workflow file: `enterprise-onboarding-readiness.yml`.
+  - artifact prefix: `enterprise-onboarding-readiness-`.
+  - latest successful source run: `25211644692`.
+  - artifact: `enterprise-onboarding-readiness-25211644692`.
+  - result: parsed `1` report, latest status `needs-action`, score `75`, `3` ready stages, `3` needs-action stages, `0` blocked stages, trend direction `stable`.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- PR `#164` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `e5c259d` passed:
+  - `CI` - run `25212383270`.
+  - `Release Readiness Gate` - run `25212383263`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25212383274`.
+  - `Secret Scan` - run `25212383265`.
+  - `Public Naming Guard` - run `25212383284`.
+  - `Governance Correlation Smoke (Optional)` - run `25212383273`.
+  - `Desktop Updater Readiness (Optional)` - run `25212383275`.
+  - `SonarQube Governance (Non-Blocking)` - run `25212383279`.
+- First manual trend workflow validation passed:
+  - Run `25212387234`.
+  - Artifact `enterprise-onboarding-readiness-trend-report`.
+  - Artifact ID `6748686954`.
+  - Artifact status: not expired, expires at `2026-07-30T11:15:52Z`.
+- No database migration, Render deploy, Vercel production environment change, GitHub Actions secret/variable creation, branch protection mutation, provider mutation, customer repository mutation, remote apply run, workflow dispatch against customer repositories, or provider webhook mutation was needed.
+
+## Latest KAN-47 Validation Notes
+
+- Jira: `KAN-47 - Add optional release governance enforcement gate`.
+- Implementation branch: `ops/KAN-47-release-governance-enforcement-gate`.
+- Implementation PR: `#148 - ops(KAN-47): add release governance enforcement gate`.
+- Implementation commit: `b6b2854 ops(KAN-47): add release governance enforcement gate`.
+- Design: `docs/design/release-governance-enforcement-gate-mvp.md`.
+- Runbook: `docs/runbooks/release-governance-gate.md`.
+- Report: `docs/reports/release-governance-enforcement-gate-2026-05-01.md`.
+- Scope:
+  - add `scripts/control-plane/validate_release_governance_gate.ps1`.
+  - add manual workflow `.github/workflows/release-governance-gate.yml`.
+  - keep workflow `workflow_dispatch` only; no push, PR, or scheduled blocking by default.
+  - fail only when `-Enforce` is set and the KAN-46 evaluator returns `blocking=true`.
+  - support optional stricter switches `-FailOnWouldBlock` and `-RequirePolicySatisfied`.
+  - update CLI workflow template generation to include `release-governance-gate.yml` only for `formal-approval` plus non-`record-only` release governance.
+  - update dashboard workflow template pack generation with the same inclusion rule.
+- Product rule:
+  - KAN-47 supplies an opt-in enforcement mechanism, not a default release blocker.
+  - record-only customer profiles do not get the generated release governance gate template.
+  - approval-required and quorum-required profiles can get a manual gate that defaults to enforcement because the customer explicitly selected blocking policy.
+- Local validation already run:
+  - report-only release governance gate script smoke against production: passed with `status=recorded`, `policy_mode=record-only`, `blocking=false`, and `would_block=false`.
+  - enforced release governance gate script smoke against production: passed because current profile is `record-only`.
+  - CLI workflow template generation with ExampleCo record-only profile: passed with `13` templates and no release governance gate.
+  - CLI workflow template generation with quorum opt-in profile: passed with `14` templates including `.github/workflows/release-governance-gate.yml`.
+  - YAML parse validation for repo workflow and generated gate template: passed.
+  - `npm test -- --run src/test/components/dashboard-helpers.test.ts`: passed, `16` tests.
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm run build`: passed with the existing Vite large chunk warning.
+  - `npm test -- --run`: passed, `25` test files and `284` tests.
+  - `git diff --check`: passed.
+  - `.\scripts\security\publication_guard.ps1`: passed.
+- Secret safety:
+  - no provider token, `.env` value, Authorization header, webhook secret, or raw customer credential is read, printed, or stored by this change.
+- No database migration, backend route change, provider setting change, customer repository mutation, or Vercel production environment change is needed.
+- PR `#148` checks passed before merge:
+  - `Security Guard`: passed.
+  - `Server Clippy + Check`: passed.
+  - `Desktop Rust Clippy`: passed.
+  - `Frontend Lint + Typecheck`: passed.
+  - `Website Lint + Typecheck + Build`: passed.
+  - `Workflow Lint`: passed.
+  - `Validate quality_gates warn/block matrix`: passed.
+  - `Sonar Scan + Quality Gate`: passed.
+  - `Block internal-assistant markers in branch/commits`: passed.
+  - `Vercel`: passed.
+  - `Vercel Preview Comments`: passed.
+- Post-merge checks for commit `b6b2854` passed:
+  - `CI` - run `25208426343`.
+  - `Release Readiness Gate` - run `25208426384`.
+  - `Quality Gate Policy Matrix (Optional)` - run `25208426354`.
+  - `Secret Scan` - run `25208426359`.
+  - `Public Naming Guard` - run `25208426346`.
+  - `Governance Correlation Smoke (Optional)` - run `25208426363`.
+  - `Desktop Updater Readiness (Optional)` - run `25208426341`.
+  - `SonarQube Governance (Non-Blocking)` - run `25208426365`.
+- First manual `Release Governance Gate` workflow run on `main` passed:
+  - Run `25208470238`.
+  - Head SHA `b6b285403455fc929eff903270bc7725a430628f`.
+  - Inputs used report/non-blocking mode with `enforce_gate=false`, `fail_on_would_block=false`, and `require_policy_satisfied=false`.
+  - Result: `passed=true`, HTTP `200`, `status=recorded`, `policy_mode=record-only`, `policy_enforcement=disabled`, `policy_satisfied=true`, `blocking=false`, `would_block=false`, `valid_approval_count=0`, and `required_approval_count=0`.
+  - Artifact `release-governance-gate-25208470238`, ID `6747272652`, expires `2026-05-31T08:44:26Z`, not expired.
+
+## Current KAN-28 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-trend-enforcement.yml`.
+- Script: `scripts/control-plane/generate_product_vulnerability_review_trend_report.ps1`.
+- Report: `docs/reports/product-vulnerability-trend-enforcement-2026-04-30.md`.
+- Roadmap doc: `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md`.
+- Default enforcement rules:
+  - latest parsed report failures must be `0`.
+  - latest parsed report findings must be at most `1`.
+  - finding count must not increase versus the oldest analyzed report.
+  - failure count must not increase versus the oldest analyzed report.
+  - latest successful Product Vulnerability Review run must have a parseable `product-vulnerability-review-*` artifact.
+- Local validation passed against workflow run `25157972836`, artifact `product-vulnerability-review-25157972836`, with `5` pass, `1` expected finding, and `0` fail.
+
+## Current KAN-27 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-trend-report.yml`.
+- Script: `scripts/control-plane/generate_product_vulnerability_review_trend_report.ps1`.
+- Report: `docs/reports/product-vulnerability-review-trend-2026-04-30.md`.
+- Runbook: `docs/runbooks/product-vulnerability-review-automation.md`.
+- The script downloads recent successful `product-vulnerability-review.yml` artifacts with prefix `product-vulnerability-review-`, parses sanitized `summary.json`, and writes Markdown/JSON trend evidence.
+- Local validation analyzed workflow run `25157972836`, artifact `product-vulnerability-review-25157972836`, artifact ID `6726899384`, and produced trend status `findings` with `5` pass, `1` expected finding, and `0` fail.
+- Scheduled trend report time is Friday `13:03 UTC`.
+
+## Current KAN-26 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review-artifact-monitor.yml`.
+- Report: `docs/reports/product-vulnerability-review-artifact-monitor-2026-04-30.md`.
+- Reuses `scripts/control-plane/validate_github_evidence_report_artifact.ps1`.
+- The shared validator now supports `-ArtifactNamePrefix`, needed because Product Vulnerability Review artifacts are named `product-vulnerability-review-{run_id}`.
+- Default max artifact age is `192` hours.
+- Scheduled monitor time is Friday `12:53 UTC`.
+
+## Current KAN-25 Implementation Notes
+
+- Workflow: `.github/workflows/product-vulnerability-review.yml`.
+- Runbook: `docs/runbooks/product-vulnerability-review-automation.md`.
+- Report: `docs/reports/product-vulnerability-review-automation-2026-04-30.md`.
+- Scheduled default mode: `DependenciesOnly` every Thursday at `12:41 UTC`.
+- Manual modes: `DependenciesOnly`, `StaticOnly`, `RuntimeSmoke`, and `Full`.
+- The KAN-24 runner is being made cross-platform for Ubuntu GitHub runners and local Windows use.
+
+## Current KAN-24 Implementation Notes
+
+- Master plan: `docs/security/product-vulnerability-review-plan-2026-04-30.md`.
+- Live report: `docs/reports/product-vulnerability-review-2026-04-30.md`.
+- Reproducible runner: `scripts/security/run_product_vulnerability_review.ps1`.
+- Generated sanitized evidence directory: `docs/reports/product-vulnerability-review-2026-04-30/`.
+- Main fixes in the KAN-24 branch:
+  - GitHub Actions PowerShell script blocks now pass GitHub/input context through `env` instead of direct shell interpolation.
+  - Frontend and website dependency advisories were remediated; `npm audit --json` and `pnpm audit --json` pass.
+  - Backend and desktop Rust dependency chains were refreshed; `cargo deny check` passes for both, and desktop `cargo audit` exits 0.
+  - Backend `cargo audit` still reports `rsa` through inactive `sqlx-mysql`; documented as not reachable after `cargo tree` reachability checks.
+  - Windows external URL opening no longer uses `cmd /C start`.
+  - Website contact API has explicit body/field bounds and PII-safe logging.
+  - Website download metadata is constrained to the `public` root.
+  - Website security headers were added with a Next-compatible CSP.
+  - Evidence packet JSON download filenames are sanitized.
+- No critical/high reachable vulnerability remained open after the latest full runner.

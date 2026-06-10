@@ -16,6 +16,13 @@ pub async fn sse_stream(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    // SSE streams dashboard/governance refresh signals; restrict to Admin per
+    // the documented contract (the data it triggers a refresh for — stats and
+    // dashboard — is itself Admin-gated).
+    if let Err(err) = require_admin(&auth_user) {
+        return err.into_response();
+    }
+
     // Acquire a connection permit from the semaphore.
     let permit = match state.sse_max_connections.clone().try_acquire_owned() {
         Ok(p) => p,
@@ -38,6 +45,9 @@ pub async fn sse_stream(
 
     let mut rx = state.sse_tx.subscribe();
     let client_id = auth_user.client_id.clone();
+    // Tenant scope of this subscriber: a scoped key only receives notifications
+    // for its own org; a global-admin key (org_id = None) receives all.
+    let subscriber_org = auth_user.org_id.clone();
 
     tracing::info!(
         client_id = %client_id,
@@ -54,6 +64,10 @@ pub async fn sse_stream(
         loop {
             match tokio::time::timeout(std::time::Duration::from_secs(30), rx.recv()).await {
                 Ok(Ok(notification)) => {
+                    // Tenant isolation: never deliver another org's activity signal.
+                    if !sse_subscriber_should_receive(subscriber_org.as_deref(), &notification) {
+                        continue;
+                    }
                     match serde_json::to_string(&notification) {
                         Ok(data) => {
                             let event: Result<Event, Infallible> = Ok(Event::default().data(data));
@@ -90,4 +104,21 @@ pub async fn sse_stream(
     };
 
     Sse::new(stream).keep_alive(KeepAlive::default()).into_response()
+}
+
+/// Decides whether an SSE subscriber should receive a given notification.
+/// `NewEvents` is tenant-scoped: a scoped subscriber only receives signals for
+/// its own org; a global-admin subscriber (`subscriber_org = None`) receives all.
+/// Heartbeat / StatsUpdated carry no tenant data and always pass through.
+fn sse_subscriber_should_receive(
+    subscriber_org: Option<&str>,
+    notification: &SseNotification,
+) -> bool {
+    match notification {
+        SseNotification::NewEvents { org_id, .. } => match subscriber_org {
+            None => true,
+            Some(sub) => org_id.as_deref() == Some(sub),
+        },
+        _ => true,
+    }
 }

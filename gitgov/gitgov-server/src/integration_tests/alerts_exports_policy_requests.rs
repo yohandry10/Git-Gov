@@ -108,6 +108,7 @@ async fn export_includes_policy_drift_and_policy_requests_in_json_and_csv() {
         "events": [{
             "event_uuid": "export-drift-0001",
             "event_type": "commit",
+            "repo_full_name": "org/repo",
             "user_login": "export-admin",
             "files": [],
             "status": "success",
@@ -156,7 +157,7 @@ async fn export_includes_policy_drift_and_policy_requests_in_json_and_csv() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/org/repo/requests",
+        "/policy/org%2Frepo/requests",
         Some(&policy_request_payload.to_string()),
         Some(&api_key),
     )
@@ -247,7 +248,7 @@ async fn policy_change_request_can_be_created_and_approved_by_admin() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/acme/repo/requests",
+        "/policy/acme%2Frepo/requests",
         Some(&create_payload.to_string()),
         Some(&dev_key),
     )
@@ -282,7 +283,7 @@ async fn policy_change_request_can_be_created_and_approved_by_admin() {
     assert_eq!(parsed["decided_by"], "policy-admin");
 
     let (status, body) =
-        json_request(&app, "GET", "/policy/acme/repo", None, Some(&admin_key)).await;
+        json_request(&app, "GET", "/policy/acme%2Frepo", None, Some(&admin_key)).await;
     assert_eq!(status, StatusCode::OK, "get policy failed: {}", body);
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(parsed["config"]["rules"]["require_pull_request"], true);
@@ -305,7 +306,7 @@ async fn policy_change_request_rejects_self_approval() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/acme/repo/requests",
+        "/policy/acme%2Frepo/requests",
         Some(&create_payload.to_string()),
         Some(&admin_key),
     )
@@ -350,7 +351,7 @@ async fn policy_change_request_can_be_rejected_by_admin() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/acme/repo/requests",
+        "/policy/acme%2Frepo/requests",
         Some(&create_payload.to_string()),
         Some(&dev_key),
     )
@@ -378,7 +379,7 @@ async fn policy_change_request_can_be_rejected_by_admin() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?status=rejected&limit=10&offset=0",
+        "/policy/acme%2Frepo/requests?status=rejected&limit=10&offset=0",
         None,
         Some(&admin_key),
     )
@@ -433,7 +434,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/acme/repo/requests",
+        "/policy/acme%2Frepo/requests",
         Some(&create_payload_a.to_string()),
         Some(&dev_a_key),
     )
@@ -455,7 +456,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "POST",
-        "/policy/acme/repo/requests",
+        "/policy/acme%2Frepo/requests",
         Some(&create_payload_b.to_string()),
         Some(&dev_b_key),
     )
@@ -470,7 +471,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?limit=20&offset=0",
+        "/policy/acme%2Frepo/requests?limit=20&offset=0",
         None,
         Some(&dev_a_key),
     )
@@ -487,7 +488,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?limit=20&offset=0",
+        "/policy/acme%2Frepo/requests?limit=20&offset=0",
         None,
         Some(&dev_b_key),
     )
@@ -504,7 +505,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?status=pending&limit=20&offset=0",
+        "/policy/acme%2Frepo/requests?status=pending&limit=20&offset=0",
         None,
         Some(&admin_key),
     )
@@ -541,7 +542,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?status=approved&limit=20&offset=0",
+        "/policy/acme%2Frepo/requests?status=approved&limit=20&offset=0",
         None,
         Some(&dev_b_key),
     )
@@ -562,7 +563,7 @@ async fn policy_change_request_scope_is_enforced_for_multisession_listing() {
     let (status, body) = json_request(
         &app,
         "GET",
-        "/policy/acme/repo/requests?status=approved&limit=20&offset=0",
+        "/policy/acme%2Frepo/requests?status=approved&limit=20&offset=0",
         None,
         Some(&admin_key),
     )

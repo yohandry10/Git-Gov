@@ -133,11 +133,37 @@ pub async fn list_pr_merges(
     let limit = if query.limit == 0 { 50 } else { query.limit.min(500) } as i64;
     let offset = query.offset as i64;
 
+    let scoped_org = match resolve_required_product_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        query.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org) => org,
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(serde_json::json!({
+                    "entries": [],
+                    "total": 0,
+                    "error": match err {
+                        OrgScopeError::BadRequest => "org_name is required for global admin keys",
+                        OrgScopeError::NotFound => "Organization not found",
+                        OrgScopeError::Forbidden => "Requested org is outside API key scope",
+                        OrgScopeError::Internal => "Internal database error",
+                    },
+                })),
+            )
+                .into_response()
+        }
+    };
+
     match state
         .db
         .list_pr_merge_evidence(
-            auth_user.org_id.as_deref(),
-            query.org_name.as_deref(),
+            Some(scoped_org.id.as_str()),
+            None,
             query.repo_full_name.as_deref(),
             query.merged_by.as_deref(),
             limit,

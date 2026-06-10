@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useState, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -9,8 +9,9 @@ import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/shared/Button'
 import { Modal } from '@/components/shared/Modal'
 import { LanguagePreferenceSelector } from '@/components/shared/LanguagePreferenceSelector'
-import { User, FolderOpen, FileCode, LogOut, Shield, Users, Download, RefreshCw, Sparkles, ExternalLink, Globe, Bell, Server, Settings as SettingsIcon } from 'lucide-react'
+import { User, FolderOpen, FileCode, LogOut, Shield, Users, Download, RefreshCw, Sparkles, ExternalLink, Globe, Bell, Server, Settings as SettingsIcon, AlertTriangle } from 'lucide-react'
 import { TIMEZONES, detectBrowserTimezone, formatTs } from '@/lib/timezone'
+import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import { AdminOnboardingPanel } from '@/components/control_plane/AdminOnboardingPanel'
 import { TeamManagementPanel } from '@/components/control_plane/TeamManagementPanel'
 import { ApiKeyManagerWidget } from '@/components/control_plane/ApiKeyManagerWidget'
@@ -18,6 +19,16 @@ import { ServerConfigPanel } from '@/components/control_plane/ServerConfigPanel'
 import { loadNotificationPrefs, saveNotificationPrefs, type NotificationPrefs } from '@/lib/notifications'
 
 type SettingsTab = 'preferences' | 'organization' | 'account' | 'repository' | 'connection'
+
+interface DesktopOutboxStatus {
+  pending_count: number
+  retry_scheduled_count: number
+  dead_letter_count: number
+  max_attempts: number
+  next_attempt_at?: number | null
+  last_error?: string | null
+  last_dead_letter_at?: number | null
+}
 
 const SETTINGS_TABS: Array<{
   id: SettingsTab
@@ -117,6 +128,9 @@ export function SettingsPage() {
   const [pinInput, setPinInput] = useState('')
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(loadNotificationPrefs)
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => readSettingsTabFromHash())
+  const [outboxStatus, setOutboxStatus] = useState<DesktopOutboxStatus | null>(null)
+  const [isOutboxStatusLoading, setIsOutboxStatusLoading] = useState(false)
+  const [outboxStatusError, setOutboxStatusError] = useState<string | null>(null)
   const isControlPlaneAdmin = userRole === 'Admin'
   const canManageOrgSettings = isControlPlaneAdmin
   const remoteUrl = validation?.remote_url ?? ''
@@ -157,7 +171,20 @@ export function SettingsPage() {
                   ? t('settings.updates.checking')
                   : updaterStatus === 'no-update'
                     ? t('settings.updates.noUpdate')
-                    : t('settings.updates.idle')
+                  : t('settings.updates.idle')
+
+  const refreshOutboxStatus = useCallback(async () => {
+    setIsOutboxStatusLoading(true)
+    setOutboxStatusError(null)
+    try {
+      const status = await tauriInvoke<DesktopOutboxStatus>('cmd_server_get_outbox_status')
+      setOutboxStatus(status)
+    } catch (e) {
+      setOutboxStatusError(parseCommandError(String(e)).message)
+    } finally {
+      setIsOutboxStatusLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -166,6 +193,12 @@ export function SettingsPage() {
     onHashChange()
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'connection') {
+      void refreshOutboxStatus()
+    }
+  }, [activeTab, refreshOutboxStatus])
 
   const selectTab = (tab: SettingsTab) => {
     setActiveTab(tab)
@@ -296,6 +329,77 @@ export function SettingsPage() {
                 <p className="text-[10px] uppercase tracking-widest text-surface-500">{t('settings.connection.transport')}</p>
                 <p className="mt-2 text-xs font-semibold text-surface-100">{controlPlaneTransport}</p>
               </div>
+            </div>
+
+            <div className="mb-4 rounded-lg border border-white/8 bg-surface-900/50 p-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-surface-500">
+                    <AlertTriangle
+                      size={12}
+                      className={outboxStatus?.dead_letter_count ? 'text-danger-400' : 'text-surface-500'}
+                    />
+                    {t('settings.outbox.title')}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-surface-500">
+                    {t('settings.outbox.body')}
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void refreshOutboxStatus()}
+                  loading={isOutboxStatusLoading}
+                >
+                  <RefreshCw size={13} strokeWidth={1.5} />
+                  {t('settings.outbox.refresh')}
+                </Button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <div className="rounded border border-surface-700/30 bg-surface-950/40 p-2">
+                  <p className="text-[9px] uppercase tracking-widest text-surface-500">{t('settings.outbox.pending')}</p>
+                  <p className="mt-1 text-sm font-semibold text-surface-100">{outboxStatus?.pending_count ?? 0}</p>
+                </div>
+                <div className="rounded border border-surface-700/30 bg-surface-950/40 p-2">
+                  <p className="text-[9px] uppercase tracking-widest text-surface-500">{t('settings.outbox.scheduled')}</p>
+                  <p className="mt-1 text-sm font-semibold text-surface-100">{outboxStatus?.retry_scheduled_count ?? 0}</p>
+                </div>
+                <div className={`rounded border p-2 ${
+                  outboxStatus?.dead_letter_count
+                    ? 'border-danger-500/30 bg-danger-500/10'
+                    : 'border-surface-700/30 bg-surface-950/40'
+                }`}>
+                  <p className="text-[9px] uppercase tracking-widest text-surface-500">{t('settings.outbox.deadLetter')}</p>
+                  <p className={`mt-1 text-sm font-semibold ${outboxStatus?.dead_letter_count ? 'text-danger-300' : 'text-surface-100'}`}>
+                    {outboxStatus?.dead_letter_count ?? 0}
+                  </p>
+                </div>
+                <div className="rounded border border-surface-700/30 bg-surface-950/40 p-2">
+                  <p className="text-[9px] uppercase tracking-widest text-surface-500">{t('settings.outbox.maxAttempts')}</p>
+                  <p className="mt-1 text-sm font-semibold text-surface-100">{outboxStatus?.max_attempts ?? '-'}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <p className="rounded border border-surface-700/30 bg-surface-950/40 p-2 text-[10px] text-surface-500">
+                  {t('settings.outbox.nextRetry')}{' '}
+                  <span className="text-surface-300">
+                    {outboxStatus?.next_attempt_at ? formatTs(outboxStatus.next_attempt_at, displayTimezone) : t('common.notConfigured')}
+                  </span>
+                </p>
+                <p className="rounded border border-surface-700/30 bg-surface-950/40 p-2 text-[10px] text-surface-500">
+                  {t('settings.outbox.lastDeadLetter')}{' '}
+                  <span className="text-surface-300">
+                    {outboxStatus?.last_dead_letter_at ? formatTs(outboxStatus.last_dead_letter_at, displayTimezone) : t('settings.outbox.none')}
+                  </span>
+                </p>
+              </div>
+              {(outboxStatusError || outboxStatus?.last_error) && (
+                <p className={`mt-2 text-[10px] wrap-break-word ${outboxStatusError ? 'text-danger-400' : 'text-warning-300'}`}>
+                  {outboxStatusError ?? outboxStatus?.last_error}
+                </p>
+              )}
             </div>
 
             <ServerConfigPanel key={serverConfig?.url ?? 'none'} />

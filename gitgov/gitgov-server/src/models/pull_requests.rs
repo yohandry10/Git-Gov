@@ -51,6 +51,8 @@ pub struct PrMergeEvidenceEntry {
     #[serde(default)]
     pub head_sha: Option<String>,
     #[serde(default)]
+    pub merge_commit_sha: Option<String>,
+    #[serde(default)]
     pub base_branch: Option<String>,
     pub created_at: i64,
 }

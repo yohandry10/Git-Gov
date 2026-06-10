@@ -26,6 +26,10 @@ import {
   persistJiraCoverageFilters,
 } from '../helpers'
 
+function jiraTicketCacheKey(orgName: string | undefined, ticketId: string): string {
+  return `${orgName?.trim().toLowerCase() || 'unscoped'}:${ticketId.trim().toUpperCase()}`
+}
+
 type DashboardActionKeys =
   | 'refreshDashboardData'
   | 'loadStats'
@@ -48,7 +52,7 @@ export function createDashboardActions(
 ): Pick<ControlPlaneActions, DashboardActionKeys> {
   return {
   refreshDashboardData: async (params) => {
-    const { serverConfig, jiraCoverageFilters } = get()
+    const { serverConfig, jiraCoverageFilters, selectedOrgName } = get()
     if (!serverConfig) return
 
     set({ isRefreshingDashboard: true })
@@ -72,6 +76,7 @@ export function createDashboardActions(
             hours: jiraCoverageFilters.hours,
             repo_full_name: jiraCoverageFilters.repo_full_name.trim() || undefined,
             branch: jiraCoverageFilters.branch.trim() || undefined,
+            org_name: selectedOrgName.trim() || undefined,
           }),
         ])
         controlPlaneStoreRuntime.lastHeavyDashboardRefreshAt = Date.now()
@@ -203,13 +208,13 @@ export function createDashboardActions(
   setLogsPage: (page) => set({ logsPage: page }),
 
   loadJenkinsCorrelations: async (limit = 50) => {
-    const { serverConfig } = get()
+    const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return
 
     try {
       const correlations = await tauriInvoke<CommitPipelineCorrelation[]>('cmd_server_get_jenkins_correlations', {
         config: serverConfig,
-        filter: { limit, offset: 0 },
+        filter: { limit, offset: 0, org_name: selectedOrgName.trim() || undefined },
       })
       set({ jenkinsCorrelations: correlations })
     } catch {
@@ -218,13 +223,13 @@ export function createDashboardActions(
   },
 
   loadPrMergeEvidence: async (limit = 200) => {
-    const { serverConfig } = get()
+    const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return
 
     try {
       const entries = await tauriInvoke<PrMergeEvidenceEntry[]>('cmd_server_get_pr_merges', {
         config: serverConfig,
-        filter: { limit, offset: 0 },
+        filter: { limit, offset: 0, org_name: selectedOrgName.trim() || undefined },
       })
       set({ prMergeEvidence: entries })
     } catch {
@@ -233,9 +238,10 @@ export function createDashboardActions(
   },
 
   loadTicketCoverage: async (params) => {
-    const { serverConfig } = get()
+    const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return
 
+    const orgName = params?.org_name?.trim() || selectedOrgName.trim() || undefined
     const hours = params?.hours ?? 72
     try {
       const coverage = await tauriInvoke<TicketCoverageStats>('cmd_server_get_jira_ticket_coverage', {
@@ -244,7 +250,7 @@ export function createDashboardActions(
           hours,
           repo_full_name: params?.repo_full_name,
           branch: params?.branch,
-          org_name: params?.org_name,
+          org_name: orgName,
         },
       })
       set({ ticketCoverage: coverage })
@@ -264,12 +270,14 @@ export function createDashboardActions(
       hours: next.hours,
       repo_full_name: next.repo_full_name || undefined,
       branch: next.branch || undefined,
+      org_name: get().selectedOrgName.trim() || undefined,
     })
   },
 
   correlateJiraTickets: async (params) => {
-    const { serverConfig } = get()
+    const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return null
+    const orgName = params?.org_name?.trim() || selectedOrgName.trim() || undefined
 
     try {
       const response = await tauriInvoke<JiraCorrelateResponse>('cmd_server_correlate_jira_tickets', {
@@ -278,14 +286,14 @@ export function createDashboardActions(
           hours: params?.hours ?? 72,
           limit: params?.limit ?? 500,
           repo_full_name: params?.repo_full_name,
-          org_name: params?.org_name,
+          org_name: orgName,
         },
       })
       await get().loadTicketCoverage({
         hours: params?.hours ?? 72,
         repo_full_name: params?.repo_full_name,
         branch: undefined,
-        org_name: params?.org_name,
+        org_name: orgName,
       })
       return response
     } catch (e) {
@@ -295,31 +303,34 @@ export function createDashboardActions(
   },
 
   loadJiraTicketDetail: async (ticketId) => {
-    const { serverConfig, jiraTicketDetails, jiraTicketDetailFetchedAt } = get()
+    const { serverConfig, jiraTicketDetails, jiraTicketDetailFetchedAt, selectedOrgName } = get()
     if (!serverConfig) return null
     const normalized = ticketId.trim().toUpperCase()
     if (!normalized) return null
-    const fetchedAt = jiraTicketDetailFetchedAt[normalized] ?? 0
+    const orgName = selectedOrgName.trim() || undefined
+    const cacheKey = jiraTicketCacheKey(orgName, normalized)
+    const fetchedAt = jiraTicketDetailFetchedAt[cacheKey] ?? 0
     const isFresh = Date.now() - fetchedAt < JIRA_TICKET_DETAIL_TTL_MS
-    if (isFresh && Object.prototype.hasOwnProperty.call(jiraTicketDetails, normalized)) {
-      return jiraTicketDetails[normalized] ?? null
+    if (isFresh && Object.prototype.hasOwnProperty.call(jiraTicketDetails, cacheKey)) {
+      return jiraTicketDetails[cacheKey] ?? null
     }
     set((state) => ({
       jiraTicketDetailLoading: {
         ...state.jiraTicketDetailLoading,
-        [normalized]: true,
+        [cacheKey]: true,
       },
     }))
     try {
       const resp = await tauriInvoke<JiraTicketDetailResponse>('cmd_server_get_jira_ticket_detail', {
         config: serverConfig,
         ticketId: normalized,
+        org_name: orgName ?? null,
       })
       const ticket = resp.found ? resp.ticket ?? null : null
       set((state) => {
-        const nextDetails = { ...state.jiraTicketDetails, [normalized]: ticket }
-        const nextFetchedAt = { ...state.jiraTicketDetailFetchedAt, [normalized]: Date.now() }
-        const nextLoading = { ...state.jiraTicketDetailLoading, [normalized]: false }
+        const nextDetails = { ...state.jiraTicketDetails, [cacheKey]: ticket }
+        const nextFetchedAt = { ...state.jiraTicketDetailFetchedAt, [cacheKey]: Date.now() }
+        const nextLoading = { ...state.jiraTicketDetailLoading, [cacheKey]: false }
 
         // Evict oldest entries when cache exceeds limit
         const keys = Object.keys(nextFetchedAt)
@@ -344,15 +355,15 @@ export function createDashboardActions(
       set((state) => ({
         jiraTicketDetails: {
           ...state.jiraTicketDetails,
-          [normalized]: null,
+          [cacheKey]: null,
         },
         jiraTicketDetailFetchedAt: {
           ...state.jiraTicketDetailFetchedAt,
-          [normalized]: Date.now(),
+          [cacheKey]: Date.now(),
         },
         jiraTicketDetailLoading: {
           ...state.jiraTicketDetailLoading,
-          [normalized]: false,
+          [cacheKey]: false,
         },
       }))
       return null
@@ -360,7 +371,7 @@ export function createDashboardActions(
   },
 
   loadTicketEvidencePacket: async (ticketId, params) => {
-    const { serverConfig, jiraCoverageFilters } = get()
+    const { serverConfig, jiraCoverageFilters, selectedOrgName } = get()
     if (!serverConfig) return null
     const normalized = ticketId.trim().toUpperCase()
     if (!normalized) {
@@ -368,6 +379,7 @@ export function createDashboardActions(
       return null
     }
 
+    const orgName = params?.org_name?.trim() || selectedOrgName.trim() || undefined
     set({ isEvidencePacketLoading: true, error: null, evidencePacketTicketId: normalized })
     try {
       const response = await tauriInvoke<EvidencePacketResponse>('cmd_server_get_ticket_evidence_packet', {
@@ -377,7 +389,10 @@ export function createDashboardActions(
           hours: params?.hours ?? jiraCoverageFilters.hours,
           repo_full_name: params?.repo_full_name ?? (jiraCoverageFilters.repo_full_name.trim() || undefined),
           branch: params?.branch ?? (jiraCoverageFilters.branch.trim() || undefined),
-          org_name: params?.org_name,
+          target_sha: params?.target_sha?.trim() || undefined,
+          release_id: params?.release_id?.trim() || undefined,
+          environment: params?.environment?.trim() || undefined,
+          org_name: orgName,
         },
       })
       const packet = response.found ? response.packet ?? null : null

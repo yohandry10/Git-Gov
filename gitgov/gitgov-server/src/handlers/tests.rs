@@ -4,12 +4,12 @@ mod tests {
         analyze_nlp, apply_proactive_todos_from_snapshot, add_todo, complete_todo,
         build_grounded_knowledge_answer, build_knowledge_fallback_answer,
         should_override_llm_answer_with_kb, is_secret_exfiltration_request, sanitize_chat_answer_text,
-        sanitize_chat_trace_json,
+        sanitize_chat_trace_json, sanitize_llm_data_refs, SseNotification, sse_subscriber_should_receive, event_timestamp_too_far_in_future,
         check_org_scope_match, erase_result_status, export_result_status, extract_final_approvers,
         extract_ticket_ids, is_founder_scope_exception, is_logs_precision_query, extract_logs_limit,
         extract_logs_event_type_hint, is_relevant_audit_action, make_audit_delivery_id, render_todo_list,
         validate_github_signature, ChatQuery, ConversationState, GitHubPrReview, GitHubPrReviewUser,
-        apply_ingest_org_scope,
+        apply_required_ingest_org_scope,
         NlpIntent, OrgScopeError, OutboxLeaseTelemetry, OutboxLeaseTelemetryMode,
         OutboxLeaseTelemetryRecord, detect_query, detect_language,
         logs_deprecations_for_request,
@@ -806,26 +806,49 @@ mod tests {
     #[test]
     fn ingest_scope_scoped_admin_enforces_key_org_when_repo_is_unresolved() {
         assert_eq!(
-            apply_ingest_org_scope(Some("uuid-rimac"), None),
+            apply_required_ingest_org_scope(Some("uuid-rimac"), None, None),
             Ok(Some("uuid-rimac".to_string()))
         );
     }
 
     #[test]
-    fn ingest_scope_scoped_admin_blocks_cross_org_derived_repo() {
+    fn ingest_scope_scoped_admin_blocks_cross_org_requested_or_derived_repo() {
         assert_eq!(
-            apply_ingest_org_scope(Some("uuid-a"), Some("uuid-b")),
+            apply_required_ingest_org_scope(Some("uuid-a"), Some("uuid-b"), None),
+            Err("Requested org is outside API key scope")
+        );
+        assert_eq!(
+            apply_required_ingest_org_scope(Some("uuid-a"), None, Some("uuid-b")),
             Err("Requested org is outside API key scope")
         );
     }
 
     #[test]
-    fn ingest_scope_global_admin_keeps_derived_org_or_none() {
+    fn ingest_scope_global_admin_requires_requested_or_derived_org() {
         assert_eq!(
-            apply_ingest_org_scope(None, Some("uuid-rimac")),
+            apply_required_ingest_org_scope(None, Some("uuid-rimac"), None),
             Ok(Some("uuid-rimac".to_string()))
         );
-        assert_eq!(apply_ingest_org_scope(None, None), Ok(None));
+        assert_eq!(
+            apply_required_ingest_org_scope(None, None, Some("uuid-rimac")),
+            Ok(Some("uuid-rimac".to_string()))
+        );
+        assert_eq!(
+            apply_required_ingest_org_scope(None, None, None),
+            Err("Organization is required for global admin keys")
+        );
+    }
+
+    #[test]
+    fn ingest_scope_requested_org_must_match_derived_repo_org() {
+        assert_eq!(
+            apply_required_ingest_org_scope(None, Some("uuid-a"), Some("uuid-b")),
+            Err("Requested org does not match repo organization")
+        );
+        assert_eq!(
+            apply_required_ingest_org_scope(None, Some("uuid-a"), Some("uuid-a")),
+            Ok(Some("uuid-a".to_string()))
+        );
     }
 
     // ── Scope enforcement: erase_user ─────────────────────────────────────────
@@ -956,6 +979,86 @@ mod tests {
         assert_eq!(snapshot.wait_buckets.le_1000, 1);
         assert_eq!(snapshot.wait_buckets.le_5000, 1);
         assert_eq!(snapshot.wait_buckets.gt_5000, 1);
+    }
+
+    #[test]
+    fn llm_cannot_forge_deterministic_provenance_refs() {
+        // A prompt-injected / hallucinating model returns refs that claim
+        // server-only grounding. Those must be stripped, and the answer tagged
+        // as LLM-generated so it cannot masquerade as SQL-grounded.
+        let forged = vec![
+            "deterministic_sql_results".to_string(),
+            "logs_endpoint".to_string(),
+            "security_policy".to_string(),
+            "org_scope".to_string(),
+            "some_model_note".to_string(),
+        ];
+        let sanitized = sanitize_llm_data_refs(forged, true);
+
+        assert!(
+            !sanitized.iter().any(|r| r == "deterministic_sql_results"),
+            "LLM must not be able to claim deterministic_sql_results"
+        );
+        assert!(!sanitized.iter().any(|r| r == "logs_endpoint"));
+        assert!(!sanitized.iter().any(|r| r == "security_policy"));
+        assert!(!sanitized.iter().any(|r| r == "org_scope"));
+        // Non-reserved refs from the model are preserved.
+        assert!(sanitized.iter().any(|r| r == "some_model_note"));
+        // The answer is explicitly marked as AI-generated.
+        assert!(sanitized.iter().any(|r| r == "llm_generated"));
+    }
+
+    #[test]
+    fn kb_overridden_answer_is_not_tagged_llm_generated() {
+        // When the KB override replaces the model answer, the answer is grounded
+        // in project docs, so it is not tagged llm_generated; reserved refs are
+        // still stripped from anything the model supplied.
+        let model_refs = vec!["deterministic_sql_results".to_string(), "note".to_string()];
+        let sanitized = sanitize_llm_data_refs(model_refs, false);
+
+        assert!(!sanitized.iter().any(|r| r == "deterministic_sql_results"));
+        assert!(sanitized.iter().any(|r| r == "note"));
+        assert!(
+            !sanitized.iter().any(|r| r == "llm_generated"),
+            "KB-grounded answers must not be tagged as LLM-generated"
+        );
+    }
+
+    #[test]
+    fn sse_new_events_is_tenant_scoped_per_subscriber() {
+        let ev_b = SseNotification::NewEvents {
+            count: 3,
+            org_id: Some("org-b".to_string()),
+        };
+        let ev_a = SseNotification::NewEvents {
+            count: 1,
+            org_id: Some("org-a".to_string()),
+        };
+
+        // A scoped subscriber for org-a must NEVER receive org-b's signal.
+        assert!(!sse_subscriber_should_receive(Some("org-a"), &ev_b));
+        // ...but it receives its own org's signal.
+        assert!(sse_subscriber_should_receive(Some("org-a"), &ev_a));
+        // A global-admin subscriber (None) receives any org's signal.
+        assert!(sse_subscriber_should_receive(None, &ev_b));
+        // Heartbeat carries no tenant data and always passes.
+        assert!(sse_subscriber_should_receive(
+            Some("org-a"),
+            &SseNotification::Heartbeat
+        ));
+    }
+
+    #[test]
+    fn client_event_timestamp_in_future_is_rejected() {
+        let now = 1_700_000_000_000_i64;
+        // Within the allowed clock skew (5 min) -> accepted.
+        assert!(!event_timestamp_too_far_in_future(now, now));
+        assert!(!event_timestamp_too_far_in_future(now + 60_000, now));
+        // Past timestamps (offline outbox backfill) are always allowed.
+        assert!(!event_timestamp_too_far_in_future(now - 86_400_000, now));
+        // Beyond the skew into the future -> rejected.
+        assert!(event_timestamp_too_far_in_future(now + 6 * 60_000, now));
+        assert!(event_timestamp_too_far_in_future(now + 86_400_000, now));
     }
 }
 

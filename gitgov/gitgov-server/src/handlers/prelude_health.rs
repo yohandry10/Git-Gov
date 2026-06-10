@@ -1,7 +1,8 @@
-use crate::auth::{require_admin, AuthUser};
+use crate::auth::{is_founder_global_admin, require_admin, AuthUser};
 use crate::db::{
     CreatePolicyChangeRequestInput, Database, DbError, Job, JobMetrics,
-    ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, UpsertOrgUserInput,
+    ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, PipelineRunsForEvidencePacketQuery,
+    PrMergeEvidenceForTicketPacketQuery, UpsertOrgUserInput,
 };
 use crate::models::*;
 use crate::notifications;
@@ -354,8 +355,14 @@ pub struct AppState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SseNotification {
-    /// New events were ingested via POST /events.
-    NewEvents { count: u32 },
+    /// New events were ingested via POST /events. `org_id` is the tenant that
+    /// ingested them; `None` means a global/unscoped key. Subscribers only
+    /// receive notifications for their own org (global-admin subscribers see all).
+    NewEvents {
+        count: u32,
+        #[serde(default)]
+        org_id: Option<String>,
+    },
     /// Stats cache was invalidated (new data available).
     #[allow(dead_code)]
     StatsUpdated,
@@ -370,21 +377,28 @@ pub struct DistributedSseEnvelope {
     pub notification: SseNotification,
 }
 
-pub async fn fanout_sse_new_events(state: &Arc<AppState>, count: u32) {
+pub async fn fanout_sse_new_events(state: &Arc<AppState>, count: u32, org_id: Option<&str>) {
     if count == 0 {
         return;
     }
-    fanout_sse_notification(state, SseNotification::NewEvents { count }).await;
+    fanout_sse_notification(
+        state,
+        SseNotification::NewEvents {
+            count,
+            org_id: org_id.map(|s| s.to_string()),
+        },
+    )
+    .await;
 }
 
-pub fn invalidate_dashboard_caches_for_sse(state: &AppState) {
-    invalidate_stats_cache(state);
-    invalidate_logs_cache(state);
+pub fn invalidate_dashboard_caches_for_sse(state: &AppState, org_id: Option<&str>) {
+    invalidate_stats_cache(state, org_id);
+    invalidate_logs_cache(state, org_id);
 }
 
 pub async fn fanout_sse_notification(state: &Arc<AppState>, notification: SseNotification) {
-    if matches!(notification, SseNotification::NewEvents { .. }) {
-        invalidate_dashboard_caches_for_sse(state);
+    if let SseNotification::NewEvents { org_id, .. } = &notification {
+        invalidate_dashboard_caches_for_sse(state, org_id.as_deref());
     }
     let _ = state.sse_tx.send(notification.clone());
     if !state.sse_distributed_enabled {

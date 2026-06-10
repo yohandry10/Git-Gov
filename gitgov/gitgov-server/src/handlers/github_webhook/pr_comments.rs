@@ -128,6 +128,7 @@ async fn correlate_ticket_evidence_to_commit(
                     .db
                     .append_project_ticket_relations_full(
                         &ticket_id,
+                        input.org_id,
                         Some(commit_sha),
                         input.branch,
                         pr_ref.as_deref(),

@@ -57,6 +57,7 @@ function statusBadge(status: TrailStatus | 'pending'): string {
 
 export function AuditTrailPanel() {
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
   const currentBranch = useRepoStore((s) => s.currentBranch)
 
   const [mode, setMode] = useState<TrailMode>('session')
@@ -96,6 +97,7 @@ export function AuditTrailPanel() {
       const config = { url: serverConfig.url, api_key: serverConfig.api_key }
       const response = await tauriInvoke<CliCommandListResponse>('cmd_server_list_cli_commands', {
         config,
+        org_name: selectedOrgName.trim() || null,
         user_login: null,
         limit: 80,
         offset: 0,
@@ -107,7 +109,7 @@ export function AuditTrailPanel() {
     } finally {
       setIsHistoryLoading(false)
     }
-  }, [serverConfig])
+  }, [serverConfig, selectedOrgName])
 
   useEffect(() => {
     if (mode === 'history') {

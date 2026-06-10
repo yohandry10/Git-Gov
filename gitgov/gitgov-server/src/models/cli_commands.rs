@@ -6,6 +6,8 @@ use super::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliCommandInput {
+    #[serde(default)]
+    pub org_name: Option<String>,
     pub command: String,
     pub origin: String, // "button_click" | "manual_input"
     pub branch: String,

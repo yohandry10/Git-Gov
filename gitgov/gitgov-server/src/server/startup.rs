@@ -484,7 +484,7 @@ pub(crate) async fn run() {
     let org_invitation_public_rate_limit = make_rate_limiter(
         "org_invitation_public",
         parse_u32_env("GITGOV_RATE_LIMIT_ORG_INVITATION_PER_MIN", 90),
-        true,
+        false,
     );
     let admin_rate_limit = make_rate_limiter("admin_endpoints", admin_rate_limit_per_min, false);
     let logs_rate_limit = make_rate_limiter("logs_endpoints", logs_rate_limit_per_min, true);

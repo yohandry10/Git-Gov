@@ -104,7 +104,7 @@ async fn policy_override_rejects_quality_gate_downgrade_without_exception() {
     let (status, body) = json_request(
         &app,
         "PUT",
-        "/policy/acme/repo/override",
+        "/policy/acme%2Frepo/override",
         Some(&downgrade_payload.to_string()),
         Some(&api_key),
     )
@@ -162,14 +162,15 @@ async fn policy_override_accepts_governed_exception_for_quality_gate_downgrade()
     let (status, body) = json_request(
         &app,
         "PUT",
-        "/policy/acme/repo/override",
+        "/policy/acme%2Frepo/override",
         Some(&governed_payload.to_string()),
         Some(&api_key),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "override failed: {}", body);
 
-    let (status, body) = json_request(&app, "GET", "/policy/acme/repo", None, Some(&api_key)).await;
+    let (status, body) =
+        json_request(&app, "GET", "/policy/acme%2Frepo", None, Some(&api_key)).await;
     assert_eq!(status, StatusCode::OK, "get policy failed: {}", body);
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(

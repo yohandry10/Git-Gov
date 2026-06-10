@@ -533,9 +533,12 @@ describe('useControlPlaneStore', () => {
         query: {
           org_name: 'yohandry10',
           repository_full_name: 'yohandry10/Git-Gov',
+          branch: null,
+          target_sha: null,
           release_id: null,
           environment: null,
           decision: null,
+          evidence_packet_hash: null,
           limit: 10,
           offset: 0,
         },
@@ -635,6 +638,8 @@ describe('useControlPlaneStore', () => {
 
       const response = await useControlPlaneStore.getState().evaluateEnterpriseReleaseGovernance({
         repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        target_sha: ' abcdef1234567890abcdef1234567890abcdef12 ',
         release_id: ' KAN-46 ',
         environment: ' production ',
         evidence_packet_hash: 'd'.repeat(64),
@@ -645,6 +650,8 @@ describe('useControlPlaneStore', () => {
         query: {
           org_name: 'yohandry10',
           repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          target_sha: 'abcdef1234567890abcdef1234567890abcdef12',
           release_id: 'KAN-46',
           environment: 'production',
           evidence_packet_hash: 'd'.repeat(64),

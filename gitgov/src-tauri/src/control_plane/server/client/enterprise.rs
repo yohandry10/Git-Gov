@@ -119,6 +119,12 @@ impl ControlPlaneClient {
                 repository_full_name.clone(),
             ));
         }
+        if let Some(branch) = &query.branch {
+            query_params.push(("branch".to_string(), branch.clone()));
+        }
+        if let Some(target_sha) = &query.target_sha {
+            query_params.push(("target_sha".to_string(), target_sha.clone()));
+        }
         if let Some(release_id) = &query.release_id {
             query_params.push(("release_id".to_string(), release_id.clone()));
         }
@@ -127,6 +133,12 @@ impl ControlPlaneClient {
         }
         if let Some(decision) = &query.decision {
             query_params.push(("decision".to_string(), decision.clone()));
+        }
+        if let Some(evidence_packet_hash) = &query.evidence_packet_hash {
+            query_params.push((
+                "evidence_packet_hash".to_string(),
+                evidence_packet_hash.clone(),
+            ));
         }
         if let Some(limit) = query.limit {
             query_params.push(("limit".to_string(), limit.to_string()));
@@ -166,6 +178,12 @@ impl ControlPlaneClient {
             "repository_full_name".to_string(),
             query.repository_full_name.clone(),
         ));
+        if let Some(branch) = &query.branch {
+            query_params.push(("branch".to_string(), branch.clone()));
+        }
+        if let Some(target_sha) = &query.target_sha {
+            query_params.push(("target_sha".to_string(), target_sha.clone()));
+        }
         query_params.push(("release_id".to_string(), query.release_id.clone()));
         query_params.push(("environment".to_string(), query.environment.clone()));
         if let Some(evidence_packet_hash) = &query.evidence_packet_hash {

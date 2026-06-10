@@ -64,6 +64,7 @@ impl Database {
 
     pub async fn get_jira_integration_status(
         &self,
+        org_id: Option<&str>,
     ) -> Result<JiraIntegrationStatusResponse, DbError> {
         let row = sqlx::query(
             r#"
@@ -71,8 +72,10 @@ impl Database {
                 MAX(ingested_at) AS last_ingest_at,
                 COUNT(*) FILTER (WHERE ingested_at >= NOW() - INTERVAL '24 hours')::bigint AS recent_tickets_24h
             FROM project_tickets
+            WHERE ($1::uuid IS NULL OR org_id = $1::uuid)
             "#,
         )
+        .bind(org_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -89,6 +92,7 @@ impl Database {
     pub async fn get_project_ticket_by_ticket_id(
         &self,
         ticket_id: &str,
+        org_id: Option<&str>,
     ) -> Result<Option<ProjectTicket>, DbError> {
         let row = sqlx::query(
             r#"
@@ -111,11 +115,13 @@ impl Database {
                 ingested_at
             FROM project_tickets
             WHERE ticket_id = $1
+              AND ($2::uuid IS NULL OR org_id = $2::uuid)
             ORDER BY ingested_at DESC
             LIMIT 1
             "#,
         )
         .bind(ticket_id)
+        .bind(org_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -167,7 +173,11 @@ impl Database {
                 id, org_id, commit_sha, ticket_id, correlation_source, confidence, created_at
             )
             VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7)
-            ON CONFLICT (commit_sha, ticket_id) DO NOTHING
+            ON CONFLICT (
+                COALESCE(org_id, '00000000-0000-0000-0000-000000000000'::uuid),
+                commit_sha,
+                ticket_id
+            ) DO NOTHING
             RETURNING id::text
             "#,
         )
@@ -188,16 +198,18 @@ impl Database {
     pub async fn append_project_ticket_relations(
         &self,
         ticket_id: &str,
+        org_id: Option<&str>,
         commit_sha: Option<&str>,
         branch: Option<&str>,
     ) -> Result<bool, DbError> {
-        self.append_project_ticket_relations_full(ticket_id, commit_sha, branch, None)
+        self.append_project_ticket_relations_full(ticket_id, org_id, commit_sha, branch, None)
             .await
     }
 
     pub async fn append_project_ticket_relations_full(
         &self,
         ticket_id: &str,
+        org_id: Option<&str>,
         commit_sha: Option<&str>,
         branch: Option<&str>,
         pr_ref: Option<&str>,
@@ -236,12 +248,14 @@ impl Database {
               END,
               updated_at = NOW()
             WHERE ticket_id = $1
+              AND ($5::uuid IS NULL OR org_id = $5::uuid)
             "#,
         )
         .bind(ticket_id)
         .bind(commit_sha)
         .bind(branch)
         .bind(pr_ref)
+        .bind(org_id)
         .execute(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -256,6 +270,8 @@ impl Database {
         &self,
         commit_shas: &[String],
         ticket_ids: &[String],
+        org_id: Option<&str>,
+        repo_full_name: Option<&str>,
         hours: i64,
     ) -> Result<Vec<(i32, Option<String>, Option<String>, Option<String>)>, DbError> {
         if commit_shas.is_empty() && ticket_ids.is_empty() {
@@ -272,6 +288,8 @@ impl Database {
             FROM pull_request_merges prm
             LEFT JOIN repos r ON r.id = prm.repo_id
             WHERE prm.created_at >= NOW() - make_interval(hours => $3::int)
+              AND ($4::uuid IS NULL OR prm.org_id = $4::uuid)
+              AND ($5::text IS NULL OR r.full_name = $5)
               AND (
                 ($1::text[] IS NOT NULL AND prm.head_sha = ANY($1::text[]))
                 OR ($2::text[] IS NOT NULL AND EXISTS (
@@ -286,6 +304,8 @@ impl Database {
         .bind(commit_shas)
         .bind(ticket_ids)
         .bind(hours as i32)
+        .bind(org_id)
+        .bind(repo_full_name)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;

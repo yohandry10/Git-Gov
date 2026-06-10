@@ -4,11 +4,16 @@ impl Database {
     pub async fn get_ticket_coverage(
         &self,
         org_name: Option<&str>,
+        org_id_override: Option<&str>,
         repo_full_name: Option<&str>,
         branch: Option<&str>,
         hours: i64,
     ) -> Result<TicketCoverageResponse, DbError> {
-        let org_id = if let Some(name) = org_name {
+        // Prefer the server-side scope binding (org_id_override) over the
+        // client-supplied org_name so a scoped key cannot read another org.
+        let org_id = if let Some(id) = org_id_override {
+            Some(id.to_string())
+        } else if let Some(name) = org_name {
             self.get_org_by_login(name).await?.map(|o| o.id)
         } else {
             None
@@ -126,12 +131,31 @@ impl Database {
                         NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
                         NULLIF(prm.head_sha, '')
                   ) IS NOT NULL
+            ),
+            correlated_commits AS (
+                SELECT
+                    u.commit_sha,
+                    BOOL_OR(pt.ticket_id IS NOT NULL) AS has_verified_ticket
+                FROM commit_universe u
+                JOIN commit_ticket_correlations ct
+                  ON ct.commit_sha = u.commit_sha
+                 AND (
+                    (u.org_id IS NULL AND ct.org_id IS NULL)
+                    OR ct.org_id = u.org_id
+                 )
+                LEFT JOIN project_tickets pt
+                  ON pt.ticket_id = ct.ticket_id
+                 AND (
+                    (ct.org_id IS NULL AND pt.org_id IS NULL)
+                    OR pt.org_id = ct.org_id
+                 )
+                WHERE u.commit_sha IS NOT NULL
+                GROUP BY u.commit_sha
             )
-            SELECT COUNT(DISTINCT u.commit_sha)::bigint AS covered
-            FROM commit_universe u
-            JOIN commit_ticket_correlations ct
-              ON ct.commit_sha = u.commit_sha
-             AND (u.org_id IS NULL OR ct.org_id IS NULL OR ct.org_id = u.org_id)
+            SELECT
+                COUNT(*) FILTER (WHERE has_verified_ticket)::bigint AS verified_covered,
+                COUNT(*) FILTER (WHERE NOT has_verified_ticket)::bigint AS unverified_covered
+            FROM correlated_commits
             "#,
         )
         .bind(hours)
@@ -197,13 +221,38 @@ impl Database {
                 FROM commit_universe
                 ORDER BY commit_sha, created_at DESC
             )
-            SELECT u.commit_sha, u.user_login, u.branch, u.created_at, u.source
+            SELECT
+                u.commit_sha,
+                u.user_login,
+                u.branch,
+                u.created_at,
+                u.source,
+                EXISTS (
+                    SELECT 1
+                    FROM commit_ticket_correlations ct
+                    WHERE ct.commit_sha = u.commit_sha
+                      AND (
+                        (u.org_id IS NULL AND ct.org_id IS NULL)
+                        OR ct.org_id = u.org_id
+                      )
+                ) AS has_unverified_link
             FROM distinct_commits u
-            LEFT JOIN commit_ticket_correlations ct
-              ON ct.commit_sha = u.commit_sha
-             AND (u.org_id IS NULL OR ct.org_id IS NULL OR ct.org_id = u.org_id)
             WHERE u.commit_sha IS NOT NULL
-              AND ct.id IS NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM commit_ticket_correlations ct
+                  JOIN project_tickets pt
+                    ON pt.ticket_id = ct.ticket_id
+                   AND (
+                      (ct.org_id IS NULL AND pt.org_id IS NULL)
+                      OR pt.org_id = ct.org_id
+                   )
+                  WHERE ct.commit_sha = u.commit_sha
+                    AND (
+                      (u.org_id IS NULL AND ct.org_id IS NULL)
+                      OR ct.org_id = u.org_id
+                    )
+              )
             ORDER BY u.created_at DESC
             LIMIT 20
             "#,
@@ -237,9 +286,15 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         let total_commits: i64 = total_commits_row.get("total");
-        let commits_with_ticket: i64 = with_ticket_row.get("covered");
+        let commits_with_ticket: i64 = with_ticket_row.get("verified_covered");
+        let detected_unverified_commits: i64 = with_ticket_row.get("unverified_covered");
         let coverage_percentage = if total_commits > 0 {
             (commits_with_ticket as f64 / total_commits as f64) * 100.0
+        } else {
+            0.0
+        };
+        let unverified_coverage_percentage = if total_commits > 0 {
+            (detected_unverified_commits as f64 / total_commits as f64) * 100.0
         } else {
             0.0
         };
@@ -250,6 +305,8 @@ impl Database {
             total_commits,
             commits_with_ticket,
             coverage_percentage,
+            detected_unverified_commits,
+            unverified_coverage_percentage,
             commits_without_ticket: missing_rows
                 .into_iter()
                 .map(|row| {
@@ -258,6 +315,7 @@ impl Database {
                         "user_login": row.get::<Option<String>, _>("user_login"),
                         "branch": row.get::<Option<String>, _>("branch"),
                         "source": row.get::<String, _>("source"),
+                        "unverified_link": row.get::<bool, _>("has_unverified_link"),
                         "created_at": row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").timestamp_millis(),
                     })
                 })
@@ -283,7 +341,11 @@ impl Database {
         let limit = if filter.limit == 0 { 20 } else { filter.limit } as i64;
         let offset = filter.offset as i64;
 
-        let org_id = if let Some(org_name) = filter.org_name.as_deref() {
+        // Prefer the server-side scope binding (filter.org_id) over the
+        // client-supplied org_name so a scoped key cannot read another org.
+        let org_id = if let Some(id) = filter.org_id.clone() {
+            Some(id)
+        } else if let Some(org_name) = filter.org_name.as_deref() {
             self.get_org_by_login(org_name).await?.map(|o| o.id)
         } else {
             None
@@ -296,7 +358,7 @@ impl Database {
             None
         };
 
-        if filter.org_name.is_some() && org_id.is_none() {
+        if filter.org_id.is_none() && filter.org_name.is_some() && org_id.is_none() {
             return Ok(vec![]);
         }
         if filter.repo_full_name.is_some() && repo_id.is_none() {
@@ -317,6 +379,8 @@ impl Database {
                 p.pipeline_id,
                 p.job_name,
                 p.status AS pipeline_status,
+                p.branch AS pipeline_branch,
+                p.repo_full_name AS pipeline_repo_full_name,
                 p.duration_ms AS pipeline_duration_ms,
                 p.triggered_by,
                 p.ingested_at AS pipeline_ingested_at
@@ -327,10 +391,27 @@ impl Database {
                 FROM pipeline_events pe
                 WHERE c.commit_sha IS NOT NULL
                   AND pe.commit_sha IS NOT NULL
+                  AND (c.org_id IS NULL OR pe.org_id = c.org_id)
                   AND (
-                    pe.commit_sha = c.commit_sha
-                    OR pe.commit_sha LIKE c.commit_sha || '%'
-                    OR c.commit_sha LIKE pe.commit_sha || '%'
+                    pe.repo_full_name IS NULL
+                    OR r.full_name IS NULL
+                    OR pe.repo_full_name = r.full_name
+                  )
+                  AND (
+                    pe.branch IS NULL
+                    OR c.branch IS NULL
+                    OR pe.branch = c.branch
+                  )
+                  AND (
+                    LOWER(pe.commit_sha) = LOWER(c.commit_sha)
+                    OR (
+                      length(pe.commit_sha) < 40
+                      AND LOWER(c.commit_sha) LIKE LOWER(pe.commit_sha) || '%'
+                    )
+                    OR (
+                      length(c.commit_sha) < 40
+                      AND LOWER(pe.commit_sha) LIKE LOWER(c.commit_sha) || '%'
+                    )
                   )
                 ORDER BY pe.ingested_at DESC
                 LIMIT 1
@@ -381,6 +462,8 @@ impl Database {
                                 pipeline_id: row.get("pipeline_id"),
                                 job_name: row.get("job_name"),
                                 status: row.get("pipeline_status"),
+                                branch: row.get("pipeline_branch"),
+                                repo_full_name: row.get("pipeline_repo_full_name"),
                                 duration_ms: row.get("pipeline_duration_ms"),
                                 triggered_by: row.get("triggered_by"),
                                 ingested_at,
@@ -415,7 +498,11 @@ impl Database {
         let offset = filter.offset as i64;
         let hours = filter.hours.unwrap_or(24 * 7).clamp(1, 24 * 90);
 
-        let org_id = if let Some(org_name) = filter.org_name.as_deref() {
+        // Prefer the server-side scope binding (filter.org_id) over the
+        // client-supplied org_name so a scoped key cannot read another org.
+        let org_id = if let Some(id) = filter.org_id.clone() {
+            Some(id)
+        } else if let Some(org_name) = filter.org_name.as_deref() {
             self.get_org_by_login(org_name).await?.map(|o| o.id)
         } else {
             None
@@ -433,8 +520,20 @@ impl Database {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(|s| s.to_ascii_uppercase());
+        let branch = filter
+            .branch
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        let target_sha = filter
+            .target_sha
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_ascii_lowercase());
 
-        if filter.org_name.is_some() && org_id.is_none() {
+        if filter.org_id.is_none() && filter.org_name.is_some() && org_id.is_none() {
             return Ok((vec![], 0));
         }
         if filter.repo_full_name.is_some() && repo_id.is_none() {
@@ -443,27 +542,78 @@ impl Database {
 
         let count_row = sqlx::query(
             r#"
-            WITH base AS (
+            WITH correlated AS (
                 SELECT
                     ct.ticket_id,
                     ct.commit_sha,
-                    COALESCE(c.created_at, ct.created_at) AS ordering_ts
+                    ct.org_id,
+                    ct.created_at
                 FROM commit_ticket_correlations ct
                 LEFT JOIN project_tickets pt
                   ON pt.ticket_id = ct.ticket_id
-                 AND (ct.org_id IS NULL OR pt.org_id = ct.org_id)
-                LEFT JOIN LATERAL (
-                    SELECT c.created_at, c.repo_id
-                    FROM client_events c
-                    WHERE c.event_type = 'commit'
-                      AND c.commit_sha = ct.commit_sha
-                    ORDER BY c.created_at DESC
-                    LIMIT 1
-                ) c ON TRUE
-                WHERE ($1::uuid IS NULL OR ct.org_id = $1::uuid OR pt.org_id = $1::uuid)
-                  AND ($2::uuid IS NULL OR c.repo_id = $2::uuid)
+                 AND (
+                    (ct.org_id IS NULL AND pt.org_id IS NULL)
+                    OR pt.org_id = ct.org_id
+                 )
+                WHERE (($1::uuid IS NULL AND ct.org_id IS NULL) OR ct.org_id = $1::uuid)
                   AND ($3::text IS NULL OR ct.ticket_id = $3)
-                  AND COALESCE(c.created_at, ct.created_at) >= NOW() - make_interval(hours => $4::int)
+                  AND (
+                    $6::text IS NULL
+                    OR LOWER(ct.commit_sha) = LOWER($6)
+                    OR (
+                      length(ct.commit_sha) < 40
+                      AND LOWER($6) LIKE LOWER(ct.commit_sha) || '%'
+                    )
+                    OR (
+                      length($6) < 40
+                      AND LOWER(ct.commit_sha) LIKE LOWER($6) || '%'
+                    )
+                  )
+            ),
+            base AS (
+                SELECT
+                    ct.ticket_id,
+                    ct.commit_sha,
+                    COALESCE(ev.created_at, ct.created_at) AS ordering_ts
+                FROM correlated ct
+                LEFT JOIN LATERAL (
+                    SELECT candidate.repo_id, candidate.branch, candidate.created_at
+                    FROM (
+                        SELECT c.repo_id, c.branch, c.created_at, 1 AS source_priority
+                        FROM client_events c
+                        WHERE c.event_type = 'commit'
+                          AND c.commit_sha = ct.commit_sha
+                          AND (
+                            ($1::uuid IS NULL AND ct.org_id IS NULL)
+                            OR c.org_id = COALESCE(ct.org_id, $1::uuid)
+                          )
+
+                        UNION ALL
+
+                        SELECT prm.repo_id, prm.base_branch AS branch, prm.created_at, 2 AS source_priority
+                        FROM pull_request_merges prm
+                        WHERE (
+                            ($1::uuid IS NULL AND ct.org_id IS NULL)
+                            OR prm.org_id = COALESCE(ct.org_id, $1::uuid)
+                          )
+                          AND (
+                            LOWER(COALESCE(NULLIF(prm.head_sha, ''), '')) = LOWER(ct.commit_sha)
+                            OR LOWER(COALESCE(
+                              NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                              NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                              ''
+                            )) = LOWER(ct.commit_sha)
+                          )
+                    ) candidate
+                    WHERE ($2::uuid IS NULL OR candidate.repo_id = $2::uuid)
+                      AND ($5::text IS NULL OR candidate.branch = $5)
+                    ORDER BY candidate.created_at DESC, candidate.source_priority
+                    LIMIT 1
+                ) ev ON TRUE
+                WHERE ev.created_at IS NOT NULL
+                  AND ev.created_at >= NOW() - make_interval(hours => $4::int)
+                  AND ($2::uuid IS NULL OR ev.repo_id = $2::uuid)
+                  AND ($5::text IS NULL OR ev.branch = $5)
             )
             SELECT COUNT(*)::bigint AS total
             FROM base
@@ -473,6 +623,8 @@ impl Database {
         .bind(&repo_id)
         .bind(&ticket_id)
         .bind(hours as i32)
+        .bind(&branch)
+        .bind(&target_sha)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -490,17 +642,20 @@ impl Database {
                 ct.correlation_source,
                 ct.confidence AS correlation_confidence,
                 ct.commit_sha,
-                c.branch,
-                c.user_login,
+                ev.evidence_source,
+                ev.branch,
+                ev.user_login,
                 r.full_name AS repo_name,
                 CASE
-                    WHEN c.created_at IS NULL THEN NULL
-                    ELSE EXTRACT(EPOCH FROM c.created_at)::bigint * 1000
+                    WHEN ev.created_at IS NULL THEN NULL
+                    ELSE EXTRACT(EPOCH FROM ev.created_at)::bigint * 1000
                 END AS commit_created_at_ms,
                 p.id::text AS pipeline_event_id,
                 p.pipeline_id,
                 p.job_name,
                 p.status AS pipeline_status,
+                p.branch AS pipeline_branch,
+                p.repo_full_name AS pipeline_repo_full_name,
                 p.duration_ms AS pipeline_duration_ms,
                 p.triggered_by,
                 CASE
@@ -510,40 +665,119 @@ impl Database {
             FROM commit_ticket_correlations ct
             LEFT JOIN project_tickets pt
               ON pt.ticket_id = ct.ticket_id
-             AND (ct.org_id IS NULL OR pt.org_id = ct.org_id)
+             AND (
+                (ct.org_id IS NULL AND pt.org_id IS NULL)
+                OR pt.org_id = ct.org_id
+             )
             LEFT JOIN LATERAL (
-                SELECT c.branch, c.user_login, c.repo_id, c.created_at
-                FROM client_events c
-                WHERE c.event_type = 'commit'
-                  AND c.commit_sha = ct.commit_sha
-                ORDER BY c.created_at DESC
+                SELECT candidate.*
+                FROM (
+                    SELECT
+                        c.org_id,
+                        c.repo_id,
+                        c.branch,
+                        c.user_login,
+                        c.created_at,
+                        'client_event'::text AS evidence_source,
+                        1 AS source_priority
+                    FROM client_events c
+                    WHERE c.event_type = 'commit'
+                      AND c.commit_sha = ct.commit_sha
+                      AND (
+                        ($1::uuid IS NULL AND ct.org_id IS NULL)
+                        OR c.org_id = COALESCE(ct.org_id, $1::uuid)
+                      )
+
+                    UNION ALL
+
+                    SELECT
+                        prm.org_id,
+                        prm.repo_id,
+                        prm.base_branch AS branch,
+                        COALESCE(prm.merged_by_login, prm.author_login) AS user_login,
+                        prm.created_at,
+                        'pull_request_merge'::text AS evidence_source,
+                        2 AS source_priority
+                    FROM pull_request_merges prm
+                    WHERE (
+                        ($1::uuid IS NULL AND ct.org_id IS NULL)
+                        OR prm.org_id = COALESCE(ct.org_id, $1::uuid)
+                      )
+                      AND (
+                        LOWER(COALESCE(NULLIF(prm.head_sha, ''), '')) = LOWER(ct.commit_sha)
+                        OR LOWER(COALESCE(
+                          NULLIF(prm.payload #>> '{pull_request,merge_commit_sha}', ''),
+                          NULLIF(prm.payload #>> '{gitgov,merge_commit_sha}', ''),
+                          ''
+                        )) = LOWER(ct.commit_sha)
+                      )
+                ) candidate
+                WHERE ($2::uuid IS NULL OR candidate.repo_id = $2::uuid)
+                  AND ($5::text IS NULL OR candidate.branch = $5)
+                ORDER BY candidate.created_at DESC, candidate.source_priority
                 LIMIT 1
-            ) c ON TRUE
-            LEFT JOIN repos r ON r.id = c.repo_id
+            ) ev ON TRUE
+            LEFT JOIN repos r ON r.id = ev.repo_id
             LEFT JOIN LATERAL (
                 SELECT pe.*
                 FROM pipeline_events pe
                 WHERE pe.commit_sha IS NOT NULL
                   AND (
-                    pe.commit_sha = ct.commit_sha
-                    OR pe.commit_sha LIKE ct.commit_sha || '%'
-                    OR ct.commit_sha LIKE pe.commit_sha || '%'
+                    COALESCE(ev.org_id, ct.org_id, $1::uuid) IS NULL
+                    OR pe.org_id = COALESCE(ev.org_id, ct.org_id, $1::uuid)
+                  )
+                  AND (
+                    pe.repo_full_name IS NULL
+                    OR r.full_name IS NULL
+                    OR pe.repo_full_name = r.full_name
+                  )
+                  AND (
+                    pe.branch IS NULL
+                    OR ev.branch IS NULL
+                    OR pe.branch = ev.branch
+                  )
+                  AND (
+                    LOWER(pe.commit_sha) = LOWER(ct.commit_sha)
+                    OR (
+                      length(pe.commit_sha) < 40
+                      AND LOWER(ct.commit_sha) LIKE LOWER(pe.commit_sha) || '%'
+                    )
+                    OR (
+                      length(ct.commit_sha) < 40
+                      AND LOWER(pe.commit_sha) LIKE LOWER(ct.commit_sha) || '%'
+                    )
                   )
                 ORDER BY pe.ingested_at DESC
                 LIMIT 1
             ) p ON TRUE
-            WHERE ($1::uuid IS NULL OR ct.org_id = $1::uuid OR pt.org_id = $1::uuid)
-              AND ($2::uuid IS NULL OR c.repo_id = $2::uuid)
+            WHERE (($1::uuid IS NULL AND ct.org_id IS NULL) OR ct.org_id = $1::uuid)
+              AND ($2::uuid IS NULL OR ev.repo_id = $2::uuid)
               AND ($3::text IS NULL OR ct.ticket_id = $3)
-              AND COALESCE(c.created_at, ct.created_at) >= NOW() - make_interval(hours => $4::int)
-            ORDER BY COALESCE(c.created_at, ct.created_at) DESC, ct.ticket_id, ct.commit_sha
-            LIMIT $5 OFFSET $6
+              AND ev.created_at IS NOT NULL
+              AND ev.created_at >= NOW() - make_interval(hours => $4::int)
+              AND ($5::text IS NULL OR ev.branch = $5)
+              AND (
+                $6::text IS NULL
+                OR LOWER(ct.commit_sha) = LOWER($6)
+                OR (
+                  length(ct.commit_sha) < 40
+                  AND LOWER($6) LIKE LOWER(ct.commit_sha) || '%'
+                )
+                OR (
+                  length($6) < 40
+                  AND LOWER(ct.commit_sha) LIKE LOWER($6) || '%'
+                )
+              )
+            ORDER BY ev.created_at DESC, ct.ticket_id, ct.commit_sha
+            LIMIT $7 OFFSET $8
             "#,
         )
         .bind(&org_id)
         .bind(&repo_id)
         .bind(&ticket_id)
         .bind(hours as i32)
+        .bind(&branch)
+        .bind(&target_sha)
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
@@ -560,6 +794,8 @@ impl Database {
                             pipeline_id: row.get("pipeline_id"),
                             job_name: row.get("job_name"),
                             status: row.get("pipeline_status"),
+                            branch: row.get("pipeline_branch"),
+                            repo_full_name: row.get("pipeline_repo_full_name"),
                             duration_ms: row.get("pipeline_duration_ms"),
                             triggered_by: row.get("triggered_by"),
                             ingested_at: row
@@ -572,6 +808,7 @@ impl Database {
                     ticket_status: row.get("ticket_status"),
                     correlation_source: row.get("correlation_source"),
                     correlation_confidence: row.get("correlation_confidence"),
+                    evidence_source: row.get("evidence_source"),
                     commit_sha: row.get("commit_sha"),
                     branch: row.get("branch"),
                     user_login: row.get("user_login"),

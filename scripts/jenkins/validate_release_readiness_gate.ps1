@@ -207,13 +207,28 @@ $sonarFailureRate = if ($sonarTotal -gt 0) { Clamp-Percent ((100.0 * $sonarFaile
 
 $ticketCoveragePercent = 0.0
 $ticketTotalCommits = 0
+$ticketUnverifiedPercent = 0.0
+$ticketUnverifiedCommits = 0
 if ($null -ne $ticketCoverage) {
+  # coverage_percentage is verified-only: a detected ticket id counts only when
+  # it matches an ingested Jira ticket. Pattern-only matches are reported
+  # separately and never raise readiness.
   if ($ticketCoverage.PSObject.Properties.Name -contains "coverage_percentage") {
     $ticketCoveragePercent = Clamp-Percent (Get-Number -Value $ticketCoverage.coverage_percentage)
   }
   if ($ticketCoverage.PSObject.Properties.Name -contains "total_commits") {
     $ticketTotalCommits = [int](Get-Number -Value $ticketCoverage.total_commits)
   }
+  if ($ticketCoverage.PSObject.Properties.Name -contains "unverified_coverage_percentage") {
+    $ticketUnverifiedPercent = Clamp-Percent (Get-Number -Value $ticketCoverage.unverified_coverage_percentage)
+  }
+  if ($ticketCoverage.PSObject.Properties.Name -contains "detected_unverified_commits") {
+    $ticketUnverifiedCommits = [int](Get-Number -Value $ticketCoverage.detected_unverified_commits)
+  }
+}
+
+if ($ticketUnverifiedCommits -gt 0) {
+  $warnings.Add("jira_ticket_coverage_has_$($ticketUnverifiedCommits)_unverified_detections") | Out-Null
 }
 
 $readiness = Compute-WeightedScore -Signals @(
@@ -265,6 +280,8 @@ $result = [ordered]@{
     pipeline_success_rate = [Math]::Round($pipelineSuccessRate, 2)
     pipeline_failure_rate = [Math]::Round($pipelineFailureRate, 2)
     jira_ticket_coverage = [Math]::Round($ticketCoveragePercent, 2)
+    jira_ticket_coverage_unverified = [Math]::Round($ticketUnverifiedPercent, 2)
+    jira_ticket_unverified_commits = $ticketUnverifiedCommits
     sonar_total = $sonarTotal
     sonar_pass_rate = [Math]::Round($sonarPassRate, 2)
     sonar_failure_rate = [Math]::Round($sonarFailureRate, 2)
@@ -290,7 +307,7 @@ Write-Host "  readiness:       $($readiness.score) ($readinessBand)"
 Write-Host "  target:          $targetReadiness"
 Write-Host "  signal coverage: $($readiness.available)/$($readiness.total)"
 Write-Host "  pipeline:        total=$pipelineTotal success_rate=$([Math]::Round($pipelineSuccessRate,2))%"
-Write-Host "  jira coverage:   $([Math]::Round($ticketCoveragePercent,2))%"
+Write-Host "  jira coverage:   $([Math]::Round($ticketCoveragePercent,2))% verified (unverified $([Math]::Round($ticketUnverifiedPercent,2))% / $ticketUnverifiedCommits commits)"
 Write-Host "  sonar:           total=$sonarTotal pass_rate=$([Math]::Round($sonarPassRate,2))%"
 
 if ($warnings.Count -gt 0) {

@@ -28,12 +28,16 @@ impl ControlPlaneClient {
 
     pub fn list_cli_commands(
         &self,
+        org_name: Option<&str>,
         user_login: Option<&str>,
         limit: i64,
         offset: i64,
     ) -> Result<CliCommandListResponse, ServerError> {
         let url = self.endpoint_url(&["cli", "commands"])?;
         let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
         if let Some(user_login) = user_login {
             query_params.push(("user_login".to_string(), user_login.to_string()));
         }

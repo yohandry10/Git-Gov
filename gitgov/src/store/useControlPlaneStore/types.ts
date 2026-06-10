@@ -20,6 +20,8 @@ export interface CommitPipelineRun {
   pipeline_id: string
   job_name: string
   status: string
+  branch?: string | null
+  repo_full_name?: string | null
   duration_ms?: number | null
   triggered_by?: string | null
   ingested_at: number
@@ -50,6 +52,7 @@ export interface PrMergeEvidenceEntry {
   approvers: string[]
   approvals_count: number
   head_sha?: string | null
+  merge_commit_sha?: string | null
   base_branch?: string | null
   created_at: number
 }
@@ -105,6 +108,31 @@ export interface EvidencePacketCompleteness {
   missing: string[]
 }
 
+export interface EvidencePacketReconstructionFilters {
+  org_name?: string | null
+  repo_full_name?: string | null
+  branch?: string | null
+  target_sha?: string | null
+  ticket_id: string
+  hours: number
+}
+
+export interface EvidencePacketReconstructionSources {
+  commit_correlations: number
+  client_events: number
+  pull_request_merge_commits: number
+  pull_request_merges: number
+  pipeline_events: number
+  quality_gate_pipeline_events: number
+  legacy_pipeline_scope_fallbacks: number
+}
+
+export interface EvidencePacketReconstruction {
+  filters: EvidencePacketReconstructionFilters
+  sources: EvidencePacketReconstructionSources
+  warnings: string[]
+}
+
 export interface EvidencePacket {
   packet_type: string
   subject: string
@@ -112,11 +140,16 @@ export interface EvidencePacket {
   org_name?: string | null
   repo_full_name?: string | null
   branch?: string | null
+  target_sha?: string | null
+  release_id?: string | null
+  environment?: string | null
   period: string
   ticket?: JiraTicketDetail | null
   commits: Record<string, unknown>[]
   pull_requests: PrMergeEvidenceEntry[]
+  pipelines: CommitPipelineRun[]
   quality_gates: CommitPipelineRun[]
+  reconstruction?: EvidencePacketReconstruction
   completeness: EvidencePacketCompleteness
   content_hash: string
 }
@@ -187,9 +220,12 @@ export interface EnterpriseReleaseApprovalListResponse {
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
+  branch?: string | null
+  target_sha?: string | null
   release_id?: string | null
   environment?: string | null
   decision?: EnterpriseReleaseApprovalDecision | '' | null
+  evidence_packet_hash?: string | null
   limit?: number | null
   offset?: number | null
 }
@@ -205,6 +241,8 @@ export type EnterpriseReleaseGovernanceEvaluationStatus =
 export interface EnterpriseReleaseGovernanceEvaluationQuery {
   org_name?: string | null
   repository_full_name: string
+  branch?: string | null
+  target_sha?: string | null
   release_id: string
   environment: string
   evidence_packet_hash?: string | null
@@ -648,7 +686,7 @@ export interface ControlPlaneActions {
   applyTicketCoverageFilters: (filters: Partial<JiraCoverageFilters>) => Promise<void>
   correlateJiraTickets: (params?: { hours?: number; limit?: number; repo_full_name?: string; org_name?: string }) => Promise<JiraCorrelateResponse | null>
   loadJiraTicketDetail: (ticketId: string) => Promise<JiraTicketDetail | null>
-  loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; org_name?: string }) => Promise<EvidencePacket | null>
+  loadTicketEvidencePacket: (ticketId: string, params?: { hours?: number; repo_full_name?: string; branch?: string; target_sha?: string; release_id?: string; environment?: string; org_name?: string }) => Promise<EvidencePacket | null>
   loadEnterpriseAdoptionProfile: (orgName?: string) => Promise<EnterpriseAdoptionProfile | null>
   saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
   loadEnterpriseOnboardingChecklistTracking: (orgName?: string) => Promise<EnterpriseOnboardingChecklistTracking | null>

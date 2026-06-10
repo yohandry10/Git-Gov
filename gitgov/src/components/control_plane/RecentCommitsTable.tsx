@@ -50,6 +50,7 @@ export function RecentCommitsTable() {
   const logsPageSize = useControlPlaneStore((s) => s.logsPageSize)
   const setLogsPage = useControlPlaneStore((s) => s.setLogsPage)
   const displayTimezone = useControlPlaneStore((s) => s.displayTimezone)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
 
   const [expandedCommitRows, setExpandedCommitRows] = useState<Record<string, boolean>>({})
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
@@ -92,6 +93,9 @@ export function RecentCommitsTable() {
     ),
     [prMergeEvidence],
   )
+  const selectedTicketCacheKey = selectedTicketId
+    ? `${selectedOrgName.trim().toLowerCase() || 'unscoped'}:${selectedTicketId}`
+    : null
   const prEvidenceByHeadShaPrefix = useMemo(() => {
     const index = new Map<string, { approvals_count: number; pr_number: number }>()
     for (const [sha, entry] of prEvidenceByHeadSha.entries()) {
@@ -145,9 +149,9 @@ export function RecentCommitsTable() {
   }, [prEvidenceByHeadSha, prEvidenceByHeadShaPrefix])
 
   const selectedTicketDetails = selectedTicketId
-    ? (jiraTicketDetails[selectedTicketId] ?? (ticketCoverage?.tickets_without_commits ?? []).find((t) => typeof t.ticket_id === 'string' && t.ticket_id === selectedTicketId) ?? null)
+    ? (jiraTicketDetails[selectedTicketCacheKey ?? selectedTicketId] ?? (ticketCoverage?.tickets_without_commits ?? []).find((t) => typeof t.ticket_id === 'string' && t.ticket_id === selectedTicketId) ?? null)
     : null
-  const isSelectedTicketLoading = selectedTicketId ? !!jiraTicketDetailLoading[selectedTicketId] : false
+  const isSelectedTicketLoading = selectedTicketCacheKey ? !!jiraTicketDetailLoading[selectedTicketCacheKey] : false
   const ticketPanelSummaryText = isSelectedTicketLoading
     ? 'Cargando detalle de Jira...'
     : selectedTicketDetails && typeof selectedTicketDetails === 'object' && 'title' in selectedTicketDetails && typeof selectedTicketDetails.title === 'string' && selectedTicketDetails.title
