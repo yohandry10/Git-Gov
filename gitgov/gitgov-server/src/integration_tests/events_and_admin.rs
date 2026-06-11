@@ -104,6 +104,80 @@ async fn golden_path_ingest_events_and_query() {
 }
 
 #[tokio::test]
+async fn webhook_replay_with_fresh_delivery_id_is_deduped_by_content_hash() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let db = Database::from_pool(pool.clone());
+
+    use crate::db::WebhookIngestDecision;
+
+    let payload = serde_json::json!({
+        "ref": "refs/heads/main",
+        "head_commit": { "id": "abc123" }
+    });
+    // Hash of the signed material (event_type + raw body). A replay reuses the
+    // same signed body, so the content hash is identical even with a fresh
+    // delivery_id.
+    let content_hash = "fixed-content-hash-for-this-signed-body";
+
+    // First delivery: stored and eligible for processing.
+    let first = db
+        .store_webhook_event(
+            "delivery-original",
+            "push",
+            Some("sha256=valid-signature"),
+            &payload,
+            content_hash,
+        )
+        .await
+        .expect("first webhook store");
+    let first_id = match first {
+        WebhookIngestDecision::Process(Some(id)) => id,
+        other => panic!("first delivery should be processable, got {:?}", other),
+    };
+
+    // Retry-safety: a replay of a payload whose processing has NOT completed must
+    // still be processable, so a transient processing failure is not silently lost.
+    let replay_unprocessed = db
+        .store_webhook_event(
+            "delivery-replay-before-processed",
+            "push",
+            Some("sha256=valid-signature"),
+            &payload,
+            content_hash,
+        )
+        .await
+        .expect("replay store (unprocessed)");
+    assert!(
+        matches!(replay_unprocessed, WebhookIngestDecision::Process(_)),
+        "an unprocessed payload must remain reprocessable, not be dropped"
+    );
+
+    // Mark the first occurrence as processed.
+    db.mark_webhook_processed(&first_id, None)
+        .await
+        .expect("mark processed");
+
+    // Now a replay with a FRESH delivery_id but the same signed body is a true
+    // duplicate of an already-processed event and must be skipped.
+    let replay_processed = db
+        .store_webhook_event(
+            "delivery-replay-fresh",
+            "push",
+            Some("sha256=valid-signature"),
+            &payload,
+            content_hash,
+        )
+        .await
+        .expect("replay store (processed)");
+    assert!(
+        matches!(replay_processed, WebhookIngestDecision::SkipDuplicate),
+        "replay with a fresh delivery_id of an already-processed payload must be deduped"
+    );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
 async fn events_with_future_timestamp_are_rejected() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "event-future-ts").await;

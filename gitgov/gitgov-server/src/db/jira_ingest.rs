@@ -37,6 +37,9 @@ impl Database {
                 created_at = COALESCE(project_tickets.created_at, EXCLUDED.created_at),
                 updated_at = EXCLUDED.updated_at,
                 ingested_at = EXCLUDED.ingested_at
+            WHERE project_tickets.updated_at IS NULL
+               OR EXCLUDED.updated_at IS NULL
+               OR EXCLUDED.updated_at >= project_tickets.updated_at
             "#,
         )
         .bind(&ticket.id)

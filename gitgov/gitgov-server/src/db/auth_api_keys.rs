@@ -1,17 +1,25 @@
 use super::*;
 
 impl Database {
+    /// Stores a raw inbound webhook and enforces content-bound idempotency.
+    /// `payload_sha256` is a hash of the signed material (event type + raw body),
+    /// so a replay with a fresh `delivery_id` but the same signed body collides
+    /// here. A duplicate is only skipped when the prior occurrence was already
+    /// processed successfully; a prior occurrence whose processing failed is
+    /// returned for reprocessing so transient failures are not silently lost.
     pub async fn store_webhook_event(
         &self,
         delivery_id: &str,
         event_type: &str,
         signature: Option<&str>,
         payload: &serde_json::Value,
-    ) -> Result<String, DbError> {
-        let result = sqlx::query(
+        payload_sha256: &str,
+    ) -> Result<WebhookIngestDecision, DbError> {
+        let inserted: Option<String> = sqlx::query_scalar(
             r#"
-            INSERT INTO webhook_events (delivery_id, event_type, signature, payload)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO webhook_events (delivery_id, event_type, signature, payload, payload_sha256)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (payload_sha256) DO NOTHING
             RETURNING id::text
             "#,
         )
@@ -19,11 +27,40 @@ impl Database {
         .bind(event_type)
         .bind(signature)
         .bind(payload)
-        .fetch_one(&self.pool)
+        .bind(payload_sha256)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
-        Ok(result.get("id"))
+        if let Some(id) = inserted {
+            return Ok(WebhookIngestDecision::Process(Some(id)));
+        }
+
+        // Conflict: a row with this content hash already exists. Only treat it as
+        // a duplicate to skip when it was processed successfully; otherwise allow
+        // reprocessing of a previously-failed delivery (retry-safety).
+        let existing = sqlx::query(
+            r#"
+            SELECT id::text AS id, COALESCE(processed, FALSE) AS processed
+            FROM webhook_events
+            WHERE payload_sha256 = $1
+            "#,
+        )
+        .bind(payload_sha256)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        match existing {
+            Some(row) if row.get::<bool, _>("processed") => {
+                Ok(WebhookIngestDecision::SkipDuplicate)
+            }
+            Some(row) => Ok(WebhookIngestDecision::Process(Some(row.get("id")))),
+            // The conflicting row vanished between INSERT and SELECT (no normal
+            // delete path exists). Be conservative and process; the per-table
+            // dedup (e.g. github_events.delivery_id) remains a backstop.
+            None => Ok(WebhookIngestDecision::Process(None)),
+        }
     }
 
     pub async fn mark_webhook_processed(
