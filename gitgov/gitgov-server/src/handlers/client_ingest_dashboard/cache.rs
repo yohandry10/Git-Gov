@@ -67,7 +67,7 @@ fn put_cached_stats(state: &AppState, org_id: Option<&str>, stats: &AuditStats) 
     }
 }
 
-fn invalidate_stats_cache(state: &AppState) {
+fn invalidate_stats_cache(state: &AppState, org_id: Option<&str>) {
     if state.stats_cache_ttl.is_zero() {
         return;
     }
@@ -82,8 +82,21 @@ fn invalidate_stats_cache(state: &AppState) {
 
     match state.stats_cache.lock() {
         Ok(mut cache) => {
-            if !cache.is_empty() {
-                cache.clear();
+            match org_id {
+                // Scoped ingest: only the posting org's scoped stats and the
+                // global aggregate (which includes every org) can have changed.
+                // Other orgs' scoped stats are unaffected, so keep their cache.
+                Some(id) => {
+                    cache.remove(id);
+                    cache.remove(GLOBAL_STATS_CACHE_KEY);
+                }
+                // Unscoped/global-key ingest: affected orgs are not known here,
+                // so fall back to a full clear (correctness over cache reuse).
+                None => {
+                    if !cache.is_empty() {
+                        cache.clear();
+                    }
+                }
             }
         }
         Err(_) => {
@@ -182,7 +195,7 @@ fn put_cached_logs(state: &AppState, key: &str, events: &[CombinedEvent]) {
     }
 }
 
-fn invalidate_logs_cache(state: &AppState) {
+fn invalidate_logs_cache(state: &AppState, org_id: Option<&str>) {
     if state.logs_cache_ttl.is_zero() {
         return;
     }
@@ -197,13 +210,42 @@ fn invalidate_logs_cache(state: &AppState) {
 
     match state.logs_cache.lock() {
         Ok(mut cache) => {
-            if !cache.is_empty() {
-                cache.clear();
+            match org_id {
+                // Scoped ingest: only drop cached log pages whose filter targets
+                // the posting org or the cross-org (no org_id) scope. Other orgs'
+                // cached pages are unaffected by this org's new events.
+                Some(target) => {
+                    cache.retain(|key, _| !logs_cache_key_targets_org(key, target));
+                }
+                // Unscoped/global-key ingest: affected orgs are unknown, clear all.
+                None => {
+                    if !cache.is_empty() {
+                        cache.clear();
+                    }
+                }
             }
         }
         Err(_) => {
             tracing::warn!("Logs cache lock poisoned while invalidating");
         }
+    }
+}
+
+/// Returns true when a cached logs key (`role|serialized_filter`) is affected by
+/// new events for `target_org`: either it filters by that org, or it has no org
+/// scope (cross-org page that includes every org's events).
+fn logs_cache_key_targets_org(key: &str, target_org: &str) -> bool {
+    let Some((_role, json)) = key.split_once('|') else {
+        // Unexpected key shape: invalidate to avoid serving stale data.
+        return true;
+    };
+    match serde_json::from_str::<EventFilter>(json) {
+        Ok(filter) => match filter.org_id.as_deref() {
+            Some(org) => org == target_org,
+            None => true,
+        },
+        // Unparseable filter: invalidate conservatively.
+        Err(_) => true,
     }
 }
 

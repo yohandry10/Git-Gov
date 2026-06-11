@@ -118,13 +118,9 @@ pub fn cmd_execute_cli(
 
     // Try to infer repo name from cwd
     if let Ok(repo) = git2::Repository::open(&cwd) {
-        if let Some(full_name) = super::git_commands::infer_repo_full_name_pub(&repo) {
-            repo_full_name = Some(full_name.clone());
-            audit_event = audit_event.with_repo(full_name.clone());
-            if let Some(org) = full_name.split('/').next().map(ToOwned::to_owned) {
-                audit_event = audit_event.with_org(org);
-            }
-        }
+        let repo_context = super::repo_event_context::resolve_repo_event_context(&repo);
+        repo_full_name = repo_context.repo_full_name.clone();
+        audit_event = repo_context.apply_to_event(audit_event, false);
     }
     let _ = outbox.add(audit_event);
 
@@ -237,13 +233,13 @@ pub fn cmd_execute_cli(
             "execution_mode": execution_mode_str,
             "command_id": cmd_id.clone(),
         }));
+        let mut completion_repo_name = repo_name_for_audit.clone();
         if let Ok(repo) = git2::Repository::open(&cwd_str) {
-            if let Some(full_name) = super::git_commands::infer_repo_full_name_pub(&repo) {
-                done_event = done_event.with_repo(full_name.clone());
-                if let Some(org) = full_name.split('/').next().map(ToOwned::to_owned) {
-                    done_event = done_event.with_org(org);
-                }
+            let repo_context = super::repo_event_context::resolve_repo_event_context(&repo);
+            if repo_context.repo_full_name.is_some() {
+                completion_repo_name = repo_context.repo_full_name.clone();
             }
+            done_event = repo_context.apply_to_event(done_event, false);
         }
         let _ = outbox_ref.add(done_event);
         outbox_ref.notify_flush();
@@ -256,10 +252,13 @@ pub fn cmd_execute_cli(
                     api_key: cfg.api_key,
                 });
                 let payload = CliCommandInput {
+                    org_name: completion_repo_name
+                        .as_deref()
+                        .and_then(super::repo_event_context::infer_org_name_from_full_name),
                     command: redact_sensitive_cli_text(&cmd_str),
                     origin: origin_str.clone(),
                     branch: branch_str.clone(),
-                    repo_name: repo_name_for_audit.clone(),
+                    repo_name: completion_repo_name.clone(),
                     exit_code: Some(exit_code),
                     duration_ms: Some(elapsed_ms),
                     metadata: serde_json::json!({

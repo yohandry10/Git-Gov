@@ -1,0 +1,131 @@
+# GitGov Agents - Archived Verified State
+
+Archived: 2026-06-09
+Source: `AGENTS.md` (section `Verified State`)
+
+These dated validation entries (workflow run IDs, coverage/readiness snapshots, evidence chains, calibration results) were moved verbatim from `AGENTS.md` to keep the agent operating context compact. Treat them as historical snapshots, not current state. For current state, read `docs/CURRENT_CONTEXT.md` and `docs/OPERATIONS_ACCESS.md`.
+
+
+- Render backend health endpoint passed on `https://gitgov-api.onrender.com/health`.
+- Local ignored `GITGOV_API_KEY` was validated against production `https://gitgov-api.onrender.com/stats` with HTTP `200`; Render does not need a `GITGOV_API_KEY` env var for current DB-backed admin auth, though setting it there can be used as bootstrap consistency.
+- Local Docker validation stack was refreshed on 2026-04-28: Docker Desktop engine became ready, `gitgov-sonarqube`, `gitgov-sonarqube-db`, and `gitgov-jenkins` were running, and the local backend health endpoint responded on `http://127.0.0.1:3001/health`.
+- Manual Jira ingest to production was validated with Bearer `GITGOV_API_KEY`, `x-gitgov-jira-secret`, and `org_name=yohandry10`; the previous `401` diagnosis was a missing Jira secret header, not a bad GitGov API key.
+- GitGov website publication validation completed through `KAN-12`: PR `#77` merged to `main` as commit `a0a4174`, PR checks passed after rerunning a transient `Workflow Lint` download failure, and post-merge `CI` run `24974947818` plus `Release Readiness Gate` run `24974947816` both passed.
+- Deployment documentation drift was cleaned so Render is documented as current production, GitHub/Jira webhooks are documented as already configured, and domain/`certbot` work is marked as optional for self-hosted/custom-domain migrations.
+- GitGov Render backend has policy and Sonar-style pipeline evidence for `yohandry10/Git-Gov`; last observed correlation sample contained 12 Sonar/Jenkins evidence items for `main`.
+- GitHub-hosted matrix validation passed on run `24877293195`.
+- Job `Validate quality_gates warn/block matrix` passed on job `72836755674`.
+- Local SonarQube API token validation passed with `SONAR_TOKEN`; project `yohandry10_git-gov` quality gate was `OK`.
+- Local Jenkins API validation passed through `/whoAmI/api/json`; authenticated user is `admin`.
+- Local Jenkins job API validation passed for `gitgov-demo-pipeline`; last observed build was `#30`, result `SUCCESS`, not building.
+- Jira Cloud API validation passed through `/rest/api/3/myself` and `/rest/api/3/project/KAN`.
+- Jira project `KAN` is reachable and accepts issue type `Tarea`.
+- Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were created for GitGov traceability validation.
+- Jira issues `KAN-4`, `KAN-5`, and `KAN-6` were ingested into GitGov through `POST /integrations/jira`.
+- Native signed Jira webhook delivery was validated end-to-end by updating `KAN-6` in Jira Cloud and observing `last_ingest_at` advance in GitGov.
+- GitGov Jira correlation was validated with `KAN-6`; the main commit from `docs(KAN-6): document Jira API access (#21)` produced one commit-ticket correlation.
+- Jira ticket coverage for `yohandry10/Git-Gov` over the 720h validation window was last observed at `1/25` commits with tickets (`4.0%`) after additional GitHub-hosted merge commits were ingested.
+- Repo/branch-scoped readiness validation for `yohandry10/Git-Gov` on `main` was refreshed on 2026-04-28: standard readiness `91/100` against target `75`, signal coverage `3/3`, pipeline success `98.67%`, Sonar pass `98.67%`, and Jira coverage `66.22%`.
+- Secret-safe provider access validation can be run with `.\scripts\control-plane\validate_provider_access.ps1 -IncludeReleaseReadiness`; latest KAN-16 validation returned all checks `ok`, readiness `92/100`, pipeline success `98.81%`, Jira ticket coverage `69.88%`, and Sonar pass `98.81%`.
+- Local SonarQube self-hosted runner activation is documented but not enabled by default. Keep `sonar-governance.yml` on GitHub-hosted/non-blocking behavior until a dedicated runner with label `gitgov-local-sonar` is online and validated.
+- Dedicated Jira traceability coverage validation can be run with `.\scripts\control-plane\validate_jira_traceability_coverage.ps1 -RefreshCorrelations -MinCoverage 50`; latest KAN-19 run passed with coverage `96.67%`, `scanned_prs=57`, and `correlations_created=0`.
+- Risk Tier Baseline Calibration scheduled run `24999681550` failed on 2026-04-27 because the workflow used PowerShell array splatting and passed `-RepoFullName` positionally into the `Tier` parameter. Desktop Updater Readiness had the same invocation pattern and produced optional job failures. Both workflows were corrected to hashtable splatting and locally validated with the target scripts. Follow-up manual runs `25049577630` and `25049782826` proved calibration succeeded but artifact upload must use the deterministic report path directly instead of relying on a step output. Final manual validation run `25049984199` passed and uploaded artifact `risk-tier-baseline-25049984199` ID `6682824924`.
+- GitHub repository webhook ID `610772988` is active and delivered real `pull_request`, `push`, `issue_comment`, `check_run`, `check_suite`, and `status` events to Render with HTTP `200`.
+- GitHub PR merge delivery validation with `KAN-4` titles was completed in production:
+  - PR merge evidence was materialized in `pull_request_merges`.
+  - PR-title correlations were created for merge/head SHAs using `source=pr_title`.
+  - Latest validated GitHub redelivery returned HTTP `200` and `processed=true`.
+- GitHub webhook ingestion includes `pull_request_review_comment` and PR-linked `issue_comment`; these events are stored as first-class evidence and can create commit-ticket correlations from ticket IDs in comment/title text.
+- GitHub webhook extraction contract tests cover `check_run`, `check_suite`, `status`, and `pull_request_review_comment`; run `cargo test github_webhook_tests` from `gitgov/gitgov-server` after changing webhook evidence parsing.
+- Post-merge validation for GitHub webhook extraction contract tests passed on `main` commit `946fac3`: CI run `24927816238`, Quality Gate Policy Matrix run `24927816230`, and Release Readiness Gate run `24927816225`.
+- Admin dashboard GitHub reporting includes an executive evidence coverage summary in `EventBreakdownGrid`: PR lifecycle, reviews, PR comments, and checks/status are collapsed to `n/4` coverage with missing signal labels.
+- Admin dashboard GitHub reporting includes a local trend widget `GitHubEvidenceTrendWidget`; it stores operator-captured evidence snapshots in browser `localStorage` under `gitgov.dashboard.github_evidence_trend` and does not query GitHub Actions or provider tokens.
+- Post-merge validation for the executive GitHub evidence dashboard summary passed on `main` commit `01d275c`: CI run `24938441269`, Quality Gate Policy Matrix run `24938441278`, and Release Readiness Gate run `24938441273`.
+- Post-merge validation for the dashboard GitHub evidence trend widget passed on `main` commit `74a51a5`: CI run `24940280762`, Quality Gate Policy Matrix run `24940280775`, and Release Readiness Gate run `24940280751`.
+- Admin dashboard audit exports package the same GitHub executive evidence summary into downloaded JSON under `executive_summary.github_evidence`; raw export records remain under `data`.
+- Post-merge validation for GitHub evidence export packaging passed on `main` commit `458c048`: CI run `24938795096`, Quality Gate Policy Matrix run `24938795085`, and Release Readiness Gate run `24938795100`.
+- `scripts/control-plane/generate_github_evidence_report.ps1` generates a standalone Markdown executive report from `/stats.github_events.by_type` or an offline stats JSON fixture. Use `-StatsJsonPath` for token-free validation and `-GitGovUrl`/`-ApiKey` for live Control Plane reporting.
+- `.github/workflows/github-evidence-report.yml` runs the GitHub evidence executive report generator manually or weekly on Monday 13:23 UTC, uploads the Markdown artifact, and skips cleanly when `GITGOV_URL` or `GITGOV_API_KEY` is missing.
+- Manual GitHub evidence report workflow validation passed on run `24939329055` for `main` commit `3935c21`; artifact `github-evidence-executive-report` was uploaded successfully.
+- `scripts/control-plane/validate_github_evidence_report_artifact.ps1` validates operational freshness of the GitHub evidence report artifact by querying GitHub Actions for the latest successful `github-evidence-report.yml` run, confirming artifact `github-evidence-executive-report` exists, is not expired, and is within the configured max age.
+- `.github/workflows/github-evidence-artifact-monitor.yml` runs the artifact freshness monitor manually or weekly on Tuesday 14:07 UTC and uploads `github-evidence-artifact-monitor` JSON evidence.
+- Local validation of the artifact monitor passed against workflow run `24939329055`; artifact `6642253304` was fresh and not expired.
+- First GitHub-hosted validation of the artifact monitor passed on workflow run `24939815276`; artifact `github-evidence-artifact-monitor` ID `6642391452` uploaded successfully and was not expired.
+- `scripts/control-plane/generate_github_evidence_trend_report.ps1` generates Markdown/JSON trend history by downloading recent `github-evidence-executive-report` artifacts from successful `github-evidence-report.yml` runs and parsing status, coverage, and missing signal fields.
+- `.github/workflows/github-evidence-trend-report.yml` runs the trend report manually or weekly on Tuesday 14:17 UTC and uploads artifact `github-evidence-trend-report`.
+- Operational use of the GitHub evidence dashboard, Markdown report, artifact freshness monitor, and trend report is documented in `docs/runbooks/github-evidence-operations.md`.
+- Post-merge validation for the GitHub evidence operations runbook passed on `main` commit `7577f90`: CI run `24940874607`, Quality Gate Policy Matrix run `24940874602`, Release Readiness Gate run `24940874616`, Secret Scan run `24940874599`, SonarQube Governance run `24940874600`, Public Naming Guard run `24940874603`, Governance Correlation Smoke run `24940874611`, and Desktop Updater Readiness run `24940874597`.
+- GitHub evidence operational adoption baseline completed on 2026-04-25:
+  - Executive report workflow run `24941348198` succeeded on `main` commit `65613b0`; artifact `github-evidence-executive-report` ID `6642829154`.
+  - Artifact monitor workflow run `24941358185` succeeded; artifact `github-evidence-artifact-monitor` ID `6642831722`.
+  - Trend workflow run `24941363195` succeeded; artifact `github-evidence-trend-report` ID `6642833188`.
+  - Local artifact freshness monitor returned `PASS`; latest artifact was not expired and age was `0.02h`.
+  - Local trend parsed `2` reports and still observed `Sin evidencia` / `0/4 signals`; Jira follow-up `KAN-7` tracks the data-quality/scope investigation.
+- `KAN-7` GitHub evidence stats root cause:
+  - `github-evidence-report.yml` reads `GET /stats.github_events.by_type`.
+  - Existing `supabase_schema_v18.sql` and `supabase_schema_v19.sql` optimized `get_audit_stats` but returned zeroed GitHub stats.
+  - Migration `supabase_schema_v22.sql` restores real `github_events` totals, daily counts, `by_type`, and `active_repos` while preserving v19 violation decision semantics.
+  - Postcheck file: `gitgov/gitgov-server/supabase/checks/v22_postcheck.sql`.
+  - Production DB migration v22 was applied with `psql`; `v22_postcheck.sql` passed.
+  - Post-migration `/stats.github_events.by_type` showed real evidence counts, including `pull_request=75`, `issue_comment=93`, `check_run=1937`, `check_suite=599`, and `status=148`.
+  - Local live executive report generated `Parcial` / `3/4 signals`; remaining missing signal is `Reviews` because the current sample lacks `pull_request_review` events.
+  - GitHub-hosted validation passed: report run `24942000355` artifact `6643010178`, artifact monitor run `24942008460` artifact `6643012934`, trend run `24942016196` artifact `6643015713`.
+  - To close the remaining `Reviews` signal, create/use a Jira-traceable PR and have a reviewer submit a GitHub PR review event; review comments alone count under `PR comments`, not `Reviews`.
+  - PR `#71` created a real `pull_request_review` event; `/stats.github_events.by_type.pull_request_review` reached `1`.
+  - Local live report after PR `#71` review validation generated `Completo` / `4/4 signals` with evidence file `docs/reports/github-evidence-executive-report-prod-review-v22-2026-04-25.md`.
+  - GitHub-hosted post-review validation passed after PR `#71` merged on `main` commit `0a7a230`: report run `24942351831` generated `Completo` / `4/4 signals`, monitor run `24942357291` returned `PASS`, and trend run `24942362269` reported latest coverage `4/4 signals`.
+  - Latest GitHub evidence report artifact ID after review validation: `6643110541`; it is the current cloud evidence reference for complete PR lifecycle, reviews, PR comments, and checks/status coverage.
+- Admin dashboard Risk Outcomes now includes informational `Time-to-Evidence` and `MTTR pipeline` metrics from Jenkins commit-pipeline correlations:
+  - `Time-to-Evidence` is commit timestamp to correlated pipeline ingestion timestamp.
+  - `MTTR pipeline` is recoverable non-green Jenkins pipeline event to next successful run for the same job.
+  - Duplicate pipeline evidence is ignored before calculating samples.
+  - These metrics render `N/A` with insufficient evidence and are not part of composite risk/readiness scoring until tier-specific SLOs are calibrated.
+  - Local validation passed with `npm test -- --run src/test/components/dashboard-helpers.test.ts`, full `npm test -- --run`, `npm run typecheck`, `npm run lint`, `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
+  - Post-merge GitHub-hosted validation passed on `main` commit `adb5399`: CI `24941724773`, Quality Gate Policy Matrix `24941724754`, Release Readiness Gate `24941724756`, Secret Scan `24941724779`, SonarQube Governance `24941724778`, Public Naming Guard `24941724766`, Governance Correlation Smoke `24941724751`, and Desktop Updater Readiness `24941724750`.
+- Local live validation of the trend generator parsed workflow run `24939329055` and produced a 1-report trend with latest coverage `0/4 signals`; this reflects the existing `/stats.github_events.by_type` visibility note, not a secret/config leak.
+- First GitHub-hosted validation of the trend workflow passed on run `24940027811` for `main` commit `a58ae81`; artifact `github-evidence-trend-report` ID `6642453325` uploaded successfully and was not expired.
+- Post-merge validation for the trend workflow rollout passed on `main` commit `a58ae81`: CI run `24940024455`, Quality Gate Policy Matrix run `24940024458`, and Release Readiness Gate run `24940024457`.
+- GitHub merged PR title ingestion creates commit-ticket correlations for the merge commit SHA when the PR title contains a ticket ID, so future `main` merge commits can count toward Jira ticket coverage.
+- `POST /integrations/jira/correlate` also scans recent merged PR titles as a backfill path for historical ticket coverage.
+- Last production PR-title backfill validation for `KAN-4` observed:
+  - `scanned_prs=2`
+  - `correlations_created=2`
+  - four `KAN-4` correlation rows across validated merge/head SHAs
+- Coverage/readiness query semantics were updated after the `33.33%` observation: ticket coverage now includes materialized PR merge commits in addition to desktop/client commit events. After deploying this change, re-run `/integrations/jira/correlate` and `/integrations/jira/ticket-coverage` for `yohandry10/Git-Gov` on `main` to confirm production readiness movement.
+- Production validation after deploy `0494648` completed:
+  - Render deploy for `fix(KAN-4): count PR merges in ticket coverage (#35)` reached `live`.
+  - `/health` returned `ok`.
+  - Jira correlation backfill scanned `4` PRs and created `0` new rows because existing correlations were already present.
+  - `/integrations/jira/ticket-coverage?repo_full_name=yohandry10%2FGit-Gov&branch=main&hours=720` returned `total_commits=30`, `commits_with_ticket=5`, `coverage_percentage=16.67`.
+  - `validate_release_readiness_gate.ps1` passed for `yohandry10/Git-Gov` on `main`: readiness `77/100` vs target `75`, signal coverage `3/3`, pipeline success `96.77%`, Sonar pass `96.77%`, Jira coverage `16.67%`.
+- Production validation after traceability guard rollout completed:
+  - Jira correlation backfill scanned `8` PRs and created `0` new rows because relevant rows already existed.
+  - Ticket coverage for `yohandry10/Git-Gov`, branch `main`, 720h returned `total_commits=34`, `commits_with_ticket=9`, `coverage_percentage=26.47`.
+  - Release readiness passed with readiness `79/100` vs target `75`, signal coverage `3/3`, pipeline success `97.14%`, Sonar pass `97.14%`, Jira coverage `26.47%`.
+  - This confirms the branch/PR/commit Jira-ID guardrail is improving coverage through the PR-title merge evidence path.
+- Scheduled release readiness monitoring is configured in `.github/workflows/release-readiness-gate.yml`:
+  - Runs daily at `10:17 UTC`.
+  - Refreshes Jira correlations through `POST /integrations/jira/correlate` before scoring.
+  - Uploads both `release-readiness-gate-<run_id>.json` and `jira-correlation-refresh-<run_id>.json`.
+  - Fails scheduled runs when readiness is below the configured standard target.
+- First GitHub-hosted validation after scheduling passed on run `24927045053`:
+  - Event: `push` on `main` for commit `a94114c`.
+  - Jira correlation refresh artifact was generated.
+  - Readiness was `81/100` against target `75`.
+  - Signal coverage was `3/3`.
+- GitHub Actions Node 24 compatibility upgrade is documented at `docs/reports/github-actions-node24-upgrade-2026-04-25.md`.
+- First GitHub-hosted validation after the full Node 24 action-runtime upgrade passed:
+  - `main` commit `3f4c601`.
+  - CI run `24927274092` passed with `actions/checkout@v6`, `actions/setup-node@v6`, and `pnpm/action-setup@v5`.
+  - The previous Node.js 20 action-runtime annotation was not present in the CI run output.
+  - Release Readiness Gate run `24927274091` passed with readiness `82/100`, target `75`, and signal coverage `3/3`.
+- Production tier/SLO calibration completed on 2026-04-25 after refreshing Jira PR correlations:
+  - Jira backfill scanned `14` merged PRs and created `0` new correlations.
+  - Tier baseline reports were generated under `docs/reports/risk-tier-baseline-prod-2026-04-25/`.
+  - Critical: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Standard: readiness `95/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Internal: readiness `96/100`, composite risk `4/100`, traceability gap `11.8%`, no SLA breaches.
+  - Domain SLO validation reports were generated under `docs/reports/domain-slo-validation-prod-2026-04-25/`.
+  - Domains `core-platform`, `standard-services`, and `internal-tools` all passed after scoping targets to `org_name=yohandry10`.
+- Domain SLO target config validation is enforced by `scripts/control-plane/validate_domain_slo_target_config.ps1` in CI and `.github/workflows/domain-slo-validation.yml`, requiring explicit `org_name`, `repo_full_name`, and `branch` scope.
+- Post-merge validation for SLO target config guardrail passed on `main` commit `f0a3470`: CI run `24927603357`, Quality Gate Policy Matrix run `24927603365`, and Release Readiness Gate run `24927603352`.

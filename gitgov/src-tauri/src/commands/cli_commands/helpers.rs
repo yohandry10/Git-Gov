@@ -305,7 +305,7 @@ fn resolve_branch(explicit: Option<String>, cwd: &str) -> String {
 
 fn infer_repo_name_from_cwd(cwd: &str) -> Option<String> {
     if let Ok(repo) = git2::Repository::open(cwd) {
-        return super::git_commands::infer_repo_full_name_pub(&repo);
+        return super::repo_event_context::infer_repo_full_name(&repo);
     }
     None
 }
@@ -442,7 +442,7 @@ fn queue_cli_start_audit(outbox: &Arc<Outbox>, input: &CliStartAuditInput<'_>) {
 
     if let Some(full_name) = input.repo_name {
         event = event.with_repo(full_name.to_string());
-        if let Some(org) = full_name.split('/').next().map(ToOwned::to_owned) {
+        if let Some(org) = super::repo_event_context::infer_org_name_from_full_name(full_name) {
             event = event.with_org(org);
         }
     }
@@ -479,14 +479,14 @@ fn queue_cli_completion_audit(
         "command_id": command_id,
     }));
 
-    if let Some(full_name) = &pending.repo_name {
+    let effective_repo_name = pending
+        .repo_name
+        .clone()
+        .or_else(|| infer_repo_name_from_cwd(&pending.cwd));
+
+    if let Some(full_name) = &effective_repo_name {
         done_event = done_event.with_repo(full_name.clone());
-        if let Some(org) = full_name.split('/').next().map(ToOwned::to_owned) {
-            done_event = done_event.with_org(org);
-        }
-    } else if let Some(inferred_repo) = infer_repo_name_from_cwd(&pending.cwd) {
-        done_event = done_event.with_repo(inferred_repo.clone());
-        if let Some(org) = inferred_repo.split('/').next().map(ToOwned::to_owned) {
+        if let Some(org) = super::repo_event_context::infer_org_name_from_full_name(full_name) {
             done_event = done_event.with_org(org);
         }
     }
@@ -504,10 +504,13 @@ fn queue_cli_completion_audit(
                 api_key: cfg.api_key.clone(),
             });
             let payload = CliCommandInput {
+                org_name: effective_repo_name
+                    .as_deref()
+                    .and_then(super::repo_event_context::infer_org_name_from_full_name),
                 command: redact_sensitive_cli_text(&pending.command),
                 origin: pending.origin.clone(),
                 branch: pending.branch.clone(),
-                repo_name: pending.repo_name.clone(),
+                repo_name: effective_repo_name.clone(),
                 exit_code: Some(exit_code),
                 duration_ms: Some(duration_ms),
                 metadata: serde_json::json!({

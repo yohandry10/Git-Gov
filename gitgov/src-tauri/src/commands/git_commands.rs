@@ -1,4 +1,5 @@
 use crate::audit::AuditDatabase;
+use crate::commands::repo_event_context::{infer_repo_full_name, resolve_repo_event_context};
 use crate::config::{load_config, validate_commit_message};
 use crate::git::{
     create_commit, get_working_tree_changes, has_staged_changes, open_repository, stage_files,
@@ -31,32 +32,6 @@ fn trigger_flush(outbox: &Arc<Outbox>) {
 /// Public wrapper for cross-module access (used by cli_commands).
 pub fn infer_repo_full_name_pub(repo: &Repository) -> Option<String> {
     infer_repo_full_name(repo)
-}
-
-fn infer_repo_full_name(repo: &Repository) -> Option<String> {
-    let remote = repo.find_remote("origin").ok()?;
-    let url = remote.url()?.trim();
-
-    if let Some(rest) = url.strip_prefix("https://github.com/") {
-        return Some(rest.trim_end_matches(".git").trim_matches('/').to_string());
-    }
-    if let Some(rest) = url.strip_prefix("http://github.com/") {
-        return Some(rest.trim_end_matches(".git").trim_matches('/').to_string());
-    }
-    if let Some(rest) = url.strip_prefix("git@github.com:") {
-        return Some(rest.trim_end_matches(".git").trim_matches('/').to_string());
-    }
-
-    None
-}
-
-fn infer_org_name_from_full_name(repo_full_name: &str) -> Option<String> {
-    repo_full_name
-        .split('/')
-        .next()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(ToOwned::to_owned)
 }
 
 fn summarize_stage_files_for_event(files: &[String]) -> (Vec<String>, Option<serde_json::Value>) {
@@ -341,10 +316,7 @@ pub fn cmd_stage_files(
     outbox: State<'_, Arc<Outbox>>,
 ) -> Result<serde_json::Value, String> {
     let repo = open_repository(&repo_path).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
-    let repo_full_name = infer_repo_full_name(&repo);
-    let org_name = repo_full_name
-        .as_deref()
-        .and_then(infer_org_name_from_full_name);
+    let repo_context = resolve_repo_event_context(&repo);
 
     let files_to_stage: Vec<String> = files.clone();
     let (event_files, stage_metadata) = summarize_stage_files_for_event(&files_to_stage);
@@ -354,16 +326,11 @@ pub fn cmd_stage_files(
             let mut event = OutboxEvent::new(
                 "stage_files".to_string(),
                 developer_login,
-                None,
+                repo_context.branch.clone(),
                 AuditStatus::Success,
             )
             .with_files(event_files.clone());
-            if let Some(full_name) = repo_full_name.clone() {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name.clone() {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, false);
 
             if let Some(metadata) = stage_metadata.clone() {
                 event = event.with_metadata(metadata);
@@ -381,17 +348,12 @@ pub fn cmd_stage_files(
             let mut event = OutboxEvent::new(
                 "stage_files".to_string(),
                 developer_login,
-                None,
+                repo_context.branch.clone(),
                 AuditStatus::Failed,
             )
             .with_files(event_files)
             .with_reason(e.to_string());
-            if let Some(full_name) = repo_full_name {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, false);
 
             if let Some(metadata) = stage_metadata {
                 event = event.with_metadata(metadata);
@@ -443,10 +405,7 @@ pub fn cmd_commit(
     }
 
     let repo = open_repository(&repo_path).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
-    let repo_full_name = infer_repo_full_name(&repo);
-    let org_name = repo_full_name
-        .as_deref()
-        .and_then(infer_org_name_from_full_name);
+    let repo_context = resolve_repo_event_context(&repo);
 
     let has_staged = has_staged_changes(&repo).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
 
@@ -457,7 +416,7 @@ pub fn cmd_commit(
         ));
     }
 
-    let current_branch = crate::git::get_current_branch(&repo).ok();
+    let current_branch = repo_context.branch.clone();
 
     match create_commit(&repo, &message, &author_name, &author_email) {
         Ok(commit_hash) => {
@@ -473,12 +432,7 @@ pub fn cmd_commit(
                 "device": device_metadata()
             }))
             .with_user_name(author_name);
-            if let Some(full_name) = repo_full_name.clone() {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name.clone() {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, false);
 
             let _ = outbox.add(event);
             trigger_flush(&outbox);
@@ -497,12 +451,7 @@ pub fn cmd_commit(
                 "device": device_metadata()
             }))
             .with_reason(e.to_string());
-            if let Some(full_name) = repo_full_name {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, false);
 
             let _ = outbox.add(event);
             trigger_flush(&outbox);
@@ -544,14 +493,13 @@ pub fn cmd_push(
     use crate::models::{AuditAction, AuditLogEntry};
     use uuid::Uuid;
 
-    let repo_context = open_repository(&repo_path).ok();
-    let repo_full_name = repo_context.as_ref().and_then(infer_repo_full_name);
-    let head_commit_sha = repo_context
+    let opened_repo = open_repository(&repo_path).ok();
+    let repo_context = opened_repo
         .as_ref()
-        .and_then(|repo| crate::git::get_head_commit_hash(repo).ok());
-    let org_name = repo_full_name
-        .as_deref()
-        .and_then(infer_org_name_from_full_name);
+        .map(resolve_repo_event_context)
+        .unwrap_or_default();
+    let repo_full_name = repo_context.repo_full_name.clone();
+    let head_commit_sha = repo_context.head_commit_sha.clone();
 
     let mut attempt_event = OutboxEvent::new(
         "attempt_push".to_string(),
@@ -560,12 +508,7 @@ pub fn cmd_push(
         AuditStatus::Success,
     )
     .with_metadata(serde_json::json!({"device": device_metadata()}));
-    if let Some(full_name) = repo_full_name.clone() {
-        attempt_event = attempt_event.with_repo(full_name);
-    }
-    if let Some(org) = org_name.clone() {
-        attempt_event = attempt_event.with_org(org);
-    }
+    attempt_event = repo_context.apply_to_event(attempt_event, true);
     let attempt_uuid = outbox.add(attempt_event).ok();
 
     let config = load_config(&repo_path);
@@ -581,12 +524,7 @@ pub fn cmd_push(
                 )
                 .with_reason(format!("Rama protegida: {}", branch))
                 .with_metadata(serde_json::json!({"device": device_metadata()}));
-                if let Some(full_name) = repo_full_name.clone() {
-                    blocked_event = blocked_event.with_repo(full_name);
-                }
-                if let Some(org) = org_name.clone() {
-                    blocked_event = blocked_event.with_org(org);
-                }
+                blocked_event = repo_context.apply_to_event(blocked_event, true);
                 let _ = outbox.add(blocked_event);
             }
 
@@ -656,12 +594,7 @@ pub fn cmd_push(
                                     "violations": check.violations.len(),
                                     "enforcement_applied": check.enforcement_applied,
                                 }));
-                                if let Some(full_name) = repo_full_name.clone() {
-                                    blocked_event = blocked_event.with_repo(full_name);
-                                }
-                                if let Some(org) = org_name.clone() {
-                                    blocked_event = blocked_event.with_org(org);
-                                }
+                                blocked_event = repo_context.apply_to_event(blocked_event, true);
                                 let _ = outbox.add(blocked_event);
 
                                 let entry = AuditLogEntry {
@@ -702,12 +635,7 @@ pub fn cmd_push(
                                     "warnings": check.warnings,
                                     "enforcement_applied": check.enforcement_applied,
                                 }));
-                                if let Some(full_name) = repo_full_name.clone() {
-                                    warn_event = warn_event.with_repo(full_name);
-                                }
-                                if let Some(org) = org_name.clone() {
-                                    warn_event = warn_event.with_org(org);
-                                }
+                                warn_event = repo_context.apply_to_event(warn_event, true);
                                 let _ = outbox.add(warn_event);
                                 let _ = app.emit(
                                     "gitgov:governance-warnings",
@@ -745,12 +673,7 @@ pub fn cmd_push(
             )
             .with_reason("Token not found for authenticated user".to_string())
             .with_metadata(serde_json::json!({"device": device_metadata()}));
-            if let Some(full_name) = repo_full_name.clone() {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name.clone() {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, true);
             let _ = outbox.add(event);
 
             let entry = AuditLogEntry {
@@ -786,12 +709,7 @@ pub fn cmd_push(
                 AuditStatus::Success,
             )
             .with_metadata(serde_json::json!({"device": device_metadata()}));
-            if let Some(full_name) = repo_full_name.clone() {
-                success_event = success_event.with_repo(full_name);
-            }
-            if let Some(org) = org_name.clone() {
-                success_event = success_event.with_org(org);
-            }
+            success_event = repo_context.apply_to_event(success_event, true);
             let _ = outbox.add(success_event);
 
             let entry = AuditLogEntry {
@@ -828,12 +746,7 @@ pub fn cmd_push(
             )
             .with_reason(e.to_string())
             .with_metadata(serde_json::json!({"device": device_metadata()}));
-            if let Some(full_name) = repo_full_name {
-                event = event.with_repo(full_name);
-            }
-            if let Some(org) = org_name {
-                event = event.with_org(org);
-            }
+            event = repo_context.apply_to_event(event, true);
             let _ = outbox.add(event);
 
             let entry = AuditLogEntry {

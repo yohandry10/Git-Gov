@@ -27,6 +27,36 @@ pub struct OrgInvitation {
     pub updated_at: i64,
 }
 
+impl OrgInvitation {
+    pub fn resolved_accept_login(&self) -> Option<String> {
+        self.invite_login
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                self.invite_email
+                    .as_ref()
+                    .and_then(|email| email.split('@').next().map(str::trim))
+                    .filter(|s| !s.is_empty())
+                    .map(ToOwned::to_owned)
+            })
+    }
+
+    pub fn accepts_requested_login(&self, requested_login: Option<&str>) -> bool {
+        let Some(requested) = requested_login
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        else {
+            return true;
+        };
+
+        self.resolved_accept_login()
+            .as_deref()
+            .is_some_and(|resolved| resolved == requested)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CreateOrgInvitationRequest {
     #[serde(default)]

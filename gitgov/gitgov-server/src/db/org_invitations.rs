@@ -241,7 +241,7 @@ impl Database {
         Ok(row.map(|r| Self::row_to_org_invitation(&r)))
     }
 
-    pub async fn get_org_invitation_by_token_hash(
+    pub async fn get_active_org_invitation_by_token_hash(
         &self,
         token_hash: &str,
     ) -> Result<Option<OrgInvitation>, DbError> {
@@ -267,6 +267,8 @@ impl Database {
                 EXTRACT(EPOCH FROM updated_at)::bigint * 1000 AS updated_at_ms
             FROM org_invitations
             WHERE token_hash = $1
+              AND status = 'pending'
+              AND expires_at > NOW()
             "#,
         )
         .bind(token_hash)
@@ -280,7 +282,6 @@ impl Database {
     pub async fn accept_org_invitation(
         &self,
         token_hash: &str,
-        requested_login: Option<&str>,
     ) -> Result<Option<AcceptedOrgInvitation>, DbError> {
         let mut tx = self
             .pool
@@ -333,24 +334,7 @@ impl Database {
             return Ok(None);
         }
 
-        let resolved_login = requested_login
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(ToOwned::to_owned)
-            .or_else(|| {
-                invitation
-                    .invite_login
-                    .clone()
-                    .map(|s| s.trim().to_string())
-            })
-            .or_else(|| {
-                invitation
-                    .invite_email
-                    .as_ref()
-                    .and_then(|email| email.split('@').next().map(str::trim))
-                    .filter(|s| !s.is_empty())
-                    .map(ToOwned::to_owned)
-            });
+        let resolved_login = invitation.resolved_accept_login();
 
         let Some(login) = resolved_login else {
             tx.rollback()

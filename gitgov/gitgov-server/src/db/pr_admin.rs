@@ -123,6 +123,11 @@ impl Database {
                     .and_then(|v| v.as_i64())
                     .map(|v| v as i32)
                     .unwrap_or(approvers.len() as i32);
+                let merge_commit_sha = payload
+                    .pointer("/pull_request/merge_commit_sha")
+                    .or_else(|| payload.pointer("/gitgov/merge_commit_sha"))
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string);
 
                 PrMergeEvidenceEntry {
                     id: row.get("id"),
@@ -138,6 +143,7 @@ impl Database {
                     approvers,
                     approvals_count,
                     head_sha: row.get("head_sha"),
+                    merge_commit_sha,
                     base_branch: row.get("base_branch"),
                     created_at: row.get::<i64, _>("created_at_ms"),
                 }

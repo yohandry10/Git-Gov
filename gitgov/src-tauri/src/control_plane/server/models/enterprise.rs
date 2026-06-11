@@ -86,9 +86,12 @@ pub struct EnterpriseReleaseApprovalRecord {
 pub struct EnterpriseReleaseApprovalQuery {
     pub org_name: Option<String>,
     pub repository_full_name: Option<String>,
+    pub branch: Option<String>,
+    pub target_sha: Option<String>,
     pub release_id: Option<String>,
     pub environment: Option<String>,
     pub decision: Option<String>,
+    pub evidence_packet_hash: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
@@ -98,6 +101,8 @@ pub struct EnterpriseReleaseApprovalQuery {
 pub struct EnterpriseReleaseGovernanceEvaluationQuery {
     pub org_name: Option<String>,
     pub repository_full_name: String,
+    pub branch: Option<String>,
+    pub target_sha: Option<String>,
     pub release_id: String,
     pub environment: String,
     pub evidence_packet_hash: Option<String>,

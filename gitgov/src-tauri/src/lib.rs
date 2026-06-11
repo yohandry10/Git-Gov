@@ -235,6 +235,7 @@ pub fn run() {
             commands::cmd_pin_get,
             commands::cmd_pin_set,
             commands::cmd_pin_clear,
+            commands::cmd_server_get_outbox_status,
             commands::cmd_server_sync_outbox,
             commands::cmd_server_health,
             commands::cmd_server_send_event,

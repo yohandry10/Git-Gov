@@ -212,6 +212,7 @@ export function PipelineVisualizer() {
   const jenkinsCorrelations = useControlPlaneStore((s) => s.jenkinsCorrelations)
   const prMergeEvidence = useControlPlaneStore((s) => s.prMergeEvidence)
   const jiraTicketDetails = useControlPlaneStore((s) => s.jiraTicketDetails)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
   const loadJenkinsCorrelations = useControlPlaneStore((s) => s.loadJenkinsCorrelations)
   const loadPrMergeEvidence = useControlPlaneStore((s) => s.loadPrMergeEvidence)
   const loadJiraTicketDetail = useControlPlaneStore((s) => s.loadJiraTicketDetail)
@@ -463,7 +464,10 @@ export function PipelineVisualizer() {
     return tickets[0] ?? null
   }, [latestCommit])
 
-  const primaryTicket = primaryTicketId ? (jiraTicketDetails[primaryTicketId] ?? null) : null
+  const primaryTicketCacheKey = primaryTicketId
+    ? `${selectedOrgName.trim().toLowerCase() || 'unscoped'}:${primaryTicketId}`
+    : null
+  const primaryTicket = primaryTicketCacheKey ? (jiraTicketDetails[primaryTicketCacheKey] ?? null) : null
   const latestPrEvidence = latestCommit ? findBySha(prBySha, latestCommit.sha) : null
   const latestPipelineRun = latestCommit ? findBySha(pipelineBySha, latestCommit.sha) : null
 

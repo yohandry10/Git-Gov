@@ -60,11 +60,13 @@ pub(crate) fn spawn_distributed_sse_listener(state: Arc<handlers::AppState>, dat
                         if envelope.source_node == source_node {
                             continue;
                         }
-                        if matches!(
-                            envelope.notification,
-                            handlers::SseNotification::NewEvents { .. }
-                        ) {
-                            handlers::invalidate_dashboard_caches_for_sse(&state);
+                        if let handlers::SseNotification::NewEvents { org_id, .. } =
+                            &envelope.notification
+                        {
+                            handlers::invalidate_dashboard_caches_for_sse(
+                                &state,
+                                org_id.as_deref(),
+                            );
                         }
                         let _ = state.sse_tx.send(envelope.notification);
                     }

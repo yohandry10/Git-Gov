@@ -241,6 +241,10 @@ mod policy;
 mod pr_admin;
 mod violations_privacy_sessions;
 
+pub use evidence_packets::{
+    PipelineRunsForEvidencePacketQuery, PrMergeEvidenceForTicketPacketQuery,
+};
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Job {
     pub id: String,

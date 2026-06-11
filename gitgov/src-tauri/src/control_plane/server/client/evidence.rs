@@ -159,9 +159,14 @@ impl ControlPlaneClient {
     pub fn get_jira_ticket_detail(
         &self,
         ticket_id: &str,
+        org_name: Option<&str>,
     ) -> Result<JiraTicketDetailResponse, ServerError> {
         let url = self.endpoint_url(&["integrations", "jira", "tickets", ticket_id])?;
-        let mut request = self.client.get(url);
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
+        let mut request = self.client.get(url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }
@@ -199,6 +204,15 @@ impl ControlPlaneClient {
         }
         if let Some(branch) = &query.branch {
             query_params.push(("branch".to_string(), branch.clone()));
+        }
+        if let Some(target_sha) = &query.target_sha {
+            query_params.push(("target_sha".to_string(), target_sha.clone()));
+        }
+        if let Some(release_id) = &query.release_id {
+            query_params.push(("release_id".to_string(), release_id.clone()));
+        }
+        if let Some(environment) = &query.environment {
+            query_params.push(("environment".to_string(), environment.clone()));
         }
         if let Some(hours) = query.hours {
             query_params.push(("hours".to_string(), hours.to_string()));

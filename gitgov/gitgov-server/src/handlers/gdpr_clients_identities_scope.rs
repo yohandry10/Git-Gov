@@ -286,6 +286,12 @@ enum OrgScopeError {
     Internal,
 }
 
+#[derive(Debug, Clone)]
+struct ResolvedOrgScope {
+    id: String,
+    login: String,
+}
+
 fn org_scope_status(error: OrgScopeError) -> StatusCode {
     match error {
         OrgScopeError::BadRequest => StatusCode::BAD_REQUEST,
@@ -352,6 +358,28 @@ async fn resolve_and_check_org_scope(
         requested_org_name.is_some(),
         resolved_org_id.as_deref(),
     )
+}
+
+async fn resolve_required_product_org_scope(
+    state: &Arc<AppState>,
+    auth_org_id: Option<&str>,
+    requested_org_name: Option<&str>,
+) -> Result<ResolvedOrgScope, OrgScopeError> {
+    let org_id = resolve_and_check_org_scope(state, auth_org_id, requested_org_name, true)
+        .await?
+        .ok_or(OrgScopeError::BadRequest)?;
+
+    match state.db.get_org_by_id(&org_id).await {
+        Ok(Some(org)) => Ok(ResolvedOrgScope {
+            id: org.id,
+            login: org.login,
+        }),
+        Ok(None) => Err(OrgScopeError::NotFound),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to resolve effective org scope");
+            Err(OrgScopeError::Internal)
+        }
+    }
 }
 
 /// Returns the HTTP status for an erase operation given how many rows were

@@ -136,7 +136,7 @@ impl Database {
             r#"
             SELECT COUNT(*)::bigint AS cnt
             FROM client_events
-            WHERE event_type IN ('blocked_push', 'push_failed', 'attempt_push')
+            WHERE event_type IN ('blocked_push', 'governance_blocked_push', 'push_failed', 'attempt_push')
               AND status IN ('blocked', 'failed')
               AND created_at >= date_trunc('month', NOW())
               AND ($1::uuid IS NULL OR org_id = $1::uuid)
@@ -163,7 +163,7 @@ impl Database {
             LEFT JOIN identity_aliases ica
               ON ica.alias_login = c.user_login
              AND ($2::uuid IS NULL OR ica.org_id = $2::uuid)
-            WHERE c.event_type IN ('blocked_push', 'push_failed', 'attempt_push')
+            WHERE c.event_type IN ('blocked_push', 'governance_blocked_push', 'push_failed', 'attempt_push')
               AND c.status IN ('blocked', 'failed')
               AND c.created_at >= date_trunc('month', NOW())
               AND (c.user_login ILIKE $1 OR COALESCE(ica.canonical_login, c.user_login) ILIKE $1)

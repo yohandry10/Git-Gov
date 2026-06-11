@@ -52,6 +52,8 @@ pub struct PrMergeEvidenceEntry {
     #[serde(default)]
     pub head_sha: Option<String>,
     #[serde(default)]
+    pub merge_commit_sha: Option<String>,
+    #[serde(default)]
     pub base_branch: Option<String>,
     pub created_at: i64,
 }
@@ -62,6 +64,10 @@ pub struct CommitPipelineRun {
     pub pipeline_id: String,
     pub job_name: String,
     pub status: String,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub repo_full_name: Option<String>,
     pub duration_ms: Option<i64>,
     pub triggered_by: Option<String>,
     pub ingested_at: i64,
@@ -152,6 +158,9 @@ pub struct EvidencePacketQuery {
     pub org_name: Option<String>,
     pub repo_full_name: Option<String>,
     pub branch: Option<String>,
+    pub target_sha: Option<String>,
+    pub release_id: Option<String>,
+    pub environment: Option<String>,
     pub hours: Option<i64>,
 }
 
@@ -166,6 +175,37 @@ pub struct EvidencePacketCompleteness {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EvidencePacketReconstructionFilters {
+    pub org_name: Option<String>,
+    pub repo_full_name: Option<String>,
+    pub branch: Option<String>,
+    pub target_sha: Option<String>,
+    pub ticket_id: String,
+    pub hours: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EvidencePacketReconstructionSources {
+    pub commit_correlations: i64,
+    pub client_events: i64,
+    pub pull_request_merge_commits: i64,
+    pub pull_request_merges: i64,
+    pub pipeline_events: i64,
+    pub quality_gate_pipeline_events: i64,
+    pub legacy_pipeline_scope_fallbacks: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EvidencePacketReconstruction {
+    pub filters: EvidencePacketReconstructionFilters,
+    pub sources: EvidencePacketReconstructionSources,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EvidencePacket {
     pub packet_type: String,
     pub subject: String,
@@ -173,11 +213,18 @@ pub struct EvidencePacket {
     pub org_name: Option<String>,
     pub repo_full_name: Option<String>,
     pub branch: Option<String>,
+    pub target_sha: Option<String>,
+    pub release_id: Option<String>,
+    pub environment: Option<String>,
     pub period: String,
     pub ticket: Option<ProjectTicket>,
     pub commits: Vec<serde_json::Value>,
     pub pull_requests: Vec<PrMergeEvidenceEntry>,
+    #[serde(default)]
+    pub pipelines: Vec<CommitPipelineRun>,
     pub quality_gates: Vec<CommitPipelineRun>,
+    #[serde(default)]
+    pub reconstruction: EvidencePacketReconstruction,
     pub completeness: EvidencePacketCompleteness,
     pub content_hash: String,
 }

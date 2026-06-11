@@ -20,11 +20,48 @@ fn user_role_unknown_defaults_to_developer() {
 }
 
 #[test]
+fn org_invitation_accept_login_prefers_invite_login() {
+    let invitation = OrgInvitation {
+        invite_email: Some("alice@example.com".to_string()),
+        invite_login: Some("alice-gh".to_string()),
+        ..OrgInvitation::default()
+    };
+
+    assert_eq!(
+        invitation.resolved_accept_login(),
+        Some("alice-gh".to_string())
+    );
+    assert!(invitation.accepts_requested_login(Some("alice-gh")));
+    assert!(!invitation.accepts_requested_login(Some("mallory")));
+}
+
+#[test]
+fn org_invitation_accept_login_uses_email_local_part_as_legacy_fallback() {
+    let invitation = OrgInvitation {
+        invite_email: Some("alice@example.com".to_string()),
+        ..OrgInvitation::default()
+    };
+
+    assert_eq!(
+        invitation.resolved_accept_login(),
+        Some("alice".to_string())
+    );
+    assert!(invitation.accepts_requested_login(None));
+    assert!(invitation.accepts_requested_login(Some("alice")));
+    assert!(!invitation.accepts_requested_login(Some("mallory")));
+}
+
+#[test]
 fn client_event_type_roundtrip() {
     let types = [
         ClientEventType::AttemptPush,
         ClientEventType::BlockedPush,
         ClientEventType::SuccessfulPush,
+        ClientEventType::PushFailed,
+        ClientEventType::GovernanceBlockedPush,
+        ClientEventType::GovernanceWarnedPush,
+        ClientEventType::CliCommand,
+        ClientEventType::CliCommandCompleted,
         ClientEventType::Heartbeat,
         ClientEventType::CreateBranch,
         ClientEventType::BlockedBranch,
@@ -35,16 +72,22 @@ fn client_event_type_roundtrip() {
         ClientEventType::Logout,
     ];
     for t in &types {
-        assert_eq!(&ClientEventType::from_str(t.as_str()), t);
+        assert_eq!(&ClientEventType::parse(t.as_str()).unwrap(), t);
     }
+    assert_eq!(ClientEventType::parse("unknown_event"), None);
+    assert_eq!(
+        ClientEventType::from_db_str("unknown_event"),
+        ClientEventType::AttemptPush
+    );
 }
 
 #[test]
 fn event_status_roundtrip() {
-    assert_eq!(EventStatus::from_str("success"), EventStatus::Success);
-    assert_eq!(EventStatus::from_str("blocked"), EventStatus::Blocked);
-    assert_eq!(EventStatus::from_str("failed"), EventStatus::Failed);
-    assert_eq!(EventStatus::from_str("unknown"), EventStatus::Failed);
+    assert_eq!(EventStatus::parse("success"), Some(EventStatus::Success));
+    assert_eq!(EventStatus::parse("blocked"), Some(EventStatus::Blocked));
+    assert_eq!(EventStatus::parse("failed"), Some(EventStatus::Failed));
+    assert_eq!(EventStatus::parse("unknown"), None);
+    assert_eq!(EventStatus::from_db_str("unknown"), EventStatus::Failed);
 }
 
 #[test]

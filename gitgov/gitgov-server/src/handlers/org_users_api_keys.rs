@@ -474,6 +474,19 @@ pub async fn create_api_key(
         requested_org_id
     };
 
+    if effective_org_id.is_none() && !is_founder_global_admin(&auth_user) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(ApiKeyResponse {
+                api_key: None,
+                client_id: payload.client_id,
+                error: Some(
+                    "Global API key creation requires the bootstrap-admin key".to_string(),
+                ),
+            }),
+        );
+    }
+
     let api_key = Uuid::new_v4().to_string();
     let key_hash = format!("{:x}", Sha256::digest(api_key.as_bytes()));
 
@@ -646,6 +659,15 @@ async fn resolve_optional_api_key_scope(
                 Err((org_scope_status(err), message.to_string()))
             }
         },
-        None => Ok(auth_user.org_id.clone()),
+        None => {
+            if auth_user.org_id.is_none() && !is_founder_global_admin(auth_user) {
+                Err((
+                    StatusCode::FORBIDDEN,
+                    "Global API key scope requires the bootstrap-admin key".to_string(),
+                ))
+            } else {
+                Ok(auth_user.org_id.clone())
+            }
+        }
     }
 }

@@ -64,6 +64,8 @@ pub struct PipelineStage {
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct JenkinsPipelineEventInput {
+    #[serde(default)]
+    pub org_name: Option<String>,
     pub pipeline_id: String,
     pub job_name: String,
     pub status: String,
@@ -114,6 +116,10 @@ pub struct JenkinsCorrelationFilter {
     pub limit: usize,
     #[serde(default)]
     pub offset: usize,
+    /// Server-side org scope binding. Never deserialized from the client so a
+    /// scoped key cannot inject another org; set only after scope validation.
+    #[serde(skip)]
+    pub org_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +140,10 @@ pub struct CommitPipelineRun {
     pub pipeline_id: String,
     pub job_name: String,
     pub status: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo_full_name: Option<String>,
     pub duration_ms: Option<i64>,
     pub triggered_by: Option<String>,
     pub ingested_at: i64,

@@ -280,6 +280,9 @@ impl Database {
               AND ($3::TEXT IS NULL OR release_id = $3)
               AND ($4::TEXT IS NULL OR environment = $4)
               AND ($5::TEXT IS NULL OR decision = $5)
+              AND ($8::TEXT IS NULL OR branch = $8)
+              AND ($9::TEXT IS NULL OR target_sha = $9)
+              AND ($10::TEXT IS NULL OR evidence_packet_hash = $10)
             ORDER BY created_at DESC
             LIMIT $6
             OFFSET $7
@@ -292,6 +295,9 @@ impl Database {
         .bind(query.decision.as_deref())
         .bind(limit)
         .bind(offset)
+        .bind(query.branch.as_deref())
+        .bind(query.target_sha.as_deref())
+        .bind(query.evidence_packet_hash.as_deref())
         .fetch_all(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;

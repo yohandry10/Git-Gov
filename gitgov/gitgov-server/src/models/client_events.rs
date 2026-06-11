@@ -29,6 +29,11 @@ pub enum ClientEventType {
     AttemptPush,
     BlockedPush,
     SuccessfulPush,
+    PushFailed,
+    GovernanceBlockedPush,
+    GovernanceWarnedPush,
+    CliCommand,
+    CliCommandCompleted,
     Heartbeat,
     CreateBranch,
     BlockedBranch,
@@ -45,6 +50,11 @@ impl ClientEventType {
             ClientEventType::AttemptPush => "attempt_push",
             ClientEventType::BlockedPush => "blocked_push",
             ClientEventType::SuccessfulPush => "successful_push",
+            ClientEventType::PushFailed => "push_failed",
+            ClientEventType::GovernanceBlockedPush => "governance_blocked_push",
+            ClientEventType::GovernanceWarnedPush => "governance_warned_push",
+            ClientEventType::CliCommand => "cli_command",
+            ClientEventType::CliCommandCompleted => "cli_command_completed",
             ClientEventType::Heartbeat => "heartbeat",
             ClientEventType::CreateBranch => "create_branch",
             ClientEventType::BlockedBranch => "blocked_branch",
@@ -56,11 +66,16 @@ impl ClientEventType {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
-        match s {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim() {
             "attempt_push" => ClientEventType::AttemptPush,
             "blocked_push" => ClientEventType::BlockedPush,
             "successful_push" => ClientEventType::SuccessfulPush,
+            "push_failed" => ClientEventType::PushFailed,
+            "governance_blocked_push" => ClientEventType::GovernanceBlockedPush,
+            "governance_warned_push" => ClientEventType::GovernanceWarnedPush,
+            "cli_command" => ClientEventType::CliCommand,
+            "cli_command_completed" => ClientEventType::CliCommandCompleted,
             "heartbeat" => ClientEventType::Heartbeat,
             "create_branch" => ClientEventType::CreateBranch,
             "blocked_branch" => ClientEventType::BlockedBranch,
@@ -69,8 +84,13 @@ impl ClientEventType {
             "checkout_branch" => ClientEventType::CheckoutBranch,
             "login" => ClientEventType::Login,
             "logout" => ClientEventType::Logout,
-            _ => ClientEventType::AttemptPush,
+            _ => return None,
         }
+        .into()
+    }
+
+    pub fn from_db_str(s: &str) -> Self {
+        Self::parse(s).unwrap_or(ClientEventType::AttemptPush)
     }
 }
 
@@ -91,12 +111,18 @@ impl EventStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
-        match s {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.trim() {
             "success" => EventStatus::Success,
             "blocked" => EventStatus::Blocked,
-            _ => EventStatus::Failed,
+            "failed" => EventStatus::Failed,
+            _ => return None,
         }
+        .into()
+    }
+
+    pub fn from_db_str(s: &str) -> Self {
+        Self::parse(s).unwrap_or(EventStatus::Failed)
     }
 }
 

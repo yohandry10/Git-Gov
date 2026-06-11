@@ -86,6 +86,8 @@ pub struct FeatureRequestCreated {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CliCommandInput {
+    #[serde(default)]
+    pub org_name: Option<String>,
     pub command: String,
     pub origin: String,
     pub branch: String,

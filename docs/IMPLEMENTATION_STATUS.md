@@ -1,12 +1,12 @@
 # GitGov Implementation Status
 
-Updated: 2026-06-08
+Updated: 2026-06-09
 
 ## KAN-69 Desktop Runtime QA - 2026-06-08
 
-`KAN-69 - Enterprise Action Center guided UX` remains implemented and merged. The current local branch `fix/KAN-69-action-center-desktop-qa` is a Desktop runtime QA and information-architecture pass, not a new feature wave.
+`KAN-69 - Enterprise Action Center guided UX` remains implemented and merged. The Desktop runtime QA and information-architecture pass that followed is also merged to `main` through PR `#209` (`fix/KAN-69-desktop-runtime-qa-maintainability`) and PR `#211` (`fix/KAN-69-control-plane-workspace-auth`); latest main commit `e0c769d`. It was a QA pass, not a new feature wave.
 
-Current local QA decisions:
+QA decisions from that pass:
 
 - `/action-center` remains the only global `Next Action` owner.
 - Workspace keeps local execution: file list, CLI, pipeline visualizer, audit trail, commit/push controls, `Next local step`, and gates/blockers without repeating the global recommendation.

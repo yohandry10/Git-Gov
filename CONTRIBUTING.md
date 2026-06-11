@@ -65,7 +65,7 @@ GitGov/
 ## Running Tests
 
 ```bash
-# Server unit tests (99+ tests, no DB required)
+# Server unit tests (193 tests, no DB required)
 cd gitgov/gitgov-server && cargo test
 
 # Desktop Rust tests

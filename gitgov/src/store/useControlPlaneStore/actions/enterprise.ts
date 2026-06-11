@@ -164,9 +164,12 @@ export function createEnterpriseActions(
       ...query,
       org_name: orgName ?? null,
       repository_full_name: query.repository_full_name?.trim() || releaseApprovalsFilters.repository_full_name || null,
+      branch: query.branch?.trim() || releaseApprovalsFilters.branch || null,
+      target_sha: query.target_sha?.trim() || releaseApprovalsFilters.target_sha || null,
       release_id: query.release_id?.trim() || releaseApprovalsFilters.release_id || null,
       environment: query.environment?.trim() || releaseApprovalsFilters.environment || null,
       decision: query.decision ?? releaseApprovalsFilters.decision ?? null,
+      evidence_packet_hash: query.evidence_packet_hash?.trim() || releaseApprovalsFilters.evidence_packet_hash || null,
       limit: query.limit ?? releaseApprovalsFilters.limit ?? 10,
       offset: query.offset ?? releaseApprovalsFilters.offset ?? 0,
     }
@@ -200,6 +203,8 @@ export function createEnterpriseActions(
     const nextQuery: EnterpriseReleaseGovernanceEvaluationQuery = {
       org_name: orgName ?? null,
       repository_full_name: query.repository_full_name.trim(),
+      branch: query.branch?.trim() || null,
+      target_sha: query.target_sha?.trim() || null,
       release_id: query.release_id.trim(),
       environment: query.environment.trim(),
       evidence_packet_hash: query.evidence_packet_hash?.trim() || null,

@@ -1,6 +1,6 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-08
+Updated: 2026-06-09
 Ticket: `KAN-69` completed
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
@@ -54,7 +54,7 @@ Current non-negotiable decisions:
 - OpenAPI remains intentionally partial and is not a product blocker.
 - `KAN-69 - Enterprise Action Center guided UX` is implemented as a dedicated `/action-center` desktop route, not as another panel inside the crowded dashboard surfaces.
 - KAN-69 follow-up verification merged through PR `#206` as `8a55a6d`; it keeps release guidance conservative when Jira coverage is missing or empty, and prevents known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
-- KAN-69 Desktop runtime QA is currently in progress on branch `fix/KAN-69-action-center-desktop-qa` after main commit `afa4aa1`. Tracked report: `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
+- KAN-69 Desktop runtime QA is completed and merged to `main` through PR `#209` (`fix/KAN-69-desktop-runtime-qa-maintainability`) and PR `#211` (`fix/KAN-69-control-plane-workspace-auth`); latest main commit `e0c769d`. Tracked report: `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
 - Current Desktop QA rules: do not remove useful UI information to fix clipping; fix layout when the issue is visual. Do not restart or relaunch the Tauri app during a user's manual validation session unless explicitly asked.
 - Current Desktop QA information architecture:
   - `/action-center` is the only owner of the global `Next Action`.

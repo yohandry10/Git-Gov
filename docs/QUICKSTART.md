@@ -51,7 +51,7 @@ VITE_API_KEY=tu-api-key-aqui
 GITHUB_CLIENT_ID=tu-github-oauth-client-id
 ```
 
-### 2. Configurar Control Plane Server
+### 3. Configurar Control Plane Server
 
 ```bash
 cd gitgov/gitgov-server
@@ -67,7 +67,7 @@ GITGOV_API_KEY=tu-api-key-aqui
 GITHUB_WEBHOOK_SECRET=tu-webhook-secret
 ```
 
-### 3. Inicializar Base de Datos
+### 4. Inicializar Base de Datos
 
 En `psql` o cualquier cliente SQL, ejecutar los archivos **en orden**:
 ```sql
@@ -84,7 +84,7 @@ En `psql` o cualquier cliente SQL, ejecutar los archivos **en orden**:
 
 Para una instalación limpia nueva: ejecutar `supabase_schema.sql` y luego todas las migraciones disponibles en `supabase_schema_v*.sql` en orden numérico (actualmente hasta `v25`).
 
-### 4. Ejecutar
+### 5. Ejecutar
 
 **Terminal 1 - Server:**
 ```bash
@@ -288,7 +288,7 @@ cd gitgov-web && pnpm lint
 
 ### Ver Auditoría
 
-1. Ir a "Control Plane" en la UI
+1. Ir a "Governance > Evidence" en la UI
 2. Ver estadísticas en tiempo real
 3. Ver eventos recientes
 4. Filtrar por usuario, tipo, fecha

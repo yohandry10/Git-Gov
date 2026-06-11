@@ -20,7 +20,7 @@ use crate::control_plane::{
     UpsertEnterpriseOnboardingChecklistTrackingRequest,
 };
 use crate::models::GitGovConfig;
-use crate::outbox::Outbox;
+use crate::outbox::{Outbox, OutboxStatus};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -79,6 +79,12 @@ pub struct OutboxSyncResult {
     pub flushed_sent: usize,
     pub flushed_duplicates: usize,
     pub flushed_failed: usize,
+    pub retry_scheduled_after: usize,
+    pub dead_letter_after: usize,
+    pub max_attempts: u32,
+    pub next_attempt_at: Option<i64>,
+    pub last_error: Option<String>,
+    pub last_dead_letter_at: Option<i64>,
 }
 
 fn normalize_loopback_url(url: &str) -> String {
@@ -308,7 +314,8 @@ pub async fn cmd_server_sync_outbox(
 ) -> Result<OutboxSyncResult, String> {
     let outbox = outbox.inner().clone();
     run_blocking_command("OUTBOX_SYNC", move || {
-        let pending_before = outbox.get_pending_count();
+        let before_status = outbox.get_status();
+        let pending_before = before_status.pending_count;
 
         let normalized_config = config.and_then(|cfg| {
             let url = normalize_loopback_url(&cfg.url);
@@ -351,15 +358,31 @@ pub async fn cmd_server_sync_outbox(
             }
         }
 
+        let after_status = outbox.get_status();
+
         Ok(OutboxSyncResult {
             pending_before,
-            pending_after: outbox.get_pending_count(),
+            pending_after: after_status.pending_count,
             flushed_sent,
             flushed_duplicates,
             flushed_failed,
+            retry_scheduled_after: after_status.retry_scheduled_count,
+            dead_letter_after: after_status.dead_letter_count,
+            max_attempts: after_status.max_attempts,
+            next_attempt_at: after_status.next_attempt_at,
+            last_error: after_status.last_error,
+            last_dead_letter_at: after_status.last_dead_letter_at,
         })
     })
     .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_outbox_status(
+    outbox: State<'_, Arc<Outbox>>,
+) -> Result<OutboxStatus, String> {
+    let outbox = outbox.inner().clone();
+    run_blocking_command("OUTBOX_STATUS", move || Ok(outbox.get_status())).await
 }
 
 #[tauri::command]
@@ -426,6 +449,7 @@ pub async fn cmd_server_ingest_cli_command(
 #[tauri::command]
 pub async fn cmd_server_list_cli_commands(
     config: ServerConnectionConfig,
+    org_name: Option<String>,
     user_login: Option<String>,
     limit: Option<i64>,
     offset: Option<i64>,
@@ -437,6 +461,7 @@ pub async fn cmd_server_list_cli_commands(
         });
         client
             .list_cli_commands(
+                org_name.as_deref(),
                 user_login.as_deref(),
                 limit.unwrap_or(50).clamp(1, 200),
                 offset.unwrap_or(0).max(0),
@@ -618,6 +643,7 @@ pub async fn cmd_server_correlate_jira_tickets(
 pub async fn cmd_server_get_jira_ticket_detail(
     config: ServerConnectionConfig,
     ticket_id: String,
+    org_name: Option<String>,
 ) -> Result<JiraTicketDetailResponse, String> {
     run_blocking_command("GET_JIRA_TICKET_DETAIL", move || {
         let client = ControlPlaneClient::new(ServerConfig {
@@ -625,7 +651,7 @@ pub async fn cmd_server_get_jira_ticket_detail(
             api_key: config.api_key,
         });
         client
-            .get_jira_ticket_detail(&ticket_id)
+            .get_jira_ticket_detail(&ticket_id, org_name.as_deref())
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

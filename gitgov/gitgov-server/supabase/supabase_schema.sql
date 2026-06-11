@@ -73,6 +73,46 @@ CREATE INDEX IF NOT EXISTS idx_enterprise_release_approvals_expiry
     ON enterprise_release_approvals(expires_at)
     WHERE expires_at IS NOT NULL;
 
+CREATE INDEX IF NOT EXISTS idx_enterprise_release_approvals_binding
+    ON enterprise_release_approvals(
+        org_id,
+        repository_full_name,
+        release_id,
+        environment,
+        branch,
+        target_sha,
+        evidence_packet_hash
+    );
+
+CREATE TABLE IF NOT EXISTS release_evidence_packets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    ticket_id TEXT NOT NULL,
+    release_id TEXT NOT NULL,
+    repository_full_name TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    target_sha TEXT NOT NULL,
+    environment TEXT NOT NULL,
+    evidence_packet_hash TEXT NOT NULL,
+    evidence_packet_uri TEXT NOT NULL,
+    packet JSONB NOT NULL,
+    generated_by TEXT NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (org_id, evidence_packet_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_release_evidence_packets_binding
+    ON release_evidence_packets(
+        org_id,
+        repository_full_name,
+        release_id,
+        environment,
+        branch,
+        target_sha,
+        evidence_packet_hash
+    );
+
 -- ============================================================================
 -- REPOSITORIES
 -- ============================================================================
@@ -145,7 +185,7 @@ CREATE TABLE IF NOT EXISTS client_events (
     org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
     repo_id UUID REFERENCES repos(id) ON DELETE CASCADE,
     event_uuid TEXT UNIQUE NOT NULL,   -- Client-generated UUID (idempotency)
-    event_type TEXT NOT NULL,          -- attempt_push, blocked_push, create_branch, stage_file, commit, etc.
+    event_type TEXT NOT NULL,          -- attempt_push, successful_push, blocked_push, push_failed, governance_blocked_push, cli_command, commit, etc.
     user_login TEXT NOT NULL,
     user_name TEXT,
     branch TEXT,
@@ -264,7 +304,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     role TEXT NOT NULL DEFAULT 'Developer',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_used TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    CONSTRAINT api_keys_role_check CHECK (role IN ('Admin', 'Architect', 'Developer', 'PM'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
@@ -1235,7 +1276,7 @@ BEGIN
         'correlation', (
             SELECT json_build_object(
                 'github_pushes_24h', (SELECT COUNT(*) FROM github_events WHERE org_id = p_org_id AND event_type = 'push' AND created_at >= NOW() - INTERVAL '24 hours'),
-                'client_pushes_24h', (SELECT COUNT(*) FROM client_events WHERE org_id = p_org_id AND event_type IN ('successful_push', 'attempt_push', 'blocked_push') AND created_at >= NOW() - INTERVAL '24 hours'),
+                'client_pushes_24h', (SELECT COUNT(*) FROM client_events WHERE org_id = p_org_id AND event_type IN ('successful_push', 'attempt_push', 'blocked_push', 'governance_blocked_push', 'governance_warned_push', 'push_failed') AND created_at >= NOW() - INTERVAL '24 hours'),
                 'correlation_rate', (
                     SELECT CASE 
                         WHEN COUNT(*) > 0 THEN 

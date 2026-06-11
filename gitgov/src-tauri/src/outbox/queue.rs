@@ -1,7 +1,7 @@
 use crate::models::{AuditAction, AuditStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, Write};
@@ -24,6 +24,7 @@ const DEFAULT_GLOBAL_COORD_MAX_DEFERRAL_MS: u64 = 1_600;
 const DEFAULT_SERVER_LEASE_ENABLED: bool = false;
 const DEFAULT_SERVER_LEASE_TTL_MS: u64 = 2_000;
 const DEFAULT_SERVER_LEASE_SCOPE: &str = "global";
+const DEAD_LETTER_REASON_MAX_CHARS: usize = 240;
 
 #[derive(Debug, Error)]
 pub enum OutboxError {
@@ -136,6 +137,14 @@ pub struct OutboxEvent {
     pub last_attempt: Option<i64>,
     #[serde(default)]
     pub next_attempt_at: Option<i64>,
+    #[serde(default)]
+    pub dead_lettered: bool,
+    #[serde(default)]
+    pub dead_lettered_at: Option<i64>,
+    #[serde(default)]
+    pub dead_letter_reason: Option<String>,
+    #[serde(default)]
+    pub last_error: Option<String>,
 }
 
 impl OutboxEvent {
@@ -163,6 +172,10 @@ impl OutboxEvent {
             attempts: 0,
             last_attempt: None,
             next_attempt_at: None,
+            dead_lettered: false,
+            dead_lettered_at: None,
+            dead_letter_reason: None,
+            last_error: None,
         }
     }
 
@@ -518,8 +531,88 @@ impl Outbox {
     pub fn get_pending_count(&self) -> usize {
         self.events
             .lock()
-            .map(|e| e.iter().filter(|ev| !ev.sent).count())
+            .map(|e| e.iter().filter(|ev| !ev.sent && !ev.dead_lettered).count())
             .unwrap_or(0)
+    }
+
+    pub fn get_status(&self) -> OutboxStatus {
+        let Ok(events) = self.events.lock() else {
+            return OutboxStatus {
+                pending_count: 0,
+                retry_scheduled_count: 0,
+                dead_letter_count: 0,
+                max_attempts: self.max_retries,
+                next_attempt_at: None,
+                last_error: Some("Outbox events lock poisoned".to_string()),
+                last_dead_letter_at: None,
+            };
+        };
+
+        let mut pending_count = 0usize;
+        let mut retry_scheduled_count = 0usize;
+        let mut dead_letter_count = 0usize;
+        let mut next_attempt_at: Option<i64> = None;
+        let mut last_error: Option<(i64, String)> = None;
+        let mut last_dead_letter_at: Option<i64> = None;
+
+        for event in events.iter() {
+            if event.sent {
+                continue;
+            }
+
+            if event.dead_lettered {
+                dead_letter_count += 1;
+                if let Some(dead_lettered_at) = event.dead_lettered_at {
+                    last_dead_letter_at = Some(
+                        last_dead_letter_at
+                            .map_or(dead_lettered_at, |current| current.max(dead_lettered_at)),
+                    );
+                }
+                if let Some(reason) = event
+                    .dead_letter_reason
+                    .as_ref()
+                    .or(event.last_error.as_ref())
+                {
+                    let ts = event
+                        .dead_lettered_at
+                        .or(event.last_attempt)
+                        .unwrap_or(event.timestamp);
+                    if last_error
+                        .as_ref()
+                        .is_none_or(|(current, _)| ts >= *current)
+                    {
+                        last_error = Some((ts, reason.clone()));
+                    }
+                }
+                continue;
+            }
+
+            pending_count += 1;
+            if let Some(next_ms) = event.next_attempt_at {
+                retry_scheduled_count += 1;
+                next_attempt_at =
+                    Some(next_attempt_at.map_or(next_ms, |current| current.min(next_ms)));
+            }
+            if let Some(error) = event.last_error.as_ref() {
+                let ts = event.last_attempt.unwrap_or(event.timestamp);
+                if last_error
+                    .as_ref()
+                    .is_none_or(|(current, _)| ts >= *current)
+                {
+                    last_error = Some((ts, error.clone()));
+                }
+            }
+        }
+
+        OutboxStatus {
+            pending_count,
+            retry_scheduled_count,
+            dead_letter_count,
+            max_attempts: self.max_retries,
+            next_attempt_at,
+            last_error: last_error.map(|(_, error)| error),
+            last_dead_letter_at,
+        }
     }
 
     /// Flush pending events. NEVER holds both locks simultaneously.
@@ -580,7 +673,14 @@ impl Outbox {
                         "Outbox flush chunk failed; scheduling retry"
                     );
                     if let Ok(mut events) = self.events.lock() {
-                        Self::mark_chunk_retry(&mut events, chunk, self.max_retries, failure.retry);
+                        let error = failure.error.to_string();
+                        Self::mark_chunk_retry(
+                            &mut events,
+                            chunk,
+                            self.max_retries,
+                            failure.retry,
+                            Some(error.as_str()),
+                        );
                     }
                     // Persist progress of previously applied chunks before returning.
                     if let Err(persist_error) = self.persist() {
@@ -907,6 +1007,7 @@ impl Outbox {
                                 }
                             }
                             Err(failure) => {
+                                let error = failure.error.to_string();
                                 tracing::warn!(
                                     url = %format!("{}/events", url),
                                     retry_class = failure.retry.class_name(),
@@ -922,6 +1023,7 @@ impl Outbox {
                                         chunk,
                                         max_retries,
                                         failure.retry,
+                                        Some(error.as_str()),
                                     );
                                     events_lock
                                         .iter()
@@ -955,10 +1057,10 @@ impl Outbox {
             .iter()
             .map(String::as_str)
             .collect();
-        let errors: HashSet<&str> = batch_response
+        let errors: HashMap<&str, &str> = batch_response
             .errors
             .iter()
-            .map(|e| e.event_uuid.as_str())
+            .map(|e| (e.event_uuid.as_str(), e.error.as_str()))
             .collect();
         let now_ms = chrono::Utc::now().timestamp_millis();
 
@@ -967,16 +1069,23 @@ impl Outbox {
             if accepted.contains(event_uuid) || duplicates.contains(event_uuid) {
                 event.sent = true;
                 event.next_attempt_at = None;
-            } else if errors.contains(event_uuid) {
-                Self::mark_event_retry(event, now_ms, RetryDirective::default_backoff());
+                event.last_error = None;
+            } else if let Some(error) = errors.get(event_uuid) {
+                Self::mark_event_retry(
+                    event,
+                    now_ms,
+                    RetryDirective::default_backoff(),
+                    max_retries,
+                    Some(*error),
+                );
             }
         }
 
-        events.retain(|e| !e.sent || e.attempts < max_retries);
+        events.retain(|e| !e.sent);
     }
 
     fn is_event_ready_for_retry(event: &OutboxEvent, now_ms: i64) -> bool {
-        if event.sent {
+        if event.sent || event.dead_lettered {
             return false;
         }
         match event.next_attempt_at {
@@ -990,23 +1099,77 @@ impl Outbox {
         chunk: &[OutboxEvent],
         max_retries: u32,
         retry: RetryDirective,
+        last_error: Option<&str>,
     ) {
         let now_ms = chrono::Utc::now().timestamp_millis();
         let chunk_uuids: HashSet<&str> = chunk.iter().map(|e| e.event_uuid.as_str()).collect();
         for event in events.iter_mut() {
             if chunk_uuids.contains(event.event_uuid.as_str()) {
-                Self::mark_event_retry(event, now_ms, retry);
+                Self::mark_event_retry(event, now_ms, retry, max_retries, last_error);
             }
         }
-        events.retain(|e| !e.sent || e.attempts < max_retries);
+        events.retain(|e| !e.sent);
     }
 
-    fn mark_event_retry(event: &mut OutboxEvent, now_ms: i64, retry: RetryDirective) {
-        event.attempts += 1;
+    fn mark_event_retry(
+        event: &mut OutboxEvent,
+        now_ms: i64,
+        retry: RetryDirective,
+        max_retries: u32,
+        last_error: Option<&str>,
+    ) {
+        event.attempts = event.attempts.saturating_add(1);
         event.last_attempt = Some(now_ms);
+        if let Some(error) = last_error {
+            event.last_error = Some(Self::truncate_dead_letter_reason(error));
+        }
+
+        if event.attempts >= max_retries {
+            event.dead_lettered = true;
+            event.dead_lettered_at = Some(now_ms);
+            event.dead_letter_reason =
+                Some(Self::build_dead_letter_reason(event, retry, last_error));
+            event.next_attempt_at = None;
+            return;
+        }
+
         let retry_delay_ms =
             Self::compute_retry_delay_ms(event.attempts, event.event_uuid.as_str(), retry);
         event.next_attempt_at = Some(now_ms + retry_delay_ms);
+    }
+
+    fn build_dead_letter_reason(
+        event: &OutboxEvent,
+        retry: RetryDirective,
+        last_error: Option<&str>,
+    ) -> String {
+        let mut reason = format!(
+            "retry_exhausted:{}:attempts={}",
+            retry.class_name(),
+            event.attempts
+        );
+        if let Some(status_code) = retry.status_code {
+            reason.push_str(&format!("; status={}", status_code));
+        }
+        if let Some(error) = last_error {
+            reason.push_str("; error=");
+            reason.push_str(&Self::truncate_dead_letter_reason(error));
+        }
+        Self::truncate_dead_letter_reason(&reason)
+    }
+
+    fn truncate_dead_letter_reason(raw: &str) -> String {
+        let trimmed = raw.trim();
+        if trimmed.chars().count() <= DEAD_LETTER_REASON_MAX_CHARS {
+            return trimmed.to_string();
+        }
+
+        let mut truncated = trimmed
+            .chars()
+            .take(DEAD_LETTER_REASON_MAX_CHARS.saturating_sub(3))
+            .collect::<String>();
+        truncated.push_str("...");
+        truncated
     }
 
     fn compute_retry_delay_ms(attempt: u32, event_uuid: &str, retry: RetryDirective) -> i64 {
@@ -1246,6 +1409,17 @@ pub struct FlushResult {
     pub failed: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OutboxStatus {
+    pub pending_count: usize,
+    pub retry_scheduled_count: usize,
+    pub dead_letter_count: usize,
+    pub max_attempts: u32,
+    pub next_attempt_at: Option<i64>,
+    pub last_error: Option<String>,
+    pub last_dead_letter_at: Option<i64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1319,5 +1493,119 @@ mod tests {
         let identity = Outbox::global_coordination_identity(Some("secret-key-123"), &path);
         assert!(identity.starts_with("api-key-hash:"));
         assert!(!identity.contains("secret-key-123"));
+    }
+
+    #[test]
+    fn event_moves_to_dead_letter_after_max_retries() {
+        let mut event = OutboxEvent::new(
+            "attempt_push".to_string(),
+            "alice".to_string(),
+            Some("main".to_string()),
+            AuditStatus::Failed,
+        );
+        let now_ms = 1_700_000_000_000;
+
+        for offset in 0..5 {
+            Outbox::mark_event_retry(
+                &mut event,
+                now_ms + offset,
+                RetryDirective::http_other(400),
+                5,
+                Some("server rejected event"),
+            );
+        }
+
+        assert_eq!(event.attempts, 5);
+        assert!(event.dead_lettered);
+        assert_eq!(event.dead_lettered_at, Some(now_ms + 4));
+        assert!(event
+            .dead_letter_reason
+            .as_deref()
+            .unwrap_or_default()
+            .contains("status=400"));
+        assert!(!Outbox::is_event_ready_for_retry(&event, now_ms + 10_000));
+    }
+
+    #[test]
+    fn get_status_counts_pending_scheduled_and_dead_letter_events() {
+        let test_dir = std::env::temp_dir().join(format!("gitgov-outbox-test-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&test_dir).expect("create temp dir");
+        let outbox = Outbox::new(&test_dir).expect("create outbox");
+
+        let pending = OutboxEvent::new(
+            "commit".to_string(),
+            "alice".to_string(),
+            Some("main".to_string()),
+            AuditStatus::Success,
+        );
+        let mut scheduled = OutboxEvent::new(
+            "push_failed".to_string(),
+            "alice".to_string(),
+            Some("main".to_string()),
+            AuditStatus::Failed,
+        );
+        scheduled.next_attempt_at = Some(1_700_000_010_000);
+        scheduled.last_attempt = Some(1_700_000_005_000);
+        scheduled.last_error = Some("network timeout".to_string());
+
+        let mut dead = OutboxEvent::new(
+            "cli_command".to_string(),
+            "alice".to_string(),
+            Some("main".to_string()),
+            AuditStatus::Failed,
+        );
+        dead.dead_lettered = true;
+        dead.dead_lettered_at = Some(1_700_000_020_000);
+        dead.dead_letter_reason = Some("retry_exhausted:http_other:attempts=5".to_string());
+
+        outbox.add(pending).expect("add pending");
+        outbox.add(scheduled).expect("add scheduled");
+        outbox.add(dead).expect("add dead");
+
+        let status = outbox.get_status();
+        assert_eq!(status.pending_count, 2);
+        assert_eq!(status.retry_scheduled_count, 1);
+        assert_eq!(status.dead_letter_count, 1);
+        assert_eq!(status.next_attempt_at, Some(1_700_000_010_000));
+        assert_eq!(status.last_dead_letter_at, Some(1_700_000_020_000));
+        assert!(status
+            .last_error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("retry_exhausted"));
+
+        std::fs::remove_dir_all(&test_dir).ok();
+    }
+
+    #[test]
+    fn batch_response_errors_dead_letter_after_final_attempt() {
+        let mut event = OutboxEvent::new(
+            "attempt_push".to_string(),
+            "alice".to_string(),
+            Some("main".to_string()),
+            AuditStatus::Failed,
+        );
+        event.attempts = 4;
+        let event_uuid = event.event_uuid.clone();
+        let response = ClientEventResponse {
+            accepted: vec![],
+            duplicates: vec![],
+            errors: vec![EventError {
+                event_uuid,
+                error: "unknown event_type".to_string(),
+            }],
+        };
+        let mut events = vec![event];
+
+        Outbox::apply_batch_response(&mut events, &response, 5);
+
+        assert_eq!(events.len(), 1);
+        assert!(events[0].dead_lettered);
+        assert_eq!(events[0].next_attempt_at, None);
+        assert!(events[0]
+            .last_error
+            .as_deref()
+            .unwrap_or_default()
+            .contains("unknown event_type"));
     }
 }

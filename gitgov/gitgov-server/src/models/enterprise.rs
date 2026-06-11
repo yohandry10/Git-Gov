@@ -95,11 +95,17 @@ pub struct EnterpriseReleaseApprovalQuery {
     #[serde(default)]
     pub repository_full_name: Option<String>,
     #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    #[serde(default)]
     pub release_id: Option<String>,
     #[serde(default)]
     pub environment: Option<String>,
     #[serde(default)]
     pub decision: Option<String>,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
     #[serde(default)]
     pub limit: Option<i64>,
     #[serde(default)]
@@ -111,6 +117,10 @@ pub struct EnterpriseReleaseGovernanceEvaluationQuery {
     #[serde(default)]
     pub org_name: Option<String>,
     pub repository_full_name: String,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
     pub release_id: String,
     pub environment: String,
     #[serde(default)]
