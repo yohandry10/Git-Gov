@@ -20,6 +20,19 @@ pub enum DbError {
     Duplicate(String),
 }
 
+/// Decision returned by `store_webhook_event` for content-bound idempotency.
+#[derive(Debug, Clone)]
+pub enum WebhookIngestDecision {
+    /// Proceed to process the webhook. Carries the `webhook_events` row id (when
+    /// known) so the caller can mark it processed. This covers a brand-new
+    /// payload AND a previously-received-but-unprocessed one (retry of a delivery
+    /// whose processing failed), which must not be dropped.
+    Process(Option<String>),
+    /// This exact signed payload was already processed successfully; skip it
+    /// (re-delivery or replay with a fresh delivery_id).
+    SkipDuplicate,
+}
+
 #[derive(Clone)]
 pub struct Database {
     pool: PgPool,

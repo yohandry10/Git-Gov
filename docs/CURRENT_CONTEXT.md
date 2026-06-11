@@ -101,9 +101,56 @@ explicit prompt-injection guardrail.
   anti-evasion fix is to anchor security-sensitive time windows on the server `synced_at`
   (or `GREATEST(created_at, synced_at)`) instead of the client `created_at`. Tracked as
   follow-up, not yet implemented.
-- **Also pending (separate finding, not fixed)**: org-invitation `accept` lets the acceptor
-  override the invited identity via `login` and can mutate an existing `org_user`
-  (`db/org_invitations.rs`); recommended fix is to make `invite_login` authoritative.
+- **Org-invitation identity binding (FIXED)**: `accept` previously let the acceptor override the
+  invited identity via `login` and mutate an existing `org_user`. Now the invited identity is
+  authoritative: `OrgInvitation::resolved_accept_login()` resolves the login from `invite_login`
+  (then the `invite_email` local-part) and never from acceptor input; `accept_org_invitation` no
+  longer takes a `requested_login`; and the handler rejects a mismatched acceptor `login` with
+  `400 "login does not match the invitation target"` (`accepts_requested_login`). Unit tests in
+  `models/tests.rs` cover both helpers, including the spoofing case being rejected.
+
+### Finding W1 — webhook replay via unsigned delivery_id (Low/Medium)
+
+- **Issue**: GitHub/Jira HMAC signs only the request body; `X-GitHub-Delivery` /
+  `X-GitHub-Event` are unsigned, sender-controlled headers. Idempotency keyed on
+  `github_events.delivery_id` meant a captured, validly-signed payload could be replayed with a
+  fresh `delivery_id` and re-injected as duplicate audit evidence (which feeds coverage,
+  readiness, and PR-merge correlations). No replay/timestamp window existed. The raw signed
+  payloads are also persisted in `webhook_events`.
+- **Fix applied**: content-bound idempotency. New migration `supabase_schema_v30.sql` adds
+  `webhook_events.payload_sha256` + a unique index. `handlers/github_webhook/entry.rs` now hashes
+  the signed material (`SHA256(event_type ‖ raw_body)`) and `store_webhook_event` returns a
+  `WebhookIngestDecision`. A content-hash collision is only skipped when the prior occurrence was
+  already processed successfully (`processed = TRUE`); a prior delivery whose processing FAILED is
+  returned for reprocessing, so a transient failure is not silently lost (retry-safety). A replay
+  with a fresh `delivery_id` but the same already-processed signed body collides on the content
+  hash and is skipped. Test:
+  `webhook_replay_with_fresh_delivery_id_is_deduped_by_content_hash` (integration) covers both the
+  retry-safe and the dedup paths. The harness `webhook_events` table was aligned (it was missing
+  `signature` / `payload_sha256`).
+  - Self-review note: the first cut of this fix skipped processing on ANY content-hash collision,
+    which would have permanently dropped an event whose first delivery stored the row but then
+    failed processing (GitHub retries would be answered `200 duplicate`). Corrected to the
+    processed-aware decision above.
+
+### Finding W2 — Jira webhook stale-replay overwrite (Low)
+
+- **Issue**: `upsert_project_ticket` used `ON CONFLICT (org_id, ticket_id) DO UPDATE` with no
+  version guard, so replaying an older Jira webhook overwrote a newer ticket state
+  (last-write-wins).
+- **Fix applied**: the `DO UPDATE` now carries
+  `WHERE project_tickets.updated_at IS NULL OR EXCLUDED.updated_at IS NULL OR EXCLUDED.updated_at >= project_tickets.updated_at`,
+  so a strictly-older replay is ignored. Validated directly against the production-shaped schema
+  (the harness `project_tickets` is drifted — `project_key NOT NULL`, no `ticket_url`/`title` — so
+  `upsert_project_ticket` cannot run against it; verified via `psql`: a stale replay returns
+  `INSERT 0 0` and the newer status is preserved).
+
+### Migration numbering note
+
+Local webhook idempotency migration is `supabase_schema_v30.sql`. Migrations `v27`–`v29`
+(api-key role integrity, release-approval evidence-packet binding, push-outcome event fidelity)
+are separate concurrent local work; `v26` is the `commit_ticket_correlations` org-scoped
+uniqueness from the multi-tenant fix.
 
 ## Latest Verified GitHub Checks
 

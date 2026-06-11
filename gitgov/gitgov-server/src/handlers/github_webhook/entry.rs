@@ -79,14 +79,51 @@ pub async fn handle_github_webhook(
         }
     };
 
-    // Store raw webhook event for debugging
-    let webhook_id = match state.db.store_webhook_event(
-        &delivery_id,
-        &event_type,
-        signature.as_deref(),
-        &payload,
-    ).await {
-        Ok(id) => Some(id),
+    // Content-bound idempotency key over the signed material (event type + raw
+    // body). GitHub signs only the body, and the delivery_id is an unsigned,
+    // sender-controlled header — so a captured valid payload replayed with a
+    // fresh delivery_id would otherwise re-inject duplicate audit evidence.
+    // Hashing the signed body makes such replays collide regardless of delivery_id.
+    let payload_sha256 = {
+        let mut hasher = Sha256::new();
+        hasher.update(event_type.as_bytes());
+        hasher.update([0u8]);
+        hasher.update(&body);
+        format!("{:x}", hasher.finalize())
+    };
+
+    // Store raw webhook event for debugging + content-bound dedup. Only a payload
+    // that was already PROCESSED successfully is skipped; a prior delivery whose
+    // processing failed is returned for reprocessing so it is not silently lost.
+    let webhook_id = match state
+        .db
+        .store_webhook_event(
+            &delivery_id,
+            &event_type,
+            signature.as_deref(),
+            &payload,
+            &payload_sha256,
+        )
+        .await
+    {
+        Ok(crate::db::WebhookIngestDecision::Process(webhook_id)) => webhook_id,
+        Ok(crate::db::WebhookIngestDecision::SkipDuplicate) => {
+            tracing::info!(
+                delivery_id = %delivery_id,
+                event_type = %event_type,
+                "Duplicate webhook payload (content hash match, already processed); skipping"
+            );
+            return (
+                StatusCode::OK,
+                Json(WebhookResponse {
+                    received: true,
+                    delivery_id,
+                    event_type,
+                    processed: Some(true),
+                    error: Some("Duplicate webhook payload - already processed".to_string()),
+                }),
+            );
+        }
         Err(e) => {
             tracing::warn!("Failed to store webhook event: {}", e);
             None

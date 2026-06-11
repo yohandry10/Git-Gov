@@ -278,13 +278,18 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE TABLE IF NOT EXISTS webhook_events (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            delivery_id TEXT UNIQUE NOT NULL,
+            delivery_id TEXT NOT NULL,
             event_type TEXT NOT NULL,
+            signature TEXT,
             payload JSONB NOT NULL,
+            payload_sha256 TEXT,
             processed BOOLEAN DEFAULT FALSE,
             error TEXT,
-            created_at TIMESTAMPTZ DEFAULT NOW()
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            processed_at TIMESTAMPTZ
         );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_events_payload_sha256
+            ON webhook_events (payload_sha256);
 
         CREATE TABLE IF NOT EXISTS pipeline_events (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
