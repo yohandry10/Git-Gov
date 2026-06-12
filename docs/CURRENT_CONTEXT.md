@@ -1,13 +1,20 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-12
-Ticket: `KAN-77` event capture fidelity and Policy-as-Code implementation merged and production-validated
+Ticket: `KAN-78` Jira planning archive migrated to GitHub Issues
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
+- Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- KAN historical planning records were migrated to GitHub Issues on 2026-06-12:
+  - `KAN-4` through `KAN-77` were created as closed historical GitHub issues `#217` through `#290`.
+  - Labels created/used: `migrated-from-jira`, `historical-record`, `gitgov-recovered`, and `reconstructed-from-github`.
+  - GitGov production had `73` Jira `project_tickets` snapshots (`KAN-4` through `KAN-76`) plus GitHub PR evidence; `KAN-77` was reconstructed from GitHub/GitGov evidence without a Jira snapshot.
+  - Migration audit artifacts are generated under ignored `out/jira-migration-audit/` (`summary.json`, `migration-inventory.json`, `gitgov-project-tickets.json`, `github-prs.json`, and `github-created-issues.json`).
+  - Active follow-up issue: GitHub issue `#291`, title `KAN-78: Record Jira to GitHub Issues migration`.
 - Expected branch before new work: `main`; latest validated main commit is `e4bec3f fix(KAN-77): align Render Docker context for policy core (#215)`.
 - KAN-77 implementation PR `#214` merged as `0acfd26 security(KAN-77): harden event capture and policy as code (#214)`.
 - KAN-77 Render hotfix PR `#215` merged as `e4bec3f fix(KAN-77): align Render Docker context for policy core (#215)`.
@@ -76,7 +83,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - KAN-69 local validation: `npm --prefix gitgov run typecheck`, focused Action Center helper tests (`8` tests), full frontend tests (`304` tests in `26` files), `npm --prefix gitgov run lint`, `npm --prefix gitgov run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. Browser/Vite smoke for `/action-center` returned HTTP `200`; full authenticated UI validation remains a Tauri/Desktop runtime concern.
 - KAN-69 post-merge checks on `main` commit `aa7e352` passed: `CI` run `27086413044`, `Release Readiness Gate` run `27086413043`, `Secret Scan` run `27086413053`, `Public Naming Guard` run `27086413041`, `SonarQube Governance (Non-Blocking)` run `27086413042`, `Quality Gate Policy Matrix (Optional)` run `27086413040`, `Governance Correlation Smoke (Optional)` run `27086413050`, and `Desktop Updater Readiness (Optional)` run `27086413038`.
 - KAN-69 verification follow-up post-merge checks on `main` commit `8a55a6d` passed: `CI` run `27100640858`, `Release Readiness Gate` run `27100640831`, `Secret Scan` run `27100640840`, `Public Naming Guard` run `27100640856`, `SonarQube Governance (Non-Blocking)` run `27100640837`, `Quality Gate Policy Matrix (Optional)` run `27100640835`, `Governance Correlation Smoke (Optional)` run `27100640862`, and `Desktop Updater Readiness (Optional)` run `27100640864`.
-- Any future branch, commit, and PR title must include the relevant Jira ticket ID.
+- Any future branch, commit, and PR title must keep the `KAN-*` traceability ID. New planning records should be opened in GitHub Issues unless Jira Cloud is deliberately reactivated later.
 
 ## Local Security Review (uncommitted, 2026-06-09)
 

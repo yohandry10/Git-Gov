@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-09
-Ticket: `KAN-69` completed
+Updated: 2026-06-12
+Ticket: `KAN-78` planning migration
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -52,6 +52,8 @@ Current non-negotiable decisions:
 - Local SonarQube is the selected Sonar runtime for this personal repository.
 - Jenkins authenticated API access is the normal agent path.
 - OpenAPI remains intentionally partial and is not a product blocker.
+- GitHub Issues is now the operational planning surface. The former Jira Cloud project is deactivated, so agents must not wait on Jira reactivation before continuing work. Keep `KAN-*` IDs in branches, commits, and PR titles for GitGov traceability.
+- Historical Jira planning records were migrated to closed GitHub Issues `#217` through `#290` (`KAN-4` through `KAN-77`) and labeled `migrated-from-jira`, `historical-record`, and `gitgov-recovered`. `KAN-77` is labeled `reconstructed-from-github` because it had GitHub/GitGov evidence but no Jira snapshot.
 - `KAN-69 - Enterprise Action Center guided UX` is implemented as a dedicated `/action-center` desktop route, not as another panel inside the crowded dashboard surfaces.
 - KAN-69 follow-up verification merged through PR `#206` as `8a55a6d`; it keeps release guidance conservative when Jira coverage is missing or empty, and prevents known-forbidden admin-only adoption-profile/checklist reads for non-admin users.
 - KAN-69 Desktop runtime QA is completed and merged to `main` through PR `#209` (`fix/KAN-69-desktop-runtime-qa-maintainability`) and PR `#211` (`fix/KAN-69-control-plane-workspace-auth`); latest main commit `e0c769d`. Tracked report: `docs/reports/kan-69-desktop-runtime-qa-2026-06-07.md`.
@@ -107,7 +109,7 @@ Public replacement strategy:
 - keep the restricted originals ignored.
 - publish sanitized conclusions in tracked docs and reports.
 - update `docs/CURRENT_CONTEXT.md` after major state changes.
-- use Jira-ticketed docs branches for any public context changes.
+- use `KAN-*` traceable docs branches for any public context changes.
 
 ## Conclusions From The External Deep Research Report
 
