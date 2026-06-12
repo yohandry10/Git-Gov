@@ -22,6 +22,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Local SonarQube API access is available when `SONAR_HOST_URL`, `SONAR_TOKEN`, and `SONAR_PROJECT_KEY` are loaded from ignored local env files.
 - Jenkins direct API access is available when `JENKINS_SERVER_URL`, `JENKINS_USER`, and `JENKINS_API_TOKEN` are loaded from ignored local env files.
 - Jira Cloud API access is available when `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, and `JIRA_PROJECT_KEY` are loaded from ignored local env files.
+- Jira Cloud for the historical `KAN` project is currently deactivated. GitGov's Jira integration remains a validated product capability, but new operational planning now happens in GitHub Issues.
 - Local ignored env files currently used by the agent:
   - `C:\Users\PC\Desktop\GitGov\gitgov\.env`
   - `C:\Users\PC\Desktop\GitGov\gitgov\gitgov-server\.env`
@@ -31,6 +32,7 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 
 - GitHub:
   - Inspect repo state, branches, commits, PRs, checks, branch protection, and workflow runs through `gh`.
+  - Use GitHub Issues as the operational planning source for new work after the KAN Jira archive migration.
   - Create branches, push commits, open PRs, merge PRs when checks pass and user intent is clear.
   - Read GitHub Actions logs and rerun workflows when needed.
   - Manage repository Actions variables and secrets when explicitly requested; secret creation or updates are sensitive operations.
@@ -55,9 +57,10 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
   - Authenticate by API using `JIRA_EMAIL` and `JIRA_API_TOKEN` from ignored env files.
   - Query project metadata, issue types, issues, and comments for `JIRA_PROJECT_KEY=KAN`.
   - Create Jira issues and comments by API when explicitly requested.
+  - Do not block work waiting for Jira reactivation; the deactivated `KAN` planning archive was migrated to closed GitHub Issues `#217` through `#290`, and active planning starts with GitHub issue `#291` (`KAN-78`).
   - Native Jira webhook target is `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10` once deployed.
   - Native Jira webhook authentication uses `X-Hub-Signature` HMAC with `JIRA_WEBHOOK_SECRET`; do not use `GITGOV_API_KEY` in the native Jira webhook URL.
-  - Use Jira ticket IDs in branch names, commit messages, PR titles, and PR comments to generate GitGov traceability evidence.
+  - Use `KAN-*` traceability IDs in branch names, commit messages, PR titles, and PR comments to generate GitGov traceability evidence.
 - Local stack:
   - Use Docker Compose profiles `jenkins` and `sonar` to start Jenkins and SonarQube.
   - Validate local services before editing CI/CD configuration.
