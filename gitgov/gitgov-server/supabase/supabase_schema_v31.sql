@@ -54,6 +54,8 @@ CREATE TRIGGER policy_history_trigger
     AFTER INSERT OR UPDATE ON policies
     FOR EACH ROW EXECUTE FUNCTION record_policy_change();
 
+DROP FUNCTION IF EXISTS get_policy_history(UUID, INTEGER);
+
 CREATE OR REPLACE FUNCTION get_policy_history(
     p_repo_id UUID,
     p_limit INTEGER DEFAULT 50

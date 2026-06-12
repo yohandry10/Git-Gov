@@ -118,6 +118,8 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Render build context must include both `gitgov-server` and `policy-core` because the backend depends on `gitgov-policy-core` through a relative Cargo path.
 - Render service is reachable through the Render API using `RENDER_API_KEY` from ignored local env files.
 - `docs/DEPLOYMENT.md` treats Render as the current production route; the former EC2/Nginx/systemd material is retained as legacy/self-hosted guidance only.
+- KAN-77 Render packaging note: deploy `dep-d8lsqf7avr4c73fsemlg` for commit `0acfd26` failed because the old root/context `gitgov/gitgov-server` excluded `gitgov/policy-core`; PR `#215` fixed Docker context/config, and deploy `dep-d8lsul8k1i2s73dk1ph0` for `e4bec3f` reached `live` with `/health=ok` and authenticated `/stats=200`.
+- KAN-77 production DB note: `supabase_schema_v31.sql` must be applied with the re-runnable `DROP FUNCTION IF EXISTS get_policy_history(UUID, INTEGER)` before recreating the function. Missing `v31` caused production `GET /policy/yohandry10%2FGit-Gov` to return `Internal database error`; after applying it, the endpoint returned HTTP `200` and quality-gate matrix validation passed.
 
 ## Jira
 

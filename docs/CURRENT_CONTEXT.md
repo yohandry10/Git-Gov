@@ -1,14 +1,22 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-12
-Ticket: `KAN-77` event capture fidelity implementation in progress on local branch `security/KAN-77-event-capture-fidelity`
+Ticket: `KAN-77` event capture fidelity and Policy-as-Code implementation merged and production-validated
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Expected branch before new work: `main`; current local implementation branch is `security/KAN-77-event-capture-fidelity`.
+- Expected branch before new work: `main`; latest validated main commit is `e4bec3f fix(KAN-77): align Render Docker context for policy core (#215)`.
+- KAN-77 implementation PR `#214` merged as `0acfd26 security(KAN-77): harden event capture and policy as code (#214)`.
+- KAN-77 Render hotfix PR `#215` merged as `e4bec3f fix(KAN-77): align Render Docker context for policy core (#215)`.
+- Render deploy `dep-d8lsqf7avr4c73fsemlg` for `0acfd26` failed because the previous Render root/context `gitgov/gitgov-server` excluded the new sibling `gitgov/policy-core` crate, so Cargo could not read `/policy-core/Cargo.toml`.
+- Render service `gitgov-api` was updated through the Render API to `rootDir=gitgov`, Docker context `.`, and Dockerfile `gitgov-server/Dockerfile`; local `docker-compose.yml` now uses the same context shape.
+- Render deploy `dep-d8lsul8k1i2s73dk1ph0` for `e4bec3f` reached `live` on 2026-06-12, `/health` returned `status=ok`, and authenticated `/stats` returned HTTP `200`.
+- Production `supabase_schema_v31.sql` was applied after PR `#216` exposed a `/policy/yohandry10%2FGit-Gov` database error in `Validate quality_gates warn/block matrix`; `v31` now drops/recreates `get_policy_history(UUID, INTEGER)` so the migration is re-runnable when the OUT row changes.
+- After applying `v31`, `source_metadata` exists on `policies`, `policy_history`, and `policy_change_requests`; `get_policy_history` exists once; authenticated production `GET /policy/yohandry10%2FGit-Gov` returned HTTP `200`; local rerun of `scripts/jenkins/validate_quality_gate_policy_matrix.ps1` against production passed.
+- Post-merge GitHub checks for `e4bec3f` passed, including `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix (Optional)`, `Governance Correlation Smoke (Optional)`, `Desktop Updater Readiness (Optional)`, and `SonarQube Governance (Non-Blocking)`.
 - Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, handoff refresh PR `#194` merged as `2ab821e`, and stable wording PR `#195` merged as `0ccef26`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
@@ -290,7 +298,7 @@ Additional deep intake from the same 2026-06-12 session:
   `docs/design/policy-as-code-flexible-source-mvp.md`: keep one canonical internal
   `GitGovConfig` model, but let customers choose `control-plane-managed`,
   `repo-policy-as-code`, or `hybrid-advisory` source mode and support TOML/YAML/JSON repo policy
-  files. Initial implementation is now underway: `gitgov/policy-core` provides shared
+  files. Implementation is merged on `main` through PR `#214`: `gitgov/policy-core` provides shared
   TOML/YAML/JSON parsing, discovery, canonical JSON, checksum, semantic diff, and real Git PR
   validation; backend/Tauri reexport the shared model; `supabase_schema_v31.sql` adds
   `source_metadata`; overrides and policy requests use canonical checksums; merged PR webhooks can
@@ -319,9 +327,11 @@ Additional deep intake from the same 2026-06-12 session:
   Governance patch/PR proposal UX,
   explicit emergency override UX, periodic drift comparison, Evidence Packet source metadata,
   customer examples/schema docs, controlled GitHub API activation test, persisted OPA decision audit
-  history/export, and a real `opa run --server` smoke script.
-- KAN-77 local security/event-fidelity work remains in progress in the dirty worktree. New docs
-  intake did not validate or change that implementation beyond this context update.
+  history/export, and a real `opa run --server` smoke script. Production packaging was completed by
+  PR `#215`, which aligned Render and local Docker context with the new sibling crate layout.
+- KAN-77 security/event-fidelity and flexible Policy-as-Code work is no longer local-only. It is
+  merged to `main`, production deployed on Render deploy `dep-d8lsul8k1i2s73dk1ph0`, and validated
+  with `/health`, authenticated `/stats`, and post-merge GitHub checks.
 
 ## Latest Verified GitHub Checks
 
