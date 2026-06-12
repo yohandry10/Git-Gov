@@ -2,10 +2,12 @@ FROM rust:1.88-bookworm AS builder
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY gitgov-server/Cargo.toml gitgov-server/Cargo.lock ./gitgov-server/
+COPY policy-core/Cargo.toml ./policy-core/
+COPY policy-core/src ./policy-core/src
+COPY gitgov-server/src ./gitgov-server/src
 
-RUN cargo build --release
+RUN cargo build --release --manifest-path gitgov-server/Cargo.toml
 
 FROM debian:bookworm-slim
 
@@ -18,7 +20,7 @@ RUN groupadd --system gitgov \
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/gitgov-server /usr/local/bin/gitgov-server
+COPY --from=builder /app/gitgov-server/target/release/gitgov-server /usr/local/bin/gitgov-server
 
 RUN chown -R gitgov:gitgov /app /home/gitgov
 

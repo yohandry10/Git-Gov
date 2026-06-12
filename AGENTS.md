@@ -112,7 +112,10 @@ This repository is operated from `C:\Users\PC\Desktop\GitGov` on Windows PowerSh
 - Render service type: Docker web service.
 - Render region: Oregon.
 - Render deploy branch: `main`.
-- Render root directory: `gitgov/gitgov-server`.
+- Render root directory: `gitgov`.
+- Render Docker context: `.` within `gitgov`.
+- Render Dockerfile path: `gitgov-server/Dockerfile`.
+- Render build context must include both `gitgov-server` and `policy-core` because the backend depends on `gitgov-policy-core` through a relative Cargo path.
 - Render service is reachable through the Render API using `RENDER_API_KEY` from ignored local env files.
 - `docs/DEPLOYMENT.md` treats Render as the current production route; the former EC2/Nginx/systemd material is retained as legacy/self-hosted guidance only.
 

@@ -468,7 +468,10 @@ done
 - Runtime: Docker web service.
 - Región: Oregon.
 - Rama de deploy: `main`.
-- Root directory: `gitgov/gitgov-server`.
+- Root directory: `gitgov`.
+- Docker context: `.` dentro de `gitgov`.
+- Dockerfile path: `gitgov-server/Dockerfile`.
+- El contexto debe incluir `gitgov-server` y `policy-core`; el backend depende de `gitgov-policy-core` por path relativo.
 - GitHub webhook activo: `https://gitgov-api.onrender.com/webhooks/github` (ID `610772988`).
 - Jira webhook nativo activo: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 - HTTPS ya lo provee Render para la producción actual.
