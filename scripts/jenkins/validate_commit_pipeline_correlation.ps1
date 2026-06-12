@@ -3,6 +3,7 @@ param(
   [string]$ApiKey,
   [string]$JenkinsSecret = "",
   [string]$RepoFullName = "",
+  [string]$OrgName = "",
   [string]$CommitSha = "",
   [string]$Branch = "main",
   [string]$UserLogin = "jenkins",
@@ -24,6 +25,10 @@ if ([string]::IsNullOrWhiteSpace($RepoFullName)) {
 if ([string]::IsNullOrWhiteSpace($RepoFullName)) {
   Write-Error "Missing -RepoFullName and repository coordinates could not be auto-resolved."
   exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($OrgName) -and $RepoFullName.Contains('/')) {
+  $OrgName = $RepoFullName.Split('/')[0]
 }
 
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
@@ -58,9 +63,28 @@ function Invoke-GitGovJson {
     return Invoke-RestMethod -Uri $uri -Method $Method -Headers $headers
   } catch {
     if ($_.Exception.Response) {
-      $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
-      $payload = $reader.ReadToEnd()
-      throw "HTTP error calling $uri -> $payload"
+      $response = $_.Exception.Response
+      $payload = ""
+      if ($null -ne $_.ErrorDetails -and ($_.ErrorDetails.PSObject.Properties.Name -contains "Message")) {
+        $payload = [string]$_.ErrorDetails.Message
+      }
+      if ([string]::IsNullOrWhiteSpace($payload)) {
+        try {
+          if ($response.PSObject.Properties.Name -contains "Content" -and $null -ne $response.Content) {
+            $payload = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+          } elseif ($response.PSObject.Methods.Name -contains "GetResponseStream") {
+            $reader = New-Object IO.StreamReader($response.GetResponseStream())
+            $payload = $reader.ReadToEnd()
+          }
+        } catch {
+          $payload = $_.Exception.Message
+        }
+      }
+      $status = ""
+      if ($response.PSObject.Properties.Name -contains "StatusCode") {
+        $status = " status=$($response.StatusCode)"
+      }
+      throw "HTTP error calling $Method $uri$status -> $payload"
     }
     throw
   }
@@ -78,6 +102,7 @@ if ([string]::IsNullOrWhiteSpace($effectiveCommitSha)) {
 if ($InjectPipelineIfMissing) {
   $pipelineId = "smoke-correlation-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
   $pipelineEvent = @{
+    org_name = if ([string]::IsNullOrWhiteSpace($OrgName)) { $null } else { $OrgName }
     pipeline_id = $pipelineId
     job_name = "sonar-smoke-correlation"
     status = "success"
@@ -103,7 +128,7 @@ $commitEvent = @{
     @{
       event_uuid = $eventUuid
       event_type = "commit"
-      org_name = $null
+      org_name = if ([string]::IsNullOrWhiteSpace($OrgName)) { $null } else { $OrgName }
       repo_full_name = $RepoFullName
       user_login = $UserLogin
       user_name = $UserLogin
@@ -126,7 +151,14 @@ if (-not ($ingestCommit.accepted -contains $eventUuid)) {
 }
 
 $userParam = [Uri]::EscapeDataString($UserLogin)
-$correlations = Invoke-GitGovJson -Method "GET" -Path "/integrations/jenkins/correlations?limit=50&offset=0&user_login=$userParam"
+$repoParam = [Uri]::EscapeDataString($RepoFullName)
+$branchParam = [Uri]::EscapeDataString($Branch)
+$correlationsPath = "/integrations/jenkins/correlations?limit=50&offset=0&repo_full_name=$repoParam&branch=$branchParam&user_login=$userParam"
+if (-not [string]::IsNullOrWhiteSpace($OrgName)) {
+  $orgParam = [Uri]::EscapeDataString($OrgName)
+  $correlationsPath += "&org_name=$orgParam"
+}
+$correlations = Invoke-GitGovJson -Method "GET" -Path $correlationsPath
 
 $match = $null
 foreach ($item in @($correlations.correlations)) {
