@@ -23,8 +23,8 @@ services:
 
   gitgov-server:
     build:
-      context: ./gitgov/gitgov-server
-      dockerfile: Dockerfile
+      context: ./gitgov
+      dockerfile: gitgov-server/Dockerfile
     container_name: gitgov-server
     restart: unless-stopped
     depends_on:

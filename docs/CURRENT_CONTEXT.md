@@ -569,7 +569,10 @@ Production validation after Render deploy `dep-d7phm1m8bjmc73fko1lg`:
 - Service ID: `srv-d7lgtc77f7vs73b38uqg`.
 - Render service type: Docker web service.
 - Render branch: `main`.
-- Render root directory: `gitgov/gitgov-server`.
+- Render root directory: `gitgov`.
+- Render Docker context: `.` within `gitgov`.
+- Render Dockerfile path: `gitgov-server/Dockerfile`.
+- The Docker build context must include both `gitgov-server` and `policy-core` because the backend depends on `gitgov-policy-core` through a relative Cargo path.
 - Render API access is available through ignored local env files as `RENDER_API_KEY`.
 
 ### Jira
