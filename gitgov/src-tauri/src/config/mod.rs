@@ -3,6 +3,7 @@ pub mod validator;
 pub use validator::*;
 
 use crate::models::GitGovConfig;
+use gitgov_policy_core::{load_policy_from_repo, PolicyFileError};
 use std::path::Path;
 use thiserror::Error;
 
@@ -14,22 +15,95 @@ pub enum ConfigError {
     ParseError(String),
     #[error("Invalid pattern: {0}")]
     InvalidPattern(String),
+    #[error("Policy file error: {0}")]
+    PolicyFile(String),
 }
 
 pub fn load_config(repo_path: &str) -> Result<GitGovConfig, ConfigError> {
-    let config_path = Path::new(repo_path).join("gitgov.toml");
+    load_policy_from_repo(repo_path)
+        .map(|parsed| parsed.config)
+        .map_err(map_policy_file_error)
+}
 
-    if !config_path.exists() {
-        return Err(ConfigError::FileNotFound(
-            config_path.to_string_lossy().to_string(),
-        ));
+fn map_policy_file_error(error: PolicyFileError) -> ConfigError {
+    match error {
+        PolicyFileError::NotFound => {
+            ConfigError::FileNotFound(Path::new("gitgov.toml").to_string_lossy().to_string())
+        }
+        PolicyFileError::Parse { message, .. } => ConfigError::ParseError(message),
+        other => ConfigError::PolicyFile(other.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    const YAML_POLICY: &str = r#"
+branches:
+  patterns:
+    - feature/*
+  protected:
+    - main
+groups:
+  backend:
+    members:
+      - alice
+    allowed_branches:
+      - feature/*
+    allowed_paths:
+      - gitgov/**
+admins:
+  - alice
+rules:
+  require_pull_request: true
+  min_approvals: 1
+  require_conventional_commits: true
+  require_linked_ticket: true
+enforcement:
+  pull_requests: block
+  branches: block
+  commits: warn
+  traceability: block
+  quality_gates: warn
+"#;
+
+    const TOML_POLICY: &str = r#"
+admins = ["alice"]
+
+[branches]
+patterns = ["feature/*"]
+protected = ["main"]
+"#;
+
+    #[test]
+    fn load_config_reads_yaml_policy_file_from_real_repo_path() {
+        let repo = tempfile::tempdir().unwrap();
+        let policy_dir = repo.path().join(".gitgov");
+        fs::create_dir_all(&policy_dir).unwrap();
+        fs::write(policy_dir.join("policy.yml"), YAML_POLICY).unwrap();
+
+        let config = load_config(repo.path().to_string_lossy().as_ref()).unwrap();
+
+        assert_eq!(config.admins, vec!["alice"]);
+        assert_eq!(config.rules.min_approvals, 1);
+        assert_eq!(
+            config.enforcement.pull_requests,
+            crate::models::EnforcementLevel::Block
+        );
     }
 
-    let content = std::fs::read_to_string(&config_path)
-        .map_err(|e| ConfigError::ParseError(format!("Failed to read file: {}", e)))?;
+    #[test]
+    fn load_config_rejects_ambiguous_policy_files() {
+        let repo = tempfile::tempdir().unwrap();
+        let policy_dir = repo.path().join(".gitgov");
+        fs::create_dir_all(&policy_dir).unwrap();
+        fs::write(policy_dir.join("policy.yml"), YAML_POLICY).unwrap();
+        fs::write(repo.path().join("gitgov.toml"), TOML_POLICY).unwrap();
 
-    let config: GitGovConfig = toml::from_str(&content)
-        .map_err(|e| ConfigError::ParseError(format!("TOML parse error: {}", e)))?;
+        let error = load_config(repo.path().to_string_lossy().as_ref()).unwrap_err();
 
-    Ok(config)
+        assert!(error.to_string().contains("multiple policy files found"));
+    }
 }

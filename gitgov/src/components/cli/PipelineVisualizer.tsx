@@ -83,6 +83,7 @@ interface GateStatusItem {
   label: string
   detail: string
   status: PipelineNodeStatus
+  impact: GateImpact
 }
 
 interface CurrentFocusState {
@@ -92,6 +93,8 @@ interface CurrentFocusState {
   Icon: typeof Ticket
   nextAction: string
 }
+
+type GateImpact = 'satisfied' | 'waiting' | 'advisory' | 'blocks-merge'
 
 const FLOW_STEPS: FlowStepDefinition[] = [
   { key: 'ticket', label: 'Ticket', Icon: Ticket },
@@ -138,6 +141,20 @@ const STATUS_STYLE: Record<
   },
 }
 
+const GATE_IMPACT_STYLE: Record<GateImpact, string> = {
+  satisfied: 'border-success-500/30 bg-success-500/10 text-success-300',
+  waiting: 'border-surface-700 bg-surface-800/70 text-surface-400',
+  advisory: 'border-brand-500/30 bg-brand-500/10 text-brand-300',
+  'blocks-merge': 'border-warning-500/35 bg-warning-500/10 text-warning-300',
+}
+
+const GATE_IMPACT_LABEL: Record<GateImpact, string> = {
+  satisfied: 'Satisfied',
+  waiting: 'Waiting',
+  advisory: 'Advisory',
+  'blocks-merge': 'Blocks merge',
+}
+
 function extractTicketIds(text: string): string[] {
   const unique: string[] = []
   const seen = new Set<string>()
@@ -157,6 +174,14 @@ function normalizePipelineStatus(status: string): PipelineNodeStatus {
   if (n === 'running' || n === 'in_progress' || n === 'building') return 'active'
   if (n === 'unstable' || n === 'aborted') return 'warning'
   return 'pending'
+}
+
+function gateImpactForPipeline(status?: string): GateImpact {
+  const normalized = status?.trim().toLowerCase()
+  if (!normalized) return 'waiting'
+  if (['success', 'succeeded', 'passed', 'pass', 'ok', 'green'].includes(normalized)) return 'satisfied'
+  if (['failure', 'failed', 'error', 'unstable', 'timeout', 'cancelled'].includes(normalized)) return 'blocks-merge'
+  return 'waiting'
 }
 
 function detectStepFromCommand(command: string): FlowStepKey | null {
@@ -676,6 +701,7 @@ export function PipelineVisualizer() {
             : primaryTicketId
           : 'No ticket detected in branch or commit message',
         status: ticketStep?.status ?? 'pending',
+        impact: primaryTicketId ? 'satisfied' : 'blocks-merge',
       },
       {
         label: 'Review Gate',
@@ -685,6 +711,13 @@ export function PipelineVisualizer() {
             ? `No PR evidence yet for ${latestCommit.short_sha}`
             : 'No commit available yet',
         status: pushStep?.status ?? 'pending',
+        impact: latestPrEvidence
+          ? latestPrEvidence.approvals_count > 0
+            ? 'satisfied'
+            : 'blocks-merge'
+          : latestCommit
+            ? 'waiting'
+            : 'advisory',
       },
       {
         label: 'CI Gate',
@@ -692,6 +725,7 @@ export function PipelineVisualizer() {
           ? `${latestPipelineRun.job_name || latestPipelineRun.pipeline_id} · ${latestPipelineRun.status}`
           : 'No Jenkins signal received yet',
         status: pipelineStep?.status ?? 'pending',
+        impact: gateImpactForPipeline(latestPipelineRun?.status),
       },
     ]
   }, [latestCommit, latestPipelineRun, latestPrEvidence, primaryTicket, primaryTicketId, steps])
@@ -821,10 +855,15 @@ export function PipelineVisualizer() {
             </div>
 
             <div className="flex min-h-0 flex-col rounded-xl border border-white/6 bg-white/[0.02] p-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={13} className="text-surface-400" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-surface-400">
-                  Gates / Blockers
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={13} className="text-surface-400" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-surface-400">
+                    Policy Signals
+                  </span>
+                </div>
+                <span className="rounded border border-surface-700 bg-surface-900/80 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-surface-500">
+                  Local terminal
                 </span>
               </div>
               <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
@@ -833,9 +872,14 @@ export function PipelineVisualizer() {
                     key={item.label}
                     className={`rounded-lg border px-2.5 py-2 ${STATUS_STYLE[item.status].card}`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <StatusGlyph status={item.status} />
-                      <span className="text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <StatusGlyph status={item.status} />
+                        <span className="truncate text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
+                      </div>
+                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[8px] uppercase tracking-wider ${GATE_IMPACT_STYLE[item.impact]}`}>
+                        {GATE_IMPACT_LABEL[item.impact]}
+                      </span>
                     </div>
                     <p className="mt-1 break-words text-[11px] leading-relaxed text-surface-200">{item.detail}</p>
                   </div>

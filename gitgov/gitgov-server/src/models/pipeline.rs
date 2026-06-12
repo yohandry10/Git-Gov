@@ -178,6 +178,8 @@ pub struct PolicyCheckResponse {
     pub enforcement_applied: String,
     #[serde(default)]
     pub violations: Vec<RuleViolation>,
+    #[serde(default)]
+    pub external_decisions: Vec<ExternalPolicyDecision>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -186,6 +188,28 @@ pub struct RuleViolation {
     pub category: String,
     pub enforcement: String,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, utoipa::ToSchema)]
+pub struct ExternalPolicyDecision {
+    pub adapter: String,
+    pub status: String,
+    pub allowed: Option<bool>,
+    pub enforcement: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision_id: Option<String>,
+    pub decision_path: String,
+    pub latency_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_hash: Option<String>,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+    #[serde(default)]
+    pub warnings: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 // ============================================================================

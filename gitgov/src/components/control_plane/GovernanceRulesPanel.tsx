@@ -41,21 +41,21 @@ const PRESET_CONFIGS: Record<Exclude<GovernancePreset, 'custom'>, {
     label: 'Startup',
     icon: Zap,
     description: 'Sin fricción — todo apagado',
-    enforcement: { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off' },
+    enforcement: { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off', external_policy: 'off' },
     rules: {},
   },
   enterprise: {
     label: 'Enterprise',
     icon: Building2,
     description: 'PRs obligatorios, branches protegidos',
-    enforcement: { pull_requests: 'warn', commits: 'warn', branches: 'warn', traceability: 'off', quality_gates: 'warn' },
+    enforcement: { pull_requests: 'warn', commits: 'warn', branches: 'warn', traceability: 'off', quality_gates: 'warn', external_policy: 'off' },
     rules: { require_pull_request: true, min_approvals: 1, require_conventional_commits: true },
   },
   regulated: {
     label: 'Regulado',
     icon: Lock,
     description: 'Todo bloqueante — compliance total',
-    enforcement: { pull_requests: 'block', commits: 'block', branches: 'block', traceability: 'block', quality_gates: 'block' },
+    enforcement: { pull_requests: 'block', commits: 'block', branches: 'block', traceability: 'block', quality_gates: 'block', external_policy: 'off' },
     rules: {
       require_pull_request: true,
       min_approvals: 2,
@@ -298,7 +298,7 @@ function defaultRules(): RulesConfig {
 }
 
 function defaultEnforcement(): EnforcementConfig {
-  return { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off' }
+  return { pull_requests: 'off', commits: 'off', branches: 'off', traceability: 'off', quality_gates: 'off', external_policy: 'off' }
 }
 
 // ---------------------------------------------------------------------------
@@ -324,6 +324,7 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
   const [forbiddenPatterns, setForbiddenPatterns] = useState<string[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const opaConfig = policyData?.config?.adapters?.opa
 
   // Load policy on mount
   useEffect(() => {
@@ -383,6 +384,8 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
       rules: { ...rules, forbidden_patterns: forbiddenPatterns },
       checklist: policyData?.config?.checklist ?? { confirm: [], auto_check: [] },
       enforcement,
+      quality_gate_exception: policyData?.config?.quality_gate_exception ?? null,
+      adapters: policyData?.config?.adapters,
     }
     const ok = await savePolicy(repoFullName, config)
     if (ok) {
@@ -428,9 +431,14 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
           </p>
         </div>
         {policyData && (
-          <Badge variant="info">
-            v{policyData.version} · {policyData.checksum.slice(0, 8)}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="info">
+              v{policyData.version} · {policyData.checksum.slice(0, 8)}
+            </Badge>
+            <span className="text-[10px] text-surface-500">
+              {policyData.source?.source_path ?? policyData.source?.source_mode ?? 'control-plane-managed'}
+            </span>
+          </div>
         )}
       </div>
 
@@ -619,6 +627,40 @@ export function GovernanceRulesPanel({ repoFullName }: { repoFullName: string })
               Recomendado: iniciar en <span className="text-warning-300">Warn</span> y mover a
               <span className="text-danger-300"> Block</span> solo despues de validar estabilidad.
             </p>
+          </div>
+        </CategorySection>
+
+        {/* External OPA/Rego */}
+        <CategorySection
+          icon={Shield}
+          title="OPA/Rego externo"
+          enforcement={enforcement.external_policy ?? 'off'}
+          onEnforcementChange={(v) => setEnforcement((e) => ({ ...e, external_policy: v }))}
+          defaultOpen={Boolean(opaConfig?.enabled)}
+        >
+          <div className="rounded-lg border border-white/6 bg-surface-900/40 px-3 py-2 space-y-1">
+            <div className="flex items-center justify-between gap-3 text-[11px]">
+              <span className="text-surface-400">Estado</span>
+              <span className={opaConfig?.enabled ? 'text-success-300' : 'text-surface-500'}>
+                {opaConfig?.enabled ? 'Conectado por configuración' : 'Sin adaptador activo'}
+              </span>
+            </div>
+            {opaConfig?.enabled && (
+              <>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-surface-400">Decision path</span>
+                  <span className="font-mono text-surface-300 truncate max-w-[260px]">
+                    {opaConfig.decision_path}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-surface-400">Modo</span>
+                  <span className="text-surface-300">
+                    {opaConfig.effect} · {opaConfig.failure_mode}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </CategorySection>
       </div>

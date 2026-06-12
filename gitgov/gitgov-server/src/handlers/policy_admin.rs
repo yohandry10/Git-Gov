@@ -11,6 +11,8 @@ pub struct PolicyApiResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<GitGovConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<PolicySourceMetadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -74,6 +76,7 @@ pub async fn get_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some("Repository not found".to_string()),
                 }),
@@ -86,6 +89,7 @@ pub async fn get_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some("Internal database error".to_string()),
                 }),
@@ -100,6 +104,7 @@ pub async fn get_policy(
                 version: Some(policy.version),
                 checksum: Some(policy.checksum),
                 config: Some(policy.config),
+                source: Some(policy.source),
                 updated_at: Some(policy.updated_at),
                 error: None,
             }),
@@ -110,6 +115,7 @@ pub async fn get_policy(
                 version: None,
                 checksum: None,
                 config: None,
+                source: None,
                 updated_at: None,
                 error: Some("Policy not found".to_string()),
             }),
@@ -120,6 +126,7 @@ pub async fn get_policy(
                 version: None,
                 checksum: None,
                 config: None,
+                source: None,
                 updated_at: None,
                 error: Some("Internal database error".to_string()),
             }),
@@ -140,6 +147,7 @@ pub async fn override_policy(
                 version: None,
                 checksum: None,
                 config: None,
+                source: None,
                 updated_at: None,
                 error: Some("Admin access required".to_string()),
             }),
@@ -156,6 +164,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some("Repository not found".to_string()),
                 }),
@@ -168,6 +177,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some("Internal database error".to_string()),
                 }),
@@ -184,6 +194,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some("Internal database error".to_string()),
                 }),
@@ -214,6 +225,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some(
                         "quality_gate_exception.reason is required for governed overrides"
@@ -229,6 +241,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some(
                         "quality_gate_exception.expires_at must be in the future".to_string(),
@@ -243,6 +256,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some(
                         "quality_gate_exception.expires_at exceeds max window (30 days)"
@@ -289,6 +303,7 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
                     error: Some(
                         "quality gate enforcement downgrade requires active quality_gate_exception"
@@ -299,8 +314,22 @@ pub async fn override_policy(
         }
     }
 
-    let config_json = match serde_json::to_string(&config) {
-        Ok(json) => json,
+    if let Err(e) = gitgov_policy_core::validate_policy_config(&config) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(PolicyApiResponse {
+                version: None,
+                checksum: None,
+                config: None,
+                source: None,
+                updated_at: None,
+                error: Some(e.to_string()),
+            }),
+        );
+    }
+
+    let checksum = match gitgov_policy_core::policy_checksum(&config) {
+        Ok(checksum) => checksum,
         Err(_e) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -308,14 +337,14 @@ pub async fn override_policy(
                     version: None,
                     checksum: None,
                     config: None,
+                    source: None,
                     updated_at: None,
-                    error: Some("Internal database error".to_string()),
+                    error: Some("Invalid policy config payload".to_string()),
                 }),
             );
         }
     };
-
-    let checksum = format!("{:x}", Sha256::digest(config_json.as_bytes()));
+    let source = PolicySourceMetadata::control_plane_managed(&auth_user.client_id, &checksum);
 
     // Record that this is an override
     tracing::warn!(
@@ -326,7 +355,7 @@ pub async fn override_policy(
 
     match state
         .db
-        .save_policy(&repo.id, &config, &checksum, &auth_user.client_id)
+        .save_policy_with_source(&repo.id, &config, &checksum, &auth_user.client_id, &source)
         .await
     {
         Ok(()) => {
@@ -357,6 +386,7 @@ pub async fn override_policy(
                     version: Some("1.0".to_string()),
                     checksum: Some(checksum),
                     config: Some(config),
+                    source: Some(source),
                     updated_at: Some(chrono::Utc::now().timestamp_millis()),
                     error: None,
                 }),
@@ -368,6 +398,7 @@ pub async fn override_policy(
                 version: None,
                 checksum: None,
                 config: None,
+                source: None,
                 updated_at: None,
                 error: Some("Internal database error".to_string()),
             }),

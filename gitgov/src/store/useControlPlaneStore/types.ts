@@ -568,6 +568,7 @@ export interface PolicyResponseData {
   version: string
   checksum: string
   config: import('@/lib/types').GitGovConfig
+  source: import('@/lib/types').PolicySourceMetadata
   updated_at: number
 }
 
@@ -576,6 +577,7 @@ export interface PolicyHistoryEntry {
   repo_id: string
   config: import('@/lib/types').GitGovConfig
   checksum: string
+  source?: import('@/lib/types').PolicySourceMetadata
   changed_by: string
   change_type: string
   previous_checksum: string | null

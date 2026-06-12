@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -15,9 +16,15 @@ use crate::outbox::{Outbox, OutboxEvent};
 
 use super::server_commands::ServerConnectionConfig;
 
-/// Whitelist of allowed command prefixes.
+/// Safe-mode Git subcommands.
 /// Admin-configurable in the future; hardcoded for MVP.
-const DEFAULT_ALLOWED_PREFIXES: &[&str] = &["git", "gitgov"];
+const DEFAULT_ALLOWED_GIT_SUBCOMMANDS: &[&str] = &[
+    "branch",
+    "log",
+    "remote",
+    "rev-parse",
+    "status",
+];
 const SHELL_EXIT_MARKER_PREFIX: &str = "__GITGOV_EXIT__:";
 const ENV_ENABLE_SHELL_COMMANDS: &str = "GITGOV_ENABLE_SHELL_COMMANDS";
 const ENV_ENABLE_NATIVE_TERMINAL: &str = "GITGOV_ENABLE_NATIVE_TERMINAL";

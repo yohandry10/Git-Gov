@@ -14,6 +14,7 @@ mod alerts_exports_policy_requests;
 mod basic_auth;
 mod coverage_and_compliance;
 mod events_and_admin;
+mod org_invitations;
 mod packet_reconstruction;
 mod policy_enforcement;
 mod release_binding;

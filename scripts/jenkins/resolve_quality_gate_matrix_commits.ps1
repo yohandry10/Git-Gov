@@ -2,6 +2,7 @@ param(
   [string]$GitGovUrl = "http://127.0.0.1:3001",
   [string]$ApiKey,
   [string]$RepoFullName,
+  [string]$OrgName = "",
   [string]$Branch = "main",
   [int]$Limit = 500,
   [string]$OutputPath = ""
@@ -18,12 +19,46 @@ if ([string]::IsNullOrWhiteSpace($RepoFullName)) {
   Write-Error "Missing -RepoFullName (<owner>/<repo>)."
   exit 1
 }
+if ([string]::IsNullOrWhiteSpace($OrgName) -and $RepoFullName.Contains("/")) {
+  $OrgName = $RepoFullName.Split("/", 2)[0]
+}
 if ($Limit -lt 1) {
   Write-Error "-Limit must be >= 1."
   exit 1
 }
 
-$uri = "{0}/integrations/jenkins/correlations?limit={1}&offset=0" -f $GitGovUrl.TrimEnd("/"), $Limit
+function Get-HttpErrorBody {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Response
+  )
+
+  if ($Response -and $Response.PSObject.Properties.Name -contains "Content" -and $Response.Content) {
+    try {
+      return $Response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    } catch {
+      return ""
+    }
+  }
+
+  if ($Response -and $Response.PSObject.Methods.Name -contains "GetResponseStream") {
+    try {
+      $reader = New-Object IO.StreamReader($Response.GetResponseStream())
+      return $reader.ReadToEnd()
+    } catch {
+      return ""
+    }
+  }
+
+  return ""
+}
+
+$baseUrl = $GitGovUrl.TrimEnd("/")
+$orgQuery = ""
+if (-not [string]::IsNullOrWhiteSpace($OrgName)) {
+  $orgQuery = "&org_name=$([System.Uri]::EscapeDataString($OrgName))"
+}
+$uri = "{0}/integrations/jenkins/correlations?limit={1}&offset=0{2}" -f $baseUrl, $Limit, $orgQuery
 $headers = @{
   Authorization = "Bearer $ApiKey"
   "Content-Type" = "application/json"
@@ -33,8 +68,7 @@ try {
   $resp = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers
 } catch {
   if ($_.Exception.Response) {
-    $reader = New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
-    $body = $reader.ReadToEnd()
+    $body = Get-HttpErrorBody -Response $_.Exception.Response
     Write-Error "HTTP error resolving correlations: $body"
     exit 1
   }
@@ -80,7 +114,7 @@ foreach ($item in $candidates) {
 
 if ($null -eq $failing) {
   # Fallback: infer failing commit from quality-gate policy violation signals
-  $signalsUri = "{0}/signals?signal_type=policy_violation&limit={1}&offset=0" -f $GitGovUrl.TrimEnd("/"), $Limit
+  $signalsUri = "{0}/signals?signal_type=policy_violation&limit={1}&offset=0{2}" -f $baseUrl, $Limit, $orgQuery
   try {
     $signalsResp = Invoke-RestMethod -Uri $signalsUri -Method Get -Headers $headers
     $signalCandidates = @($signalsResp.signals | Where-Object {
@@ -120,6 +154,7 @@ if ($null -eq $green) {
 
 $result = [pscustomobject]@{
   repo = $RepoFullName
+  org_name = $OrgName
   branch = $Branch
   failing_commit_sha = [string]$failing.commit_sha
   failing_status = [string]$failing.pipeline.status

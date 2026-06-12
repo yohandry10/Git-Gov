@@ -26,6 +26,7 @@ pub fn cmd_start_native_terminal(
 
     let (mut command, shell_name) = build_native_terminal_command(request.shell.as_deref());
     command.cwd(cwd);
+    apply_sanitized_pty_env(&mut command);
     command.env("TERM", "xterm-256color");
 
     let child = pair

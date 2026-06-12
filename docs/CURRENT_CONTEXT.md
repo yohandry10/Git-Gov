@@ -1,14 +1,14 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-06-09
-Ticket: `KAN-69` and its follow-up chain merged; no local implementation in progress
+Updated: 2026-06-12
+Ticket: `KAN-77` event capture fidelity implementation in progress on local branch `security/KAN-77-event-capture-fidelity`
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
 ## Exact Current Point
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
-- Expected branch before new work: `main`.
+- Expected branch before new work: `main`; current local implementation branch is `security/KAN-77-event-capture-fidelity`.
 - Latest KAN-72 audit baseline: PR `#193` merged as `655478e`, handoff refresh PR `#194` merged as `2ab821e`, and stable wording PR `#195` merged as `0ccef26`.
 - Latest completed KAN-24 implementation baseline: `126167f security(KAN-24): product vulnerability review and hardening (#97)`.
 - KAN-24 implementation PR: `#97` - `security(KAN-24): product vulnerability review and production hardening`.
@@ -48,6 +48,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - Runtime QA Settings/Governance policy follow-up: classify as product concept. Organization Settings no longer mounts a second governance policy editor; it keeps organization onboarding/team/API-key administration and links to `Governance > Policy` as the single policy owner. Organization admin UI is gated by Control Plane `Admin` role, not local GitHub admin state. `GovernanceRulesPanel` dirty-state tracking now includes forbidden patterns so those changes can be saved when the panel is used.
 - Runtime QA Release/Governance performance follow-up: classify as security plus performance plus product concept. Release approvals no longer default to the real `yohandry10/Git-Gov` repository or `KAN-43` when no profile/evidence context exists, and evidence URIs now allow relative API paths or `https://` only. Governance route entry no longer performs the previous heavy role refresh that pulled daily activity plus 500 logs; it loads base stats and defers the smaller log window to `Governance > Evidence`.
 - Runtime QA performance follow-up: classify as performance plus data/state. Default governance/event refresh windows are capped at `120` logs instead of `500`, `dailyActivity` is no longer loaded by general dashboard refresh because it has no mounted product consumer, SSE refreshes are batched for `1000 ms`, incremental log refreshes are serialized to avoid overlapping store/API work, and the Workspace pipeline visualizer deduplicates concurrent graph/signal refreshes while limiting Control Plane signal pulls to `50` records per source. Manual explicit heavy refresh still keeps the heavy evidence path available when needed. Validation passed with frontend typecheck, lint, focused store/settings/config tests, full frontend tests (`333` tests), build, and `git diff --check`.
+- Runtime QA header refresh follow-up: classify as product concept plus data/state. The global Workspace `Actualizar` button mixed local repository refresh with an interactive Control Plane `checkConnection()` call, so a transient `/me` role/context revalidation could replace the Workspace with the Control Plane access screen before returning. The global button was removed. Header connection checks remain background-only; repo status refresh is handled by route polling and explicit local actions, while manual Control Plane reconnect belongs in Settings/System.
 - Local maintenance cleanup: `gitgov/gitgov-server/target_forensic` was inventoried in `docs/reports/target-forensic-cleanup-2026-06-08.md` and removed as a local Rust/Cargo forensic/debug build artifact directory. It contained generated `.rlib`, `.pdb`, `.o`, `.exe`, `.dll`, and incremental cache files, not source, docs, migrations, tests, or runtime configuration.
 - Runtime QA validation after Control Plane/Governance/Settings/Help/i18n restructure: after moving Control Plane into Settings, removing the Governance Dashboard tab, deleting the unmounted dashboard-only components, organizing Settings into tabs, making Settings/Governance/sidebar chrome language-reactive, widening Help/FAQ, correcting Organization to full-width flow, merging Connection/Updates into the final System tab, and moving Help links to `gitgov.cloud`, `npm --prefix gitgov run typecheck`, `npm --prefix gitgov run lint`, focused Settings/Governance/i18n/Help layout tests (`17` tests), full frontend tests (`332` tests in `32` files), `npm --prefix gitgov run build`, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. Build still reports the existing Vite `>500 kB` base chunk warning; Action Center and Governance emit separate chunks. Manual Desktop smoke remains pending by design because the active Tauri/Desktop session must not be restarted or relaunched without explicit user instruction.
 - Runtime QA documentation/web refresh finding: README, architecture, quickstart, troubleshooting, deployment, public agent context, implementation status, Action Center design docs, GitHub evidence runbook, and public web docs were aligned with the new IA. Public web copy now uses canonical `https://gitgov.cloud`, describes Governance/Action Center instead of the old Admin Dashboard/Control Plane dashboard, and preserves page/component styling while changing only informational copy/URLs.
@@ -151,6 +152,176 @@ Local webhook idempotency migration is `supabase_schema_v30.sql`. Migrations `v2
 (api-key role integrity, release-approval evidence-packet binding, push-outcome event fidelity)
 are separate concurrent local work; `v26` is the `commit_ticket_correlations` org-scoped
 uniqueness from the multi-tenant fix.
+
+### Multi-tenant join hardening — loose `org_id IS NULL` pattern (FIXED)
+
+- **Issue**: several SQL joins across the correlation/coverage/noncompliance queries matched org
+  with a loose predicate, e.g. `X.org_id = Y.org_id OR X.org_id IS NULL`. A second-pass review
+  found 6 instances. None was a cross-tenant breach — the driving table is always strictly scoped
+  (`WHERE <pk>.org_id = $N`), so org A never sees org B; the loose branch only let `org_id IS NULL`
+  (unowned/legacy) rows bleed into a scoped result, and could over- or under-count.
+- **Fix applied**: every instance was tightened to the strict form
+  `(X.org_id IS NULL AND Y.org_id IS NULL) OR X.org_id = Y.org_id`. Locations: `db/jira_coverage.rs`
+  orphan-ticket join and the `get_commit_pipeline_correlations` lateral; `db/noncompliance_detection.rs`
+  in `detect_v2_commit_no_ticket_signals`, `detect_v2_stale_in_progress_signals` (×2), and
+  `detect_v2_done_not_deployed_signals`. The remaining coverage/flow joins were already strict from
+  concurrent local work.
+- **Validation**: a repo-wide grep confirms zero loose column-to-column `org_id IS NULL OR` patterns
+  remain. Because the noncompliance orchestrator swallows V2 SQL errors (`Err(e) => warn!`), a green
+  suite alone does not prove SQL validity, so the most complex rewritten query was `EXPLAIN`-checked
+  against the production-shaped schema and plans correctly. Build + `clippy -D warnings` + full suite
+  (`230` tests) green. Post-migration/scoping/E1 work means `org_id IS NULL` data rows should no
+  longer be produced, so the change is defense-in-depth with no expected effect on current data.
+
+### KAN-77 Event capture fidelity (local implementation)
+
+- **Scope implemented**: Desktop/Tauri branch and checkout capture now emits only backend-supported
+  event types. `cmd_create_branch` no longer writes unsupported `attempt_create_branch` or
+  `branch_failed`; failed branch creation is a `create_branch` event with `failed` status, blocked
+  branch creation is `blocked_branch`, and successful checkout now emits `checkout_branch` with
+  actor, repo/org, branch, HEAD SHA, and `from_branch`/`to_branch` metadata.
+- **Remote parser**: `repo_event_context` no longer depends only on `origin`; it prefers the current
+  branch upstream remote, then `origin`, then other configured remotes, while still accepting only
+  parseable GitHub SSH/HTTPS remote URLs and rejecting ambiguous/non-GitHub remotes.
+- **Backend guardrail**: `/events` now rejects evidence-bearing Desktop events that are incomplete:
+  `stage_files`, branch/checkout, commit, and push/governance push events must carry
+  `repo_full_name` and `branch`; commit/push evidence events must carry `commit_sha`; `stage_files`
+  must include at least one file. Non-evidence telemetry such as heartbeat/login is not made
+  artificially strict.
+- **Desktop native terminal correction**: the Workspace terminal is a core product surface and
+  must be operational by default in Desktop. A local hardening pass had accidentally changed
+  `GITGOV_ENABLE_NATIVE_TERMINAL` from opt-out to opt-in, leaving the Workspace terminal offline
+  unless the variable was set to `true`. Restored the product contract: native PTY is enabled by
+  default, `GITGOV_ENABLE_NATIVE_TERMINAL=false` remains an explicit restricted-runtime opt-out,
+  and `TerminalPanel` now treats that explicit opt-out as a degraded configuration state instead
+  of a repeated red technical error.
+- **Tests/validation run locally**: `cargo test --manifest-path gitgov/gitgov-server/Cargo.toml`
+  (`230` passed), `cargo clippy --manifest-path gitgov/gitgov-server/Cargo.toml -- -D warnings`,
+  `cargo fmt --manifest-path gitgov/src-tauri/Cargo.toml --check`,
+  `cargo check --manifest-path gitgov/src-tauri/Cargo.toml`,
+  `cargo clippy --manifest-path gitgov/src-tauri/Cargo.toml -- -D warnings`,
+  `cargo test --manifest-path gitgov/src-tauri/Cargo.toml` (`47` passed),
+  `npm --prefix gitgov test -- --run` (`345` passed), `npm --prefix gitgov run typecheck`,
+  `npm --prefix gitgov run lint -- --quiet`, `npm --prefix gitgov run build` (existing Vite
+  chunk-size warning only), `git diff --check`, and manual Desktop validation confirming the
+  Workspace terminal starts as `powershell` at the repo prompt.
+
+## Documentation Intake - 2026-06-12
+
+Session request: read as much repository documentation as practical and preserve the operating
+context. Files reviewed included `AGENTS.md`, `README.md`, `CONTRIBUTING.md`,
+`docs/CURRENT_CONTEXT.md`, `docs/AGENT_PUBLIC_CONTEXT.md`, `docs/IMPLEMENTATION_STATUS.md`,
+`docs/ARCHITECTURE.md`, `docs/QUICKSTART.md`, `docs/DEPLOYMENT.md`,
+`docs/TROUBLESHOOTING.md`, `docs/OPERATIONS_ACCESS.md`, `docs/PUBLICATION_POLICY.md`,
+`docs/QUALITY_GATE_POLICY_VALIDATION.md`, current Action Center and roadmap design docs,
+recent KAN-69/KAN-70/KAN-71/KAN-72/KAN-73/KAN-74/KAN-75/KAN-76 reports, integration-test
+harness drift notes, enterprise adoption/GitHub evidence/release governance runbooks,
+`gitgov/README.md`, `gitgov/gitgov-server/README.md`, `gitgov-web/README.md`, public web
+content headings, and `gitgov-web/CONTENT_ARCHITECTURE_GUIDE.md`.
+
+Key preserved context:
+
+- This worktree already had substantial uncommitted `KAN-77` changes before the documentation
+  intake. Treat them as existing local work and do not revert or overwrite them casually.
+- Current branch observed during intake: `security/KAN-77-event-capture-fidelity`.
+- `main` observed at `e1cba5d security(KAN-77): harden webhook replay idempotency (#213)`.
+- Product direction remains consolidation, not another default hardening/report chain. New work
+  should improve usability, package existing capabilities into a clearer workflow, fix a real bug,
+  close a confirmed security/production risk, or support an explicit customer-selected policy.
+- Desktop information architecture remains: `/action-center` owns the global `Next Action`;
+  Workspace owns local execution and `Next local step`; Governance owns Evidence, Policy, Adoption,
+  Releases, and Copilot; Settings/System owns Control Plane connection, API key, role/scope,
+  transport, and updater configuration; `/control-plane` is compatibility redirect only.
+- Desktop runtime safety remains non-negotiable: do not restart, kill, or relaunch Tauri/Desktop
+  during a user's manual validation session unless the user explicitly asks.
+- Publication safety remains non-negotiable: no token values, no real `.env` files, no restricted
+  forensic/strategy docs force-added; use `docs/AGENT_PUBLIC_CONTEXT.md` as the public bridge.
+- Enterprise onboarding and release-governance tooling is dry-run/report-only by default; mutations
+  require explicit reviewed flags such as `-Apply`, and release blocking is customer opt-in.
+- The integration-test harness drift report leaves an active durability concern: the backend
+  integration harness still relies on a hand-maintained inline schema and CI does not exercise it
+  with `TEST_DATABASE_URL`; durable fix is to apply real migrations or add schema parity plus a CI
+  Postgres service.
+- Some living docs are historical snapshots and may cite older route/test/migration counts. Prefer
+  this handoff plus current repo inspection when facts differ from older KAN reports.
+- No external-service validation or secret-bearing env-file inspection was performed during this
+  documentation intake.
+
+Additional deep intake from the same 2026-06-12 session:
+
+- Public website/docs context: `gitgov-web` is the presentation layer, not the product source of
+  truth. Future public copy should follow `docs/IMPLEMENTATION_STATUS.md`,
+  `docs/ARCHITECTURE.md`, `README.md`, and actual Desktop/backend behavior before older web copy.
+  The commercial category to preserve is "engineering governance with operational evidence".
+- Public content risk noted for future cleanup, not changed in this intake: some public docs still
+  carry historical wording such as Jira coverage/correlation marked as `Preview` in CI trace
+  tables and Desktop commit capture described as including "message". Current security/product
+  context is more precise: Jira API plus signed native webhook are operational, and GitGov must not
+  imply source content or diff bodies leave the workstation.
+- Release governance defaults are a closed product decision: default mode is `record-only`.
+  Advisory status is allowed; blocking release gates, approval-required mode, quorum, and
+  environment-specific overrides require explicit customer-selected policy. Do not infer blocking
+  just because release approval records exist.
+- Enterprise onboarding/readiness/remediation/checklist features are evidence and workflow guidance
+  surfaces. Readiness reports, remediation plans, checklist tracking, artifact monitors, and trend
+  reports must not read secret values, create GitHub variables/secrets, mutate provider settings,
+  dispatch workflows, alter branch protection, or make release blocking the default.
+- Remote workflow installation and readiness tooling is deliberately review-first: dry-run/plan by
+  default, remote PR mutation only with explicit `-Apply`, overwrite only with explicit
+  `-Overwrite`, and readiness validators compare workflow hashes/configuration names without
+  reading GitHub Actions secret values.
+- Product vulnerability review status remains: no critical/high reachable product vulnerability was
+  left open after KAN-24. The recurring expected scanner finding is the inactive `sqlx-mysql`/`rsa`
+  path classified as not reachable; if MySQL/sqlx-mysql features are enabled later, revisit that
+  classification. Website contact/download rate limiting and ecosystem dependency warnings remain
+  maintenance/deferred hygiene, not current blockers.
+- Restricted local forensic/strategy docs (`docs/ENTERPRISE_READINESS_DECISION.md`,
+  `docs/AUDIT_*.md`, `docs/INTEGRATIONS_AUDIT_*.md`) were inspected only as local memory. Do not
+  force-add or quote them into public context; extract only sanitized current conclusions into
+  tracked docs when needed.
+- Older readiness and integration audit notes still support the current direction: enterprise value
+  is traceable evidence, risk/readiness outcomes, and deterministic governance. SSO/SCIM, broader
+  MCP, and autonomous AI agency remain deal-driven or future work, not default next steps.
+- Route auth smoke chains (KAN-61 through KAN-68) are a guardrail family for enterprise route
+  authorization and artifact freshness/trends. Treat them as regression evidence; do not add new
+  monitor/enforcement chains unless they protect a concrete route/security risk or a selected
+  customer policy.
+- Policy-as-Code product decision captured in
+  `docs/design/policy-as-code-flexible-source-mvp.md`: keep one canonical internal
+  `GitGovConfig` model, but let customers choose `control-plane-managed`,
+  `repo-policy-as-code`, or `hybrid-advisory` source mode and support TOML/YAML/JSON repo policy
+  files. Initial implementation is now underway: `gitgov/policy-core` provides shared
+  TOML/YAML/JSON parsing, discovery, canonical JSON, checksum, semantic diff, and real Git PR
+  validation; backend/Tauri reexport the shared model; `supabase_schema_v31.sql` adds
+  `source_metadata`; overrides and policy requests use canonical checksums; merged PR webhooks can
+  activate the exact policy blob from GitHub when a token is configured; Governance displays policy
+  source and blocks silent direct overrides for `repo-policy-as-code`. OPA/Rego is now supported as
+  an optional external adapter, not as the default embedded engine: policy config can define
+  `adapters.opa.*`, `enforcement.external_policy`, `effect = advisory|required`,
+  `failure_mode = fail-open|fail-closed`, Data API `decision_path`, result mapping, timeout, and
+  `token_env_var` by env-var name only. `/policy/check` calls the configured external OPA Data API
+  when enabled, sends repo/branch/commit/actor, policy source metadata, and the native GitGov
+  result, then returns OPA evidence under `external_decisions`. Required OPA plus
+  `external_policy=block` can deny; advisory OPA never blocks. OPA response mapping supports boolean
+  `allow`, custom allowed keys, boolean `deny`, and common Rego `deny` collections. An OPA `200`
+  response without a mapped boolean decision is treated as adapter failure and obeys
+  `fail-open`/`fail-closed`, matching the official Data API behavior where an undefined document can
+  return `200` without `result`. Runtime and committed OPA URLs reject inline credentials/token query
+  strings, query/fragment suffixes, invalid ports, and non-loopback `http://`; loopback checks parse
+  the host so `localhost.example.com` / `127.0.0.1.example.com` are not accepted. Stored policy change
+  requests are revalidated and checksum-checked again at approval time before activation. Local
+  validation after the second OPA pass: policy-core tests `12` passed, backend OPA adapter tests `10`
+  passed including real HTTP mock OPA Data API calls, backend policy-change approval tests `3`
+  passed, full backend tests `250` passed, Tauri tests `49` passed, frontend tests `349` passed,
+  policy-core/backend clippy `-D warnings` passed, Tauri `cargo check` passed, frontend typecheck/lint
+  passed. Targeted `policy_check` integration tests compile the OPA endpoint path but still depend on
+  a dedicated `TEST_DATABASE_URL` for non-skipped DB-backed runtime coverage. Remaining work:
+  Governance patch/PR proposal UX,
+  explicit emergency override UX, periodic drift comparison, Evidence Packet source metadata,
+  customer examples/schema docs, controlled GitHub API activation test, persisted OPA decision audit
+  history/export, and a real `opa run --server` smoke script.
+- KAN-77 local security/event-fidelity work remains in progress in the dirty worktree. New docs
+  intake did not validate or change that implementation beyond this context update.
 
 ## Latest Verified GitHub Checks
 

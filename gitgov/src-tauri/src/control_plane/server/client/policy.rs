@@ -1,6 +1,6 @@
 use super::super::models::*;
 use super::{server_error_from_response, ControlPlaneClient};
-use crate::models::GitGovConfig;
+use crate::models::{GitGovConfig, PolicySourceMetadata};
 use serde::Deserialize;
 
 impl ControlPlaneClient {
@@ -30,12 +30,16 @@ impl ControlPlaneClient {
             version: Option<String>,
             checksum: Option<String>,
             config: Option<GitGovConfig>,
+            #[serde(default)]
+            source: Option<PolicySourceMetadata>,
             updated_at: Option<i64>,
         }
 
         let result: PolicyApiResponse = response
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))?;
+
+        let source = result.source.unwrap_or_default();
 
         match (
             result.version,
@@ -47,6 +51,7 @@ impl ControlPlaneClient {
                 version: v,
                 checksum: c,
                 config: cfg,
+                source,
                 updated_at: u,
             })),
             _ => Ok(None),
@@ -79,6 +84,8 @@ impl ControlPlaneClient {
             version: Option<String>,
             checksum: Option<String>,
             config: Option<GitGovConfig>,
+            #[serde(default)]
+            source: Option<PolicySourceMetadata>,
             updated_at: Option<i64>,
             error: Option<String>,
         }
@@ -91,6 +98,8 @@ impl ControlPlaneClient {
             return Err(ServerError::ServerError(err));
         }
 
+        let source = result.source.unwrap_or_default();
+
         match (
             result.version,
             result.checksum,
@@ -101,6 +110,7 @@ impl ControlPlaneClient {
                 version: v,
                 checksum: c,
                 config: cfg,
+                source,
                 updated_at: u,
             }),
             _ => Err(ServerError::ServerError(

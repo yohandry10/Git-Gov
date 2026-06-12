@@ -291,6 +291,74 @@ describe('useControlPlaneStore', () => {
       expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_policy', expect.any(Object))
       expect(useControlPlaneStore.getState().policyData).toEqual(mockPolicy)
     })
+
+    it('does not silently override repo-managed Policy-as-Code', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'http://127.0.0.1:3000', api_key: 'key' },
+        policyData: {
+          version: '1',
+          checksum: 'abc',
+          config: {
+            branches: { patterns: [], protected: [] },
+            groups: {},
+            admins: [],
+            rules: {
+              require_pull_request: true,
+              min_approvals: 1,
+              require_conventional_commits: false,
+              require_signed_commits: false,
+              max_files_per_commit: null,
+              require_linked_ticket: true,
+              block_force_push: false,
+              forbidden_patterns: [],
+            },
+            checklist: { confirm: [], auto_check: [] },
+            enforcement: {
+              pull_requests: 'block',
+              commits: 'warn',
+              branches: 'block',
+              traceability: 'block',
+              quality_gates: 'warn',
+            },
+          },
+          source: {
+            source_mode: 'repo-policy-as-code',
+            source_path: '.gitgov/policy.yml',
+            reviewers: [],
+            drift_status: 'in-sync',
+          },
+          updated_at: Date.now(),
+        },
+      })
+
+      const saved = await useControlPlaneStore.getState().savePolicy('acme/repo', {
+        branches: { patterns: [], protected: [] },
+        groups: {},
+        admins: [],
+        rules: {
+          require_pull_request: false,
+          min_approvals: 0,
+          require_conventional_commits: false,
+          require_signed_commits: false,
+          max_files_per_commit: null,
+          require_linked_ticket: false,
+          block_force_push: false,
+          forbidden_patterns: [],
+        },
+        checklist: { confirm: [], auto_check: [] },
+        enforcement: {
+          pull_requests: 'off',
+          commits: 'off',
+          branches: 'off',
+          traceability: 'off',
+          quality_gates: 'off',
+        },
+      })
+
+      expect(saved).toBe(false)
+      expect(mockInvoke).not.toHaveBeenCalledWith('cmd_server_override_policy', expect.any(Object))
+      expect(useControlPlaneStore.getState().policyError).toContain('.gitgov/policy.yml')
+    })
   })
 
   describe('selectedOrgName', () => {

@@ -1,0 +1,58 @@
+name: Policy-as-Code Validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Base git ref to compare"
+        required: false
+        default: "HEAD~1"
+      head_ref:
+        description: "Head git ref to compare"
+        required: false
+        default: "HEAD"
+      blocking:
+        description: "Fail on risky policy downgrades"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate-policy-as-code:
+    name: Validate Policy-as-Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate policy file changes
+        shell: pwsh
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+          INPUT_HEAD_REF: ${{ inputs.head_ref }}
+          INPUT_BLOCKING: ${{ inputs.blocking }}
+          VAR_BLOCKING: ${{ vars.GITGOV_POLICY_AS_CODE_BLOCKING }}
+        run: |
+          $baseRef = if ($env:PR_BASE_SHA) { $env:PR_BASE_SHA } elseif ($env:INPUT_BASE_REF) { $env:INPUT_BASE_REF } else { "HEAD~1" }
+          $headRef = if ($env:PR_HEAD_SHA) { $env:PR_HEAD_SHA } elseif ($env:INPUT_HEAD_REF) { $env:INPUT_HEAD_REF } else { "HEAD" }
+          $blocking = ($env:INPUT_BLOCKING -eq "true") -or ($env:VAR_BLOCKING -eq "true")
+
+          $params = @{
+            RepoPath = "."
+            BaseRef = $baseRef
+            HeadRef = $headRef
+            Json = $true
+          }
+          if ($blocking) {
+            $params.Blocking = $true
+          }
+
+          ./scripts/control-plane/validate_policy_as_code.ps1 @params

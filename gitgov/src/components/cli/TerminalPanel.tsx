@@ -7,6 +7,7 @@ import { onCliLine } from '@/lib/cliEvents'
 import { Terminal } from 'lucide-react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { isNativeTerminalDisabledError, nativeTerminalDisabledMessage } from './terminalStatus'
 import '@xterm/xterm/css/xterm.css'
 
 interface CliNativeTerminalStartResult {
@@ -37,6 +38,7 @@ export function TerminalPanel() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [shellName, setShellName] = useState('shell')
   const [isConnecting, setIsConnecting] = useState(false)
+  const [nativeTerminalDisabled, setNativeTerminalDisabled] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<XTerm | null>(null)
@@ -47,6 +49,7 @@ export function TerminalPanel() {
   const mountedRef = useRef(false)
   const startRequestIdRef = useRef(0)
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const nativeTerminalDisabledRef = useRef(false)
 
   const repoPath = useRepoStore((s) => s.repoPath)
   const currentBranch = useRepoStore((s) => s.currentBranch)
@@ -102,6 +105,15 @@ export function TerminalPanel() {
 
       if (!terminal || !fitAddon) return
 
+      if (nativeTerminalDisabledRef.current && !forceRestart) {
+        return
+      }
+
+      if (forceRestart && nativeTerminalDisabledRef.current) {
+        nativeTerminalDisabledRef.current = false
+        setNativeTerminalDisabled(false)
+      }
+
       if (!repoPath) {
         await stopNativeSession()
         terminal.clear()
@@ -145,14 +157,22 @@ export function TerminalPanel() {
 
         sessionIdRef.current = result.session_id
         sessionCwdRef.current = repoPath
+        nativeTerminalDisabledRef.current = false
         setSessionId(result.session_id)
         setShellName(result.shell || 'shell')
+        setNativeTerminalDisabled(false)
 
         terminal.focus()
         writeSystem(`[GitGov] Native terminal connected (${result.shell})`, ANSI.success)
         await sendResize()
       } catch (e) {
-        writeSystem(`Failed to start native terminal: ${String(e)}`, ANSI.error)
+        if (isNativeTerminalDisabledError(e)) {
+          nativeTerminalDisabledRef.current = true
+          setNativeTerminalDisabled(true)
+          writeSystem(nativeTerminalDisabledMessage, ANSI.warning)
+        } else {
+          writeSystem(`Failed to start native terminal: ${String(e)}`, ANSI.error)
+        }
       } finally {
         if (mountedRef.current && startRequestIdRef.current === startRequestId) {
           setIsConnecting(false)
@@ -312,18 +332,19 @@ export function TerminalPanel() {
     }
   }, [stopNativeSession])
 
-  const statusLabel = sessionId && !isConnecting
-    ? shellName
-    : isConnecting
-      ? 'connecting...'
-      : repoPath
-        ? 'offline'
-        : 'no repo'
-  const statusClass = sessionId && !isConnecting
-    ? 'border-success-500/30 bg-success-500/10 text-success-300'
-    : isConnecting
-      ? 'border-warning-500/30 bg-warning-500/10 text-warning-300'
-      : 'border-surface-700 bg-surface-800 text-surface-500'
+  let statusLabel = repoPath ? 'offline' : 'no repo'
+  let statusClass = 'border-surface-700 bg-surface-800 text-surface-500'
+
+  if (nativeTerminalDisabled) {
+    statusLabel = 'disabled'
+    statusClass = 'border-warning-500/30 bg-warning-500/10 text-warning-300'
+  } else if (sessionId && !isConnecting) {
+    statusLabel = shellName
+    statusClass = 'border-success-500/30 bg-success-500/10 text-success-300'
+  } else if (isConnecting) {
+    statusLabel = 'connecting...'
+    statusClass = 'border-warning-500/30 bg-warning-500/10 text-warning-300'
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-950">

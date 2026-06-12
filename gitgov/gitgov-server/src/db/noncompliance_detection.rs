@@ -34,7 +34,7 @@ impl Database {
                     SELECT 1
                     FROM commit_ticket_correlations ct
                     WHERE ct.commit_sha = lc.commit_sha
-                      AND (ct.org_id = lc.org_id OR ct.org_id IS NULL)
+                      AND ((lc.org_id IS NULL AND ct.org_id IS NULL) OR ct.org_id = lc.org_id)
                 )
                   AND (
                     lc.branch IN ('main', 'master')
@@ -317,9 +317,9 @@ impl Database {
                     LEFT JOIN client_events c
                       ON c.commit_sha = ct.commit_sha
                      AND c.event_type = 'commit'
-                     AND (c.org_id = pt.org_id OR c.org_id IS NULL)
+                     AND ((pt.org_id IS NULL AND c.org_id IS NULL) OR c.org_id = pt.org_id)
                     WHERE ct.ticket_id = pt.ticket_id
-                      AND (ct.org_id = pt.org_id OR ct.org_id IS NULL)
+                      AND ((pt.org_id IS NULL AND ct.org_id IS NULL) OR ct.org_id = pt.org_id)
                 ) corr ON TRUE
                 WHERE pt.org_id = $1::uuid
                   AND COALESCE(pt.updated_at, pt.ingested_at) >= NOW() - make_interval(hours => $2::int)
@@ -429,7 +429,7 @@ impl Database {
                 FROM done_tickets dt
                 JOIN commit_ticket_correlations ct
                   ON ct.ticket_id = dt.ticket_id
-                 AND (ct.org_id = dt.org_id OR ct.org_id IS NULL)
+                 AND ((dt.org_id IS NULL AND ct.org_id IS NULL) OR ct.org_id = dt.org_id)
             ),
             ticket_pipeline_eval AS (
                 SELECT

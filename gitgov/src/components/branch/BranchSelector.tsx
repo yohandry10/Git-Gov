@@ -36,14 +36,14 @@ export function BranchSelector({ userLogin, isAdmin, userGroup }: BranchSelector
     if (branch.is_current || branch.is_remote) return
     setSwitching(branch.name)
     try {
-      await checkoutBranch(branch.name)
+      await checkoutBranch(branch.name, userLogin)
       setIsOpen(false)
     } catch {
       // Error handled by store
     } finally {
       setSwitching(null)
     }
-  }, [checkoutBranch])
+  }, [checkoutBranch, userLogin])
 
   const selectableBranches = localBranches.filter((b) => !b.is_current)
 

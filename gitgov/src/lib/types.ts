@@ -176,6 +176,74 @@ export interface GitGovConfig {
   rules: RulesConfig
   checklist: ChecklistConfig
   enforcement: EnforcementConfig
+  quality_gate_exception?: QualityGateExceptionConfig | null
+  adapters?: PolicyAdaptersConfig
+}
+
+export type ExternalPolicyEffect = 'advisory' | 'required'
+export type ExternalPolicyFailureMode = 'fail-open' | 'fail-closed'
+
+export interface PolicyAdaptersConfig {
+  opa: OpaAdapterConfig
+}
+
+export interface OpaAdapterConfig {
+  enabled: boolean
+  connection?: string | null
+  base_url?: string | null
+  decision_path: string
+  effect: ExternalPolicyEffect
+  failure_mode: ExternalPolicyFailureMode
+  timeout_ms: number
+  input_profile: string
+  token_env_var?: string | null
+  result_mapping: OpaResultMapping
+}
+
+export interface OpaResultMapping {
+  allowed_key: string
+  reasons_key: string
+  warnings_key: string
+  message_key: string
+  decision_id_key: string
+}
+
+export type PolicySourceMode = 'control-plane-managed' | 'repo-policy-as-code' | 'hybrid-advisory'
+export type PolicyFormat = 'toml' | 'yaml' | 'json'
+export type PolicyDriftStatus = 'in-sync' | 'drifted' | 'override-active' | 'unknown'
+
+export interface PolicySourceMetadata {
+  source_mode: PolicySourceMode
+  source_path?: string | null
+  source_format?: PolicyFormat | null
+  activation_branch?: string | null
+  commit_sha?: string | null
+  blob_sha?: string | null
+  pr_number?: number | null
+  actor?: string | null
+  reviewers: string[]
+  source_checksum?: string | null
+  active_checksum?: string | null
+  drift_status: PolicyDriftStatus
+  emergency_override?: PolicyEmergencyOverride | null
+}
+
+export interface PolicyEmergencyOverride {
+  reason: string
+  ticket_id?: string | null
+  actor: string
+  expires_at: number
+  previous_checksum?: string | null
+  source_checksum?: string | null
+}
+
+export interface QualityGateExceptionConfig {
+  enabled: boolean
+  reason: string
+  ticket_id?: string | null
+  approved_by?: string | null
+  expires_at: number
+  created_at?: number | null
 }
 
 export interface RulesConfig {
@@ -202,6 +270,7 @@ export interface EnforcementConfig {
   branches: EnforcementLevel
   traceability: EnforcementLevel
   quality_gates: EnforcementLevel
+  external_policy?: EnforcementLevel
 }
 
 export type GovernancePreset = 'startup' | 'enterprise' | 'regulated' | 'custom'
@@ -221,6 +290,22 @@ export interface PolicyCheckResponse {
   evaluated_rules: string[]
   enforcement_applied: string
   violations: RuleViolation[]
+  external_decisions?: ExternalPolicyDecision[]
+}
+
+export interface ExternalPolicyDecision {
+  adapter: string
+  status: string
+  allowed?: boolean | null
+  enforcement: string
+  decision_id?: string | null
+  decision_path: string
+  latency_ms: number
+  input_hash?: string | null
+  output_hash?: string | null
+  reasons: string[]
+  warnings: string[]
+  error?: string | null
 }
 
 export interface GroupConfig {
@@ -234,6 +319,10 @@ export interface RepoValidation {
   is_git_repo: boolean
   has_remote_origin: boolean
   has_gitgov_toml: boolean
+  has_gitgov_policy?: boolean
+  policy_path?: string | null
+  policy_format?: 'toml' | 'yaml' | 'json' | string | null
+  policy_error?: string | null
   remote_url?: string
 }
 

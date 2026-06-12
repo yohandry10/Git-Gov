@@ -275,19 +275,33 @@ fn golden_path_commit_contract() {
 
 #[test]
 fn golden_path_attempt_push_contract() {
-    let batch = gp_batch("attempt_push", "");
+    let batch = gp_batch(
+        "attempt_push",
+        r#", "commit_sha": "abc123def4567890abc123def4567890abc12345""#,
+    );
     let ev = &batch.events[0];
     assert_eq!(ev.event_type, "attempt_push");
     assert_eq!(ev.branch.as_deref(), Some("feat/golden"));
+    assert!(
+        ev.commit_sha.is_some(),
+        "attempt_push event must carry the pushed HEAD sha"
+    );
     assert_eq!(ev.status, "success");
 }
 
 #[test]
 fn golden_path_successful_push_contract() {
-    let batch = gp_batch("successful_push", "");
+    let batch = gp_batch(
+        "successful_push",
+        r#", "commit_sha": "abc123def4567890abc123def4567890abc12345""#,
+    );
     let ev = &batch.events[0];
     assert_eq!(ev.event_type, "successful_push");
     assert_eq!(ev.status, "success");
+    assert!(
+        ev.commit_sha.is_some(),
+        "successful_push event must carry the pushed HEAD sha"
+    );
     assert!(!ev.event_uuid.is_empty());
 }
 

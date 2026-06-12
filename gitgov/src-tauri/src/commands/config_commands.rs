@@ -1,6 +1,7 @@
 use crate::config::load_config;
 use crate::git::{get_remote_url, open_repository};
 use crate::models::GitGovConfig;
+use gitgov_policy_core::{discover_policy_file, PolicyFileError};
 use serde::{Deserialize, Serialize};
 
 fn to_command_error(e: impl std::fmt::Display, code: &str) -> String {
@@ -17,6 +18,10 @@ pub struct RepoValidation {
     pub is_git_repo: bool,
     pub has_remote_origin: bool,
     pub has_gitgov_toml: bool,
+    pub has_gitgov_policy: bool,
+    pub policy_path: Option<String>,
+    pub policy_format: Option<String>,
+    pub policy_error: Option<String>,
     pub remote_url: Option<String>,
 }
 
@@ -48,12 +53,30 @@ pub fn cmd_validate_repo(repo_path: String) -> Result<RepoValidation, String> {
     };
 
     let has_gitgov_toml = path.join("gitgov.toml").exists();
+    let (has_gitgov_policy, policy_path, policy_format, policy_error) = if path_exists {
+        match discover_policy_file(path) {
+            Ok(policy) => (
+                true,
+                Some(policy.relative_path),
+                Some(policy.format.as_str().to_string()),
+                None,
+            ),
+            Err(PolicyFileError::NotFound) => (false, None, None, None),
+            Err(error) => (false, None, None, Some(error.to_string())),
+        }
+    } else {
+        (false, None, None, None)
+    };
 
     Ok(RepoValidation {
         path_exists,
         is_git_repo,
         has_remote_origin,
         has_gitgov_toml,
+        has_gitgov_policy,
+        policy_path,
+        policy_format,
+        policy_error,
         remote_url,
     })
 }

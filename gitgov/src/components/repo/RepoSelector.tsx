@@ -105,7 +105,17 @@ export function RepoSelector() {
               <ValidationItem label="Ruta existe" valid={validation.path_exists} />
               <ValidationItem label="Es un repositorio Git" valid={validation.is_git_repo} />
               <ValidationItem label="Tiene remote origin" valid={validation.has_remote_origin} />
-              <ValidationItem label="Tiene gitgov.toml" valid={validation.has_gitgov_toml} />
+              <ValidationItem
+                label={
+                  validation.policy_path
+                    ? `Tiene política GitGov (${validation.policy_path})`
+                    : 'Tiene política GitGov'
+                }
+                valid={validation.has_gitgov_policy ?? validation.has_gitgov_toml}
+              />
+              {validation.policy_error && (
+                <p className="text-xs text-warning-400">{validation.policy_error}</p>
+              )}
             </div>
           )}
 
@@ -115,11 +125,11 @@ export function RepoSelector() {
             </div>
           )}
 
-          {validation && !validation.has_gitgov_toml && (
+          {validation && !(validation.has_gitgov_policy ?? validation.has_gitgov_toml) && (
             <div className="mt-4 p-3 bg-warning-500/20 border border-warning-500/50 rounded-lg">
               <p className="text-warning-400 text-sm">
-                El repositorio no tiene un archivo gitgov.toml. Las operaciones de push y creación
-                de ramas estarán limitadas hasta que se agregue.
+                El repositorio no tiene una política GitGov. Agrega gitgov.toml,
+                .gitgov/policy.yml o .gitgov/policy.json para habilitar validaciones locales.
               </p>
             </div>
           )}

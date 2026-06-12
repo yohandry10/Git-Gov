@@ -40,6 +40,7 @@ const EMPTY_CONFIG: GitGovConfig = {
     branches: 'off',
     traceability: 'off',
     quality_gates: 'off',
+    external_policy: 'off',
   },
 }
 
@@ -577,6 +578,8 @@ export function PolicyEditorPanel() {
                 {policyData && (
                   <>
                     Checksum: <span className="mono-data text-surface-500">{policyData.checksum.slice(0, 12)}...</span>
+                    {' · '}
+                    Fuente: {policyData.source?.source_path ?? policyData.source?.source_mode ?? 'control-plane-managed'}
                     {' · '}
                     Actualizado: {formatTs(policyData.updated_at, displayTimezone)}
                   </>
