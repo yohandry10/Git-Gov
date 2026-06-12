@@ -46,6 +46,7 @@ jobs:
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
           GITGOV_JENKINS_SECRET: ${{ secrets.GITGOV_JENKINS_SECRET }}
           REPO_FULL_NAME: ${{ github.repository }}
+          ORG_NAME: ${{ github.repository_owner }}
           COMMIT_SHA: ${{ github.sha }}
           BRANCH_NAME: ${{ github.ref_name }}
         run: |
@@ -54,6 +55,7 @@ jobs:
             -ApiKey "$env:GITGOV_API_KEY" `
             -JenkinsSecret "$env:GITGOV_JENKINS_SECRET" `
             -RepoFullName "$env:REPO_FULL_NAME" `
+            -OrgName "$env:ORG_NAME" `
             -CommitSha "$env:COMMIT_SHA" `
             -Branch "$env:BRANCH_NAME" `
             -UserLogin "github-actions" `
