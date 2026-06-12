@@ -286,12 +286,15 @@ CREATE TABLE IF NOT EXISTS policies (
     repo_id UUID REFERENCES repos(id) ON DELETE CASCADE UNIQUE,
     config JSONB NOT NULL,             -- gitgov.toml content as JSON
     checksum TEXT NOT NULL,
+    source_metadata JSONB NOT NULL DEFAULT '{"source_mode":"control-plane-managed","reviewers":[],"drift_status":"unknown"}'::jsonb,
     override_actor TEXT,               -- Client ID of user who made the last change
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_policies_repo ON policies(repo_id);
+CREATE INDEX IF NOT EXISTS idx_policies_source_mode
+    ON policies ((source_metadata ->> 'source_mode'));
 
 -- ============================================================================
 -- API KEYS (For desktop client authentication)
@@ -754,6 +757,7 @@ CREATE TABLE IF NOT EXISTS policy_history (
     repo_id UUID REFERENCES repos(id) ON DELETE CASCADE,
     config JSONB NOT NULL,
     checksum TEXT NOT NULL,
+    source_metadata JSONB NOT NULL DEFAULT '{"source_mode":"control-plane-managed","reviewers":[],"drift_status":"unknown"}'::jsonb,
     changed_by TEXT NOT NULL,
     change_type TEXT NOT NULL DEFAULT 'update',  -- 'create', 'update', 'delete'
     previous_checksum TEXT,
@@ -763,17 +767,28 @@ CREATE TABLE IF NOT EXISTS policy_history (
 CREATE INDEX IF NOT EXISTS idx_policy_history_repo ON policy_history(repo_id);
 CREATE INDEX IF NOT EXISTS idx_policy_history_created ON policy_history(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_policy_history_changed_by ON policy_history(changed_by);
+CREATE INDEX IF NOT EXISTS idx_policy_history_source_mode
+    ON policy_history ((source_metadata ->> 'source_mode'));
 
 -- Trigger to auto-populate policy_history
 DROP TRIGGER IF EXISTS policy_history_trigger ON policies;
 CREATE OR REPLACE FUNCTION record_policy_change()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO policy_history (repo_id, config, checksum, changed_by, change_type, previous_checksum)
+    INSERT INTO policy_history (
+        repo_id,
+        config,
+        checksum,
+        source_metadata,
+        changed_by,
+        change_type,
+        previous_checksum
+    )
     VALUES (
         NEW.repo_id,
         NEW.config,
         NEW.checksum,
+        NEW.source_metadata,
         COALESCE(NEW.override_actor, 'system'),
         CASE WHEN TG_OP = 'INSERT' THEN 'create' ELSE 'update' END,
         CASE WHEN TG_OP = 'UPDATE' THEN OLD.checksum ELSE NULL END
@@ -1316,6 +1331,7 @@ CREATE OR REPLACE FUNCTION get_policy_history(
     id TEXT,
     config JSONB,
     checksum TEXT,
+    source_metadata JSONB,
     changed_by TEXT,
     change_type TEXT,
     previous_checksum TEXT,
@@ -1327,6 +1343,7 @@ BEGIN
         ph.id::TEXT,
         ph.config,
         ph.checksum,
+        ph.source_metadata,
         ph.changed_by,
         ph.change_type,
         ph.previous_checksum,

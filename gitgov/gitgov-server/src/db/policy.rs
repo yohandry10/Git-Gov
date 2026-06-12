@@ -1,24 +1,28 @@
 use super::*;
 
 impl Database {
-    pub async fn save_policy(
+    pub async fn save_policy_with_source(
         &self,
         repo_id: &str,
         config: &GitGovConfig,
         checksum: &str,
         override_actor: &str,
+        source: &PolicySourceMetadata,
     ) -> Result<(), DbError> {
         let config_json =
             serde_json::to_value(config).map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let source_json =
+            serde_json::to_value(source).map_err(|e| DbError::SerializationError(e.to_string()))?;
 
         sqlx::query(
             r#"
-            INSERT INTO policies (repo_id, config, checksum, override_actor, updated_at)
-            VALUES ($1::uuid, $2, $3, $4, NOW())
+            INSERT INTO policies (repo_id, config, checksum, override_actor, source_metadata, updated_at)
+            VALUES ($1::uuid, $2, $3, $4, $5::jsonb, NOW())
             ON CONFLICT (repo_id) DO UPDATE SET
                 config = $2,
                 checksum = $3,
                 override_actor = $4,
+                source_metadata = $5::jsonb,
                 updated_at = NOW()
             "#,
         )
@@ -26,6 +30,7 @@ impl Database {
         .bind(&config_json)
         .bind(checksum)
         .bind(override_actor)
+        .bind(&source_json)
         .execute(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -36,7 +41,7 @@ impl Database {
     pub async fn get_policy(&self, repo_id: &str) -> Result<Option<PolicyResponse>, DbError> {
         let result = sqlx::query(
             r#"
-            SELECT config, checksum, updated_at
+            SELECT config, checksum, source_metadata, updated_at
             FROM policies
             WHERE repo_id = $1::uuid
             "#,
@@ -52,12 +57,16 @@ impl Database {
                 let config: GitGovConfig = serde_json::from_value(config.clone())
                     .map_err(|e| DbError::SerializationError(e.to_string()))?;
                 let checksum: String = row.get("checksum");
+                let source: serde_json::Value = row.get("source_metadata");
+                let source: PolicySourceMetadata = serde_json::from_value(source)
+                    .map_err(|e| DbError::SerializationError(e.to_string()))?;
                 let updated_at: chrono::DateTime<chrono::Utc> = row.get("updated_at");
 
                 Ok(Some(PolicyResponse {
                     version: "1.0".to_string(),
                     checksum,
                     config,
+                    source,
                     updated_at: updated_at.timestamp_millis(),
                 }))
             }
@@ -80,6 +89,7 @@ impl Database {
             .iter()
             .map(|row| {
                 let config: serde_json::Value = row.get("config");
+                let source: serde_json::Value = row.get("source_metadata");
                 let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
 
                 PolicyHistory {
@@ -87,6 +97,7 @@ impl Database {
                     repo_id: repo_id.to_string(),
                     config: serde_json::from_value(config).unwrap_or_default(),
                     checksum: row.get("checksum"),
+                    source: serde_json::from_value(source).unwrap_or_default(),
                     changed_by: row.get("changed_by"),
                     change_type: row.get("change_type"),
                     previous_checksum: row.get("previous_checksum"),
@@ -104,16 +115,22 @@ impl Database {
     ) -> Result<(), DbError> {
         let requested_config_json = serde_json::to_value(input.requested_config)
             .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let source = PolicySourceMetadata::control_plane_managed(
+            input.requested_by,
+            input.requested_checksum,
+        );
+        let source_json =
+            serde_json::to_value(source).map_err(|e| DbError::SerializationError(e.to_string()))?;
 
         sqlx::query(
             r#"
             INSERT INTO policy_change_requests (
                 id, org_id, repo_id, repo_name, requested_by,
-                requested_config, requested_checksum, reason, created_at
+                requested_config, requested_checksum, source_metadata, reason, created_at
             )
             VALUES (
                 $1::uuid, $2::uuid, $3::uuid, $4, $5,
-                $6::jsonb, $7, $8, to_timestamp($9::bigint / 1000.0)
+                $6::jsonb, $7, $8::jsonb, $9, to_timestamp($10::bigint / 1000.0)
             )
             "#,
         )
@@ -124,6 +141,7 @@ impl Database {
         .bind(input.requested_by)
         .bind(&requested_config_json)
         .bind(input.requested_checksum)
+        .bind(&source_json)
         .bind(input.reason)
         .bind(input.created_at)
         .execute(&self.pool)
@@ -344,6 +362,9 @@ impl Database {
         let requested_config_json: serde_json::Value = request_row.get("requested_config");
         let requested_checksum: String = request_row.get("requested_checksum");
         let repo_id: String = request_row.get("repo_id");
+        let source = PolicySourceMetadata::control_plane_managed(decided_by, &requested_checksum);
+        let source_json =
+            serde_json::to_value(source).map_err(|e| DbError::SerializationError(e.to_string()))?;
 
         sqlx::query(
             r#"
@@ -367,12 +388,13 @@ impl Database {
 
         sqlx::query(
             r#"
-            INSERT INTO policies (repo_id, config, checksum, override_actor, updated_at)
-            VALUES ($1::uuid, $2::jsonb, $3, $4, NOW())
+            INSERT INTO policies (repo_id, config, checksum, override_actor, source_metadata, updated_at)
+            VALUES ($1::uuid, $2::jsonb, $3, $4, $5::jsonb, NOW())
             ON CONFLICT (repo_id) DO UPDATE SET
                 config = $2,
                 checksum = $3,
                 override_actor = $4,
+                source_metadata = $5::jsonb,
                 updated_at = NOW()
             "#,
         )
@@ -380,6 +402,7 @@ impl Database {
         .bind(&requested_config_json)
         .bind(&requested_checksum)
         .bind(decided_by)
+        .bind(&source_json)
         .execute(&mut *tx)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;

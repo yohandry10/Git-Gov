@@ -205,6 +205,7 @@ pub async fn policy_check(
         .quality_gate_exception
         .as_ref()
         .filter(|exception| exception.enabled && exception.expires_at > now_ms);
+    let external_policy_enforcement = effective_external_policy_enforcement(config);
 
     // Determine highest enforcement level applied
     let has_block = [
@@ -213,6 +214,7 @@ pub async fn policy_check(
         &enforcement.branches,
         &enforcement.traceability,
         &enforcement.quality_gates,
+        &external_policy_enforcement,
     ]
     .iter()
     .any(|e| **e == EnforcementLevel::Block);
@@ -222,6 +224,7 @@ pub async fn policy_check(
         &enforcement.branches,
         &enforcement.traceability,
         &enforcement.quality_gates,
+        &external_policy_enforcement,
     ]
     .iter()
     .any(|e| **e == EnforcementLevel::Warn);
@@ -421,6 +424,25 @@ pub async fn policy_check(
         response
             .warnings
             .push("Commit SHA not provided; commit-specific checks skipped".to_string());
+    }
+
+    if let Some(decision) = evaluate_opa_policy_check(
+        &state.http_client,
+        OpaPolicyCheckContext {
+            config,
+            source: &policy.source,
+            repo: &repo,
+            repo_name: &repo_name,
+            branch,
+            commit_sha,
+            user_login: payload.user_login.as_deref(),
+            auth_user: &auth_user,
+            native_response: &response,
+        },
+    )
+    .await
+    {
+        merge_opa_policy_decision(config, &mut response, decision);
     }
 
     if let Some((failed_commit_sha, job_name, gate_status)) = quality_gate_violation_context {

@@ -1,4 +1,30 @@
 use super::common::*;
+use axum::{routing::post, Json, Router};
+
+async fn start_mock_opa(result: serde_json::Value) -> String {
+    let app = Router::new().route(
+        "/v1/data/gitgov/allow",
+        post(move |Json(_payload): Json<serde_json::Value>| {
+            let result = result.clone();
+            async move {
+                Json(serde_json::json!({
+                    "decision_id": "opa-test-decision",
+                    "result": result
+                }))
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind mock opa");
+    let addr = listener.local_addr().expect("mock opa addr");
+    tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, app).await {
+            tracing::warn!(error = %e, "mock OPA server stopped");
+        }
+    });
+    format!("http://{}", addr)
+}
 
 #[tokio::test]
 async fn policy_check_is_advisory_by_default_even_when_not_allowed() {
@@ -75,6 +101,123 @@ async fn policy_check_returns_conflict_when_block_scope_matches_org_and_branch()
     );
     let parsed: serde_json::Value = serde_json::from_str(&body).expect("parse policy check body");
     assert_eq!(parsed["allowed"], false);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn policy_check_blocks_when_required_opa_denies() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let api_key = insert_test_api_key(&pool, "policy-admin", "Admin").await;
+    let opa_url = start_mock_opa(serde_json::json!({
+        "allow": false,
+        "reasons": ["release window is closed"],
+        "warnings": ["opa evaluated gitgov input"]
+    }))
+    .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app_with_policy_check_scopes(
+        db,
+        vec![PolicyCheckBlockingScope::new(
+            "acme".to_string(),
+            "main".to_string(),
+        )],
+    );
+
+    let (_, repo_id) = insert_test_repo(&pool, "acme/repo").await;
+    let mut config = crate::models::GitGovConfig::default();
+    config.adapters.opa.enabled = true;
+    config.adapters.opa.base_url = Some(opa_url);
+    config.adapters.opa.effect = crate::models::ExternalPolicyEffect::Required;
+    config.adapters.opa.failure_mode = crate::models::ExternalPolicyFailureMode::FailClosed;
+    config.enforcement.external_policy = crate::models::EnforcementLevel::Block;
+    insert_test_policy(
+        &pool,
+        &repo_id,
+        serde_json::to_value(config).expect("serialize opa policy"),
+    )
+    .await;
+
+    let payload = serde_json::json!({
+        "repo": "acme/repo",
+        "branch": "main",
+        "commit": "abc123",
+        "user_login": "policy-admin"
+    });
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/policy/check",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "expected OPA block: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).expect("parse policy body");
+    assert_eq!(parsed["allowed"], false);
+    assert_eq!(parsed["external_decisions"][0]["adapter"], "opa");
+    assert_eq!(parsed["external_decisions"][0]["status"], "denied");
+    assert_eq!(
+        parsed["external_decisions"][0]["decision_id"],
+        "opa-test-decision"
+    );
+    assert_eq!(
+        parsed["violations"][0]["category"],
+        serde_json::Value::String("external_policy".to_string())
+    );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn policy_check_records_opa_fail_open_without_blocking() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let api_key = insert_test_api_key(&pool, "policy-admin", "Admin").await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (_, repo_id) = insert_test_repo(&pool, "acme/repo").await;
+    let mut config = crate::models::GitGovConfig::default();
+    config.adapters.opa.enabled = true;
+    config.adapters.opa.base_url = Some("http://127.0.0.1:9".to_string());
+    config.adapters.opa.effect = crate::models::ExternalPolicyEffect::Required;
+    config.adapters.opa.failure_mode = crate::models::ExternalPolicyFailureMode::FailOpen;
+    config.enforcement.external_policy = crate::models::EnforcementLevel::Block;
+    insert_test_policy(
+        &pool,
+        &repo_id,
+        serde_json::to_value(config).expect("serialize opa policy"),
+    )
+    .await;
+
+    let payload = serde_json::json!({
+        "repo": "acme/repo",
+        "branch": "main",
+        "commit": "abc123",
+        "user_login": "policy-admin"
+    });
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/policy/check",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "expected fail-open 200: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).expect("parse policy body");
+    assert_eq!(parsed["allowed"], true);
+    assert_eq!(parsed["external_decisions"][0]["status"], "error-fail-open");
+    assert_eq!(parsed["external_decisions"][0]["allowed"], true);
+    assert!(
+        parsed["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item.as_str().unwrap_or_default().contains("failed open")),
+        "expected fail-open warning: {}",
+        body
+    );
 
     teardown(&admin_pool, &schema).await;
 }

@@ -570,6 +570,7 @@ async fn client_events_ingest_requires_and_enforces_effective_org_scope() {
             "user_login": "dev",
             "files": [],
             "status": "success",
+            "branch": "main",
             "commit_sha": "scoped-sha"
         }],
         "client_version": "integration-test"
@@ -603,6 +604,7 @@ async fn client_events_ingest_requires_and_enforces_effective_org_scope() {
             "user_login": "dev",
             "files": [],
             "status": "success",
+            "branch": "main",
             "commit_sha": "cross-sha"
         }],
         "client_version": "integration-test"

@@ -1,3 +1,4 @@
+use super::repo_event_context::resolve_repo_event_context;
 use crate::audit::AuditDatabase;
 use crate::config::{load_config, validate_branch_name};
 use crate::git::{
@@ -28,10 +29,7 @@ fn to_command_error(e: impl std::fmt::Display, code: &str) -> String {
 }
 
 fn trigger_flush(outbox: &Arc<Outbox>) {
-    let outbox_clone = Arc::clone(outbox);
-    std::thread::spawn(move || {
-        let _ = outbox_clone.flush();
-    });
+    outbox.notify_flush();
 }
 
 #[tauri::command]
@@ -89,14 +87,8 @@ pub fn cmd_create_branch(
 ) -> Result<(), String> {
     use crate::models::AuthenticatedUser;
 
-    let attempt_event = OutboxEvent::new(
-        "attempt_create_branch".to_string(),
-        actor.developer_login.clone(),
-        Some(name.clone()),
-        AuditStatus::Success,
-    )
-    .with_metadata(serde_json::json!({ "from_branch": from_branch }));
-    let _ = outbox.add(attempt_event);
+    let repo = open_repository(&repo_path).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
+    let repo_context = resolve_repo_event_context(&repo);
 
     let config = load_config(&repo_path);
 
@@ -113,13 +105,15 @@ pub fn cmd_create_branch(
         let validation = validate_branch_name(&name, cfg, &user);
 
         if let crate::config::ValidationResult::Blocked(reason) = validation {
-            let blocked_event = OutboxEvent::new(
+            let mut blocked_event = OutboxEvent::new(
                 "blocked_branch".to_string(),
                 actor.developer_login.clone(),
                 Some(name.clone()),
                 AuditStatus::Blocked,
             )
-            .with_reason(reason.clone());
+            .with_reason(reason.clone())
+            .with_metadata(serde_json::json!({ "from_branch": from_branch }));
+            blocked_event = repo_context.apply_to_event(blocked_event, false);
 
             let _ = outbox.add(blocked_event);
 
@@ -143,17 +137,16 @@ pub fn cmd_create_branch(
         }
     }
 
-    let repo = open_repository(&repo_path).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
-
     match create_branch(&repo, &name, &from_branch) {
         Ok(()) => {
-            let success_event = OutboxEvent::new(
+            let mut success_event = OutboxEvent::new(
                 "create_branch".to_string(),
                 actor.developer_login.clone(),
                 Some(name.clone()),
                 AuditStatus::Success,
             )
             .with_metadata(serde_json::json!({ "from_branch": from_branch }));
+            success_event = repo_context.apply_to_event(success_event, false);
 
             let _ = outbox.add(success_event);
 
@@ -176,13 +169,15 @@ pub fn cmd_create_branch(
             Ok(())
         }
         Err(e) => {
-            let failed_event = OutboxEvent::new(
-                "branch_failed".to_string(),
+            let mut failed_event = OutboxEvent::new(
+                "create_branch".to_string(),
                 actor.developer_login,
                 Some(name),
                 AuditStatus::Failed,
             )
-            .with_reason(e.to_string());
+            .with_reason(e.to_string())
+            .with_metadata(serde_json::json!({ "from_branch": from_branch }));
+            failed_event = repo_context.apply_to_event(failed_event, false);
 
             let _ = outbox.add(failed_event);
 
@@ -194,10 +189,49 @@ pub fn cmd_create_branch(
 }
 
 #[tauri::command]
-pub fn cmd_checkout_branch(repo_path: String, name: String) -> Result<(), String> {
+pub fn cmd_checkout_branch(
+    repo_path: String,
+    name: String,
+    developer_login: String,
+    outbox: State<'_, Arc<Outbox>>,
+) -> Result<(), String> {
     let repo = open_repository(&repo_path).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
+    let before_context = resolve_repo_event_context(&repo);
 
-    checkout_branch(&repo, &name).map_err(|e| to_command_error(e, "GIT_ERROR"))?;
-
-    Ok(())
+    match checkout_branch(&repo, &name) {
+        Ok(()) => {
+            let after_context = resolve_repo_event_context(&repo);
+            let mut event = OutboxEvent::new(
+                "checkout_branch".to_string(),
+                developer_login,
+                Some(name.clone()),
+                AuditStatus::Success,
+            )
+            .with_metadata(serde_json::json!({
+                "from_branch": before_context.branch,
+                "to_branch": name
+            }));
+            event = after_context.apply_to_event(event, true);
+            let _ = outbox.add(event);
+            trigger_flush(&outbox);
+            Ok(())
+        }
+        Err(e) => {
+            let mut event = OutboxEvent::new(
+                "checkout_branch".to_string(),
+                developer_login,
+                Some(name.clone()),
+                AuditStatus::Failed,
+            )
+            .with_reason(e.to_string())
+            .with_metadata(serde_json::json!({
+                "from_branch": before_context.branch,
+                "to_branch": name
+            }));
+            event = before_context.apply_to_event(event, true);
+            let _ = outbox.add(event);
+            trigger_flush(&outbox);
+            Err(to_command_error(e, "GIT_ERROR"))
+        }
+    }
 }

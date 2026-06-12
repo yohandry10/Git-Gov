@@ -9,6 +9,8 @@ pub struct PolicyHistory {
     pub repo_id: String,
     pub config: GitGovConfig,
     pub checksum: String,
+    #[serde(default)]
+    pub source: PolicySourceMetadata,
     pub changed_by: String,
     pub change_type: String,
     pub previous_checksum: Option<String>,

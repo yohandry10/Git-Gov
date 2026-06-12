@@ -5,6 +5,7 @@ include!("client_ingest_dashboard/ingest.rs");
 include!("client_ingest_dashboard/outbox_lease.rs");
 include!("client_ingest_dashboard/cache.rs");
 include!("client_ingest_dashboard/dashboard_queries.rs");
+include!("client_ingest_dashboard/opa_adapter.rs");
 include!("client_ingest_dashboard/policy_check.rs");
 
 // ============================================================================

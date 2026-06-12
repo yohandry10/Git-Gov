@@ -49,7 +49,7 @@ interface RepoActions {
   unstageFiles: (paths: string[]) => Promise<void>
   loadDiff: (filePath: string) => Promise<void>
   createBranch: (name: string, from: string, developerLogin: string, isAdmin: boolean, group?: string) => Promise<void>
-  checkoutBranch: (name: string) => Promise<void>
+  checkoutBranch: (name: string, developerLogin: string) => Promise<void>
   commit: (message: string, authorName: string, authorEmail: string, developerLogin: string) => Promise<string>
   push: (branch: string, developerLogin: string) => Promise<void>
   clearError: () => void
@@ -106,7 +106,7 @@ export const useRepoStore = create<RepoState & RepoActions>((set, get) => ({
     try {
       const validation = await get().validateRepo(normalizedPath)
       set({ validation })
-      if (validation.has_gitgov_toml) {
+      if (validation.has_gitgov_policy ?? validation.has_gitgov_toml) {
         await get().loadConfig()
       }
       await get().refreshStatus()
@@ -348,11 +348,11 @@ export const useRepoStore = create<RepoState & RepoActions>((set, get) => ({
     }
   },
 
-  checkoutBranch: async (name: string) => {
+  checkoutBranch: async (name: string, developerLogin: string) => {
     const { repoPath } = get()
     if (!repoPath) return
     try {
-      await tauriInvoke('cmd_checkout_branch', { repoPath, name })
+      await tauriInvoke('cmd_checkout_branch', { repoPath, name, developerLogin })
       await get().refreshBranches()
       await get().refreshStatus()
     } catch (e) {

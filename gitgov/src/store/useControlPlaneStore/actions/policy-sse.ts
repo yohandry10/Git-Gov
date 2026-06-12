@@ -44,6 +44,15 @@ export function createPolicySseActions(
   savePolicy: async (repoName: string, policyConfig: import('@/lib/types').GitGovConfig) => {
     const serverConfig = get().serverConfig
     if (!serverConfig) return false
+    const source = get().policyData?.source
+    if (source?.source_mode === 'repo-policy-as-code') {
+      const policyPath = source.source_path ?? 'archivo de política del repo'
+      set({
+        policyError: `Esta política está gestionada desde ${policyPath}. Crea un cambio en el repo y pásalo por PR/review; no se permite override directo desde Governance.`,
+        isPolicySaving: false,
+      })
+      return false
+    }
     set({ isPolicySaving: true, policyError: null })
     try {
       const config = { url: serverConfig.url, api_key: serverConfig.api_key }

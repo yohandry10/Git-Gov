@@ -332,6 +332,25 @@ pub async fn ingest_client_events(
             }
         }
 
+        if let Some(error) = validate_event_capture_fidelity(
+            &event_type,
+            inferred_repo_full_name.as_deref(),
+            input.branch.as_deref(),
+            input.commit_sha.as_deref(),
+            &input.files,
+        ) {
+            tracing::warn!(
+                event_uuid = %input.event_uuid,
+                event_type = %input.event_type,
+                "Rejecting client event with incomplete capture context"
+            );
+            pre_validation_errors.push(EventError {
+                event_uuid: input.event_uuid,
+                error,
+            });
+            continue;
+        }
+
         let repo_id = if let Some(repo) = repo {
             Some(repo.id)
         } else if let (Some(full_name), Some(effective_org_id)) =
@@ -529,6 +548,72 @@ fn repo_full_name_owner(repo_full_name: &str) -> Option<&str> {
 fn is_valid_repo_full_name_part(part: &str) -> bool {
     part.chars()
         .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-'))
+}
+
+fn validate_event_capture_fidelity(
+    event_type: &ClientEventType,
+    repo_full_name: Option<&str>,
+    branch: Option<&str>,
+    commit_sha: Option<&str>,
+    files: &[String],
+) -> Option<String> {
+    if event_requires_repo_context(event_type) && is_blank(repo_full_name) {
+        return Some("repo_full_name is required for evidence-bearing events".to_string());
+    }
+
+    if event_requires_branch(event_type) && is_blank(branch) {
+        return Some("branch is required for evidence-bearing events".to_string());
+    }
+
+    if event_requires_commit_sha(event_type) && is_blank(commit_sha) {
+        return Some("commit_sha is required for commit/push evidence events".to_string());
+    }
+
+    if matches!(event_type, ClientEventType::StageFiles)
+        && files.iter().all(|file| file.trim().is_empty())
+    {
+        return Some("stage_files events must include at least one file".to_string());
+    }
+
+    None
+}
+
+fn event_requires_repo_context(event_type: &ClientEventType) -> bool {
+    matches!(
+        event_type,
+        ClientEventType::StageFiles
+            | ClientEventType::Commit
+            | ClientEventType::AttemptPush
+            | ClientEventType::SuccessfulPush
+            | ClientEventType::PushFailed
+            | ClientEventType::BlockedPush
+            | ClientEventType::GovernanceBlockedPush
+            | ClientEventType::GovernanceWarnedPush
+            | ClientEventType::CreateBranch
+            | ClientEventType::BlockedBranch
+            | ClientEventType::CheckoutBranch
+    )
+}
+
+fn event_requires_branch(event_type: &ClientEventType) -> bool {
+    event_requires_repo_context(event_type)
+}
+
+fn event_requires_commit_sha(event_type: &ClientEventType) -> bool {
+    matches!(
+        event_type,
+        ClientEventType::Commit
+            | ClientEventType::AttemptPush
+            | ClientEventType::SuccessfulPush
+            | ClientEventType::PushFailed
+            | ClientEventType::BlockedPush
+            | ClientEventType::GovernanceBlockedPush
+            | ClientEventType::GovernanceWarnedPush
+    )
+}
+
+fn is_blank(value: Option<&str>) -> bool {
+    value.map(str::trim).filter(|value| !value.is_empty()).is_none()
 }
 
 // ============================================================================

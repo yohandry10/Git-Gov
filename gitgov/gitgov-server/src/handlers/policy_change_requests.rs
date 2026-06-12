@@ -29,6 +29,32 @@ fn normalize_policy_request_status(value: Option<&str>) -> Result<Option<String>
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum StoredPolicyApprovalValidationError {
+    InvalidConfig(String),
+    ChecksumMismatch {
+        expected: String,
+        actual: String,
+    },
+    NonCanonical,
+}
+
+fn validate_stored_policy_change_request_for_approval(
+    existing: &PolicyChangeRequestRecord,
+) -> Result<(), StoredPolicyApprovalValidationError> {
+    gitgov_policy_core::validate_policy_config(&existing.requested_config)
+        .map_err(|e| StoredPolicyApprovalValidationError::InvalidConfig(e.to_string()))?;
+    let checksum = gitgov_policy_core::policy_checksum(&existing.requested_config)
+        .map_err(|_| StoredPolicyApprovalValidationError::NonCanonical)?;
+    if checksum != existing.requested_checksum {
+        return Err(StoredPolicyApprovalValidationError::ChecksumMismatch {
+            expected: existing.requested_checksum.clone(),
+            actual: checksum,
+        });
+    }
+    Ok(())
+}
+
 pub async fn create_policy_change_request(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -62,10 +88,23 @@ pub async fn create_policy_change_request(
         }
     };
 
-    let config_json = match serde_json::to_string(&payload.config) {
+    if let Err(e) = gitgov_policy_core::validate_policy_config(&payload.config) {
+        tracing::warn!(error = %e, "Rejected invalid policy change request config");
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(PolicyChangeRequestCreateResponse {
+                accepted: false,
+                request_id: None,
+                status: "error".to_string(),
+                error: Some(e.to_string()),
+            }),
+        );
+    }
+
+    let checksum = match gitgov_policy_core::policy_checksum(&payload.config) {
         Ok(value) => value,
         Err(e) => {
-            tracing::warn!(error = %e, "Failed to serialize policy change request config");
+            tracing::warn!(error = %e, "Failed to canonicalize policy change request config");
             return (
                 StatusCode::BAD_REQUEST,
                 Json(PolicyChangeRequestCreateResponse {
@@ -77,7 +116,6 @@ pub async fn create_policy_change_request(
             );
         }
     };
-    let checksum = format!("{:x}", Sha256::digest(config_json.as_bytes()));
     let request_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp_millis();
 
@@ -261,6 +299,53 @@ pub async fn approve_policy_change_request(
             .into_response();
     }
 
+    match validate_stored_policy_change_request_for_approval(&existing) {
+        Ok(()) => {}
+        Err(StoredPolicyApprovalValidationError::InvalidConfig(details)) => {
+            tracing::warn!(
+                error = %details,
+                request_id = %request_id,
+                "Rejected approval of invalid stored policy change request config"
+            );
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Policy change request config is no longer valid",
+                    "details": details
+                })),
+            )
+                .into_response();
+        }
+        Err(StoredPolicyApprovalValidationError::ChecksumMismatch { expected, actual }) => {
+            tracing::warn!(
+                request_id = %request_id,
+                expected_checksum = %expected,
+                actual_checksum = %actual,
+                "Rejected approval of policy change request with checksum mismatch"
+            );
+            return (
+                StatusCode::CONFLICT,
+                Json(serde_json::json!({
+                    "error": "Policy change request checksum no longer matches requested config"
+                })),
+            )
+                .into_response();
+        }
+        Err(StoredPolicyApprovalValidationError::NonCanonical) => {
+            tracing::warn!(
+                request_id = %request_id,
+                "Rejected approval of non-canonical policy change request config"
+            );
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": "Policy change request config cannot be canonicalized"
+                })),
+            )
+                .into_response();
+        }
+    }
+
     let decided_at = chrono::Utc::now().timestamp_millis();
     match state
         .db
@@ -418,5 +503,67 @@ pub async fn reject_policy_change_request(
             )
                 .into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod policy_change_request_tests {
+    use super::*;
+
+    fn request_record(config: GitGovConfig, checksum: String) -> PolicyChangeRequestRecord {
+        PolicyChangeRequestRecord {
+            id: "request-id".to_string(),
+            org_id: Some("org-id".to_string()),
+            repo_id: "repo-id".to_string(),
+            repo_name: "acme/repo".to_string(),
+            requested_by: "developer".to_string(),
+            requested_checksum: checksum,
+            requested_config: config,
+            reason: Some("policy update".to_string()),
+            status: "pending".to_string(),
+            decided_by: None,
+            decision_note: None,
+            created_at: 1_700_000_000,
+            decided_at: None,
+        }
+    }
+
+    #[test]
+    fn stored_policy_change_request_approval_accepts_valid_checksum() {
+        let config = GitGovConfig::default();
+        let checksum = gitgov_policy_core::policy_checksum(&config).unwrap();
+        let record = request_record(config, checksum);
+
+        assert!(validate_stored_policy_change_request_for_approval(&record).is_ok());
+    }
+
+    #[test]
+    fn stored_policy_change_request_approval_rejects_invalid_opa_config() {
+        let mut config = GitGovConfig::default();
+        config.adapters.opa.enabled = true;
+        config.adapters.opa.base_url = Some("http://opa.example.com:8181".to_string());
+        let checksum = gitgov_policy_core::policy_checksum(&config).unwrap();
+        let record = request_record(config, checksum);
+
+        let error = validate_stored_policy_change_request_for_approval(&record).unwrap_err();
+
+        assert!(matches!(
+            error,
+            StoredPolicyApprovalValidationError::InvalidConfig(_)
+        ));
+    }
+
+    #[test]
+    fn stored_policy_change_request_approval_rejects_checksum_mismatch() {
+        let mut config = GitGovConfig::default();
+        config.enforcement.branches = EnforcementLevel::Warn;
+        let record = request_record(config, "stale-checksum".to_string());
+
+        let error = validate_stored_policy_change_request_for_approval(&record).unwrap_err();
+
+        assert!(matches!(
+            error,
+            StoredPolicyApprovalValidationError::ChecksumMismatch { .. }
+        ));
     }
 }

@@ -28,6 +28,7 @@ async fn golden_path_ingest_events_and_query() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "golden-path-org").await;
     let api_key = insert_test_api_key_for_org(&pool, "test-admin", "Admin", &org_id).await;
+    insert_repo_for_org(&pool, &org_id, "golden-path-org/repo").await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
 
@@ -37,7 +38,10 @@ async fn golden_path_ingest_events_and_query() {
             {
                 "event_uuid": "aaaaaaaa-0000-0000-0000-000000000001",
                 "event_type": "stage_files",
+                "org_name": "golden-path-org",
+                "repo_full_name": "golden-path-org/repo",
                 "user_login": "test-admin",
+                "branch": "main",
                 "files": ["src/main.rs"],
                 "status": "success",
                 "timestamp": 1700000000
@@ -45,6 +49,8 @@ async fn golden_path_ingest_events_and_query() {
             {
                 "event_uuid": "aaaaaaaa-0000-0000-0000-000000000002",
                 "event_type": "commit",
+                "org_name": "golden-path-org",
+                "repo_full_name": "golden-path-org/repo",
                 "user_login": "test-admin",
                 "files": ["src/main.rs"],
                 "status": "success",
@@ -55,10 +61,13 @@ async fn golden_path_ingest_events_and_query() {
             {
                 "event_uuid": "aaaaaaaa-0000-0000-0000-000000000003",
                 "event_type": "successful_push",
+                "org_name": "golden-path-org",
+                "repo_full_name": "golden-path-org/repo",
                 "user_login": "test-admin",
                 "files": [],
                 "status": "success",
                 "branch": "main",
+                "commit_sha": "abc123def456",
                 "timestamp": 1700000002
             }
         ],
@@ -99,6 +108,81 @@ async fn golden_path_ingest_events_and_query() {
         parsed["client_events"]["total"].as_i64().unwrap() >= 3,
         "expected client_events.total ≥ 3"
     );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn evidence_bearing_client_events_require_complete_capture_context() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "event-fidelity-org").await;
+    let api_key = insert_test_api_key_for_org(&pool, "test-admin", "Admin", &org_id).await;
+    insert_repo_for_org(&pool, &org_id, "event-fidelity-org/repo").await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let events_payload = serde_json::json!({
+        "events": [
+            {
+                "event_uuid": "aaaaaaaa-0000-0000-0000-000000000011",
+                "event_type": "successful_push",
+                "org_name": "event-fidelity-org",
+                "repo_full_name": "event-fidelity-org/repo",
+                "user_login": "test-admin",
+                "files": [],
+                "status": "success",
+                "branch": "main",
+                "timestamp": 1700000002
+            },
+            {
+                "event_uuid": "aaaaaaaa-0000-0000-0000-000000000012",
+                "event_type": "stage_files",
+                "org_name": "event-fidelity-org",
+                "repo_full_name": "event-fidelity-org/repo",
+                "user_login": "test-admin",
+                "files": [],
+                "status": "success",
+                "branch": "main",
+                "timestamp": 1700000003
+            },
+            {
+                "event_uuid": "aaaaaaaa-0000-0000-0000-000000000013",
+                "event_type": "checkout_branch",
+                "org_name": "event-fidelity-org",
+                "repo_full_name": "event-fidelity-org/repo",
+                "user_login": "test-admin",
+                "files": [],
+                "status": "success",
+                "branch": "feature/KAN-77",
+                "commit_sha": "abc123def456",
+                "timestamp": 1700000004
+            }
+        ],
+        "client_version": "integration-test"
+    });
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/events",
+        Some(&events_payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "ingest failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(parsed["accepted"].as_array().unwrap().len(), 1);
+    assert_eq!(parsed["errors"].as_array().unwrap().len(), 2);
+    assert!(body.contains("commit_sha is required"));
+    assert!(body.contains("stage_files events must include at least one file"));
+
+    let accepted_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM client_events WHERE event_uuid = 'aaaaaaaa-0000-0000-0000-000000000013'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("count accepted checkout event");
+    assert_eq!(accepted_count, 1);
 
     teardown(&admin_pool, &schema).await;
 }
@@ -181,6 +265,7 @@ async fn webhook_replay_with_fresh_delivery_id_is_deduped_by_content_hash() {
 async fn events_with_future_timestamp_are_rejected() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "event-future-ts").await;
+    insert_repo_for_org(&pool, &org_id, "event-future-ts/repo").await;
     let api_key = insert_test_api_key_for_org(&pool, "event-admin", "Admin", &org_id).await;
     let app = build_test_app(Arc::new(Database::from_pool(pool.clone())));
 
@@ -193,18 +278,24 @@ async fn events_with_future_timestamp_are_rejected() {
             {
                 "event_uuid": "ffffffff-0000-0000-0000-000000000001",
                 "event_type": "commit",
+                "org_name": "event-future-ts",
+                "repo_full_name": "event-future-ts/repo",
                 "user_login": "event-admin",
                 "files": [],
                 "status": "success",
+                "branch": "main",
                 "commit_sha": "future1",
                 "timestamp": future_ms
             },
             {
                 "event_uuid": "ffffffff-0000-0000-0000-000000000002",
                 "event_type": "commit",
+                "org_name": "event-future-ts",
+                "repo_full_name": "event-future-ts/repo",
                 "user_login": "event-admin",
                 "files": [],
                 "status": "success",
+                "branch": "main",
                 "commit_sha": "past1",
                 "timestamp": past_ms
             }
@@ -725,6 +816,7 @@ async fn cli_command_ingest_enforces_repo_owner_scope() {
 async fn event_deduplication_works() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "dedupe-org").await;
+    insert_repo_for_org(&pool, &org_id, "dedupe-org/repo").await;
     let api_key = insert_test_api_key_for_org(&pool, "test-admin", "Admin", &org_id).await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
@@ -733,9 +825,13 @@ async fn event_deduplication_works() {
         "events": [{
             "event_uuid": "dedup-test-uuid-001",
             "event_type": "commit",
+            "org_name": "dedupe-org",
+            "repo_full_name": "dedupe-org/repo",
             "user_login": "test-admin",
             "files": [],
             "status": "success",
+            "branch": "main",
+            "commit_sha": "dedup-sha-001",
             "timestamp": 1700000000
         }],
         "client_version": "integration-test"
@@ -1311,6 +1407,7 @@ async fn api_keys_respect_requested_org_scope() {
 async fn developer_only_sees_own_logs() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "logs-scope-org").await;
+    insert_repo_for_org(&pool, &org_id, "logs-scope-org/repo").await;
     let admin_key = insert_test_api_key_for_org(&pool, "admin-user", "Admin", &org_id).await;
     let dev_key = insert_test_api_key_for_org(&pool, "dev-user", "Developer", &org_id).await;
     let db = Arc::new(Database::from_pool(pool.clone()));
@@ -1322,25 +1419,37 @@ async fn developer_only_sees_own_logs() {
             {
                 "event_uuid": "scope-test-001",
                 "event_type": "commit",
+                "org_name": "logs-scope-org",
+                "repo_full_name": "logs-scope-org/repo",
                 "user_login": "admin-user",
                 "files": [],
                 "status": "success",
+                "branch": "main",
+                "commit_sha": "scope-sha-001",
                 "timestamp": 1700000000
             },
             {
                 "event_uuid": "scope-test-002",
                 "event_type": "commit",
+                "org_name": "logs-scope-org",
+                "repo_full_name": "logs-scope-org/repo",
                 "user_login": "dev-user",
                 "files": [],
                 "status": "success",
+                "branch": "main",
+                "commit_sha": "scope-sha-002",
                 "timestamp": 1700000001
             },
             {
                 "event_uuid": "scope-test-003",
                 "event_type": "commit",
+                "org_name": "logs-scope-org",
+                "repo_full_name": "logs-scope-org/repo",
                 "user_login": "other-user",
                 "files": [],
                 "status": "success",
+                "branch": "main",
+                "commit_sha": "scope-sha-003",
                 "timestamp": 1700000002
             }
         ],

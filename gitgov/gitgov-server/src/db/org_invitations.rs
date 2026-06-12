@@ -360,6 +360,18 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?
         .map(|r| r.get::<String, _>("id"));
 
+        let has_explicit_invite_login = invitation
+            .invite_login
+            .as_deref()
+            .map(str::trim)
+            .is_some_and(|value| !value.is_empty());
+        if existing_id.is_some() && !has_explicit_invite_login {
+            tx.rollback()
+                .await
+                .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+            return Ok(None);
+        }
+
         let org_user_row = if let Some(id) = existing_id {
             sqlx::query(
                 r#"

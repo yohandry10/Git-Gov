@@ -271,7 +271,7 @@ impl Database {
             FROM project_tickets pt
             LEFT JOIN commit_ticket_correlations ct
               ON ct.ticket_id = pt.ticket_id
-             AND (pt.org_id IS NULL OR ct.org_id = pt.org_id)
+             AND ((pt.org_id IS NULL AND ct.org_id IS NULL) OR ct.org_id = pt.org_id)
             WHERE pt.ingested_at >= NOW() - make_interval(hours => $1::int)
               AND ($2::uuid IS NULL OR pt.org_id = $2::uuid)
               AND ct.id IS NULL
@@ -391,7 +391,7 @@ impl Database {
                 FROM pipeline_events pe
                 WHERE c.commit_sha IS NOT NULL
                   AND pe.commit_sha IS NOT NULL
-                  AND (c.org_id IS NULL OR pe.org_id = c.org_id)
+                  AND ((c.org_id IS NULL AND pe.org_id IS NULL) OR pe.org_id = c.org_id)
                   AND (
                     pe.repo_full_name IS NULL
                     OR r.full_name IS NULL

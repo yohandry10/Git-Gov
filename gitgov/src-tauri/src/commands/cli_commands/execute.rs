@@ -25,7 +25,7 @@ pub fn cmd_execute_cli(
 
     if execution_mode == CliExecutionMode::Shell && !shell_commands_enabled() {
         let policy_error = format!(
-            "Shell command mode disabled by {} policy",
+            "Shell command mode is not enabled; set {}=true to opt in",
             ENV_ENABLE_SHELL_COMMANDS
         );
         let _ = app.emit(
@@ -58,8 +58,9 @@ pub fn cmd_execute_cli(
                 command_id: command_id.clone(),
                 line_type: "system".to_string(),
                 text: format!(
-                    "Command not allowed: '{}'. Allowed prefixes: {:?}",
-                    command, DEFAULT_ALLOWED_PREFIXES
+                    "Command not allowed: '{}'. Allowed safe-mode commands: {}",
+                    command,
+                    safe_mode_allowed_command_descriptions().join(", ")
                 ),
             },
         );
@@ -73,7 +74,7 @@ pub fn cmd_execute_cli(
         return Ok(CliStartResult {
             command_id,
             allowed: false,
-            error: Some("Command not in whitelist".to_string()),
+            error: Some("Command not in safe-mode allowlist".to_string()),
         });
     }
 

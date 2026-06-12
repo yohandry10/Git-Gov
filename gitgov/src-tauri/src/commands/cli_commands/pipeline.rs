@@ -1,10 +1,7 @@
 /// Get the list of currently allowed command prefixes.
 #[tauri::command]
 pub fn cmd_get_cli_whitelist() -> Vec<String> {
-    DEFAULT_ALLOWED_PREFIXES
-        .iter()
-        .map(|s| s.to_string())
-        .collect()
+    safe_mode_allowed_command_descriptions()
 }
 
 /// Build pipeline graph data for the current branch + develop/main.
@@ -86,8 +83,11 @@ mod tests {
     #[test]
     fn allowed_commands() {
         assert!(is_command_allowed("git status"));
-        assert!(is_command_allowed("git log --oneline"));
+        assert!(is_command_allowed("git status --porcelain=v2 --branch"));
+        assert!(is_command_allowed("git log --oneline --max-count=10"));
         assert!(is_command_allowed("git remote -v"));
+        assert!(is_command_allowed("git --no-pager log --oneline"));
+        assert!(is_command_allowed("git rev-parse --abbrev-ref HEAD"));
         assert!(is_command_allowed("gitgov status"));
         assert!(is_command_allowed("git"));
     }
@@ -98,8 +98,35 @@ mod tests {
         assert!(!is_command_allowed("npm install"));
         assert!(!is_command_allowed("cargo build"));
         assert!(!is_command_allowed("curl http://evil.com"));
+        assert!(!is_command_allowed("git clone https://example.com/acme/repo"));
+        assert!(!is_command_allowed("git -c core.sshCommand=calc fetch"));
+        assert!(!is_command_allowed("git --config-env core.sshCommand=SSH_CMD status"));
+        assert!(!is_command_allowed("git --exec-path=C:\\Temp status"));
+        assert!(!is_command_allowed("git --git-dir C:\\Temp\\.git status"));
+        assert!(!is_command_allowed("git -C . status"));
+        assert!(!is_command_allowed("git -C"));
+        assert!(!is_command_allowed("git diff --no-index C:\\Temp\\a C:\\Temp\\b"));
+        assert!(!is_command_allowed("git show HEAD:C:\\Temp\\secret.txt"));
+        assert!(!is_command_allowed("git branch -D main"));
+        assert!(!is_command_allowed("git remote add origin https://example.com/acme/repo"));
+        assert!(!is_command_allowed("git log --max-count="));
+        assert!(!is_command_allowed("git log --max-count=abc"));
+        assert!(!is_command_allowed("git log -n"));
+        assert!(!is_command_allowed("git log -nabc"));
+        assert!(!is_command_allowed("git rev-parse --git-dir"));
+        assert!(!is_command_allowed("git status C:\\Temp"));
         assert!(!is_command_allowed(""));
         assert!(!is_command_allowed("  "));
+    }
+
+    #[test]
+    fn cli_whitelist_reports_concrete_safe_mode_commands() {
+        let whitelist = cmd_get_cli_whitelist();
+
+        assert!(whitelist.contains(&"git status".to_string()));
+        assert!(whitelist.contains(&"git log".to_string()));
+        assert!(whitelist.contains(&"gitgov <command>".to_string()));
+        assert_ne!(whitelist, vec!["git".to_string(), "gitgov".to_string()]);
     }
 
     #[test]
@@ -146,6 +173,72 @@ mod tests {
         assert!(!parse_env_flag_value("0", true));
         assert!(parse_env_flag_value("invalid", true));
         assert!(!parse_env_flag_value("invalid", false));
+    }
+
+    #[test]
+    fn native_terminal_is_enabled_by_default_and_respects_explicit_false() {
+        let original = std::env::var_os(ENV_ENABLE_NATIVE_TERMINAL);
+        std::env::remove_var(ENV_ENABLE_NATIVE_TERMINAL);
+
+        assert!(native_terminal_enabled());
+
+        std::env::set_var(ENV_ENABLE_NATIVE_TERMINAL, "false");
+        assert!(!native_terminal_enabled());
+
+        if let Some(value) = original {
+            std::env::set_var(ENV_ENABLE_NATIVE_TERMINAL, value);
+        } else {
+            std::env::remove_var(ENV_ENABLE_NATIVE_TERMINAL);
+        }
+    }
+
+    #[test]
+    fn child_environment_classification_removes_secret_like_keys() {
+        for key in [
+            "GITGOV_API_KEY",
+            "github_token",
+            "jira_api_token",
+            "jenkins_webhook_secret",
+            "database_url",
+            "client_private_key",
+            "service_password",
+            "cloud_credentials",
+            "aws_access_key_id",
+            "npm_config__auth",
+            "ssh_auth_sock",
+            "ssh_askpass",
+            "session_cookie",
+            "git_config_global",
+            "git_external_diff",
+            "git_ssh_command",
+            "git_askpass",
+            "p4passwd",
+        ] {
+            assert!(is_sensitive_child_env_key(key), "{key} should be scrubbed");
+        }
+    }
+
+    #[test]
+    fn child_environment_classification_preserves_operational_keys() {
+        for key in [
+            "PATH",
+            "SystemRoot",
+            "HOME",
+            "USERPROFILE",
+            "GITGOV_ENABLE_NATIVE_TERMINAL",
+            "GITGOV_ENABLE_SHELL_COMMANDS",
+        ] {
+            assert!(
+                !is_sensitive_child_env_key(key),
+                "{key} should be preserved"
+            );
+        }
+    }
+
+    #[test]
+    fn safe_program_resolution_rejects_path_components() {
+        assert!(resolve_safe_program("../git").is_err());
+        assert!(resolve_safe_program("tools/git").is_err());
     }
 
     #[test]

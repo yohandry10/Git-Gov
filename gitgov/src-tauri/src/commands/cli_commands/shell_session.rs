@@ -7,7 +7,7 @@ pub fn cmd_start_shell_session(
 ) -> Result<CliShellStartResult, String> {
     if !shell_commands_enabled() {
         return Err(format!(
-            "Shell sessions are disabled by {}=false",
+            "Shell sessions are not enabled; set {}=true to opt in",
             ENV_ENABLE_SHELL_COMMANDS
         ));
     }

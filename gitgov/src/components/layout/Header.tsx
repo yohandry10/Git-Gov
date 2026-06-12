@@ -3,8 +3,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { useRepoStore } from '@/store/useRepoStore'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { BranchSelector } from '@/components/branch/BranchSelector'
-import { AlertTriangle, ArrowDown, ArrowUp, RefreshCw, FolderOpen } from 'lucide-react'
-import { Button } from '@/components/shared/Button'
+import { AlertTriangle, ArrowDown, ArrowUp, FolderOpen } from 'lucide-react'
 import clsx from 'clsx'
 
 interface HeaderProps {
@@ -17,10 +16,6 @@ export function Header({ children }: HeaderProps) {
     repoPath,
     currentBranch,
     branchSync,
-    refreshStatus,
-    refreshBranches,
-    refreshBranchSync,
-    isLoadingStatus,
   } = useRepoStore()
   const isConnected = useControlPlaneStore((s) => s.isConnected)
   const connectionStatus = useControlPlaneStore((s) => s.connectionStatus)
@@ -32,10 +27,6 @@ export function Header({ children }: HeaderProps) {
     }, 30000)
     return () => clearInterval(interval)
   }, [checkConnection])
-
-  const handleRefresh = async () => {
-    await Promise.all([refreshStatus(), refreshBranches(), refreshBranchSync(), checkConnection()])
-  }
 
   return (
     <header className="h-12 glass flex items-center justify-between px-5">
@@ -107,16 +98,6 @@ export function Header({ children }: HeaderProps) {
 
       <div className="flex items-center gap-2">
         {children}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          loading={isLoadingStatus}
-        >
-          <RefreshCw size={13} strokeWidth={1.5} />
-          Actualizar
-        </Button>
 
         {user && (
           <>

@@ -113,6 +113,7 @@ async fn export_includes_policy_drift_and_policy_requests_in_json_and_csv() {
             "files": [],
             "status": "success",
             "branch": "main",
+            "commit_sha": "export-drift-sha-0001",
             "timestamp": 1700000010
         }],
         "client_version": "integration-test"
@@ -287,6 +288,82 @@ async fn policy_change_request_can_be_created_and_approved_by_admin() {
     assert_eq!(status, StatusCode::OK, "get policy failed: {}", body);
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(parsed["config"]["rules"]["require_pull_request"], true);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn policy_override_returns_canonical_checksum_and_source_metadata() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let admin_key = insert_test_api_key(&pool, "policy-source-admin", "Admin").await;
+    let _repo = insert_test_repo(&pool, "acme/repo").await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let payload_one = serde_json::json!({
+        "branches": { "protected": ["main"], "patterns": ["feat/*", "KAN-*"] },
+        "groups": {
+            "backend": {
+                "members": ["alice"],
+                "allowed_branches": ["feat/*"],
+                "allowed_paths": ["gitgov/gitgov-server/**"]
+            },
+            "frontend": {
+                "members": ["bob"],
+                "allowed_branches": ["KAN-*"],
+                "allowed_paths": ["gitgov/src/**"]
+            }
+        },
+        "rules": { "require_pull_request": true, "min_approvals": 2 },
+        "enforcement": { "pull_requests": "block", "commits": "warn", "branches": "block", "traceability": "block" }
+    });
+
+    let (status, body) = json_request(
+        &app,
+        "PUT",
+        "/policy/acme%2Frepo/override",
+        Some(&payload_one.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "override failed: {}", body);
+    let first: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let first_checksum = first["checksum"].as_str().unwrap().to_string();
+    assert_eq!(first["source"]["source_mode"], "control-plane-managed");
+    assert_eq!(first["source"]["actor"], "policy-source-admin");
+    assert_eq!(first["source"]["active_checksum"], first_checksum);
+    assert_eq!(first["source"]["drift_status"], "in-sync");
+
+    let payload_two = serde_json::json!({
+        "enforcement": { "traceability": "block", "branches": "block", "commits": "warn", "pull_requests": "block" },
+        "rules": { "min_approvals": 2, "require_pull_request": true },
+        "groups": {
+            "frontend": {
+                "allowed_paths": ["gitgov/src/**"],
+                "allowed_branches": ["KAN-*"],
+                "members": ["bob"]
+            },
+            "backend": {
+                "allowed_paths": ["gitgov/gitgov-server/**"],
+                "allowed_branches": ["feat/*"],
+                "members": ["alice"]
+            }
+        },
+        "branches": { "patterns": ["feat/*", "KAN-*"], "protected": ["main"] }
+    });
+
+    let (status, body) = json_request(
+        &app,
+        "PUT",
+        "/policy/acme%2Frepo/override",
+        Some(&payload_two.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "second override failed: {}", body);
+    let second: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(second["checksum"], first_checksum);
+    assert_eq!(second["source"]["active_checksum"], second["checksum"]);
 
     teardown(&admin_pool, &schema).await;
 }

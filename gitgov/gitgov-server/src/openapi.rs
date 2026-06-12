@@ -37,6 +37,7 @@ use utoipa::OpenApi;
         models::PolicyCheckRequest,
         models::PolicyCheckResponse,
         models::RuleViolation,
+        models::ExternalPolicyDecision,
         // Jenkins
         models::JenkinsPipelineEventInput,
         models::JenkinsPipelineEventResponse,

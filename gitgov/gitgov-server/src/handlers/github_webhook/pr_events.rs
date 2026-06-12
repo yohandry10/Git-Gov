@@ -1,6 +1,32 @@
+use base64::Engine;
+
 #[derive(Debug, Deserialize)]
 struct GitHubPrReviewUser {
     login: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubPrFile {
+    filename: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubContentResponse {
+    #[serde(default)]
+    sha: Option<String>,
+    content: String,
+    encoding: String,
+}
+
+struct MergedPrPolicyActivation<'a> {
+    state: &'a Arc<AppState>,
+    repo_full_name: &'a str,
+    repo_id: &'a str,
+    pr_number: i32,
+    activation_sha: Option<&'a str>,
+    activation_branch: Option<&'a str>,
+    actor: Option<&'a str>,
+    reviewers: &'a [String],
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,6 +110,191 @@ async fn fetch_pr_approvers(
     }
 
     Ok(extract_final_approvers(&all_reviews))
+}
+
+async fn fetch_pr_changed_files(
+    http_client: &reqwest::Client,
+    github_token: &str,
+    repo_full_name: &str,
+    pr_number: i32,
+) -> Result<Vec<GitHubPrFile>, String> {
+    let mut files = Vec::new();
+    let mut page = 1u8;
+
+    loop {
+        let url = format!(
+            "https://api.github.com/repos/{}/pulls/{}/files?per_page=100&page={}",
+            repo_full_name, pr_number, page
+        );
+        let response = github_get(http_client, github_token, &url).await?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("GitHub PR files API returned {}", status));
+        }
+
+        let chunk: Vec<GitHubPrFile> = response
+            .json()
+            .await
+            .map_err(|e| format!("GitHub PR files decode failed: {}", e))?;
+        let chunk_len = chunk.len();
+        files.extend(chunk);
+
+        if chunk_len < 100 || page >= 10 {
+            break;
+        }
+        page += 1;
+    }
+
+    Ok(files)
+}
+
+async fn fetch_policy_file_blob(
+    http_client: &reqwest::Client,
+    github_token: &str,
+    repo_full_name: &str,
+    policy_path: &str,
+    git_ref: &str,
+) -> Result<(String, Option<String>), String> {
+    let url = format!(
+        "https://api.github.com/repos/{}/contents/{}?ref={}",
+        repo_full_name, policy_path, git_ref
+    );
+    let response = github_get(http_client, github_token, &url).await?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(format!("GitHub contents API returned {}", status));
+    }
+
+    let body: GitHubContentResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("GitHub contents decode failed: {}", e))?;
+    if body.encoding != "base64" {
+        return Err(format!("Unsupported GitHub content encoding: {}", body.encoding));
+    }
+
+    let compact_content = body.content.replace(['\n', '\r'], "");
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(compact_content.as_bytes())
+        .map_err(|e| format!("GitHub content base64 decode failed: {}", e))?;
+    let text = String::from_utf8(bytes)
+        .map_err(|e| format!("GitHub policy file is not UTF-8: {}", e))?;
+
+    Ok((text, body.sha))
+}
+
+async fn github_get(
+    http_client: &reqwest::Client,
+    github_token: &str,
+    url: &str,
+) -> Result<reqwest::Response, String> {
+    http_client
+        .get(url)
+        .header("Authorization", format!("Bearer {}", github_token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "gitgov-server")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|e| format!("GitHub API request failed: {}", e))
+}
+
+async fn activate_repo_policy_from_merged_pr(
+    input: MergedPrPolicyActivation<'_>,
+) -> Result<(), String> {
+    let Some(github_token) = input.state.github_personal_access_token.as_deref() else {
+        tracing::debug!(
+            repo = %input.repo_full_name,
+            pr_number = input.pr_number,
+            "GITHUB_PERSONAL_ACCESS_TOKEN not configured; skipping repo Policy-as-Code activation"
+        );
+        return Ok(());
+    };
+    let Some(activation_sha) = input.activation_sha else {
+        tracing::warn!(
+            repo = %input.repo_full_name,
+            pr_number = input.pr_number,
+            "Merged PR has no activation SHA; skipping repo Policy-as-Code activation"
+        );
+        return Ok(());
+    };
+
+    let files = fetch_pr_changed_files(
+        &input.state.http_client,
+        github_token,
+        input.repo_full_name,
+        input.pr_number,
+    )
+    .await?;
+    let changed_policy_paths = files
+        .iter()
+        .filter_map(|file| {
+            gitgov_policy_core::DEFAULT_POLICY_PATHS
+                .iter()
+                .find(|(path, _)| *path == file.filename.as_str())
+                .map(|(path, format)| ((*path).to_string(), *format))
+        })
+        .collect::<Vec<_>>();
+
+    if changed_policy_paths.is_empty() {
+        return Ok(());
+    }
+    if changed_policy_paths.len() > 1 {
+        tracing::warn!(
+            repo = %input.repo_full_name,
+            pr_number = input.pr_number,
+            paths = ?changed_policy_paths,
+            "Multiple policy files changed; refusing automatic policy activation"
+        );
+        return Ok(());
+    }
+
+    let (policy_path, format) = changed_policy_paths[0].clone();
+    let (content, blob_sha) = fetch_policy_file_blob(
+        &input.state.http_client,
+        github_token,
+        input.repo_full_name,
+        &policy_path,
+        activation_sha,
+    )
+    .await?;
+    let config = gitgov_policy_core::parse_policy_str(&content, format, &policy_path)
+        .map_err(|e| e.to_string())?;
+    let checksum = gitgov_policy_core::policy_checksum(&config).map_err(|e| e.to_string())?;
+    let source = PolicySourceMetadata {
+        source_mode: PolicySourceMode::RepoPolicyAsCode,
+        source_path: Some(policy_path.clone()),
+        source_format: Some(format),
+        activation_branch: input.activation_branch.map(str::to_string),
+        commit_sha: Some(activation_sha.to_string()),
+        blob_sha,
+        pr_number: Some(input.pr_number as i64),
+        actor: input.actor.map(str::to_string),
+        reviewers: input.reviewers.to_vec(),
+        source_checksum: Some(checksum.clone()),
+        active_checksum: Some(checksum.clone()),
+        drift_status: PolicyDriftStatus::InSync,
+        emergency_override: None,
+    };
+    let override_actor = input.actor.unwrap_or("github-webhook");
+
+    input
+        .state
+        .db
+        .save_policy_with_source(input.repo_id, &config, &checksum, override_actor, &source)
+        .await
+        .map_err(|e| format!("Failed to activate repo policy: {}", e))?;
+
+    tracing::info!(
+        repo = %input.repo_full_name,
+        pr_number = input.pr_number,
+        policy_path = %policy_path,
+        checksum = %checksum,
+        commit_sha = %activation_sha,
+        "Activated repo Policy-as-Code snapshot from merged PR"
+    );
+
+    Ok(())
 }
 
 // Processes pull_request webhook events.
@@ -265,7 +476,7 @@ async fn process_pull_request_event(
                 "draft": draft,
                 "pr_number": pr_number,
                 "requested_reviewers_count": requested_reviewers_count,
-                "approvers": approvers,
+                "approvers": approvers.clone(),
                 "approvals_count": approvals_count
             }),
         );
@@ -338,6 +549,23 @@ async fn process_pull_request_event(
             tickets = ?correlated_ticket_ids,
             "Auto-correlated merged PR commits with tickets from title"
         );
+    }
+
+    let activation_sha = merge_commit_sha_clone
+        .as_deref()
+        .or(head_sha_clone.as_deref());
+    if let Some(repo_id) = record.repo_id.as_deref() {
+        activate_repo_policy_from_merged_pr(MergedPrPolicyActivation {
+            state,
+            repo_full_name: &repo.full_name,
+            repo_id,
+            pr_number,
+            activation_sha,
+            activation_branch: base_branch_clone.as_deref(),
+            actor: merged_by_login.as_deref().or(actor_login.as_deref()),
+            reviewers: &approvers,
+        })
+        .await?;
     }
 
     Ok(())

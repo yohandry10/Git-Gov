@@ -271,6 +271,7 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             repo_id UUID REFERENCES repos(id) ON DELETE CASCADE UNIQUE,
             config JSONB NOT NULL,
             checksum TEXT NOT NULL,
+            source_metadata JSONB NOT NULL DEFAULT '{"source_mode":"control-plane-managed","reviewers":[],"drift_status":"unknown"}'::jsonb,
             override_actor TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -497,6 +498,11 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             actor TEXT NOT NULL,
             action TEXT NOT NULL,
             config JSONB,
+            checksum TEXT,
+            source_metadata JSONB NOT NULL DEFAULT '{"source_mode":"control-plane-managed","reviewers":[],"drift_status":"unknown"}'::jsonb,
+            changed_by TEXT,
+            change_type TEXT,
+            previous_checksum TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
@@ -522,6 +528,7 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             requested_by TEXT NOT NULL,
             requested_config JSONB NOT NULL,
             requested_checksum TEXT NOT NULL,
+            source_metadata JSONB NOT NULL DEFAULT '{"source_mode":"control-plane-managed","reviewers":[],"drift_status":"unknown"}'::jsonb,
             reason TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
@@ -559,6 +566,8 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             email TEXT,
             role TEXT NOT NULL DEFAULT 'Developer',
             status TEXT NOT NULL DEFAULT 'active',
+            created_by TEXT,
+            updated_by TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             UNIQUE(org_id, login)
@@ -567,14 +576,19 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE TABLE IF NOT EXISTS org_invitations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID NOT NULL,
-            email TEXT NOT NULL,
+            invite_email TEXT,
+            invite_login TEXT,
             role TEXT NOT NULL DEFAULT 'Developer',
             token_hash TEXT UNIQUE NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending',
             invited_by TEXT NOT NULL,
+            accepted_by TEXT,
             expires_at TIMESTAMPTZ NOT NULL,
             accepted_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ DEFAULT NOW()
+            revoked_by TEXT,
+            revoked_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
         );
 
         CREATE TABLE IF NOT EXISTS feature_requests (
@@ -922,6 +936,10 @@ pub(super) fn build_test_app_with_options(
     Router::new()
         .route("/health", get(handlers::health))
         .route("/health/detailed", get(handlers::detailed_health))
+        .route(
+            "/org-invitations/accept",
+            post(handlers::accept_org_invitation),
+        )
         .merge(auth_routes)
         .with_state(Arc::new(state))
 }
