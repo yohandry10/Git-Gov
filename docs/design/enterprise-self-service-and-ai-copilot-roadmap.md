@@ -1,8 +1,8 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-06-08
+Updated: 2026-06-12
 
-Ticket: `KAN-68`
+Ticket: `KAN-68`; KAN-77 roadmap intake update
 
 ## Decision
 
@@ -36,6 +36,265 @@ KAN-69 - Enterprise Action Center guided UX
 ```
 
 KAN-69 is a dedicated `/action-center` product surface that reuses existing capabilities from `KAN-29` through `KAN-67`. It did not introduce another independent monitor, trend, or enforcement chain. The follow-up Desktop runtime QA then clarified the surrounding IA: Action Center owns the global recommendation, Governance owns operational governance tools, and Settings owns Control Plane connection/configuration.
+
+## First-Priority Future Feature Queue
+
+Source: external planning note `GITGOV_ROADMAP.md` reviewed on 2026-06-12.
+
+These are future product bets, not claims of complete implementation. They should sit ahead of the
+older roadmap queue because they define the next enterprise story after KAN-69/KAN-77: GitGov as the
+governance gate for human and agentic delivery. Several items already have partial GitGov primitives;
+the future work is to turn those primitives into complete customer-facing product flows.
+
+### 0.1 Deployment Gates: GitGov Authorizes Deploy
+
+Future goal: customer CI/CD systems call GitGov before production deployment. GitGov returns a
+structured `approved` or `blocked` result with reasons, evidence, and policy identifiers.
+
+Why first:
+
+- This is the clearest enterprise value proposition: no production deploy without GitGov evidence.
+- It connects release readiness, ticket coverage, CI evidence, policy, risk, and approvals into one
+  enforceable decision.
+- It turns GitGov from an evidence dashboard into an operational control point.
+
+Current primitives:
+
+- Release readiness, release governance evaluation, optional release-governance gate, policy checks,
+  Jenkins/GitHub Actions evidence, evidence packets, and formal release approvals already exist.
+- Default behavior remains safe: record-only/advisory unless a customer explicitly selects blocking
+  enforcement.
+
+Future scope:
+
+- Stable deployment-authorization API for Jenkins, GitHub Actions, GitLab CI, and other deployers.
+- Response contract with `approved`, `reason`, `details`, `blocked_by`, evidence links, policy
+  checksum, and break-glass eligibility.
+- Per-environment policy: production stricter than staging, without making blocking the default.
+- Dashboard visibility for every deploy authorization attempt.
+
+### 0.2 Agentic Governance Layer
+
+Future goal: agents such as Codex, Claude Code, Cursor, Windsurf, Copilot, and JetBrains AI consult
+GitGov before acting on production code.
+
+Why first:
+
+- Agents already operate in customer repositories; enterprise governance has not caught up.
+- GitGov can own the governance gap: what an agent may do, what needs approval, and what evidence is
+  left behind.
+- This differentiates GitGov beyond generic DevOps dashboards.
+
+Future scope:
+
+- MCP server exposing scoped governance tools:
+  - `get_branch_status`
+  - `check_policy_compliance`
+  - `list_audit_logs`
+  - `get_pipeline_state`
+  - `get_risk_score`
+- Agent-specific auth tokens with scopes such as `read:audit`, `read:policy`,
+  `read:branch_status`, and tightly governed write scopes.
+- REST Policy API for "can I do this?" checks before an agent attempts a commit, push, merge, policy
+  change, or deploy.
+- Agent dry-run/simulation endpoint for read-only evaluation before execution.
+- Human-in-the-loop approval for sensitive operations from agents.
+- Ephemeral agent session logs linked to existing audit trail.
+- Agent attribution chain showing agent, token, human approver, operation, commit/deploy outcome,
+  timestamp, and scope at the time of action.
+
+Current primitives:
+
+- GitGov already has deterministic policy checks, audit logs, release governance evidence, Desktop
+  approval surfaces, and a governance copilot. Future agentic work must reuse those primitives rather
+  than create a parallel decision system.
+
+Guardrail:
+
+- LLMs/agents should not decide critical controls. They can request, explain, simulate, and propose;
+  GitGov policy and human approval decide.
+
+### 0.3 Regulatory Framework Mapper
+
+Future goal: map GitGov audit evidence to concrete controls for frameworks such as PCI-DSS,
+ISO 27001, SBS Peru, and LGPD Brazil.
+
+Why first:
+
+- This creates direct enterprise ROI: audit evidence packages in minutes instead of consultant-led
+  manual assembly.
+- It turns existing evidence into compliance language executives, auditors, and regulators recognize.
+
+Current primitives:
+
+- Evidence packets, audit export, GitHub/Jira/Jenkins/Sonar evidence, release approvals, policy
+  history, and compliance/reporting helpers already exist.
+
+Future scope:
+
+- Static, versioned control mapping from GitGov event/evidence types to framework control IDs.
+- Framework-specific report output with evidence links and hashes.
+- Configurable framework packs so new regulatory mappings can be added without changing core product
+  logic.
+- PDF/JSON export suitable for quarterly or annual audits.
+
+### 0.4 Bring Your Own Model And AI Routing
+
+Future goal: enterprise customers choose which AI provider/model GitGov uses for governance
+explanations.
+
+Why first:
+
+- Banks and regulated companies often cannot use a vendor-selected LLM.
+- BYOM reduces privacy objections and shifts AI usage cost/control to the customer.
+
+Current primitives:
+
+- Governance copilot route and Desktop UI exist.
+- Direct Google Gemini production mode exists; deterministic fallback exists.
+- Vercel AI SDK is already the right abstraction layer for future providers.
+
+Future scope:
+
+- Organization settings for provider, model, encrypted API key reference, fallback behavior, and test
+  connection.
+- Providers: OpenAI, Anthropic, OpenRouter, Groq, Google Gemini, and optional Vercel AI Gateway.
+- Rate limiting and fallback by organization.
+- Strict evidence-citation guardrails remain mandatory.
+
+### 0.5 Emergency Break Glass Protocol
+
+Future goal: emergency production changes can bypass normal gates only through a more audited,
+time-bounded process.
+
+Why first:
+
+- Every enterprise needs a safe emergency path, especially for production outages.
+- Today many teams use informal approvals; GitGov can make the emergency exception itself auditable.
+
+Current primitives:
+
+- Release approvals, policy source metadata, audit logs, Jira integration, Slack/provider connection
+  direction, and release governance evaluation exist.
+
+Future scope:
+
+- Break-glass request with mandatory justification, ticket, target repo/branch/environment, and
+  expiration.
+- Configurable approver quorum.
+- Time-boxed active bypass with visible countdown and automatic expiration.
+- Automatic post-mortem ticket creation when configured.
+- Permanent `BREAK_GLASS` audit marker and Evidence Packet inclusion.
+
+### 0.6 Integration Wizard And Enterprise Integration Hub
+
+Future goal: the first-run path connects GitHub, Jira, Jenkins, SonarQube, Slack, and deployment
+providers before the customer reaches a blank dashboard.
+
+Why first:
+
+- Faster onboarding is still the largest packaging gap.
+- Customers should see real evidence on first login, not configure pieces manually.
+
+Current primitives:
+
+- Adoption profiles, provider health, direct provider connection validation, workflow template packs,
+  onboarding readiness reports, remediation plans, and Action Center guidance exist.
+
+Future scope:
+
+- Wizard-style onboarding with skip/retry per provider.
+- Secret-safe OAuth/API-key connection status per provider.
+- Recommended workflow/policy preset generated from selected tools.
+- Deep links into Action Center, Governance Evidence, and Settings/System.
+
+### 0.7 Change Risk Score
+
+Future goal: each commit/release gets an operational risk score based on deterministic rules, not ML.
+
+Why first:
+
+- Change advisory boards already do this manually in banks and regulated teams.
+- A deterministic score can become input to Deployment Gates and Release Governance.
+
+Current primitives:
+
+- Release readiness, ticket coverage, policy checks, branch/repo evidence, pipeline/Sonar evidence,
+  risk outcomes helpers, and governance reporting exist.
+
+Future scope:
+
+- Configurable scoring signals:
+  - sensitive module touched.
+  - new team member.
+  - outside working hours.
+  - large file/change volume.
+  - missing tests.
+  - missing Jira ticket.
+  - unusual deletion ratio.
+- Score `0-100` stored with audit evidence.
+- Optional policy threshold for advisory or blocking deployment gates.
+
+### 0.8 Multi-Repo Executive Governance View
+
+Future goal: CISO/CTO view across all repositories in an organization.
+
+Why first:
+
+- Enterprise buyers need fleet-level governance posture, not only single-repo evidence.
+
+Current primitives:
+
+- Organization scoping, governance evidence, provider health, readiness, release approvals, audit
+  export, and adoption profile surfaces already exist.
+
+Future scope:
+
+- Repo-by-repo compliance score, active violations, red gates, latest activity, agent tokens,
+  release state, and trend direction.
+- Filters by team, repo criticality, environment, and violation type.
+- Admin-only access.
+
+### 0.9 Compliance Report Generator
+
+Future goal: generate formal monthly/quarterly/annual compliance reports from existing GitGov
+evidence.
+
+Why first:
+
+- This is a packaging step with high customer value because much of the underlying evidence already
+  exists.
+
+Current primitives:
+
+- Audit export, evidence packets, release approvals, GitHub/Jira/Jenkins/Sonar evidence, policy
+  history, and compliance helpers exist.
+
+Future scope:
+
+- Organization/repository report templates.
+- PDF and JSON outputs with hashes.
+- Digitally signable evidence packet references.
+- Regulator/auditor wording that maps to the Regulatory Framework Mapper when enabled.
+
+### 0.10 Developer Distribution Surfaces
+
+Future goal: meet developers and agents where they work, while keeping GitGov as the policy source.
+
+Future scope:
+
+- VS Code extension with read-only branch gate status, policy preview, pipeline state, and audit
+  trail snippets.
+- Embedded terminal improvements:
+  - command history by session.
+  - repo/branch context in prompt.
+  - quick commands for selected deploy providers.
+  - no command interception by default.
+
+Guardrail:
+
+- These are convenience and distribution surfaces. They must not bypass Desktop/Control Plane policy
+  or create a second enforcement model.
 
 ## Next Product Features
 
