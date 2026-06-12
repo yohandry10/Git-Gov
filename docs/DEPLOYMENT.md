@@ -1,7 +1,7 @@
 # GitGov — Deployment Guide
 
 > Guía unificada: Docker local, Render, AWS EC2 self-hosted, Enterprise (instaladores/GPO) y Desktop Updates.
-> Última actualización: 2026-04-25
+> Última actualización: 2026-06-12
 
 ---
 
@@ -476,6 +476,29 @@ done
 - Jira webhook nativo activo: `https://gitgov-api.onrender.com/webhooks/jira?org_name=yohandry10`.
 - HTTPS ya lo provee Render para la producción actual.
 - Dominio propio y `certbot` solo aplican si se migra a una ruta self-hosted o dominio custom.
+
+### Nota de build Render para crates compartidos
+
+Desde `KAN-77`, el backend depende del crate compartido `gitgov/policy-core` mediante un path
+relativo desde `gitgov/gitgov-server/Cargo.toml`. Por eso Render no debe usar
+`gitgov/gitgov-server` como root/contexto de build. Si se vuelve a configurar ese root antiguo, el
+build falla con `failed to read /policy-core/Cargo.toml`.
+
+Configuración correcta:
+
+```text
+Root directory: gitgov
+Docker context: .
+Dockerfile path: gitgov-server/Dockerfile
+```
+
+Validación de producción del cambio: deploy Render `dep-d8lsul8k1i2s73dk1ph0` para commit
+`e4bec3f` quedó `live`; `/health` respondió `status=ok` y `/stats` autenticado respondió HTTP `200`.
+
+El mismo cierre de `KAN-77` requiere que `gitgov/gitgov-server/supabase/supabase_schema_v31.sql`
+esté aplicado en la base productiva. Esa migración añade `source_metadata` a `policies`,
+`policy_history` y `policy_change_requests`, y recrea `get_policy_history(UUID, INTEGER)`. Si falta,
+`GET /policy/{repo}` puede responder `Internal database error` aunque el deploy Docker esté `live`.
 
 ### Arquitectura legacy/self-hosted (AWS EC2)
 

@@ -2,6 +2,16 @@
 
 Date: 2026-06-12
 
+Merge status:
+
+- Implementation PR `#214` merged as `0acfd26 security(KAN-77): harden event capture and policy as
+  code (#214)`.
+- Render packaging hotfix PR `#215` merged as `e4bec3f fix(KAN-77): align Render Docker context for
+  policy core (#215)`.
+- Production Render deploy `dep-d8lsul8k1i2s73dk1ph0` reached `live`.
+- Render hotfix details are documented in
+  `docs/reports/render-policy-core-docker-context-hotfix-2026-06-12.md`.
+
 ## Implemented
 
 - Added shared Rust policy core at `gitgov/policy-core`.
@@ -106,6 +116,17 @@ Date: 2026-06-12
 - `npm --prefix gitgov test -- --run`
   - `349` passed.
 - `npm --prefix gitgov run lint -- --quiet`
+- PR `#214` required GitHub checks passed before merge.
+- Post-merge GitHub checks for `0acfd26` passed.
+- PR `#215` required GitHub checks passed before merge.
+- Post-merge GitHub checks for `e4bec3f` passed.
+- Render deploy `dep-d8lsul8k1i2s73dk1ph0` reached `live`.
+- Production `GET /health` returned `status=ok`.
+- Production authenticated `GET /stats` returned HTTP `200`.
+- Production `supabase_schema_v31.sql` was applied and verified.
+- Production authenticated `GET /policy/yohandry10%2FGit-Gov` returned HTTP `200`.
+- Local rerun of `scripts/jenkins/validate_quality_gate_policy_matrix.ps1` against production
+  passed after the `v31` migration was applied.
 
 ## Still Pending
 
