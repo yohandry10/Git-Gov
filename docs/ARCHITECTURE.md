@@ -202,9 +202,11 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 | `/stats/daily` | Bearer (admin) | Actividad diaria |
 | `/team/overview` | Bearer (admin) | Vista general del equipo |
 | `/team/repos` | Bearer (admin) | Repositorios del equipo |
-| `/me` | Bearer | Datos del usuario/API key autenticado, incluyendo `org_name` cuando la key está scoped |
-| `/orgs` | Bearer (admin) | Listar workspaces visibles o crear workspace |
+| `/me` | Bearer | Datos del usuario/API key autenticado, incluyendo `principal_type`, `org_name` cuando la key está scoped, y si debe seleccionar workspace para superficies tenant |
+| `/orgs` | Bearer (admin) | Listar workspaces visibles o crear workspace por compatibilidad; la creación usa la semántica Platform Founder |
 | `/orgs/{login}` | Bearer (admin) | Validar/obtener un workspace por login con enforcement de scope |
+| `/platform/tenants` | Bearer (Platform Founder) | Listar/provisionar tenants de cliente desde el plano de plataforma |
+| `/platform/tenants/{login}/lifecycle` | Bearer (Platform Founder) | Cambiar lifecycle de tenant (`trial`, `active`, `suspended`, `archived`, `deleted`) |
 | `/org-users` | Bearer (admin) | Listar/crear usuarios de organización |
 | `/org-users/{id}/status` | Bearer (admin) | Actualizar estado de usuario |
 | `/org-users/{id}/api-key` | Bearer (admin) | Crear API key para usuario |
@@ -408,6 +410,10 @@ La Desktop separa tres conceptos que no deben mezclarse:
 3. El workspace GitGov activo define el tenant contra el que se consultan evidencias, adopción, usuarios y API keys scoped.
 
 Una API key scoped ya trae `org_id` y `/me` devuelve también `org_name`. Una API key Admin global/founder trae `org_id=null`; en ese caso la Desktop debe pedir y validar un workspace activo antes de permitir las superficies admin dependientes de tenant. El workspace se valida con `GET /orgs/{login}` y se persiste localmente asociado a la combinación de usuario GitHub, URL de Control Plane y una huella no secreta de la API key. Si no hay GitHub Organization real, GitGov puede usar el owner/namespace GitHub del repo como workspace interno; por ejemplo `yohandry10` para `yohandry10/Git-Gov`.
+
+`Platform Founder` no es el tenant interno GitGov. Es un principal de plataforma con `org_id=null` y `principal_type=platform_founder` en `/me`, usado para provisioning/bootstrap de tenants. El tenant interno GitGov debe tratarse como un tenant normal de dogfooding: sus admins no crean tenants hermanos. La administración de tenants vive en `/platform/tenants`; `/orgs` conserva compatibilidad histórica pero no debe presentarse en UI como si un workspace estuviera creando otros workspaces.
+
+La tabla `orgs` es el catálogo de tenants. Además del login/nombre/GitHub id, mantiene metadata de SaaS para `tenant_type` (`customer`, `internal`, `sandbox`), `lifecycle_status` (`trial`, `active`, `suspended`, `archived`, `deleted`), `provisioning_source`, `provisioned_by`, `platform_metadata` y timestamps de suspensión/archivo/borrado lógico. Las acciones de plataforma escriben en `admin_audit_log` con acciones `platform.tenant.created`, `platform.tenant.updated`, `platform.tenant.lifecycle_changed` y `platform.tenant.provision_denied`.
 
 Para API keys, la vista de organización y la vista global son intencionalmente distintas. `GET /api-keys?org_name=<workspace>` lista solo keys de ese workspace; `GET /api-keys` con Admin global lista el catálogo global/cross-org y debe mostrarse como scope global explícito, no como la organización activa.
 
@@ -923,4 +929,3 @@ Para más información:
 
 - **Guía rápida:** [QUICKSTART.md](./QUICKSTART.md)
 - **Solución de problemas:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-

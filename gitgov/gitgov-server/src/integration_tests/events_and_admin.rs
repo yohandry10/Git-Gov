@@ -1200,6 +1200,133 @@ async fn create_org_requires_founder_global_admin_key() {
 }
 
 #[tokio::test]
+async fn platform_tenant_administration_requires_founder_and_audits_lifecycle() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let founder_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    let customer_org = insert_test_org(&pool, "customer-a").await;
+    let scoped_admin_key =
+        insert_test_api_key_for_org(&pool, "customer-a-admin", "Admin", &customer_org).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let payload = serde_json::json!({
+        "login": "enterprise-platform-test",
+        "name": "Enterprise Platform Test",
+        "tenant_type": "customer",
+        "lifecycle_status": "trial",
+        "metadata": {
+            "plan": "pilot",
+            "source": "KAN-81 integration test"
+        }
+    });
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/platform/tenants",
+        Some(&payload.to_string()),
+        Some(&scoped_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "scoped tenant admin must not provision sibling tenants: {}",
+        body
+    );
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/platform/tenants",
+        Some(&payload.to_string()),
+        Some(&founder_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "platform founder should provision tenant: {}",
+        body
+    );
+    let created: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(created["created"], true);
+    assert_eq!(created["tenant"]["login"], "enterprise-platform-test");
+    assert_eq!(created["tenant"]["tenant_type"], "customer");
+    assert_eq!(created["tenant"]["lifecycle_status"], "trial");
+    assert_eq!(created["tenant"]["provisioning_source"], "platform_founder");
+    assert_eq!(created["tenant"]["provisioned_by"], "bootstrap-admin");
+    assert_eq!(created["tenant"]["platform_metadata"]["plan"], "pilot");
+
+    let lifecycle_payload = serde_json::json!({
+        "lifecycle_status": "suspended",
+        "reason": "contract pause",
+        "metadata": {
+            "ticket": "KAN-81"
+        }
+    });
+    let (status, body) = json_request(
+        &app,
+        "PATCH",
+        "/platform/tenants/enterprise-platform-test/lifecycle",
+        Some(&lifecycle_payload.to_string()),
+        Some(&founder_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "platform founder should update tenant lifecycle: {}",
+        body
+    );
+    let suspended: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(suspended["lifecycle_status"], "suspended");
+    assert!(
+        suspended["suspended_at"].as_i64().unwrap_or_default() > 0,
+        "suspended_at must be set when lifecycle is suspended: {}",
+        body
+    );
+
+    let rows = sqlx::query(
+        r#"
+        SELECT action, metadata
+        FROM admin_audit_log
+        WHERE action LIKE 'platform.tenant.%'
+        ORDER BY created_at ASC
+        "#,
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    let actions: Vec<String> = rows.iter().map(|row| row.get("action")).collect();
+    assert!(
+        actions.contains(&"platform.tenant.provision_denied".to_string()),
+        "denied scoped admin attempt must be audited: {:?}",
+        actions
+    );
+    assert!(
+        actions.contains(&"platform.tenant.created".to_string()),
+        "platform tenant creation must be audited: {:?}",
+        actions
+    );
+    assert!(
+        actions.contains(&"platform.tenant.lifecycle_changed".to_string()),
+        "platform tenant lifecycle change must be audited: {:?}",
+        actions
+    );
+    let created_audit = rows
+        .iter()
+        .find(|row| row.get::<String, _>("action") == "platform.tenant.created")
+        .expect("created audit row");
+    let metadata: serde_json::Value = created_audit.get("metadata");
+    assert_eq!(metadata["actor_scope"], "platform");
+    assert_eq!(metadata["target_tenant_login"], "enterprise-platform-test");
+    assert_eq!(metadata["source"], "platform_provisioning");
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
 async fn org_discovery_and_me_return_human_scope() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_a = insert_test_org(&pool, "enterprise-a").await;
@@ -1221,6 +1348,15 @@ async fn org_discovery_and_me_return_human_scope() {
         .collect();
     assert!(logins.contains(&"enterprise-a".to_string()));
     assert!(logins.contains(&"enterprise-b".to_string()));
+
+    let (status, body) = json_request(&app, "GET", "/me", None, Some(&global_admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "founder /me failed: {}", body);
+    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(parsed["client_id"], "bootstrap-admin");
+    assert_eq!(parsed["principal_type"], "platform_founder");
+    assert_eq!(parsed["org_id"], serde_json::Value::Null);
+    assert_eq!(parsed["org_name"], serde_json::Value::Null);
+    assert_eq!(parsed["requires_workspace_for_tenant_surfaces"], true);
 
     let (status, body) = json_request(
         &app,
@@ -1254,6 +1390,8 @@ async fn org_discovery_and_me_return_human_scope() {
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(parsed["org_id"], org_a);
     assert_eq!(parsed["org_name"], "enterprise-a");
+    assert_eq!(parsed["principal_type"], "tenant_admin");
+    assert_eq!(parsed["requires_workspace_for_tenant_surfaces"], false);
 
     teardown(&admin_pool, &schema).await;
 }

@@ -7,7 +7,7 @@ use axum::{
     body::Body,
     http::Request,
     middleware,
-    routing::{get, post, put},
+    routing::{get, patch, post, put},
     Router,
 };
 use sha2::Digest;
@@ -101,6 +101,17 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             login TEXT UNIQUE NOT NULL,
             name TEXT,
             avatar_url TEXT,
+            tenant_type TEXT NOT NULL DEFAULT 'customer'
+                CHECK (tenant_type IN ('customer', 'internal', 'sandbox')),
+            lifecycle_status TEXT NOT NULL DEFAULT 'active'
+                CHECK (lifecycle_status IN ('trial', 'active', 'suspended', 'archived', 'deleted')),
+            provisioning_source TEXT NOT NULL DEFAULT 'legacy'
+                CHECK (provisioning_source IN ('legacy', 'github_webhook', 'platform_founder', 'migration')),
+            provisioned_by TEXT,
+            platform_metadata JSONB NOT NULL DEFAULT '{}',
+            suspended_at TIMESTAMPTZ,
+            archived_at TIMESTAMPTZ,
+            deleted_at TIMESTAMPTZ,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
         );
@@ -866,6 +877,14 @@ pub(super) fn build_test_app_with_options(
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))
+        .route(
+            "/platform/tenants",
+            get(handlers::list_platform_tenants).post(handlers::provision_platform_tenant_endpoint),
+        )
+        .route(
+            "/platform/tenants/{login}/lifecycle",
+            patch(handlers::update_platform_tenant_lifecycle),
+        )
         .route(
             "/integrations/jenkins",
             post(handlers::ingest_jenkins_pipeline_event),

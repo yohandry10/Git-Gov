@@ -15,9 +15,24 @@ CREATE TABLE IF NOT EXISTS orgs (
     login TEXT UNIQUE NOT NULL,
     name TEXT,
     avatar_url TEXT,
+    tenant_type TEXT NOT NULL DEFAULT 'customer'
+        CHECK (tenant_type IN ('customer', 'internal', 'sandbox')),
+    lifecycle_status TEXT NOT NULL DEFAULT 'active'
+        CHECK (lifecycle_status IN ('trial', 'active', 'suspended', 'archived', 'deleted')),
+    provisioning_source TEXT NOT NULL DEFAULT 'legacy'
+        CHECK (provisioning_source IN ('legacy', 'github_webhook', 'platform_founder', 'migration')),
+    provisioned_by TEXT,
+    platform_metadata JSONB NOT NULL DEFAULT '{}',
+    suspended_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_orgs_tenant_type ON orgs(tenant_type);
+CREATE INDEX IF NOT EXISTS idx_orgs_lifecycle_status ON orgs(lifecycle_status);
+CREATE INDEX IF NOT EXISTS idx_orgs_provisioning_source ON orgs(provisioning_source);
 
 CREATE TABLE IF NOT EXISTS enterprise_adoption_profiles (
     org_id UUID PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,

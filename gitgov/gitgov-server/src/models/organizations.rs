@@ -11,6 +11,22 @@ pub struct Org {
     pub login: String,
     pub name: Option<String>,
     pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub tenant_type: String,
+    #[serde(default)]
+    pub lifecycle_status: String,
+    #[serde(default)]
+    pub provisioning_source: String,
+    #[serde(default)]
+    pub provisioned_by: Option<String>,
+    #[serde(default)]
+    pub platform_metadata: serde_json::Value,
+    #[serde(default)]
+    pub suspended_at: Option<i64>,
+    #[serde(default)]
+    pub archived_at: Option<i64>,
+    #[serde(default)]
+    pub deleted_at: Option<i64>,
     pub created_at: i64,
 }
 

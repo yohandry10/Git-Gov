@@ -518,6 +518,15 @@ pub async fn get_me(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    let principal_type = if is_founder_global_admin(&auth_user) {
+        "platform_founder"
+    } else if auth_user.role == UserRole::Admin {
+        "tenant_admin"
+    } else {
+        "tenant_user"
+    }
+    .to_string();
+    let requires_workspace_for_tenant_surfaces = auth_user.org_id.is_none();
     let org_name = match auth_user.org_id.as_deref() {
         Some(org_id) => match state.db.get_org_by_id(org_id).await {
             Ok(Some(org)) => Some(org.login),
@@ -532,8 +541,10 @@ pub async fn get_me(
     let response = MeResponse {
         client_id: auth_user.client_id,
         role: auth_user.role.as_str().to_string(),
+        principal_type,
         org_id: auth_user.org_id,
         org_name,
+        requires_workspace_for_tenant_surfaces,
     };
     (StatusCode::OK, Json(response))
 }

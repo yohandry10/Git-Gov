@@ -10,6 +10,7 @@ include!("handlers/client_ingest_dashboard.rs");
 include!("handlers/policy_admin.rs");
 include!("handlers/policy_change_requests.rs");
 include!("handlers/org_core.rs");
+include!("handlers/platform_tenants.rs");
 include!("handlers/org_users_api_keys.rs");
 include!("handlers/adoption_profiles.rs");
 include!("handlers/first_governed_repo_setup.rs");

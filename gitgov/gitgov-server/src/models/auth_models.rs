@@ -23,9 +23,13 @@ pub struct MeResponse {
     pub client_id: String,
     pub role: String,
     #[serde(default)]
+    pub principal_type: String,
+    #[serde(default)]
     pub org_id: Option<String>,
     #[serde(default)]
     pub org_name: Option<String>,
+    #[serde(default)]
+    pub requires_workspace_for_tenant_surfaces: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
