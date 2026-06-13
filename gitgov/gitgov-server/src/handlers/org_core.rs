@@ -100,49 +100,30 @@ pub async fn create_org(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateOrgRequest>,
 ) -> impl IntoResponse {
-    if !crate::auth::is_founder_global_admin(&auth_user) {
-        return (
-            StatusCode::FORBIDDEN,
-            Json(serde_json::json!({ "error": "Only founder can create organizations" })),
-        )
-            .into_response();
-    }
+    let response = provision_platform_tenant(
+        &auth_user,
+        &state,
+        PlatformTenantRequest {
+            login: payload.login,
+            name: payload.name,
+            tenant_type: Some("customer".to_string()),
+            lifecycle_status: Some("active".to_string()),
+            metadata: serde_json::json!({ "compat_route": "/orgs" }),
+        },
+    )
+    .await;
 
-    let login = payload.login.trim();
-    if login.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": "organization login is required" })),
-        )
-            .into_response();
-    }
-
-    // Check if org already exists — upsert_org is idempotent on (login)
-    let already_exists = state.db.get_org_by_login(login).await
-        .unwrap_or(None)
-        .is_some();
-
-    // Manually provisioned orgs must upsert by login (not by github_id) to avoid collisions.
-    match state
-        .db
-        .upsert_org_by_login(login, payload.name.as_deref(), None)
-        .await
-    {
-        Ok(org_id) => (
-            if already_exists { StatusCode::OK } else { StatusCode::CREATED },
+    match response {
+        Ok((tenant, created)) => (
+            if created { StatusCode::CREATED } else { StatusCode::OK },
             Json(CreateOrgResponse {
-                org_id,
-                login: login.to_string(),
-                created: !already_exists,
+                org_id: tenant.id,
+                login: tenant.login,
+                created,
             }),
-        ).into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, login = %payload.login, "Failed to upsert org");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({ "error": "Internal database error" })),
-            ).into_response()
-        }
+        )
+            .into_response(),
+        Err(resp) => resp,
     }
 }
 

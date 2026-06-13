@@ -204,6 +204,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))
         .route(
+            "/platform/tenants",
+            get(handlers::list_platform_tenants).post(handlers::provision_platform_tenant_endpoint),
+        )
+        .route(
+            "/platform/tenants/{login}/lifecycle",
+            patch(handlers::update_platform_tenant_lifecycle),
+        )
+        .route(
             "/enterprise/adoption-profile",
             get(handlers::get_enterprise_adoption_profile)
                 .put(handlers::upsert_enterprise_adoption_profile),
