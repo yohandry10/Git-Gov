@@ -64,9 +64,14 @@ Current primitives:
   Jenkins/GitHub Actions evidence, evidence packets, and formal release approvals already exist.
 - Default behavior remains safe: record-only/advisory unless a customer explicitly selects blocking
   enforcement.
+- `KAN-80` adds the first governed repo setup slice: Admin-selected repo/branch, provider/module
+  selection, policy preset, policy/workflow preview acknowledgement, persisted baseline readiness,
+  Action Center gaps, and a CTA into advisory gate simulation. It is deliberately not a broad
+  integration wizard.
 
 Future scope:
 
+- Deployment Gates Advisory 0.1 API and UI history.
 - Stable deployment-authorization API for Jenkins, GitHub Actions, GitLab CI, and other deployers.
 - Response contract with `approved`, `reason`, `details`, `blocked_by`, evidence links, policy
   checksum, and break-glass eligibility.

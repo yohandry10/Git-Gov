@@ -8,15 +8,81 @@ import {
   buildEnterpriseOnboardingRemediationPlanFilename,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
+  buildFirstGovernedRepoSetupBaseline,
   buildEnterpriseProviderHealth,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
+  normalizeFirstGovernedRepoSetupDraft,
   normalizeEnterpriseOnboardingChecklistTracking,
+  validateFirstGovernedRepoSetupDraft,
   upsertEnterpriseOnboardingChecklistTrackingItem,
   validateEnterpriseAdoptionProfile,
   type EnterpriseAdoptionProfile,
   type OperationalPipelineEvidence,
 } from '@/components/control_plane/dashboard-helpers'
+
+describe('first governed repo setup helpers', () => {
+  it('keeps the first repo blocked when the repository name is not owner/repo', () => {
+    const draft = normalizeFirstGovernedRepoSetupDraft({
+      repository_full_name: 'missing-owner',
+      baseline: buildFirstGovernedRepoSetupBaseline({
+        repository_full_name: 'missing-owner',
+        default_branch: 'main',
+        goal: 'govern_release',
+        selected_providers: ['github'],
+        selected_modules: ['traceability', 'release-readiness', 'evidence-packets'],
+        policy_preset: 'moderate',
+        policyWorkflowPreviewAcknowledged: true,
+      }),
+    })
+
+    const validation = validateFirstGovernedRepoSetupDraft(draft)
+
+    expect(validation.ready).toBe(false)
+    expect(validation.gateReadiness).toBe('needs_repo')
+    expect(validation.gaps).toContain('repository_full_name')
+    expect(validation.errors).toContain('Repository must use owner/repo format.')
+  })
+
+  it('requires policy and workflow preview before advisory gate readiness', () => {
+    const draft = normalizeFirstGovernedRepoSetupDraft({
+      repository_full_name: 'example/app',
+      selected_modules: ['traceability', 'release-readiness', 'evidence-packets', 'quality-gates'],
+    })
+
+    const validation = validateFirstGovernedRepoSetupDraft(draft)
+
+    expect(validation.ready).toBe(false)
+    expect(validation.gateReadiness).toBe('needs_preview')
+    expect(validation.gaps).toContain('policy_workflow_preview')
+    expect(validation.gaps).not.toContain('quality_gate_evidence')
+  })
+
+  it('builds a baseline-ready first result when repo, providers, modules, and preview are present', () => {
+    const baseline = buildFirstGovernedRepoSetupBaseline({
+      repository_full_name: 'example/app',
+      default_branch: 'release',
+      goal: 'generate_audit_evidence',
+      selected_providers: ['github', 'jira', 'jenkins'],
+      selected_modules: ['traceability', 'release-readiness', 'evidence-packets', 'quality-gates', 'formal-approval'],
+      policy_preset: 'strict',
+      policyWorkflowPreviewAcknowledged: true,
+    })
+
+    expect(baseline.gate_readiness).toBe('baseline_ready')
+    expect(baseline.action_center_gaps).toEqual([])
+    expect(baseline.first_result).toMatchObject({
+      status: 'ready_for_advisory_gate',
+      deployment_gate_mode: 'advisory',
+      cta: 'simulate_deployment_gate',
+    })
+    expect(baseline.first_result.evidence_contract).toMatchObject({
+      repo: 'example/app',
+      branch: 'release',
+      providers: ['github', 'jira', 'jenkins'],
+    })
+  })
+})
 
 describe('dashboard-helpers operational evidence metrics', () => {
   it('computes average time-to-evidence from commit to pipeline ingestion', () => {

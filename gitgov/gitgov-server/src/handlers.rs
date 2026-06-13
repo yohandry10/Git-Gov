@@ -12,6 +12,7 @@ include!("handlers/policy_change_requests.rs");
 include!("handlers/org_core.rs");
 include!("handlers/org_users_api_keys.rs");
 include!("handlers/adoption_profiles.rs");
+include!("handlers/first_governed_repo_setup.rs");
 include!("handlers/release_approvals.rs");
 include!("handlers/audit_stream_governance.rs");
 include!("handlers/jobs_merges_admin_audit.rs");

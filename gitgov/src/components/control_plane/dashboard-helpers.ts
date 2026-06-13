@@ -79,6 +79,30 @@ export type {
   EnterpriseWorkflowTemplateSummary,
 } from './dashboard-helpers/adoption-profile'
 
+export {
+  DEFAULT_FIRST_GOVERNED_REPO_SETUP,
+  FIRST_GOVERNED_REPO_GOAL_OPTIONS,
+  FIRST_GOVERNED_REPO_MODULE_OPTIONS,
+  FIRST_GOVERNED_REPO_POLICY_PRESET_OPTIONS,
+  FIRST_GOVERNED_REPO_PROVIDER_OPTIONS,
+  buildFirstGovernedRepoSetupBaseline,
+  isFirstGovernedRepoNameValid,
+  normalizeFirstGovernedRepoSetupDraft,
+  validateFirstGovernedRepoSetupDraft,
+} from './dashboard-helpers/first-governed-repo-setup'
+export type {
+  FirstGovernedRepoGateReadiness,
+  FirstGovernedRepoModule,
+  FirstGovernedRepoOption,
+  FirstGovernedRepoPolicyPreset,
+  FirstGovernedRepoProvider,
+  FirstGovernedRepoSetupBaseline,
+  FirstGovernedRepoSetupDraft,
+  FirstGovernedRepoSetupGoal,
+  FirstGovernedRepoSetupStatus,
+  FirstGovernedRepoSetupValidation,
+} from './dashboard-helpers/first-governed-repo-setup'
+
 export { buildEnterpriseAdoptionPack } from './dashboard-helpers/adoption-pack'
 
 export { buildEnterpriseWorkflowTemplatePack } from './dashboard-helpers/workflow-templates'

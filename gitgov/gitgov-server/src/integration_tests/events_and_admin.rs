@@ -971,6 +971,25 @@ async fn enterprise_admin_routes_enforce_auth_and_org_scope() {
         payload.to_string()
     }
 
+    fn first_governed_repo_setup_payload(org_name: Option<&str>) -> String {
+        let mut payload = serde_json::json!({
+            "status": "ready",
+            "goal": "govern_release",
+            "repository_full_name": "example-org/example-repo",
+            "default_branch": "main",
+            "selected_providers": ["github", "jira"],
+            "selected_modules": ["traceability", "release-readiness", "evidence-packets"],
+            "policy_preset": "moderate",
+            "baseline": {
+                "policy_workflow_preview_acknowledged": true
+            }
+        });
+        if let Some(org_name) = org_name {
+            payload["org_name"] = serde_json::json!(org_name);
+        }
+        payload.to_string()
+    }
+
     struct EnterpriseRouteCase<'a> {
         method: &'a str,
         implicit_uri: &'a str,
@@ -1010,6 +1029,20 @@ async fn enterprise_admin_routes_enforce_auth_and_org_scope() {
             cross_org_uri: "/enterprise/onboarding-checklist-tracking",
             implicit_body: Some(tracking_payload(None)),
             cross_org_body: Some(tracking_payload(Some("enterprise-b"))),
+        },
+        EnterpriseRouteCase {
+            method: "GET",
+            implicit_uri: "/enterprise/first-governed-repo-setup",
+            cross_org_uri: "/enterprise/first-governed-repo-setup?org_name=enterprise-b",
+            implicit_body: None,
+            cross_org_body: None,
+        },
+        EnterpriseRouteCase {
+            method: "PUT",
+            implicit_uri: "/enterprise/first-governed-repo-setup",
+            cross_org_uri: "/enterprise/first-governed-repo-setup",
+            implicit_body: Some(first_governed_repo_setup_payload(None)),
+            cross_org_body: Some(first_governed_repo_setup_payload(Some("enterprise-b"))),
         },
         EnterpriseRouteCase {
             method: "GET",

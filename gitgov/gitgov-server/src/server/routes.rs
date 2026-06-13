@@ -214,6 +214,11 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
                 .put(handlers::upsert_enterprise_onboarding_checklist_tracking),
         )
         .route(
+            "/enterprise/first-governed-repo-setup",
+            get(handlers::get_first_governed_repo_setup)
+                .put(handlers::upsert_first_governed_repo_setup),
+        )
+        .route(
             "/enterprise/release-approvals",
             get(handlers::list_enterprise_release_approvals)
                 .post(handlers::create_enterprise_release_approval),

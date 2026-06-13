@@ -121,6 +121,32 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             updated_at TIMESTAMPTZ DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS enterprise_first_governed_repo_setups (
+            org_id UUID PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
+            run_id UUID NOT NULL DEFAULT gen_random_uuid(),
+            status TEXT NOT NULL DEFAULT 'draft'
+                CHECK (status IN ('draft', 'ready', 'blocked', 'completed')),
+            goal TEXT NOT NULL DEFAULT 'govern_release'
+                CHECK (goal IN (
+                    'govern_release',
+                    'generate_audit_evidence',
+                    'standardize_workflows',
+                    'assess_governance_gaps'
+                )),
+            repository_full_name TEXT NOT NULL,
+            default_branch TEXT NOT NULL DEFAULT 'main',
+            selected_providers JSONB NOT NULL DEFAULT '["github"]'::jsonb,
+            selected_modules JSONB NOT NULL DEFAULT '["traceability","release-readiness","evidence-packets"]'::jsonb,
+            policy_preset TEXT NOT NULL DEFAULT 'moderate'
+                CHECK (policy_preset IN ('audit-only', 'moderate', 'strict')),
+            baseline JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_by TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            completed_at TIMESTAMPTZ
+        );
+
         CREATE TABLE IF NOT EXISTS enterprise_release_approvals (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -896,6 +922,11 @@ pub(super) fn build_test_app_with_options(
             "/enterprise/onboarding-checklist-tracking",
             get(handlers::get_enterprise_onboarding_checklist_tracking)
                 .put(handlers::upsert_enterprise_onboarding_checklist_tracking),
+        )
+        .route(
+            "/enterprise/first-governed-repo-setup",
+            get(handlers::get_first_governed_repo_setup)
+                .put(handlers::upsert_first_governed_repo_setup),
         )
         .route(
             "/enterprise/release-approvals",
