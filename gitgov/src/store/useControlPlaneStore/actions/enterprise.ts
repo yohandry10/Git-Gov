@@ -3,6 +3,8 @@ import type {
   ControlPlaneActions,
   EnterpriseAdoptionProfileRecord,
   EnterpriseAdoptionProfileResponse,
+  FirstGovernedRepoSetupRecord,
+  FirstGovernedRepoSetupResponse,
   EnterpriseOnboardingChecklistTrackingRecord,
   EnterpriseOnboardingChecklistTrackingResponse,
   EnterpriseReleaseApprovalListResponse,
@@ -20,6 +22,8 @@ type EnterpriseActionKeys =
   | 'saveEnterpriseAdoptionProfile'
   | 'loadEnterpriseOnboardingChecklistTracking'
   | 'saveEnterpriseOnboardingChecklistTracking'
+  | 'loadFirstGovernedRepoSetup'
+  | 'saveFirstGovernedRepoSetup'
   | 'loadEnterpriseReleaseApprovals'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
@@ -152,6 +156,70 @@ export function createEnterpriseActions(
         isEnterpriseOnboardingChecklistTrackingSaving: false,
       })
       return false
+    }
+  },
+
+  loadFirstGovernedRepoSetup: async (orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({
+      isFirstGovernedRepoSetupLoading: true,
+      firstGovernedRepoSetupError: null,
+    })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoSetupResponse>('cmd_server_get_first_governed_repo_setup', {
+        config: serverConfig,
+        orgName,
+      })
+      const record = response.found ? response.setup ?? null : null
+      set({
+        firstGovernedRepoSetup: record,
+        firstGovernedRepoSetupUpdatedAt: record?.updated_at ?? null,
+        isFirstGovernedRepoSetupLoading: false,
+      })
+      return record
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        firstGovernedRepoSetupError: message,
+        isFirstGovernedRepoSetupLoading: false,
+      })
+      return null
+    }
+  },
+
+  saveFirstGovernedRepoSetup: async (payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({
+      isFirstGovernedRepoSetupSaving: true,
+      firstGovernedRepoSetupError: null,
+    })
+    try {
+      const record = await tauriInvoke<FirstGovernedRepoSetupRecord>('cmd_server_upsert_first_governed_repo_setup', {
+        config: serverConfig,
+        payload: {
+          ...payload,
+          org_name: orgName ?? null,
+        },
+      })
+      set({
+        firstGovernedRepoSetup: record,
+        firstGovernedRepoSetupUpdatedAt: record.updated_at,
+        isFirstGovernedRepoSetupSaving: false,
+      })
+      return record
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        firstGovernedRepoSetupError: message,
+        isFirstGovernedRepoSetupSaving: false,
+      })
+      return null
     }
   },
 

@@ -59,6 +59,64 @@ pub struct UpsertEnterpriseOnboardingChecklistTrackingRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FirstGovernedRepoSetupRecord {
+    pub run_id: String,
+    pub org_id: String,
+    pub status: String,
+    pub goal: String,
+    pub repository_full_name: String,
+    pub default_branch: String,
+    #[serde(default)]
+    pub selected_providers: Vec<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
+    pub policy_preset: String,
+    #[serde(default)]
+    pub baseline: serde_json::Value,
+    pub created_by: String,
+    pub updated_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoSetupResponse {
+    pub found: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setup: Option<FirstGovernedRepoSetupRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoSetupQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpsertFirstGovernedRepoSetupRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub goal: String,
+    #[serde(default)]
+    pub repository_full_name: String,
+    #[serde(default)]
+    pub default_branch: String,
+    #[serde(default)]
+    pub selected_providers: Vec<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
+    #[serde(default)]
+    pub policy_preset: String,
+    #[serde(default)]
+    pub baseline: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnterpriseReleaseApprovalRecord {
     pub id: String,
     pub org_id: String,

@@ -21,6 +21,7 @@ import { GovernanceCopilotPanel } from '@/components/control_plane/GovernanceCop
 import { PolicyEditorPanel } from '@/components/control_plane/PolicyEditorPanel'
 import { RecentCommitsTable } from '@/components/control_plane/RecentCommitsTable'
 import { EnterpriseAdoptionPanel } from '@/components/control_plane/EnterpriseAdoptionPanel'
+import { FirstGovernedRepoSetupPanel } from '@/components/control_plane/FirstGovernedRepoSetupPanel'
 import { ReleaseApprovalPanel } from '@/components/control_plane/ReleaseApprovalPanel'
 import {
   appendGitHubEvidenceTrendPoint,
@@ -320,7 +321,14 @@ export function GovernancePage() {
     }
 
     if (activeSection === 'adoption') {
-      return isAdmin ? <EnterpriseAdoptionPanel /> : <GovernanceAccessNotice />
+      return isAdmin ? (
+        <div className="space-y-3">
+          <FirstGovernedRepoSetupPanel />
+          <EnterpriseAdoptionPanel />
+        </div>
+      ) : (
+        <GovernanceAccessNotice />
+      )
     }
 
     if (activeSection === 'releases') {

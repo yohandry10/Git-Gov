@@ -1,5 +1,37 @@
 use super::*;
 
+fn string_vec_from_json(value: serde_json::Value) -> Vec<String> {
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn first_governed_repo_setup_from_row(row: &PgRow) -> FirstGovernedRepoSetupRecord {
+    FirstGovernedRepoSetupRecord {
+        run_id: row.get("run_id"),
+        org_id: row.get("org_id"),
+        status: row.get("status"),
+        goal: row.get("goal"),
+        repository_full_name: row.get("repository_full_name"),
+        default_branch: row.get("default_branch"),
+        selected_providers: string_vec_from_json(row.get("selected_providers")),
+        selected_modules: string_vec_from_json(row.get("selected_modules")),
+        policy_preset: row.get("policy_preset"),
+        baseline: row.get("baseline"),
+        created_by: row.get("created_by"),
+        updated_by: row.get("updated_by"),
+        created_at: row.get("created_at_ms"),
+        updated_at: row.get("updated_at_ms"),
+        completed_at: row.get("completed_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn get_enterprise_adoption_profile(
         &self,
@@ -137,6 +169,142 @@ impl Database {
             created_at: row.get("created_at_ms"),
             updated_at: row.get("updated_at_ms"),
         })
+    }
+
+    pub async fn get_first_governed_repo_setup(
+        &self,
+        org_id: &str,
+    ) -> Result<Option<FirstGovernedRepoSetupRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                run_id::text,
+                org_id::text,
+                status,
+                goal,
+                repository_full_name,
+                default_branch,
+                selected_providers,
+                selected_modules,
+                policy_preset,
+                baseline,
+                created_by,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM completed_at) * 1000)::BIGINT AS completed_at_ms
+            FROM enterprise_first_governed_repo_setups
+            WHERE org_id = $1::uuid
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| first_governed_repo_setup_from_row(&row)))
+    }
+
+    pub async fn upsert_first_governed_repo_setup(
+        &self,
+        org_id: &str,
+        payload: &UpsertFirstGovernedRepoSetupRequest,
+        updated_by: &str,
+    ) -> Result<FirstGovernedRepoSetupRecord, DbError> {
+        let selected_providers = serde_json::to_value(&payload.selected_providers)
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+        let selected_modules = serde_json::to_value(&payload.selected_modules)
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+        let candidate_run_id = uuid::Uuid::new_v4().to_string();
+        let status = payload.status.as_deref().unwrap_or("draft");
+
+        let row = sqlx::query(
+            r#"
+            WITH existing AS (
+                SELECT run_id
+                FROM enterprise_first_governed_repo_setups
+                WHERE org_id = $1::uuid
+            )
+            INSERT INTO enterprise_first_governed_repo_setups (
+                org_id,
+                run_id,
+                status,
+                goal,
+                repository_full_name,
+                default_branch,
+                selected_providers,
+                selected_modules,
+                policy_preset,
+                baseline,
+                created_by,
+                updated_by,
+                completed_at
+            )
+            VALUES (
+                $1::uuid,
+                COALESCE((SELECT run_id FROM existing), $2::uuid),
+                $3,
+                $4,
+                $5,
+                $6,
+                $7::jsonb,
+                $8::jsonb,
+                $9,
+                $10::jsonb,
+                $11,
+                $11,
+                CASE WHEN $3 = 'completed' THEN NOW() ELSE NULL END
+            )
+            ON CONFLICT (org_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                goal = EXCLUDED.goal,
+                repository_full_name = EXCLUDED.repository_full_name,
+                default_branch = EXCLUDED.default_branch,
+                selected_providers = EXCLUDED.selected_providers,
+                selected_modules = EXCLUDED.selected_modules,
+                policy_preset = EXCLUDED.policy_preset,
+                baseline = EXCLUDED.baseline,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW(),
+                completed_at = CASE
+                    WHEN EXCLUDED.status = 'completed'
+                        THEN COALESCE(enterprise_first_governed_repo_setups.completed_at, NOW())
+                    ELSE NULL
+                END
+            RETURNING
+                run_id::text,
+                org_id::text,
+                status,
+                goal,
+                repository_full_name,
+                default_branch,
+                selected_providers,
+                selected_modules,
+                policy_preset,
+                baseline,
+                created_by,
+                updated_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM completed_at) * 1000)::BIGINT AS completed_at_ms
+            "#,
+        )
+        .bind(org_id)
+        .bind(&candidate_run_id)
+        .bind(status)
+        .bind(&payload.goal)
+        .bind(&payload.repository_full_name)
+        .bind(&payload.default_branch)
+        .bind(&selected_providers)
+        .bind(&selected_modules)
+        .bind(&payload.policy_preset)
+        .bind(&payload.baseline)
+        .bind(updated_by)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(first_governed_repo_setup_from_row(&row))
     }
 
     pub async fn create_enterprise_release_approval(

@@ -1,6 +1,7 @@
 import type { CombinedEvent, ServerStats } from '@/lib/types'
 import type {
   EnterpriseAdoptionProfile,
+  FirstGovernedRepoSetupDraft,
   EnterpriseOnboardingChecklistTracking,
 } from '@/components/control_plane/dashboard-helpers'
 
@@ -183,6 +184,41 @@ export interface EnterpriseOnboardingChecklistTrackingRecord {
 export interface EnterpriseOnboardingChecklistTrackingResponse {
   found: boolean
   tracking?: EnterpriseOnboardingChecklistTrackingRecord | null
+}
+
+export interface FirstGovernedRepoSetupRecord {
+  run_id: string
+  org_id: string
+  status: FirstGovernedRepoSetupDraft['status']
+  goal: FirstGovernedRepoSetupDraft['goal']
+  repository_full_name: string
+  default_branch: string
+  selected_providers: FirstGovernedRepoSetupDraft['selected_providers']
+  selected_modules: FirstGovernedRepoSetupDraft['selected_modules']
+  policy_preset: FirstGovernedRepoSetupDraft['policy_preset']
+  baseline: FirstGovernedRepoSetupDraft['baseline']
+  created_by: string
+  updated_by: string
+  created_at: number
+  updated_at: number
+  completed_at?: number | null
+}
+
+export interface FirstGovernedRepoSetupResponse {
+  found: boolean
+  setup?: FirstGovernedRepoSetupRecord | null
+}
+
+export interface UpsertFirstGovernedRepoSetupRequest {
+  org_name?: string | null
+  status?: FirstGovernedRepoSetupDraft['status'] | null
+  goal: FirstGovernedRepoSetupDraft['goal']
+  repository_full_name: string
+  default_branch: string
+  selected_providers: FirstGovernedRepoSetupDraft['selected_providers']
+  selected_modules: FirstGovernedRepoSetupDraft['selected_modules']
+  policy_preset: FirstGovernedRepoSetupDraft['policy_preset']
+  baseline: FirstGovernedRepoSetupDraft['baseline']
 }
 
 export type EnterpriseReleaseApprovalDecision = 'approved' | 'rejected' | 'accepted-risk'
@@ -613,6 +649,11 @@ export interface ControlPlaneState {
   isEnterpriseOnboardingChecklistTrackingLoading: boolean
   isEnterpriseOnboardingChecklistTrackingSaving: boolean
   enterpriseOnboardingChecklistTrackingError: string | null
+  firstGovernedRepoSetup: FirstGovernedRepoSetupRecord | null
+  firstGovernedRepoSetupUpdatedAt: number | null
+  isFirstGovernedRepoSetupLoading: boolean
+  isFirstGovernedRepoSetupSaving: boolean
+  firstGovernedRepoSetupError: string | null
   releaseApprovals: EnterpriseReleaseApprovalRecord[]
   releaseApprovalsTotal: number
   releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
@@ -693,6 +734,8 @@ export interface ControlPlaneActions {
   saveEnterpriseAdoptionProfile: (profile: EnterpriseAdoptionProfile, orgName?: string) => Promise<boolean>
   loadEnterpriseOnboardingChecklistTracking: (orgName?: string) => Promise<EnterpriseOnboardingChecklistTracking | null>
   saveEnterpriseOnboardingChecklistTracking: (tracking: EnterpriseOnboardingChecklistTracking, orgName?: string) => Promise<boolean>
+  loadFirstGovernedRepoSetup: (orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
+  saveFirstGovernedRepoSetup: (payload: UpsertFirstGovernedRepoSetupRequest, orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

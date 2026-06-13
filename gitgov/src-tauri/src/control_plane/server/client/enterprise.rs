@@ -104,6 +104,57 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn get_first_governed_repo_setup(
+        &self,
+        org_name: Option<&str>,
+    ) -> Result<FirstGovernedRepoSetupResponse, ServerError> {
+        let url = self.endpoint_url(&["enterprise", "first-governed-repo-setup"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = org_name {
+            query_params.push(("org_name".to_string(), org_name.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn upsert_first_governed_repo_setup(
+        &self,
+        payload: &UpsertFirstGovernedRepoSetupRequest,
+    ) -> Result<FirstGovernedRepoSetupRecord, ServerError> {
+        let url = self.endpoint_url(&["enterprise", "first-governed-repo-setup"])?;
+        let mut request = self.client.put(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn list_enterprise_release_approvals(
         &self,
         query: &EnterpriseReleaseApprovalQuery,

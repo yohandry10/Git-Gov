@@ -11,13 +11,14 @@ use crate::control_plane::{
     EnterpriseReleaseApprovalRecord, EnterpriseReleaseGovernanceEvaluationQuery,
     EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
     EvidencePacketResponse, ExportLogEntry, ExportResponse, FeatureRequestCreated,
-    FeatureRequestInput, JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
+    FeatureRequestInput, FirstGovernedRepoSetupRecord, FirstGovernedRepoSetupResponse,
+    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
     JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
     OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
     PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
     ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
     TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
-    UpsertEnterpriseOnboardingChecklistTrackingRequest,
+    UpsertEnterpriseOnboardingChecklistTrackingRequest, UpsertFirstGovernedRepoSetupRequest,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::{Outbox, OutboxStatus};
@@ -743,6 +744,40 @@ pub async fn cmd_server_upsert_enterprise_onboarding_checklist_tracking(
                 .map_err(|e| to_command_error(e, "SERVER_ERROR"))
         },
     )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_first_governed_repo_setup(
+    config: ServerConnectionConfig,
+    org_name: Option<String>,
+) -> Result<FirstGovernedRepoSetupResponse, String> {
+    run_blocking_command("GET_FIRST_GOVERNED_REPO_SETUP", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_first_governed_repo_setup(org_name.as_deref())
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_upsert_first_governed_repo_setup(
+    config: ServerConnectionConfig,
+    payload: UpsertFirstGovernedRepoSetupRequest,
+) -> Result<FirstGovernedRepoSetupRecord, String> {
+    run_blocking_command("UPSERT_FIRST_GOVERNED_REPO_SETUP", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .upsert_first_governed_repo_setup(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
     .await
 }
 

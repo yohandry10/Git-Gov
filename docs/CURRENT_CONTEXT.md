@@ -9,6 +9,13 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- Active implementation ticket: GitHub issue `#295`, retitled to `KAN-80: First Governed Repo Setup MVP`.
+- Active branch for KAN-80: `feature/KAN-80-first-repo-setup`. The repository publication guard rejects branch names containing `codex`, so this branch intentionally does not use the normal Codex prefix while keeping the required `KAN-80` traceability ID.
+- KAN-80 implements the first concrete Deployment Gates 0.1 slice, not a broad integration wizard: one Admin-managed first-repo setup per org, stable `run_id`, repo/branch selection, provider/module/preset selection, policy/workflow preview acknowledgement, backend-normalized baseline readiness, Action Center gaps, Desktop UI under `Governance > Adoption`, and CTA into advisory gate simulation.
+- KAN-80 backend route: `GET/PUT /enterprise/first-governed-repo-setup`. It is Admin-only, org-scoped like the enterprise adoption routes, rejects secret-looking baseline JSON, requires GitHub as selected provider, preserves `run_id` across upserts, and writes `upsert_first_governed_repo_setup` audit entries.
+- KAN-80 migration: `gitgov/gitgov-server/supabase/supabase_schema_v32.sql` creates `enterprise_first_governed_repo_setups`.
+- KAN-80 documentation: `docs/design/first-governed-repo-setup-mvp.md` and `docs/reports/first-governed-repo-setup-2026-06-13.md`.
+- KAN-80 local validation run on 2026-06-13: backend check/clippy/full test (`253` tests), focused KAN-80 test with explicit `TEST_DATABASE_URL=postgresql://gitgov:gitgov_dev_password@127.0.0.1:5433/gitgov`, Tauri check/clippy/full test (`49` tests), frontend typecheck/lint/full test (`352` tests)/build, `git diff --check`, and `.\scripts\security\publication_guard.ps1` all passed. Vite still reports the existing large chunk warning while completing the production build.
 - KAN historical planning records were migrated to GitHub Issues on 2026-06-12:
   - `KAN-4` through `KAN-77` were created as closed historical GitHub issues `#217` through `#290`.
   - Labels created/used: `migrated-from-jira`, `historical-record`, `gitgov-recovered`, and `reconstructed-from-github`.
