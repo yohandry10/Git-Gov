@@ -54,9 +54,25 @@ Completed locally:
 
 Pending before production completion:
 
-- PR checks after push;
-- merge to `main`;
-- production smoke against deployed `GET /deployment-gates/authorizations`.
+- None for this slice.
+
+## Production Validation
+
+- PR `#305` merged to `main` as `ad02a35`.
+- Post-merge GitHub checks passed:
+  - `CI`;
+  - `Release Readiness Gate`;
+  - `Secret Scan`;
+  - `Public Naming Guard`;
+  - `Quality Gate Policy Matrix`;
+  - `Governance Correlation Smoke`;
+  - `Desktop Updater Readiness`;
+  - `SonarQube Governance`.
+- Render deploy `dep-d8mfnd19rddc7398b640` for `ad02a35` reached `live`.
+- Production smoke:
+  - `/health` returned `ok`;
+  - anonymous `GET /deployment-gates/authorizations?org_name=yohandry10&limit=1` returned `401`;
+  - authenticated history returned `total=1`, `itemCount=1`, first authorization `dga_486236dbd5e34264bebf52ec61db5667`, `decision=advisory`, and nested `evaluation` present.
 
 ## Remaining Product Work
 
