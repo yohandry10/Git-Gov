@@ -49,6 +49,12 @@ GitGov answers with:
 
 ## Validation
 
+PR:
+
+```text
+#303 merged to main as 4dfba5f
+```
+
 Local backend checks run:
 
 ```text
@@ -94,6 +100,41 @@ git diff --check
 ```
 
 Result: passed.
+
+## Production Validation
+
+Post-merge checks for `4dfba5f` passed:
+
+- `CI`
+- `Release Readiness Gate`
+- `Secret Scan`
+- `Public Naming Guard`
+- `Quality Gate Policy Matrix`
+- `Governance Correlation Smoke`
+- `Desktop Updater Readiness`
+- `SonarQube Governance`
+
+Render:
+
+```text
+dep-d8mf606q1p3s73fn44vg reached live
+```
+
+Production DB:
+
+- Applied `supabase_schema_v35.sql`.
+- `v35_postcheck.sql` returned `PASS` for table, decision constraint, and indexes.
+- Production was missing the older release evidence dependency table, so idempotent `supabase_schema_v28.sql` was applied and `release_evidence_packets` was verified before endpoint smoke.
+
+Production smoke:
+
+```text
+GET /health => ok
+anonymous POST /deployment-gates/authorize => 401
+GET /evidence/packets/tickets/KAN-83?... => found=true
+POST /deployment-gates/authorize => decision=advisory, approved=true, blocking=false, would_block=false
+GET /deployment-gates/authorizations?authorization_id=dga_486236dbd5e34264bebf52ec61db5667 => total=1
+```
 
 The integration tests generate a real release-bound evidence packet through the existing evidence packet endpoint before calling the new deployment authorization endpoint.
 
