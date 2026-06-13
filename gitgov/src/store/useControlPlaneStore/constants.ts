@@ -5,11 +5,6 @@ export const LEGACY_CHAT_MESSAGES_STORAGE_KEY = 'gitgov.chat_messages'
 export const CHAT_MESSAGES_STORAGE_KEY_PREFIX = 'gitgov.chat_messages.v2.'
 export const JIRA_TICKET_DETAIL_TTL_MS = 2 * 60 * 1000
 export const IS_DEV_MODE = Boolean(import.meta.env.DEV)
-export const FOUNDER_GITHUB_LOGIN = (
-  import.meta.env.VITE_FOUNDER_GITHUB_LOGIN ||
-  import.meta.env.VITE_FOUNDER_LOGIN ||
-  ''
-).trim()
 
 // Compatibility fallback: can be provided explicitly via env when needed.
 export const LEGACY_DEFAULT_API_KEY = (import.meta.env.VITE_LEGACY_DEFAULT_API_KEY || '').trim()

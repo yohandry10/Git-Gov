@@ -372,8 +372,11 @@ export interface ApiKeyInfo {
 export interface MeResponse {
   client_id: string
   role: string
+  principal_type?: string | null
+  platform_principal_id?: string | null
   org_id: string | null
   org_name?: string | null
+  requires_workspace_for_tenant_surfaces?: boolean
 }
 
 export interface PendingControlPlaneSession {

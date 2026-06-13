@@ -1154,6 +1154,9 @@ async fn enterprise_admin_routes_enforce_auth_and_org_scope() {
 async fn create_org_requires_founder_global_admin_key() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let founder_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    insert_platform_founder_principal(&pool, "bootstrap-admin").await;
+    let unregistered_bootstrap_key =
+        insert_test_api_key(&pool, "bootstrap-admin-unregistered", "Admin").await;
     let non_founder_admin_key = insert_test_api_key(&pool, "admin-user", "Admin").await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
@@ -1183,6 +1186,21 @@ async fn create_org_requires_founder_global_admin_key() {
         "POST",
         "/orgs",
         Some(&payload.to_string()),
+        Some(&unregistered_bootstrap_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "global admin without platform principal should be blocked: {}",
+        body
+    );
+
+    let (status, body) = json_request(
+        &app,
+        "POST",
+        "/orgs",
+        Some(&payload.to_string()),
         Some(&founder_key),
     )
     .await;
@@ -1203,6 +1221,7 @@ async fn create_org_requires_founder_global_admin_key() {
 async fn platform_tenant_administration_requires_founder_and_audits_lifecycle() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let founder_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    insert_platform_founder_principal(&pool, "bootstrap-admin").await;
     let customer_org = insert_test_org(&pool, "customer-a").await;
     let scoped_admin_key =
         insert_test_api_key_for_org(&pool, "customer-a-admin", "Admin", &customer_org).await;
@@ -1332,6 +1351,7 @@ async fn org_discovery_and_me_return_human_scope() {
     let org_a = insert_test_org(&pool, "enterprise-a").await;
     let _org_b = insert_test_org(&pool, "enterprise-b").await;
     let global_admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    let platform_principal_id = insert_platform_founder_principal(&pool, "bootstrap-admin").await;
     let scoped_admin_key =
         insert_test_api_key_for_org(&pool, "enterprise-a-admin", "Admin", &org_a).await;
     let db = Arc::new(Database::from_pool(pool.clone()));
@@ -1354,6 +1374,7 @@ async fn org_discovery_and_me_return_human_scope() {
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(parsed["client_id"], "bootstrap-admin");
     assert_eq!(parsed["principal_type"], "platform_founder");
+    assert_eq!(parsed["platform_principal_id"], platform_principal_id);
     assert_eq!(parsed["org_id"], serde_json::Value::Null);
     assert_eq!(parsed["org_name"], serde_json::Value::Null);
     assert_eq!(parsed["requires_workspace_for_tenant_surfaces"], true);
@@ -1400,6 +1421,7 @@ async fn org_discovery_and_me_return_human_scope() {
 async fn create_api_key_rejects_invalid_role_instead_of_silent_fallback() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    insert_platform_founder_principal(&pool, "bootstrap-admin").await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
 
@@ -1451,6 +1473,7 @@ async fn api_keys_respect_requested_org_scope() {
     let org_a = insert_test_org(&pool, "enterprise-a").await;
     let org_b = insert_test_org(&pool, "enterprise-b").await;
     let global_admin_key = insert_test_api_key(&pool, "bootstrap-admin", "Admin").await;
+    insert_platform_founder_principal(&pool, "bootstrap-admin").await;
     let enterprise_a_key =
         insert_test_api_key_for_org(&pool, "enterprise-a-dev", "Developer", &org_a).await;
     let enterprise_b_key =

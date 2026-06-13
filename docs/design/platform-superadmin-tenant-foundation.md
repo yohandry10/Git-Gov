@@ -5,6 +5,7 @@
 GitGov separates platform administration from tenant administration.
 
 - `Platform Founder` is a platform principal outside every tenant (`org_id=null`).
+- Founder identity is backed by `platform_principals`, not by a GitHub account.
 - `GitGov Internal` is a normal tenant used for dogfooding GitGov against GitGov's own repos.
 - Tenant admins, including admins of the GitGov internal tenant, cannot create sibling tenants.
 - Tenant provisioning and lifecycle management are platform actions, not workspace actions.
@@ -12,6 +13,7 @@ GitGov separates platform administration from tenant administration.
 ## Backend Shape
 
 - `/me` returns `principal_type` and `requires_workspace_for_tenant_surfaces`.
+- `/me` returns `platform_principal_id` when the API key resolves to an active platform principal.
 - `/platform/tenants` lists or provisions tenants and is restricted to Platform Founder.
 - `/platform/tenants/{login}/lifecycle` changes lifecycle state and is restricted to Platform Founder.
 - `/orgs` remains as a compatibility route for historical clients, but create/upsert follows the same audited Platform Founder semantics.
@@ -29,6 +31,16 @@ GitGov separates platform administration from tenant administration.
 
 Migration: `gitgov/gitgov-server/supabase/supabase_schema_v33.sql`.
 
+`platform_principals` is the platform identity catalog and was added in `gitgov/gitgov-server/supabase/supabase_schema_v34.sql`.
+
+- `client_id`: links the platform principal to the GitGov API key identity.
+- `principal_type`: `platform_founder`, `platform_operator`, or `platform_auditor`.
+- `status`: `active`, `disabled`, or `break_glass`.
+- `auth_method`: `api_key`, `sso`, `oidc`, or `break_glass`.
+- `metadata`: non-secret platform identity metadata.
+
+The bootstrap founder row is `client_id=bootstrap-admin`, `principal_type=platform_founder`, `status=active`, and `auth_method=api_key`. A global Admin API key is not enough to become Platform Founder unless it resolves to an active/break-glass `platform_principals` row.
+
 ## Audit Contract
 
 Platform tenant administration writes `admin_audit_log` entries:
@@ -42,4 +54,4 @@ Audit metadata identifies `actor_scope=platform`, target tenant login, lifecycle
 
 ## Non-Goals
 
-This slice does not build billing, SSO/MFA, support impersonation, physical platform service separation, plan enforcement, tenant deletion jobs, or a new Desktop UI.
+This slice does not build billing, full SSO/MFA login, support impersonation, physical platform service separation, plan enforcement, tenant deletion jobs, or a new Desktop UI.

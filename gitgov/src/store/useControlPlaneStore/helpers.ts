@@ -17,7 +17,6 @@ import {
   LOGS_KEYSET_PAGE_SIZE,
   MAX_CHAT_MESSAGES_PER_SESSION,
   MAX_CHAT_SESSIONS,
-  FOUNDER_GITHUB_LOGIN,
 } from './constants'
 
 export let cachedSecureControlPlaneApiKey: string | undefined
@@ -616,19 +615,22 @@ export function isControlPlaneIdentityCompatible(
   clientId: string,
   githubLogin: string | null,
   role: string,
+  principalType?: string | null,
 ): boolean {
+  const cp = clientId.trim().toLowerCase()
+  const normalizedRole = role.trim().toLowerCase()
+  const normalizedPrincipalType = principalType?.trim().toLowerCase() || ''
+  if (!cp) return false
+
+  // Platform founder is a GitGov control-plane principal, not a tenant GitHub identity.
+  if (normalizedPrincipalType === 'platform_founder' || cp === 'bootstrap-admin') {
+    return true
+  }
+
   if (!githubLogin) return true
 
-  const cp = clientId.trim().toLowerCase()
   const gh = githubLogin.trim().toLowerCase()
-  const normalizedRole = role.trim().toLowerCase()
-  if (!cp || !gh) return false
-
-  // Founder global key: if founder login is configured, enforce it; if not configured, allow.
-  if (cp === 'bootstrap-admin') {
-    if (!FOUNDER_GITHUB_LOGIN) return true
-    return gh === FOUNDER_GITHUB_LOGIN.toLowerCase()
-  }
+  if (!gh) return false
 
   // Developers must always match GitHub login.
   if (normalizedRole === 'developer') {

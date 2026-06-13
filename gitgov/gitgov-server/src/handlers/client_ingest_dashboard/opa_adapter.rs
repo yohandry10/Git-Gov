@@ -810,6 +810,8 @@ mod opa_adapter_tests {
             client_id: "fallback-user".to_string(),
             role: UserRole::Admin,
             org_id: Some("org-id".to_string()),
+            platform_principal_id: None,
+            is_platform_founder: false,
         };
         let source = PolicySourceMetadata::control_plane_managed("policy-admin", "checksum");
         let native_response = PolicyCheckResponse {
@@ -869,6 +871,8 @@ mod opa_adapter_tests {
             client_id: "fallback-user".to_string(),
             role: UserRole::Admin,
             org_id: Some("org-id".to_string()),
+            platform_principal_id: None,
+            is_platform_founder: false,
         };
         let source = PolicySourceMetadata::control_plane_managed("policy-admin", "checksum");
         let native_response = PolicyCheckResponse {

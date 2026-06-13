@@ -242,6 +242,24 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             is_active BOOLEAN DEFAULT TRUE
         );
 
+        CREATE TABLE IF NOT EXISTS platform_principals (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            client_id TEXT NOT NULL UNIQUE,
+            principal_type TEXT NOT NULL DEFAULT 'platform_founder'
+                CHECK (principal_type IN ('platform_founder', 'platform_operator', 'platform_auditor')),
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK (status IN ('active', 'disabled', 'break_glass')),
+            display_name TEXT,
+            email TEXT,
+            auth_method TEXT NOT NULL DEFAULT 'api_key'
+                CHECK (auth_method IN ('api_key', 'sso', 'oidc', 'break_glass')),
+            external_subject TEXT,
+            metadata JSONB NOT NULL DEFAULT '{}',
+            last_authenticated_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
         CREATE TABLE IF NOT EXISTS client_events (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
@@ -705,6 +723,40 @@ pub(super) async fn insert_test_api_key(pool: &PgPool, client_id: &str, role: &s
     .await
     .expect("insert test API key");
     raw_key
+}
+
+pub(super) async fn insert_platform_founder_principal(pool: &PgPool, client_id: &str) -> String {
+    let row = sqlx::query(
+        r#"
+        INSERT INTO platform_principals (
+            client_id,
+            principal_type,
+            status,
+            display_name,
+            auth_method,
+            metadata
+        )
+        VALUES (
+            $1,
+            'platform_founder',
+            'active',
+            'Test Platform Founder',
+            'api_key',
+            '{"source":"integration_test"}'::jsonb
+        )
+        ON CONFLICT (client_id) DO UPDATE SET
+            principal_type = 'platform_founder',
+            status = 'active',
+            auth_method = 'api_key'
+        RETURNING id::text
+        "#,
+    )
+    .bind(client_id)
+    .fetch_one(pool)
+    .await
+    .expect("insert platform founder principal");
+
+    row.get("id")
 }
 
 pub(super) async fn insert_test_api_key_for_org(

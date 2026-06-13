@@ -120,6 +120,29 @@ describe('useControlPlaneStore', () => {
     })
   })
 
+  describe('loadMe', () => {
+    it('accepts the platform founder principal without requiring GitHub identity match', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'founder-key' },
+      })
+      mockInvoke.mockResolvedValueOnce({
+        client_id: 'bootstrap-admin',
+        role: 'Admin',
+        principal_type: 'platform_founder',
+        org_id: null,
+        org_name: null,
+        requires_workspace_for_tenant_surfaces: true,
+      })
+
+      const loaded = await useControlPlaneStore.getState().loadMe()
+
+      expect(loaded).toBe(true)
+      expect(useControlPlaneStore.getState().userClientId).toBe('bootstrap-admin')
+      expect(useControlPlaneStore.getState().userRole).toBe('Admin')
+      expect(useControlPlaneStore.getState().error).toBeNull()
+    })
+  })
+
   describe('clearError', () => {
     it('clears error', () => {
       useControlPlaneStore.setState({ error: 'an error' })

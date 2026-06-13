@@ -725,12 +725,6 @@ export { useControlPlaneStore } from './useControlPlaneStore/store'
 // const CHAT_MESSAGES_STORAGE_KEY_PREFIX = 'gitgov.chat_messages.v2.'
 // const JIRA_TICKET_DETAIL_TTL_MS = 2 * 60 * 1000
 // const IS_DEV_MODE = Boolean(import.meta.env.DEV)
-// const FOUNDER_GITHUB_LOGIN = (
-//   import.meta.env.VITE_FOUNDER_GITHUB_LOGIN ||
-//   import.meta.env.VITE_FOUNDER_LOGIN ||
-//   ''
-// ).trim()
-//
 // // Compatibility fallback: can be provided explicitly via env when needed.
 // const LEGACY_DEFAULT_API_KEY = (import.meta.env.VITE_LEGACY_DEFAULT_API_KEY || '').trim()
 // const ALLOW_LEGACY_DEFAULT_API_KEY = (() => {
@@ -1313,19 +1307,22 @@ export { useControlPlaneStore } from './useControlPlaneStore/store'
 //   clientId: string,
 //   githubLogin: string | null,
 //   role: string,
+//   principalType?: string | null,
 // ): boolean {
+//   const cp = clientId.trim().toLowerCase()
+//   const normalizedRole = role.trim().toLowerCase()
+//   const normalizedPrincipalType = principalType?.trim().toLowerCase() || ''
+//   if (!cp) return false
+//
+//   // Platform founder is a GitGov control-plane principal, not a tenant GitHub identity.
+//   if (normalizedPrincipalType === 'platform_founder' || cp === 'bootstrap-admin') {
+//     return true
+//   }
+//
 //   if (!githubLogin) return true
 //
-//   const cp = clientId.trim().toLowerCase()
 //   const gh = githubLogin.trim().toLowerCase()
-//   const normalizedRole = role.trim().toLowerCase()
-//   if (!cp || !gh) return false
-//
-//   // Founder global key: if founder login is configured, enforce it; if not configured, allow.
-//   if (cp === 'bootstrap-admin') {
-//     if (!FOUNDER_GITHUB_LOGIN) return true
-//     return gh === FOUNDER_GITHUB_LOGIN.toLowerCase()
-//   }
+//   if (!gh) return false
 //
 //   // Developers must always match GitHub login.
 //   if (normalizedRole === 'developer') {
@@ -2278,17 +2275,14 @@ export { useControlPlaneStore } from './useControlPlaneStore/store'
 //     try {
 //       const me = await tauriInvoke<MeResponse>('cmd_server_get_me', { config: serverConfig })
 //       const githubLogin = useAuthStore.getState().user?.login ?? null
-//       if (!isControlPlaneIdentityCompatible(me.client_id, githubLogin, me.role)) {
-//         const founderHint = me.client_id === 'bootstrap-admin'
-//           ? ' La key founder (bootstrap-admin) requiere sesión GitHub del founder configurado en VITE_FOUNDER_GITHUB_LOGIN.'
-//           : ''
+//       if (!isControlPlaneIdentityCompatible(me.client_id, githubLogin, me.role, me.principal_type)) {
 //         set({
 //           userRole: null,
 //           userClientId: null,
 //           userOrgId: null,
 //           controlPlaneAuthConfirmed: true,
 //           pendingControlPlaneSession: null,
-//           error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.${founderHint}`,
+//           error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.`,
 //         })
 //         return false
 //       }

@@ -278,6 +278,8 @@ mod tests {
             client_id: "bootstrap-admin".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: Some("principal-1".to_string()),
+            is_platform_founder: true,
         };
         assert!(is_founder_scope_exception(&founder));
 
@@ -285,6 +287,8 @@ mod tests {
             client_id: "admin-other".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: None,
+            is_platform_founder: false,
         };
         assert!(!is_founder_scope_exception(&non_founder_global));
 
@@ -292,6 +296,8 @@ mod tests {
             client_id: "bootstrap-admin".to_string(),
             role: UserRole::Admin,
             org_id: Some("org-123".to_string()),
+            platform_principal_id: Some("principal-1".to_string()),
+            is_platform_founder: true,
         };
         assert!(!is_founder_scope_exception(&founder_scoped));
     }

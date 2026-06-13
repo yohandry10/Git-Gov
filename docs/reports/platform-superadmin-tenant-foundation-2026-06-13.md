@@ -39,4 +39,4 @@ Date: 2026-06-13
 
 - Desktop UI should present Platform Founder as a mode outside tenant workspaces.
 - Do not auto-switch into a tenant immediately after provisioning without explicit operator choice.
-- Future enterprise work can add `platform_principals`, granular capabilities, lifecycle billing states, support access controls, SSO/MFA, and physical platform metadata isolation.
+- KAN-82 added `platform_principals`; future enterprise work can add granular capabilities, lifecycle billing states, support access controls, full SSO/MFA login, and physical platform metadata isolation.

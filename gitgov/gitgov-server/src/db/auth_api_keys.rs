@@ -108,9 +108,21 @@ impl Database {
         } else {
             sqlx::query(
                 r#"
-                SELECT client_id, role, org_id::text, last_used
-                FROM api_keys
-                WHERE key_hash = $1 AND is_active = TRUE
+                SELECT
+                    ak.client_id,
+                    ak.role,
+                    ak.org_id::text,
+                    ak.last_used,
+                    pp.id::text AS platform_principal_id,
+                    (
+                        pp.id IS NOT NULL
+                        AND pp.principal_type = 'platform_founder'
+                        AND pp.status IN ('active', 'break_glass')
+                    ) AS is_platform_founder
+                FROM api_keys ak
+                LEFT JOIN platform_principals pp
+                  ON pp.client_id = ak.client_id
+                WHERE ak.key_hash = $1 AND ak.is_active = TRUE
                 "#,
             )
             .bind(key_hash)
@@ -137,7 +149,7 @@ impl Database {
                 {
                     tracing::warn!(
                         error = %error_msg,
-                        client_id = %stale_auth.0,
+                            client_id = %stale_auth.client_id,
                         failure_streak,
                         stale_age_secs,
                         "Using stale API key auth cache due transient database error"
@@ -159,7 +171,15 @@ impl Database {
                 let role = UserRole::from_str(&role);
                 let client_id: String = row.get("client_id");
                 let org_id: Option<String> = row.get("org_id");
-                let auth_tuple = Some((client_id.clone(), role.clone(), org_id.clone()));
+                let platform_principal_id: Option<String> = row.get("platform_principal_id");
+                let is_platform_founder: bool = row.get("is_platform_founder");
+                let auth_tuple = Some(ApiKeyAuthContext {
+                    client_id: client_id.clone(),
+                    role: role.clone(),
+                    org_id: org_id.clone(),
+                    platform_principal_id,
+                    is_platform_founder,
+                });
 
                 // Reduce write amplification on high-traffic endpoints.
                 // `last_used` is observability metadata, so update only every ~5 minutes.
@@ -257,6 +277,43 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         self.invalidate_auth_cache_key(key_hash);
+
+        Ok(())
+    }
+
+    pub async fn ensure_platform_founder_principal(&self, client_id: &str) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            INSERT INTO platform_principals (
+                client_id,
+                principal_type,
+                status,
+                display_name,
+                auth_method,
+                metadata
+            )
+            VALUES (
+                $1,
+                'platform_founder',
+                'active',
+                'GitGov Platform Founder',
+                'api_key',
+                '{"source":"startup","tenant_scope":"platform"}'::jsonb
+            )
+            ON CONFLICT (client_id) DO UPDATE SET
+                principal_type = 'platform_founder',
+                status = 'active',
+                display_name = COALESCE(platform_principals.display_name, EXCLUDED.display_name),
+                auth_method = 'api_key',
+                metadata = COALESCE(platform_principals.metadata, '{}'::jsonb) || EXCLUDED.metadata
+            "#,
+        )
+        .bind(client_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        self.invalidate_auth_cache_all();
 
         Ok(())
     }

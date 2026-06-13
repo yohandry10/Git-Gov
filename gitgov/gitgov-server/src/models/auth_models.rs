@@ -25,6 +25,8 @@ pub struct MeResponse {
     #[serde(default)]
     pub principal_type: String,
     #[serde(default)]
+    pub platform_principal_id: Option<String>,
+    #[serde(default)]
     pub org_id: Option<String>,
     #[serde(default)]
     pub org_name: Option<String>,

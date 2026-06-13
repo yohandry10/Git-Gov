@@ -11,13 +11,13 @@ use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::sync::Arc;
 
-const FOUNDER_CLIENT_ID: &str = "bootstrap-admin";
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
     pub client_id: String,
     pub role: UserRole,
     pub org_id: Option<String>,
+    pub platform_principal_id: Option<String>,
+    pub is_platform_founder: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -99,14 +99,13 @@ pub async fn auth_middleware(
         AuthError::unauthorized("Invalid or expired API key")
     })?;
 
-    let (client_id, role, org_id) = auth_user;
     if auth_validation.used_stale_cache
-        && role == UserRole::Admin
+        && auth_user.role == UserRole::Admin
         && is_sensitive_admin_path(path.as_str())
     {
         tracing::warn!(
             path = %path,
-            client_id = %client_id,
+            client_id = %auth_user.client_id,
             "Blocking stale auth cache for sensitive admin endpoint"
         );
         return Err(AuthError::service_unavailable(
@@ -115,9 +114,11 @@ pub async fn auth_middleware(
     }
 
     let user = AuthUser {
-        client_id,
-        role,
-        org_id,
+        client_id: auth_user.client_id,
+        role: auth_user.role,
+        org_id: auth_user.org_id,
+        platform_principal_id: auth_user.platform_principal_id,
+        is_platform_founder: auth_user.is_platform_founder,
     };
 
     metrics::counter!("gitgov_auth_total", "result" => "success", "role" => user.role.as_str())
@@ -146,9 +147,7 @@ pub fn require_admin(user: &AuthUser) -> Result<(), AuthError> {
 }
 
 pub fn is_founder_global_admin(user: &AuthUser) -> bool {
-    user.role == UserRole::Admin
-        && user.org_id.is_none()
-        && user.client_id.eq_ignore_ascii_case(FOUNDER_CLIENT_ID)
+    user.role == UserRole::Admin && user.org_id.is_none() && user.is_platform_founder
 }
 
 #[cfg(test)]
@@ -173,6 +172,8 @@ mod tests {
             client_id: "admin1".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: None,
+            is_platform_founder: false,
         }
     }
 
@@ -181,6 +182,8 @@ mod tests {
             client_id: login.to_string(),
             role: UserRole::Developer,
             org_id: None,
+            platform_principal_id: None,
+            is_platform_founder: false,
         }
     }
 
@@ -200,21 +203,29 @@ mod tests {
             client_id: "bootstrap-admin".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: Some("principal-1".to_string()),
+            is_platform_founder: true,
         }));
         assert!(is_founder_global_admin(&AuthUser {
-            client_id: "BOOTSTRAP-ADMIN".to_string(),
+            client_id: "platform-service".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: Some("principal-2".to_string()),
+            is_platform_founder: true,
         }));
         assert!(!is_founder_global_admin(&AuthUser {
             client_id: "bootstrap-admin".to_string(),
             role: UserRole::Admin,
             org_id: Some("org-123".to_string()),
+            platform_principal_id: Some("principal-1".to_string()),
+            is_platform_founder: true,
         }));
         assert!(!is_founder_global_admin(&AuthUser {
-            client_id: "admin1".to_string(),
+            client_id: "bootstrap-admin".to_string(),
             role: UserRole::Admin,
             org_id: None,
+            platform_principal_id: None,
+            is_platform_founder: false,
         }));
     }
 
