@@ -30,7 +30,9 @@ Query fields:
 | `repository_full_name` | Yes | Repository in `owner/repo` form. |
 | `release_id` | Yes | Customer release identifier. |
 | `environment` | Yes | Environment being evaluated, for example `production`. |
-| `evidence_packet_hash` | No | SHA-256 evidence packet hash to bind approval evidence to a specific packet. |
+| `evidence_packet_hash` | Yes | SHA-256 evidence packet hash to bind approval evidence to a specific packet. |
+
+The current backend requires a known release-bound evidence packet hash and rejects requests whose packet binding does not match repository, release, branch, target SHA, or environment.
 
 The endpoint is admin-only and is included in the stale-auth-cache sensitive route set.
 
@@ -93,7 +95,7 @@ KAN-47 consumes this evaluator through an optional workflow gate. The KAN-47 gat
 - Global admin keys still require an explicit `org_name`.
 - The endpoint reads adoption profile policy and release approval metadata only.
 - It does not read provider tokens, `.env` values, Authorization headers, or raw customer secrets.
-- Evidence packet matching uses hashes, not raw packet contents.
+- Evidence packet matching uses hashes and binding metadata, not raw packet contents.
 - `record-only` remains safe for default onboarding because it cannot create a blocking result.
 
 ## Non-Goals
@@ -101,6 +103,6 @@ KAN-47 consumes this evaluator through an optional workflow gate. The KAN-47 gat
 - No customer workflow is mutated.
 - No remote provider state is changed.
 - No database migration is added.
-- No release is blocked unless an explicit workflow or caller, such as the KAN-47 optional gate, treats `blocking=true` as a gate.
+- No release is blocked unless an explicit workflow or caller, such as the KAN-47 optional gate or KAN-83 deployment authorization API, treats `blocking=true` as a gate.
 - No cryptographic human signature model is added.
 - No default multi-approver requirement is introduced.

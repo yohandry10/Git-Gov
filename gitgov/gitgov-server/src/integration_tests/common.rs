@@ -191,6 +191,47 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
                 evidence_packet_hash
             );
 
+        CREATE TABLE IF NOT EXISTS deployment_gate_authorizations (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            authorization_id TEXT NOT NULL UNIQUE,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            release_id TEXT NOT NULL,
+            repository_full_name TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            target_sha TEXT NOT NULL,
+            environment TEXT NOT NULL,
+            deployer TEXT NOT NULL,
+            ticket_id TEXT,
+            evidence_packet_hash TEXT NOT NULL,
+            evidence_packet_uri TEXT,
+            decision TEXT NOT NULL CHECK (decision IN ('approved', 'advisory', 'blocked')),
+            approved BOOLEAN NOT NULL,
+            blocking BOOLEAN NOT NULL,
+            would_block BOOLEAN NOT NULL,
+            reason TEXT NOT NULL,
+            blocked_by JSONB NOT NULL DEFAULT '[]'::jsonb,
+            warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
+            policy_checksum TEXT NOT NULL,
+            break_glass_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+            evaluation JSONB NOT NULL,
+            details JSONB NOT NULL DEFAULT '{}'::jsonb,
+            request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+            requested_by TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_deployment_gate_authorizations_org_created
+            ON deployment_gate_authorizations(org_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_deployment_gate_authorizations_scope
+            ON deployment_gate_authorizations(
+                org_id,
+                repository_full_name,
+                branch,
+                environment,
+                created_at DESC
+            );
+
         CREATE TABLE IF NOT EXISTS release_evidence_packets (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -1007,6 +1048,14 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/enterprise/release-governance/evaluate",
             get(handlers::evaluate_enterprise_release_governance),
+        )
+        .route(
+            "/deployment-gates/authorize",
+            post(handlers::authorize_deployment_gate),
+        )
+        .route(
+            "/deployment-gates/authorizations",
+            get(handlers::list_deployment_gate_authorizations),
         )
         .route("/policy/{repo_name}", get(handlers::get_policy))
         .route(

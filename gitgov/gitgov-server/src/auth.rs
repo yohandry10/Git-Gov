@@ -135,6 +135,7 @@ fn is_sensitive_admin_path(path: &str) -> bool {
         || path.starts_with("/org-invitations")
         || path.starts_with("/dashboard")
         || path.starts_with("/enterprise/")
+        || path.starts_with("/deployment-gates/")
         || path.starts_with("/jobs/metrics")
         || path.starts_with("/outbox/lease/metrics")
 }
@@ -261,6 +262,8 @@ mod tests {
         assert!(is_sensitive_admin_path(
             "/enterprise/release-governance/evaluate"
         ));
+        assert!(is_sensitive_admin_path("/deployment-gates/authorize"));
+        assert!(is_sensitive_admin_path("/deployment-gates/authorizations"));
         assert!(is_sensitive_admin_path("/jobs/metrics"));
         assert!(is_sensitive_admin_path("/outbox/lease/metrics"));
         assert!(!is_sensitive_admin_path("/logs"));

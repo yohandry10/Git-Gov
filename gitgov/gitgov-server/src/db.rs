@@ -68,6 +68,25 @@ pub struct ApiKeyAuthValidation {
     pub used_stale_cache: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct CreateDeploymentGateAuthorizationInput {
+    pub authorization_id: String,
+    pub payload: DeploymentGateAuthorizationRequest,
+    pub decision: String,
+    pub approved: bool,
+    pub blocking: bool,
+    pub would_block: bool,
+    pub reason: String,
+    pub blocked_by: Vec<String>,
+    pub warnings: Vec<String>,
+    pub policy_checksum: String,
+    pub break_glass_eligible: bool,
+    pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
+    pub details: serde_json::Value,
+    pub request_payload: serde_json::Value,
+    pub requested_by: String,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct DistributedRateLimitCheck {
     pub allowed: bool,
@@ -94,6 +113,38 @@ fn enterprise_release_approval_from_row(row: &PgRow) -> EnterpriseReleaseApprova
         expires_at: row.get("expires_at_ms"),
         approval_hash: row.get("approval_hash"),
         created_by: row.get("created_by"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
+fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthorizationRecord {
+    DeploymentGateAuthorizationRecord {
+        id: row.get("id"),
+        authorization_id: row.get("authorization_id"),
+        org_id: row.get("org_id"),
+        release_id: row.get("release_id"),
+        repository_full_name: row.get("repository_full_name"),
+        branch: row.get("branch"),
+        target_sha: row.get("target_sha"),
+        environment: row.get("environment"),
+        deployer: row.get("deployer"),
+        ticket_id: row.get("ticket_id"),
+        evidence_packet_hash: row.get("evidence_packet_hash"),
+        evidence_packet_uri: row.get("evidence_packet_uri"),
+        decision: row.get("decision"),
+        approved: row.get("approved"),
+        blocking: row.get("blocking"),
+        would_block: row.get("would_block"),
+        reason: row.get("reason"),
+        blocked_by: serde_json::from_value(row.get("blocked_by")).unwrap_or_default(),
+        warnings: serde_json::from_value(row.get("warnings")).unwrap_or_default(),
+        policy_checksum: row.get("policy_checksum"),
+        break_glass_eligible: row.get("break_glass_eligible"),
+        evaluation: serde_json::from_value(row.get("evaluation"))
+            .unwrap_or_else(|_| EnterpriseReleaseGovernanceEvaluationResponse::default()),
+        details: row.get("details"),
+        request_payload: row.get("request_payload"),
+        requested_by: row.get("requested_by"),
         created_at: row.get("created_at_ms"),
     }
 }

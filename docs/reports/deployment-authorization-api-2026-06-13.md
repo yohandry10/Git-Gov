@@ -1,0 +1,115 @@
+# KAN-83 Deployment Authorization API Report
+
+Date: 2026-06-13
+
+## Scope
+
+KAN-83 implements the Deployment Gates 0.1 authorization API slice.
+
+Implemented:
+
+- `POST /deployment-gates/authorize`.
+- `GET /deployment-gates/authorizations`.
+- append-only `deployment_gate_authorizations` persistence.
+- Supabase migration `supabase_schema_v35.sql`.
+- Supabase postcheck `checks/v35_postcheck.sql`.
+- release-governance evaluator reuse.
+- evidence packet binding validation before authorization.
+- advisory history when first governed repo setup is missing or incomplete.
+- blocking decision only when explicit release governance policy blocks.
+
+Not implemented:
+
+- Desktop history UI.
+- provider-specific remote deployment mutation.
+- OPA/Rego execution.
+- automatic branch protection or workflow secret setup.
+
+## Product Decision
+
+Deployment authorization is now a first-class API contract instead of a script-only wrapper around the evaluator.
+
+CI/CD callers can ask GitGov:
+
+```text
+Can this exact release, SHA, environment, and evidence packet deploy?
+```
+
+GitGov answers with:
+
+- `approved`;
+- `decision`;
+- `reason`;
+- `blocking`;
+- `would_block`;
+- `blocked_by`;
+- `warnings`;
+- `policy_checksum`;
+- persisted authorization history.
+
+## Validation
+
+Local backend checks run:
+
+```text
+cargo check --manifest-path .\gitgov\gitgov-server\Cargo.toml
+cargo fmt --manifest-path .\gitgov\gitgov-server\Cargo.toml --check
+cargo clippy --manifest-path .\gitgov\gitgov-server\Cargo.toml -- -D warnings
+```
+
+Result: passed.
+
+Migration validation run against a temporary Postgres 16 container on host port `55433`:
+
+```text
+psql --dbname=postgresql://gitgov:<redacted>@127.0.0.1:55433/gitgov --file=.\gitgov\gitgov-server\supabase\supabase_schema_v35.sql
+psql --dbname=postgresql://gitgov:<redacted>@127.0.0.1:55433/gitgov --file=.\gitgov\gitgov-server\supabase\checks\v35_postcheck.sql
+```
+
+Result: postcheck returned `PASS` for table, decision constraint, and indexes.
+
+Focused tests run with the same real Postgres integration database:
+
+```text
+$env:TEST_DATABASE_URL='postgresql://gitgov:<redacted>@127.0.0.1:55433/gitgov'
+cargo test --manifest-path .\gitgov\gitgov-server\Cargo.toml deployment_gate -- --nocapture
+```
+
+Result: `6 passed`.
+
+Full backend tests run with the same real Postgres integration database:
+
+```text
+$env:TEST_DATABASE_URL='postgresql://gitgov:<redacted>@127.0.0.1:55433/gitgov'
+cargo test --manifest-path .\gitgov\gitgov-server\Cargo.toml
+```
+
+Result: `260 passed`.
+
+Publication checks:
+
+```text
+git diff --check
+.\scripts\security\publication_guard.ps1
+```
+
+Result: passed.
+
+The integration tests generate a real release-bound evidence packet through the existing evidence packet endpoint before calling the new deployment authorization endpoint.
+
+## Test Coverage Notes
+
+Covered:
+
+- missing first governed repo setup produces advisory authorization and persists history;
+- blocking release governance policy without approval produces `decision=blocked`;
+- persisted history returns the original authorization and normalized request payload;
+- Developer keys cannot authorize deploys and scoped Admin keys cannot write another tenant's authorization history;
+- provided `ticket_id` must match the release-bound evidence packet ticket;
+- evidence packet binding remains enforced;
+- existing release approval and release governance binding behavior still passes.
+
+Remaining follow-up:
+
+- add Desktop UI history panel when the product asks for the visible operator surface;
+- add customer workflow template update to call `/deployment-gates/authorize` instead of the lower-level evaluator when KAN-84 or equivalent starts.

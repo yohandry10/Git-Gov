@@ -236,6 +236,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::evaluate_enterprise_release_governance),
         )
         .route(
+            "/deployment-gates/authorize",
+            post(handlers::authorize_deployment_gate),
+        )
+        .route(
+            "/deployment-gates/authorizations",
+            get(handlers::list_deployment_gate_authorizations),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )
