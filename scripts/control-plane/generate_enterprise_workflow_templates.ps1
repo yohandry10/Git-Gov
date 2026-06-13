@@ -1068,7 +1068,9 @@ jobs:
           GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
           REPOSITORY_NAME: ${{ github.repository }}
           REF_NAME_VALUE: ${{ github.ref_name }}
+          SHA_VALUE: ${{ github.sha }}
           RUN_ID_VALUE: ${{ github.run_id }}
+          ACTOR_VALUE: ${{ github.actor }}
           INPUT_ORG_NAME: ${{ inputs.org_name }}
           INPUT_RELEASE_ID: ${{ inputs.release_id }}
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
@@ -1101,39 +1103,73 @@ jobs:
 
           $environment = $env:INPUT_ENVIRONMENT
           if ([string]::IsNullOrWhiteSpace($environment)) { $environment = "__RELEASE_GOVERNANCE_ENVIRONMENT__" }
+          $targetSha = $env:SHA_VALUE
 
-          $query = New-Object System.Collections.Generic.List[string]
-          if (-not [string]::IsNullOrWhiteSpace($env:INPUT_ORG_NAME)) {
-            $query.Add("org_name=$([Uri]::EscapeDataString($env:INPUT_ORG_NAME))") | Out-Null
-          }
-          $query.Add("repository_full_name=$([Uri]::EscapeDataString($env:REPOSITORY_NAME))") | Out-Null
-          $query.Add("release_id=$([Uri]::EscapeDataString($releaseId))") | Out-Null
-          $query.Add("environment=$([Uri]::EscapeDataString($environment))") | Out-Null
           if (-not [string]::IsNullOrWhiteSpace($env:INPUT_EVIDENCE_PACKET_HASH)) {
-            $query.Add("evidence_packet_hash=$([Uri]::EscapeDataString($env:INPUT_EVIDENCE_PACKET_HASH))") | Out-Null
+            $payload = [ordered]@{
+              org_name = if ([string]::IsNullOrWhiteSpace($env:INPUT_ORG_NAME)) { $null } else { $env:INPUT_ORG_NAME }
+              release_id = $releaseId
+              repository_full_name = $env:REPOSITORY_NAME
+              branch = $env:REF_NAME_VALUE
+              target_sha = $targetSha
+              environment = $environment
+              deployer = if ([string]::IsNullOrWhiteSpace($env:ACTOR_VALUE)) { "github-actions" } else { $env:ACTOR_VALUE }
+              ticket_id = $releaseId
+              evidence_packet_hash = $env:INPUT_EVIDENCE_PACKET_HASH
+              requested_by = "github-actions"
+              deployment_run_id = $env:RUN_ID_VALUE
+              metadata = @{ source = "gitgov-generated-release-governance-gate"; workflow = "GitGov Release Governance Gate" }
+            }
+          } else {
+            $result = [ordered]@{
+              status = "skipped"
+              reason = "missing_release_bound_evidence_packet_hash"
+              repository = $env:REPOSITORY_NAME
+              release_id = $releaseId
+              environment = $environment
+              generated_at = [DateTimeOffset]::UtcNow.ToString("o")
+            }
+            $result | ConvertTo-Json -Depth 8 | Out-File -FilePath $outputPath -Encoding UTF8
+            if ($env:INPUT_ENFORCE_GATE -eq "true" -or $env:INPUT_FAIL_ON_WOULD_BLOCK -eq "true") {
+              throw "Missing release-bound GitGov evidence packet hash for strict release governance gate."
+            }
+            Write-Warning "Skipping release governance gate because release-bound evidence is missing."
+            exit 0
           }
 
           $baseUrl = $env:GITGOV_URL.TrimEnd("/")
-          $headers = @{ Authorization = "Bearer $env:GITGOV_API_KEY"; Accept = "application/json" }
-          $evaluation = Invoke-RestMethod -Method GET -Uri "$baseUrl/enterprise/release-governance/evaluate?$($query -join '&')" -Headers $headers
+          $headers = @{ Authorization = "Bearer $env:GITGOV_API_KEY"; Accept = "application/json"; "Content-Type" = "application/json" }
+          $authorization = Invoke-RestMethod -Method POST -Uri "$baseUrl/deployment-gates/authorize" -Headers $headers -Body ($payload | ConvertTo-Json -Depth 8)
           $result = [ordered]@{
-            status = "evaluated"
+            status = "authorized"
             repository = $env:REPOSITORY_NAME
             release_id = $releaseId
             environment = $environment
             enforce = ($env:INPUT_ENFORCE_GATE -eq "true")
             fail_on_would_block = ($env:INPUT_FAIL_ON_WOULD_BLOCK -eq "true")
+            authorization = [ordered]@{
+              authorization_id = $authorization.authorization_id
+              decision = $authorization.decision
+              approved = $authorization.approved
+              blocking = $authorization.blocking
+              would_block = $authorization.would_block
+              reason = $authorization.reason
+              warnings = $authorization.warnings
+              blocked_by = $authorization.blocked_by
+              policy_checksum = $authorization.policy_checksum
+              break_glass_eligible = $authorization.break_glass_eligible
+            }
             evaluation = [ordered]@{
-              status = $evaluation.status
-              policy_mode = $evaluation.policy.mode
-              policy_enforcement = $evaluation.policy.enforcement
-              policy_satisfied = $evaluation.policy_satisfied
-              blocking = $evaluation.blocking
-              would_block = $evaluation.would_block
-              valid_approval_count = $evaluation.valid_approval_count
-              required_approval_count = $evaluation.required_approval_count
-              issues = $evaluation.issues
-              next_steps = $evaluation.next_steps
+              status = $authorization.evaluation.status
+              policy_mode = $authorization.evaluation.policy.mode
+              policy_enforcement = $authorization.evaluation.policy.enforcement
+              policy_satisfied = $authorization.evaluation.policy_satisfied
+              blocking = $authorization.evaluation.blocking
+              would_block = $authorization.evaluation.would_block
+              valid_approval_count = $authorization.evaluation.valid_approval_count
+              required_approval_count = $authorization.evaluation.required_approval_count
+              issues = $authorization.evaluation.issues
+              next_steps = $authorization.evaluation.next_steps
             }
             generated_at = [DateTimeOffset]::UtcNow.ToString("o")
             safety = @{
@@ -1143,10 +1179,10 @@ jobs:
           }
           $result | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
 
-          if ($env:INPUT_ENFORCE_GATE -eq "true" -and $evaluation.blocking -eq $true) {
+          if ($env:INPUT_ENFORCE_GATE -eq "true" -and $authorization.blocking -eq $true) {
             throw "Release governance blocking policy is not satisfied."
           }
-          if ($env:INPUT_FAIL_ON_WOULD_BLOCK -eq "true" -and $evaluation.would_block -eq $true) {
+          if ($env:INPUT_FAIL_ON_WOULD_BLOCK -eq "true" -and $authorization.would_block -eq $true) {
             throw "Release governance would block."
           }
 

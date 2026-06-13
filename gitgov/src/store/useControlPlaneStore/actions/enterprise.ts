@@ -1,6 +1,8 @@
 import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import type {
   ControlPlaneActions,
+  DeploymentGateAuthorizationListResponse,
+  DeploymentGateAuthorizationQuery,
   EnterpriseAdoptionProfileRecord,
   EnterpriseAdoptionProfileResponse,
   FirstGovernedRepoSetupRecord,
@@ -25,6 +27,7 @@ type EnterpriseActionKeys =
   | 'loadFirstGovernedRepoSetup'
   | 'saveFirstGovernedRepoSetup'
   | 'loadEnterpriseReleaseApprovals'
+  | 'loadDeploymentGateAuthorizations'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
   | 'exportAuditData'
@@ -259,6 +262,53 @@ export function createEnterpriseActions(
       set({
         releaseApprovalError: message,
         isReleaseApprovalsLoading: false,
+      })
+      return null
+    }
+  },
+
+  loadDeploymentGateAuthorizations: async (query = {}) => {
+    const { serverConfig, selectedOrgName, deploymentGateAuthorizationsFilters } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: DeploymentGateAuthorizationQuery = {
+      ...deploymentGateAuthorizationsFilters,
+      ...query,
+      org_name: orgName ?? null,
+      authorization_id: query.authorization_id?.trim() || deploymentGateAuthorizationsFilters.authorization_id || null,
+      repository_full_name: query.repository_full_name?.trim() || deploymentGateAuthorizationsFilters.repository_full_name || null,
+      branch: query.branch?.trim() || deploymentGateAuthorizationsFilters.branch || null,
+      target_sha: query.target_sha?.trim() || deploymentGateAuthorizationsFilters.target_sha || null,
+      release_id: query.release_id?.trim() || deploymentGateAuthorizationsFilters.release_id || null,
+      environment: query.environment?.trim() || deploymentGateAuthorizationsFilters.environment || null,
+      decision: query.decision?.trim() || deploymentGateAuthorizationsFilters.decision || null,
+      deployer: query.deployer?.trim() || deploymentGateAuthorizationsFilters.deployer || null,
+      limit: query.limit ?? deploymentGateAuthorizationsFilters.limit ?? 10,
+      offset: query.offset ?? deploymentGateAuthorizationsFilters.offset ?? 0,
+    }
+
+    set({
+      isDeploymentGateAuthorizationsLoading: true,
+      releaseApprovalError: null,
+      deploymentGateAuthorizationsFilters: nextQuery,
+    })
+    try {
+      const response = await tauriInvoke<DeploymentGateAuthorizationListResponse>('cmd_server_list_deployment_gate_authorizations', {
+        config: serverConfig,
+        query: nextQuery,
+      })
+      set({
+        deploymentGateAuthorizations: response.items,
+        deploymentGateAuthorizationsTotal: response.total,
+        deploymentGateAuthorizationsUpdatedAt: Date.now(),
+        isDeploymentGateAuthorizationsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        releaseApprovalError: message,
+        isDeploymentGateAuthorizationsLoading: false,
       })
       return null
     }

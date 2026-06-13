@@ -4,9 +4,14 @@ param(
   [string]$ApiKey = "",
   [string]$OrgName = "",
   [string]$RepositoryFullName = "",
+  [string]$Branch = "",
+  [string]$TargetSha = "",
   [string]$ReleaseId = "",
   [string]$Environment = "production",
+  [string]$Deployer = "gitgov-validator",
+  [string]$TicketId = "",
   [string]$EvidencePacketHash = "",
+  [string]$DeploymentRunId = "",
   [int]$TimeoutSeconds = 45,
   [string]$OutputPath = "",
   [switch]$Enforce,
@@ -144,13 +149,22 @@ if ([string]::IsNullOrWhiteSpace($ApiKey)) {
 if ([string]::IsNullOrWhiteSpace($RepositoryFullName) -or $RepositoryFullName -notmatch "^[^/\s]+/[^/\s]+$") {
   $failures.Add("repository_full_name_must_look_like_owner_repo") | Out-Null
 }
+if ([string]::IsNullOrWhiteSpace($Branch)) {
+  $failures.Add("branch_is_required") | Out-Null
+}
+if ([string]::IsNullOrWhiteSpace($TargetSha) -or $TargetSha -notmatch "^[A-Fa-f0-9]{40}([A-Fa-f0-9]{24})?$") {
+  $failures.Add("target_sha_must_be_full_40_or_64_hex") | Out-Null
+}
 if ([string]::IsNullOrWhiteSpace($ReleaseId)) {
   $failures.Add("release_id_is_required") | Out-Null
 }
 if ([string]::IsNullOrWhiteSpace($Environment)) {
   $failures.Add("environment_is_required") | Out-Null
 }
-if (-not [string]::IsNullOrWhiteSpace($EvidencePacketHash) -and $EvidencePacketHash -notmatch "^[A-Fa-f0-9]{64}$") {
+if ([string]::IsNullOrWhiteSpace($Deployer)) {
+  $failures.Add("deployer_is_required") | Out-Null
+}
+if ([string]::IsNullOrWhiteSpace($EvidencePacketHash) -or $EvidencePacketHash -notmatch "^[A-Fa-f0-9]{64}$") {
   $failures.Add("evidence_packet_hash_must_be_64_hex_characters") | Out-Null
 }
 if ($TimeoutSeconds -lt 1) {
@@ -166,21 +180,37 @@ $safeUrl = ""
 if ($failures.Count -eq 0) {
   try {
     $safeUrl = Test-SafeGitGovUrl $GitGovUrl
-    $queryParams = New-Object System.Collections.Generic.List[string]
-    Add-QueryParam -QueryParams $queryParams -Name "org_name" -Value $OrgName
-    Add-QueryParam -QueryParams $queryParams -Name "repository_full_name" -Value $RepositoryFullName.Trim()
-    Add-QueryParam -QueryParams $queryParams -Name "release_id" -Value $ReleaseId.Trim()
-    Add-QueryParam -QueryParams $queryParams -Name "environment" -Value $Environment.Trim().ToLowerInvariant()
-    Add-QueryParam -QueryParams $queryParams -Name "evidence_packet_hash" -Value $EvidencePacketHash.Trim()
-    $uri = "{0}/enterprise/release-governance/evaluate?{1}" -f $safeUrl, ($queryParams -join "&")
+    $uri = "{0}/deployment-gates/authorize" -f $safeUrl
+    $payload = [ordered]@{
+      org_name = if ([string]::IsNullOrWhiteSpace($OrgName)) { $null } else { $OrgName.Trim() }
+      release_id = $ReleaseId.Trim()
+      repository_full_name = $RepositoryFullName.Trim()
+      branch = $Branch.Trim()
+      target_sha = $TargetSha.Trim().ToLowerInvariant()
+      environment = $Environment.Trim().ToLowerInvariant()
+      deployer = $Deployer.Trim()
+      ticket_id = if ([string]::IsNullOrWhiteSpace($TicketId)) { $null } else { $TicketId.Trim().ToUpperInvariant() }
+      evidence_packet_hash = $EvidencePacketHash.Trim().ToLowerInvariant()
+      requested_by = "gitgov-validation-script"
+      deployment_run_id = if ([string]::IsNullOrWhiteSpace($DeploymentRunId)) { $null } else { $DeploymentRunId.Trim() }
+      metadata = [ordered]@{
+        source = "scripts/control-plane/validate_release_governance_gate.ps1"
+        enforce = [bool]$Enforce
+        fail_on_would_block = [bool]$FailOnWouldBlock
+        require_policy_satisfied = [bool]$RequirePolicySatisfied
+      }
+    }
+    $body = $payload | ConvertTo-Json -Depth 8
 
     $response = Invoke-WebRequest `
-      -Method GET `
+      -Method POST `
       -Uri $uri `
       -Headers @{
         Authorization = "Bearer $ApiKey"
         Accept = "application/json"
       } `
+      -ContentType "application/json" `
+      -Body $body `
       -TimeoutSec $TimeoutSeconds `
       -UseBasicParsing
 
@@ -188,7 +218,7 @@ if ($failures.Count -eq 0) {
     $responseJson = $response.Content | ConvertFrom-Json
   } catch {
     $errorMessage = Protect-SecretText $_.Exception.Message
-    $failures.Add("release_governance_evaluator_request_failed") | Out-Null
+    $failures.Add("deployment_gate_authorization_request_failed") | Out-Null
   }
 }
 
@@ -208,31 +238,33 @@ $quorumRules = @()
 $matchingApprovalCount = 0
 
 if ($null -ne $responseJson) {
-  $evaluationStatus = [string]$responseJson.status
-  $policySatisfied = [bool]$responseJson.policy_satisfied
+  $evaluationStatus = [string]$responseJson.decision
   $blocking = [bool]$responseJson.blocking
   $wouldBlock = [bool]$responseJson.would_block
-  $validApprovalCount = [int]$responseJson.valid_approval_count
-  $requiredApprovalCount = [int]$responseJson.required_approval_count
-  if ($responseJson.PSObject.Properties["policy"] -and $null -ne $responseJson.policy) {
-    $policyMode = [string]$responseJson.policy.mode
-    $policyEnforcement = [string]$responseJson.policy.enforcement
-    $policyApplies = [bool]$responseJson.policy.policy_applies
-    $quorumRules = @($responseJson.policy.quorum_rules)
-  }
-  if ($responseJson.PSObject.Properties["issues"] -and $null -ne $responseJson.issues) {
-    $issues = @($responseJson.issues | ForEach-Object { Protect-SecretText ([string]$_) })
-  }
-  if ($responseJson.PSObject.Properties["next_steps"] -and $null -ne $responseJson.next_steps) {
-    $nextSteps = @($responseJson.next_steps | ForEach-Object { Protect-SecretText ([string]$_) })
-  }
-  if ($responseJson.PSObject.Properties["approvals"] -and $null -ne $responseJson.approvals) {
-    $matchingApprovalCount = @($responseJson.approvals).Count
+  if ($responseJson.PSObject.Properties["evaluation"] -and $null -ne $responseJson.evaluation) {
+    $policySatisfied = [bool]$responseJson.evaluation.policy_satisfied
+    $validApprovalCount = [int]$responseJson.evaluation.valid_approval_count
+    $requiredApprovalCount = [int]$responseJson.evaluation.required_approval_count
+    if ($responseJson.evaluation.PSObject.Properties["policy"] -and $null -ne $responseJson.evaluation.policy) {
+      $policyMode = [string]$responseJson.evaluation.policy.mode
+      $policyEnforcement = [string]$responseJson.evaluation.policy.enforcement
+      $policyApplies = [bool]$responseJson.evaluation.policy.policy_applies
+      $quorumRules = @($responseJson.evaluation.policy.quorum_rules)
+    }
+    if ($responseJson.evaluation.PSObject.Properties["issues"] -and $null -ne $responseJson.evaluation.issues) {
+      $issues = @($responseJson.evaluation.issues | ForEach-Object { Protect-SecretText ([string]$_) })
+    }
+    if ($responseJson.evaluation.PSObject.Properties["next_steps"] -and $null -ne $responseJson.evaluation.next_steps) {
+      $nextSteps = @($responseJson.evaluation.next_steps | ForEach-Object { Protect-SecretText ([string]$_) })
+    }
+    if ($responseJson.evaluation.PSObject.Properties["approvals"] -and $null -ne $responseJson.evaluation.approvals) {
+      $matchingApprovalCount = @($responseJson.evaluation.approvals).Count
+    }
   }
 }
 
 if ($statusCode -ne 0 -and ($statusCode -lt 200 -or $statusCode -ge 300)) {
-  $failures.Add("release_governance_evaluator_returned_non_2xx") | Out-Null
+  $failures.Add("deployment_gate_authorization_returned_non_2xx") | Out-Null
 }
 if ($Enforce -and $blocking) {
   $failures.Add("release_governance_blocking_policy_not_satisfied") | Out-Null
@@ -254,6 +286,29 @@ $gateStatus = if ($failures.Count -gt 0) {
   "passed"
 }
 
+$authorizationId = ""
+$authorizationDecision = ""
+$authorizationApproved = $false
+$authorizationReason = ""
+$authorizationWarnings = @()
+$authorizationBlockedBy = @()
+$authorizationPolicyChecksum = ""
+$authorizationBreakGlassEligible = $false
+if ($null -ne $responseJson) {
+  if ($responseJson.PSObject.Properties["authorization_id"]) { $authorizationId = [string]$responseJson.authorization_id }
+  if ($responseJson.PSObject.Properties["decision"]) { $authorizationDecision = [string]$responseJson.decision }
+  if ($responseJson.PSObject.Properties["approved"]) { $authorizationApproved = [bool]$responseJson.approved }
+  if ($responseJson.PSObject.Properties["reason"]) { $authorizationReason = Protect-SecretText ([string]$responseJson.reason) }
+  if ($responseJson.PSObject.Properties["warnings"] -and $null -ne $responseJson.warnings) {
+    $authorizationWarnings = @($responseJson.warnings | ForEach-Object { Protect-SecretText ([string]$_) })
+  }
+  if ($responseJson.PSObject.Properties["blocked_by"] -and $null -ne $responseJson.blocked_by) {
+    $authorizationBlockedBy = @($responseJson.blocked_by | ForEach-Object { Protect-SecretText ([string]$_) })
+  }
+  if ($responseJson.PSObject.Properties["policy_checksum"]) { $authorizationPolicyChecksum = [string]$responseJson.policy_checksum }
+  if ($responseJson.PSObject.Properties["break_glass_eligible"]) { $authorizationBreakGlassEligible = [bool]$responseJson.break_glass_eligible }
+}
+
 $result = [ordered]@{
   generated_at = (Get-Date).ToUniversalTime().ToString("o")
   status = $gateStatus
@@ -265,9 +320,24 @@ $result = [ordered]@{
     gitgov_url = $safeUrl
     org_name = $OrgName
     repository_full_name = $RepositoryFullName
+    branch = $Branch
+    target_sha = if ([string]::IsNullOrWhiteSpace($TargetSha)) { "" } else { $TargetSha.Trim().ToLowerInvariant() }
     release_id = $ReleaseId
     environment = $Environment
+    deployer = $Deployer
+    ticket_id = $TicketId
+    deployment_run_id = $DeploymentRunId
     evidence_packet_hash_present = -not [string]::IsNullOrWhiteSpace($EvidencePacketHash)
+  }
+  authorization = [ordered]@{
+    authorization_id = $authorizationId
+    decision = $authorizationDecision
+    approved = $authorizationApproved
+    reason = $authorizationReason
+    warnings = @($authorizationWarnings)
+    blocked_by = @($authorizationBlockedBy)
+    policy_checksum = $authorizationPolicyChecksum
+    break_glass_eligible = $authorizationBreakGlassEligible
   }
   evaluation = [ordered]@{
     http_status = $statusCode

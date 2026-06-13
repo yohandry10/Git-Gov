@@ -262,6 +262,67 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn list_deployment_gate_authorizations(
+        &self,
+        query: &DeploymentGateAuthorizationQuery,
+    ) -> Result<DeploymentGateAuthorizationListResponse, ServerError> {
+        let url = self.endpoint_url(&["deployment-gates", "authorizations"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        if let Some(authorization_id) = &query.authorization_id {
+            query_params.push(("authorization_id".to_string(), authorization_id.clone()));
+        }
+        if let Some(repository_full_name) = &query.repository_full_name {
+            query_params.push((
+                "repository_full_name".to_string(),
+                repository_full_name.clone(),
+            ));
+        }
+        if let Some(branch) = &query.branch {
+            query_params.push(("branch".to_string(), branch.clone()));
+        }
+        if let Some(target_sha) = &query.target_sha {
+            query_params.push(("target_sha".to_string(), target_sha.clone()));
+        }
+        if let Some(release_id) = &query.release_id {
+            query_params.push(("release_id".to_string(), release_id.clone()));
+        }
+        if let Some(environment) = &query.environment {
+            query_params.push(("environment".to_string(), environment.clone()));
+        }
+        if let Some(decision) = &query.decision {
+            query_params.push(("decision".to_string(), decision.clone()));
+        }
+        if let Some(deployer) = &query.deployer {
+            query_params.push(("deployer".to_string(), deployer.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+        if let Some(offset) = query.offset {
+            query_params.push(("offset".to_string(), offset.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_enterprise_release_approval(
         &self,
         payload: &CreateEnterpriseReleaseApprovalRequest,

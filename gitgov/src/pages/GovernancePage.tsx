@@ -23,6 +23,7 @@ import { RecentCommitsTable } from '@/components/control_plane/RecentCommitsTabl
 import { EnterpriseAdoptionPanel } from '@/components/control_plane/EnterpriseAdoptionPanel'
 import { FirstGovernedRepoSetupPanel } from '@/components/control_plane/FirstGovernedRepoSetupPanel'
 import { ReleaseApprovalPanel } from '@/components/control_plane/ReleaseApprovalPanel'
+import { DeploymentGateHistoryPanel } from '@/components/control_plane/DeploymentGateHistoryPanel'
 import {
   appendGitHubEvidenceTrendPoint,
   buildGitHubEvidenceSummary,
@@ -364,6 +365,7 @@ export function GovernancePage() {
             />
           </div>
           <ReleaseApprovalPanel />
+          <DeploymentGateHistoryPanel />
         </div>
       ) : <GovernanceAccessNotice />
     }
