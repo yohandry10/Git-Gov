@@ -91,6 +91,22 @@ The focused KAN-80 integration test was also run with an explicit local Postgres
 secret-looking baseline rejection, idempotent `run_id` preservation, baseline normalization, GET
 readback, and audit-log insertion.
 
+## Production Validation
+
+Post-merge production validation completed on 2026-06-13:
+
+- PR `#296` merged to `main` as commit `fae9e69`.
+- Post-merge GitHub checks passed, including `CI`, `Release Readiness Gate`, `Secret Scan`, `Public
+  Naming Guard`, `Quality Gate Policy Matrix (Optional)`, `Governance Correlation Smoke
+  (Optional)`, `Desktop Updater Readiness (Optional)`, and `SonarQube Governance (Non-Blocking)`.
+- Render deploy `dep-d8maj2u8bjmc73eakeq0` for `fae9e69` reached `live`.
+- Supabase migration `v32` was applied manually through ignored local `DATABASE_URL`.
+- `GET https://gitgov-api.onrender.com/health` returned HTTP `200` with `status=ok`.
+- Authenticated `GET https://gitgov-api.onrender.com/stats` returned HTTP `200`.
+- Authenticated `GET https://gitgov-api.onrender.com/enterprise/first-governed-repo-setup?org_name=yohandry10`
+  returned HTTP `200` with `{"found":false}`, proving the new production route can read the new
+  table after migration.
+
 ## Residual Work
 
 Next ticket after this slice should be Deployment Gates Advisory 0.1:
