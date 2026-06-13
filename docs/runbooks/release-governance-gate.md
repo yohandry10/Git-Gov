@@ -1,22 +1,29 @@
 # Release Governance Gate Runbook
 
-Updated: 2026-05-01
+Updated: 2026-06-13
 
-Tickets: `KAN-47`, `KAN-49`
+Tickets: `KAN-47`, `KAN-49`, `KAN-84`
 
 ## Purpose
 
 Use this gate when a customer explicitly wants GitGov release governance to affect a release decision.
 
-Default use is report-only. Enforcement must be selected deliberately.
+Default use is report-only. Enforcement must be selected deliberately. Since `KAN-84`, the local script
+and generated workflow templates call the Deployment Gates authorization API and persist an authorization
+history record. They no longer call only the lower-level release-governance evaluator.
 
 ## Local Report-Only Check
 
 ```powershell
 .\scripts\control-plane\validate_release_governance_gate.ps1 `
   -RepositoryFullName yohandry10/Git-Gov `
+  -Branch main `
+  -TargetSha abcdef1234567890abcdef1234567890abcdef12 `
   -ReleaseId KAN-47 `
   -Environment production `
+  -Deployer gitgov-validator `
+  -TicketId KAN-47 `
+  -EvidencePacketHash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef `
   -OrgName yohandry10 `
   -OutputPath out\release-governance-gate.json
 ```
@@ -26,16 +33,25 @@ Default use is report-only. Enforcement must be selected deliberately.
 ```powershell
 .\scripts\control-plane\validate_release_governance_gate.ps1 `
   -RepositoryFullName yohandry10/Git-Gov `
+  -Branch main `
+  -TargetSha abcdef1234567890abcdef1234567890abcdef12 `
   -ReleaseId KAN-47 `
   -Environment production `
+  -Deployer gitgov-validator `
+  -TicketId KAN-47 `
+  -EvidencePacketHash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef `
   -OrgName yohandry10 `
   -Enforce `
   -OutputPath out\release-governance-gate-enforce.json
 ```
 
-`-Enforce` fails only when the evaluator reports `blocking=true`.
+`-Enforce` fails only when the authorization response reports `blocking=true`.
 
 Use `-FailOnWouldBlock` only when advisory/would-block states should fail too. Use `-RequirePolicySatisfied` only when every unsatisfied policy should fail.
+
+`-EvidencePacketHash` must be the SHA-256 hash of a release-bound GitGov evidence packet whose
+repository, branch, target SHA, release id, and environment match the request. This is deliberate:
+Deployment Gates should never authorize one commit with evidence generated for another commit.
 
 ## GitHub Workflow
 
@@ -63,7 +79,8 @@ Do not paste secret values into workflow YAML.
 When the organization profile is still `record-only`, the gate should return a passing report with:
 
 ```text
-status=recorded
+status=passed
+authorization.decision=approved or advisory
 policy_mode=record-only
 blocking=false
 would_block=false

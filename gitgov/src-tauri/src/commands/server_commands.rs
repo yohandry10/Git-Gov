@@ -5,6 +5,7 @@ use crate::control_plane::{
     CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
+    DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
     EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
     EnterpriseReleaseApprovalListResponse, EnterpriseReleaseApprovalQuery,
@@ -810,6 +811,23 @@ pub async fn cmd_server_evaluate_enterprise_release_governance(
         });
         client
             .evaluate_enterprise_release_governance(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_deployment_gate_authorizations(
+    config: ServerConnectionConfig,
+    query: DeploymentGateAuthorizationQuery,
+) -> Result<DeploymentGateAuthorizationListResponse, String> {
+    run_blocking_command("LIST_DEPLOYMENT_GATE_AUTHORIZATIONS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_deployment_gate_authorizations(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

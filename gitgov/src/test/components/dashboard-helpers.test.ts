@@ -470,9 +470,10 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(gate?.content).toContain('name: GitGov Release Governance Gate')
     expect(gate?.content).toContain('default: true')
     expect(gate?.content).toContain('target_sha:')
-    expect(gate?.content).toContain('$query.Add("branch=')
-    expect(gate?.content).toContain('$query.Add("target_sha=')
-    expect(gate?.content).toContain('/enterprise/release-governance/evaluate')
+    expect(gate?.content).toContain('branch = $branch')
+    expect(gate?.content).toContain('target_sha = $targetSha')
+    expect(gate?.content).toContain('/deployment-gates/authorize')
+    expect(gate?.content).toContain('authorization_id = $authorization.authorization_id')
     expect(pack.manifest.workflow_templates.map((workflow) => workflow.file)).toContain(
       '.github/workflows/release-governance-gate.yml',
     )

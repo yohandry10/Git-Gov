@@ -152,5 +152,6 @@ Covered:
 
 Remaining follow-up:
 
-- add Desktop UI history panel when the product asks for the visible operator surface;
-- add customer workflow template update to call `/deployment-gates/authorize` instead of the lower-level evaluator when KAN-84 or equivalent starts.
+- provider-specific deploy examples for Jenkins, GitHub Actions, GitLab CI, and other deployers;
+- break-glass workflow design and authorization evidence;
+- environment policy UX that makes stricter production policy easy to review without making blocking the default.

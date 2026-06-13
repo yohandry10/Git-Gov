@@ -69,6 +69,11 @@ describe('useControlPlaneStore', () => {
       releaseApprovals: [],
       releaseApprovalsTotal: 0,
       releaseApprovalsFilters: { limit: 10, offset: 0 },
+      deploymentGateAuthorizations: [],
+      deploymentGateAuthorizationsTotal: 0,
+      deploymentGateAuthorizationsFilters: { limit: 10, offset: 0 },
+      deploymentGateAuthorizationsUpdatedAt: null,
+      isDeploymentGateAuthorizationsLoading: false,
       isReleaseApprovalsLoading: false,
       isReleaseApprovalSubmitting: false,
       releaseApprovalError: null,
@@ -750,6 +755,92 @@ describe('useControlPlaneStore', () => {
       })
       expect(response?.status).toBe('recorded')
       expect(useControlPlaneStore.getState().releaseGovernanceEvaluation?.policy.mode).toBe('record-only')
+    })
+
+    it('loads deployment gate authorization history with selected org scope', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        items: [{
+          id: 'row-1',
+          authorization_id: 'dga_123',
+          org_id: 'org-1',
+          release_id: 'KAN-83',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          target_sha: 'abcdef1234567890abcdef1234567890abcdef12',
+          environment: 'production',
+          deployer: 'github-actions',
+          ticket_id: 'KAN-83',
+          evidence_packet_hash: 'e'.repeat(64),
+          evidence_packet_uri: '/evidence/packets/tickets/KAN-83',
+          decision: 'advisory',
+          approved: true,
+          blocking: false,
+          would_block: false,
+          reason: 'Deployment approved by current release governance policy.',
+          blocked_by: [],
+          warnings: ['First governed repo setup is not configured.'],
+          policy_checksum: 'f'.repeat(64),
+          break_glass_eligible: false,
+          evaluation: {
+            status: 'recorded',
+            policy_satisfied: true,
+            blocking: false,
+            would_block: false,
+            valid_approval_count: 0,
+            required_approval_count: 0,
+            policy: {
+              mode: 'record-only',
+              environment: 'production',
+              approval_required: false,
+              enforcement: 'disabled',
+              policy_applies: true,
+              quorum_enabled: false,
+              quorum_rules: [],
+            },
+            approvals: [],
+            issues: [],
+            next_steps: [],
+          },
+          details: {},
+          request_payload: {},
+          requested_by: 'admin',
+          created_at: 3,
+        }],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      })
+
+      const response = await useControlPlaneStore.getState().loadDeploymentGateAuthorizations({
+        repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        environment: ' production ',
+        deployer: ' github-actions ',
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_deployment_gate_authorizations', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          authorization_id: null,
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          target_sha: null,
+          release_id: null,
+          environment: 'production',
+          decision: null,
+          deployer: 'github-actions',
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(response?.total).toBe(1)
+      expect(useControlPlaneStore.getState().deploymentGateAuthorizations[0].authorization_id).toBe('dga_123')
+      expect(useControlPlaneStore.getState().deploymentGateAuthorizationsUpdatedAt).toBeGreaterThan(0)
     })
   })
 })

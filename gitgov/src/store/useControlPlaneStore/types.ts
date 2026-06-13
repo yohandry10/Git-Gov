@@ -253,6 +253,56 @@ export interface EnterpriseReleaseApprovalListResponse {
   offset: number
 }
 
+export interface DeploymentGateAuthorizationRecord {
+  id: string
+  authorization_id: string
+  org_id: string
+  release_id: string
+  repository_full_name: string
+  branch: string
+  target_sha: string
+  environment: string
+  deployer: string
+  ticket_id?: string | null
+  evidence_packet_hash: string
+  evidence_packet_uri?: string | null
+  decision: string
+  approved: boolean
+  blocking: boolean
+  would_block: boolean
+  reason: string
+  blocked_by: string[]
+  warnings: string[]
+  policy_checksum: string
+  break_glass_eligible: boolean
+  evaluation: EnterpriseReleaseGovernanceEvaluationResponse
+  details: Record<string, unknown>
+  request_payload: Record<string, unknown>
+  requested_by: string
+  created_at: number
+}
+
+export interface DeploymentGateAuthorizationQuery {
+  org_name?: string | null
+  authorization_id?: string | null
+  repository_full_name?: string | null
+  branch?: string | null
+  target_sha?: string | null
+  release_id?: string | null
+  environment?: string | null
+  decision?: string | null
+  deployer?: string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface DeploymentGateAuthorizationListResponse {
+  items: DeploymentGateAuthorizationRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -660,9 +710,14 @@ export interface ControlPlaneState {
   releaseApprovals: EnterpriseReleaseApprovalRecord[]
   releaseApprovalsTotal: number
   releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
+  deploymentGateAuthorizations: DeploymentGateAuthorizationRecord[]
+  deploymentGateAuthorizationsTotal: number
+  deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
+  deploymentGateAuthorizationsUpdatedAt: number | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
+  isDeploymentGateAuthorizationsLoading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   userRole: string | null
@@ -740,6 +795,7 @@ export interface ControlPlaneActions {
   loadFirstGovernedRepoSetup: (orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   saveFirstGovernedRepoSetup: (payload: UpsertFirstGovernedRepoSetupRequest, orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
+  loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
   loadMe: () => Promise<boolean>

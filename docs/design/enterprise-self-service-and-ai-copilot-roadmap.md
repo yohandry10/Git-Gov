@@ -70,12 +70,12 @@ Current primitives:
   integration wizard.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
+- `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated
+  release governance workflow templates plus `validate_release_governance_gate.ps1` to call
+  `POST /deployment-gates/authorize` instead of the lower-level evaluator.
 
 Future scope:
 
-- Dashboard UI history for every deploy authorization attempt.
-- Workflow-template migration from the lower-level release-governance evaluator to the KAN-83
-  deployment authorization API.
 - Provider-specific examples for Jenkins, GitHub Actions, GitLab CI, and other deployers.
 - Per-environment policy: production stricter than staging, without making blocking the default.
 - Break-glass workflow design and authorization evidence.
@@ -383,6 +383,7 @@ First MVP:
 - `GET /enterprise/release-approvals`.
 - `POST /enterprise/release-approvals`.
 - `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
+- `gitgov/src/components/control_plane/DeploymentGateHistoryPanel.tsx`.
 - `GET /enterprise/release-governance/evaluate`.
 - `POST /deployment-gates/authorize`.
 - `GET /deployment-gates/authorizations`.
