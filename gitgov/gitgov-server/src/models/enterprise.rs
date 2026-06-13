@@ -247,6 +247,99 @@ pub struct EnterpriseReleaseApprovalListResponse {
     pub offset: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeploymentGateAuthorizationRecord {
+    pub id: String,
+    pub authorization_id: String,
+    pub org_id: String,
+    pub release_id: String,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub target_sha: String,
+    pub environment: String,
+    pub deployer: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<String>,
+    pub evidence_packet_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_uri: Option<String>,
+    pub decision: String,
+    pub approved: bool,
+    pub blocking: bool,
+    pub would_block: bool,
+    pub reason: String,
+    #[serde(default)]
+    pub blocked_by: Vec<String>,
+    #[serde(default)]
+    pub warnings: Vec<String>,
+    pub policy_checksum: String,
+    pub break_glass_eligible: bool,
+    pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
+    #[serde(default)]
+    pub details: serde_json::Value,
+    pub request_payload: serde_json::Value,
+    pub requested_by: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateAuthorizationRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub release_id: String,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub target_sha: String,
+    pub environment: String,
+    pub deployer: String,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    pub evidence_packet_hash: String,
+    #[serde(default)]
+    pub evidence_packet_uri: Option<String>,
+    #[serde(default)]
+    pub requested_by: Option<String>,
+    #[serde(default)]
+    pub deployment_run_id: Option<String>,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateAuthorizationQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub authorization_id: Option<String>,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    #[serde(default)]
+    pub release_id: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub decision: Option<String>,
+    #[serde(default)]
+    pub deployer: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateAuthorizationListResponse {
+    #[serde(default)]
+    pub items: Vec<DeploymentGateAuthorizationRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CreateEnterpriseReleaseApprovalRequest {
     #[serde(default)]

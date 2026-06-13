@@ -178,6 +178,57 @@ fn release_approval_payload(evidence_hash: &str) -> serde_json::Value {
     })
 }
 
+fn deployment_gate_authorization_payload(evidence_hash: &str) -> serde_json::Value {
+    serde_json::json!({
+        "release_id": RELEASE_ID,
+        "repository_full_name": REPO_FULL_NAME,
+        "branch": BRANCH,
+        "target_sha": TARGET_SHA,
+        "environment": ENVIRONMENT,
+        "deployer": "github-actions",
+        "ticket_id": TICKET_ID,
+        "evidence_packet_hash": evidence_hash,
+        "requested_by": "deploy-bot",
+        "deployment_run_id": "gha-123456",
+        "metadata": {
+            "workflow": "deploy-production",
+            "run_attempt": 1
+        }
+    })
+}
+
+async fn seed_blocking_release_governance_profile(pool: &sqlx::PgPool, org_id: &str) {
+    sqlx::query(
+        r#"
+        INSERT INTO enterprise_adoption_profiles (org_id, profile, updated_by)
+        VALUES ($1::uuid, $2::jsonb, 'release-governance-test')
+        ON CONFLICT (org_id) DO UPDATE SET
+            profile = EXCLUDED.profile,
+            updated_by = EXCLUDED.updated_by,
+            updated_at = NOW()
+        "#,
+    )
+    .bind(org_id)
+    .bind(
+        serde_json::json!({
+            "release_governance": {
+                "mode": "approval-required",
+                "environment": ENVIRONMENT,
+                "approval_required": true,
+                "enforcement": "blocking",
+                "quorum": {
+                    "enabled": false,
+                    "rules": []
+                }
+            }
+        })
+        .to_string(),
+    )
+    .execute(pool)
+    .await
+    .expect("insert blocking release governance profile");
+}
+
 #[tokio::test]
 async fn release_approval_rejects_unregistered_evidence_hash() {
     let (pool, schema, admin_pool) = setup_or_skip!();
@@ -201,6 +252,211 @@ async fn release_approval_rejects_unregistered_evidence_hash() {
         response.contains("not a known release evidence packet"),
         "unexpected response: {response}"
     );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_persists_advisory_history_without_setup() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    let api_key =
+        insert_test_api_key_for_org(&pool, "deployment-gate-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+
+    let body = deployment_gate_authorization_payload(&evidence_hash).to_string();
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&body),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "authorization failed: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("authorization JSON");
+    assert_eq!(parsed["decision"], "advisory");
+    assert_eq!(parsed["approved"], true);
+    assert_eq!(parsed["blocking"], false);
+    assert_eq!(parsed["would_block"], false);
+    assert!(parsed["authorization_id"]
+        .as_str()
+        .is_some_and(|value| value.starts_with("dga_")));
+    assert!(parsed["warnings"]
+        .as_array()
+        .expect("warnings array")
+        .iter()
+        .any(|warning| warning
+            .as_str()
+            .is_some_and(|value| value.contains("No first governed repo setup"))));
+    assert_eq!(
+        parsed["details"]["evidence"]["evidence_packet_hash"],
+        evidence_hash
+    );
+
+    let history_uri = format!(
+        "/deployment-gates/authorizations?repository_full_name={REPO_FULL_NAME}&branch={BRANCH}&environment={ENVIRONMENT}"
+    );
+    let (status, history) = json_request(&app, "GET", &history_uri, None, Some(&api_key)).await;
+
+    assert_eq!(status, StatusCode::OK, "history failed: {history}");
+    let history: serde_json::Value = serde_json::from_str(&history).expect("history JSON");
+    assert_eq!(history["total"], 1);
+    assert_eq!(
+        history["items"][0]["authorization_id"],
+        parsed["authorization_id"]
+    );
+    assert_eq!(
+        history["items"][0]["request_payload"]["deployment_run_id"],
+        "gha-123456"
+    );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_blocks_when_policy_requires_approval() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    seed_blocking_release_governance_profile(&pool, &org_id).await;
+    let api_key =
+        insert_test_api_key_for_org(&pool, "deployment-gate-block-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+
+    let body = deployment_gate_authorization_payload(&evidence_hash).to_string();
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&body),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "authorization failed: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("authorization JSON");
+    assert_eq!(parsed["decision"], "blocked");
+    assert_eq!(parsed["approved"], false);
+    assert_eq!(parsed["blocking"], true);
+    assert_eq!(parsed["would_block"], true);
+    assert_eq!(parsed["break_glass_eligible"], true);
+    assert_eq!(parsed["evaluation"]["policy"]["enforcement"], "blocking");
+    assert!(parsed["blocked_by"]
+        .as_array()
+        .expect("blocked_by array")
+        .iter()
+        .any(|issue| issue
+            .as_str()
+            .is_some_and(|value| value.contains("No valid release approval"))));
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_enforces_admin_and_org_scope() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    let other_org_id = insert_test_org(&pool, "deployment-other").await;
+    let developer_key =
+        insert_test_api_key_for_org(&pool, "deployment-gate-dev", "Developer", &org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "deployment-gate-scoped-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let fake_hash = "f".repeat(64);
+    let body = deployment_gate_authorization_payload(&fake_hash).to_string();
+
+    let (status, _) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&body),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let mut cross_org_payload = deployment_gate_authorization_payload(&fake_hash);
+    cross_org_payload["org_name"] = serde_json::json!("deployment-other");
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&cross_org_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "unexpected response: {response}"
+    );
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id IN ($1::uuid, $2::uuid)",
+    )
+    .bind(&org_id)
+    .bind(&other_org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count deployment authorizations");
+    assert_eq!(count, 0);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_rejects_ticket_mismatch_for_bound_packet() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    let api_key =
+        insert_test_api_key_for_org(&pool, "deployment-gate-ticket-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+    let mut payload = deployment_gate_authorization_payload(&evidence_hash);
+    payload["ticket_id"] = serde_json::json!("KAN-901");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("ticket_id"),
+        "ticket mismatch should be explicit: {response}"
+    );
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count deployment authorizations");
+    assert_eq!(count, 0);
 
     teardown(&admin_pool, &schema).await;
 }

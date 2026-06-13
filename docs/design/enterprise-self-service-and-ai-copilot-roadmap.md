@@ -68,15 +68,17 @@ Current primitives:
   selection, policy preset, policy/workflow preview acknowledgement, persisted baseline readiness,
   Action Center gaps, and a CTA into advisory gate simulation. It is deliberately not a broad
   integration wizard.
+- `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
+  `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 
 Future scope:
 
-- Deployment Gates Advisory 0.1 API and UI history.
-- Stable deployment-authorization API for Jenkins, GitHub Actions, GitLab CI, and other deployers.
-- Response contract with `approved`, `reason`, `details`, `blocked_by`, evidence links, policy
-  checksum, and break-glass eligibility.
+- Dashboard UI history for every deploy authorization attempt.
+- Workflow-template migration from the lower-level release-governance evaluator to the KAN-83
+  deployment authorization API.
+- Provider-specific examples for Jenkins, GitHub Actions, GitLab CI, and other deployers.
 - Per-environment policy: production stricter than staging, without making blocking the default.
-- Dashboard visibility for every deploy authorization attempt.
+- Break-glass workflow design and authorization evidence.
 
 ### 0.2 Agentic Governance Layer
 
@@ -382,6 +384,8 @@ First MVP:
 - `POST /enterprise/release-approvals`.
 - `gitgov/src/components/control_plane/ReleaseApprovalPanel.tsx`.
 - `GET /enterprise/release-governance/evaluate`.
+- `POST /deployment-gates/authorize`.
+- `GET /deployment-gates/authorizations`.
 - `scripts/control-plane/validate_release_governance_gate.ps1`.
 - `.github/workflows/release-governance-gate.yml`.
 - `.github/workflows/enterprise-onboarding-readiness.yml`.
@@ -408,6 +412,7 @@ First MVP:
 - `docs/design/release-approval-dashboard-mvp.md`.
 - `docs/design/release-governance-evaluator-mvp.md`.
 - `docs/design/release-governance-enforcement-gate-mvp.md`.
+- `docs/design/deployment-authorization-api-mvp.md`.
 - `docs/examples/enterprise-adoption-profile.example.json`.
 - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
@@ -415,7 +420,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, turns that readiness report into a prioritized remediation plan through both CLI and dashboard export, shows the same remediation state as a guided dashboard checklist, persists admin tracking notes for that checklist without changing readiness scoring, automates readiness as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, monitors trend deterioration in report-only mode by default, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, and can monitor the gate artifact when the customer also selects artifact monitoring. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or block releases from approval state by default.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, turns that readiness report into a prioritized remediation plan through both CLI and dashboard export, shows the same remediation state as a guided dashboard checklist, persists admin tracking notes for that checklist without changing readiness scoring, automates readiness as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, monitors trend deterioration in report-only mode by default, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, starts per-environment overrides so production can be stricter than staging without changing the safe default, persists first governed repo setup readiness, and exposes a stable deployment authorization API plus history for CI/CD callers. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or add a Desktop deployment authorization history panel.
 
 Release governance default:
 
