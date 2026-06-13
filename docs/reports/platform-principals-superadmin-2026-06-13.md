@@ -25,6 +25,16 @@ Postcheck results:
 
 No secret values were printed or committed.
 
+## Merge And Production Smoke
+
+- PR `#301` merged to `main` as `11465a0`.
+- Post-merge GitHub checks passed.
+- Render deploy `dep-d8md89uq1p3s73fm8ii0` reached `live`.
+- Production `/health` returned `ok`.
+- Authenticated `/stats` returned HTTP `200`.
+- Authenticated `/me` returned `client_id=bootstrap-admin`, `role=Admin`, `principal_type=platform_founder`, non-empty `platform_principal_id`, `org_id=null`, and `requires_workspace_for_tenant_surfaces=true`.
+- Authenticated `/platform/tenants` returned `21` tenants with lifecycle fields.
+
 ## Product Decision
 
 The superadmin/founder is a GitGov platform principal, not a GitHub-authenticated tenant user. GitHub remains useful for Desktop operator identity and repository workflows, but platform administration is authorized by GitGov API key plus an active `platform_principals` row.
