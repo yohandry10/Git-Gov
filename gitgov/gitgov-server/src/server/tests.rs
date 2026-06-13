@@ -169,6 +169,8 @@ fn rate_limit_key_prefers_authenticated_identity_scoped_by_org() {
         client_id: "andres".to_string(),
         role: crate::models::UserRole::Admin,
         org_id: Some("org-123".to_string()),
+        platform_principal_id: None,
+        is_platform_founder: false,
     });
 
     let key = rate_limit_key_from_request(&req);
@@ -185,6 +187,8 @@ fn rate_limit_key_uses_client_identity_when_org_missing() {
         client_id: "andres".to_string(),
         role: crate::models::UserRole::Developer,
         org_id: None,
+        platform_principal_id: None,
+        is_platform_founder: false,
     });
 
     let key = rate_limit_key_from_request(&req);
@@ -211,6 +215,8 @@ async fn inject_test_auth(mut req: Request<Body>, next: Next) -> Response {
         client_id: "test-user".to_string(),
         role: crate::models::UserRole::Admin,
         org_id: Some("test-org".to_string()),
+        platform_principal_id: None,
+        is_platform_founder: false,
     });
     next.run(req).await
 }

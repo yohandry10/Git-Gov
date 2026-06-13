@@ -50,7 +50,16 @@ struct CachedApiKeyAuth {
     cached_at: Instant,
 }
 
-type ApiKeyAuthCacheValue = (String, UserRole, Option<String>);
+#[derive(Debug, Clone)]
+pub struct ApiKeyAuthContext {
+    pub client_id: String,
+    pub role: UserRole,
+    pub org_id: Option<String>,
+    pub platform_principal_id: Option<String>,
+    pub is_platform_founder: bool,
+}
+
+type ApiKeyAuthCacheValue = ApiKeyAuthContext;
 type StaleApiKeyAuthCacheValue = (ApiKeyAuthCacheValue, u64);
 
 #[derive(Debug, Clone)]

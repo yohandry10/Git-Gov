@@ -542,6 +542,7 @@ pub async fn get_me(
         client_id: auth_user.client_id,
         role: auth_user.role.as_str().to_string(),
         principal_type,
+        platform_principal_id: auth_user.platform_principal_id,
         org_id: auth_user.org_id,
         org_name,
         requires_workspace_for_tenant_surfaces,

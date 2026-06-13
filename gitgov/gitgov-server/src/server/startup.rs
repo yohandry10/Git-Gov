@@ -118,6 +118,19 @@ pub(crate) async fn run() {
         match db.ensure_admin_api_key(&key_hash, "bootstrap-admin").await {
             Ok(_) => {
                 tracing::info!("GITGOV_API_KEY ensured as active global Admin key");
+                match db
+                    .ensure_platform_founder_principal("bootstrap-admin")
+                    .await
+                {
+                    Ok(_) => {
+                        tracing::info!(
+                            "bootstrap-admin ensured as active platform founder principal"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, "Failed to ensure platform founder principal");
+                    }
+                }
                 if should_print_key {
                     eprintln!();
                     eprintln!("╔════════════════════════════════════════════════════════════════╗");

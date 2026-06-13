@@ -330,6 +330,70 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_api_keys_client ON api_keys(client_id);
 
 -- ============================================================================
+-- PLATFORM PRINCIPALS (Superadmin identities outside tenant scope)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS platform_principals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    client_id TEXT NOT NULL UNIQUE,
+    principal_type TEXT NOT NULL DEFAULT 'platform_founder',
+    status TEXT NOT NULL DEFAULT 'active',
+    display_name TEXT,
+    email TEXT,
+    auth_method TEXT NOT NULL DEFAULT 'api_key',
+    external_subject TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    last_authenticated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT platform_principals_type_check CHECK (principal_type IN ('platform_founder', 'platform_operator', 'platform_auditor')),
+    CONSTRAINT platform_principals_status_check CHECK (status IN ('active', 'disabled', 'break_glass')),
+    CONSTRAINT platform_principals_auth_method_check CHECK (auth_method IN ('api_key', 'sso', 'oidc', 'break_glass'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_platform_principals_type_status
+    ON platform_principals(principal_type, status);
+
+CREATE INDEX IF NOT EXISTS idx_platform_principals_updated_at
+    ON platform_principals(updated_at DESC);
+
+CREATE OR REPLACE FUNCTION update_platform_principals_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_platform_principals_updated_at ON platform_principals;
+CREATE TRIGGER trg_platform_principals_updated_at
+    BEFORE UPDATE ON platform_principals
+    FOR EACH ROW
+    EXECUTE FUNCTION update_platform_principals_updated_at();
+
+INSERT INTO platform_principals (
+    client_id,
+    principal_type,
+    status,
+    display_name,
+    auth_method,
+    metadata
+)
+VALUES (
+    'bootstrap-admin',
+    'platform_founder',
+    'active',
+    'GitGov Platform Founder',
+    'api_key',
+    '{"source":"schema_bootstrap","tenant_scope":"platform"}'::jsonb
+)
+ON CONFLICT (client_id) DO UPDATE SET
+    principal_type = 'platform_founder',
+    status = 'active',
+    display_name = COALESCE(platform_principals.display_name, EXCLUDED.display_name),
+    auth_method = 'api_key',
+    metadata = COALESCE(platform_principals.metadata, '{}'::jsonb) || EXCLUDED.metadata;
+
+-- ============================================================================
 -- WEBHOOK EVENTS (Raw incoming webhooks for debugging)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS webhook_events (
@@ -461,6 +525,7 @@ ALTER TABLE violations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE violation_decisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE policies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_principals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS (for server-side operations)

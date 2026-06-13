@@ -127,11 +127,13 @@ async fn expired_fresh_cache_entry_remains_available_for_stale_lookup() {
     let db = build_test_db(1, 120, 0);
     db.put_cached_api_key_auth(
         "k",
-        Some((
-            "admin".to_string(),
-            UserRole::Admin,
-            Some("org1".to_string()),
-        )),
+        Some(ApiKeyAuthContext {
+            client_id: "admin".to_string(),
+            role: UserRole::Admin,
+            org_id: Some("org1".to_string()),
+            platform_principal_id: None,
+            is_platform_founder: false,
+        }),
     );
 
     {
@@ -145,7 +147,7 @@ async fn expired_fresh_cache_entry_remains_available_for_stale_lookup() {
     let stale = db
         .get_stale_cached_api_key_auth("k")
         .expect("stale auth cache should be available");
-    assert_eq!(stale.0 .0, "admin");
+    assert_eq!(stale.0.client_id, "admin");
     assert!(stale.1 >= 1);
 }
 
@@ -154,11 +156,13 @@ async fn stale_cache_entry_older_than_max_age_is_evicted() {
     let db = build_test_db(1, 2, 0);
     db.put_cached_api_key_auth(
         "k",
-        Some((
-            "admin".to_string(),
-            UserRole::Admin,
-            Some("org1".to_string()),
-        )),
+        Some(ApiKeyAuthContext {
+            client_id: "admin".to_string(),
+            role: UserRole::Admin,
+            org_id: Some("org1".to_string()),
+            platform_principal_id: None,
+            is_platform_founder: false,
+        }),
     );
 
     {

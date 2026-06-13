@@ -69,10 +69,7 @@ export function createOrganizationActions(
     try {
       const me = await tauriInvoke<MeResponse>('cmd_server_get_me', { config: serverConfig })
       const githubLogin = useAuthStore.getState().user?.login ?? null
-      if (!isControlPlaneIdentityCompatible(me.client_id, githubLogin, me.role)) {
-        const founderHint = me.client_id === 'bootstrap-admin'
-          ? ' La key founder (bootstrap-admin) requiere sesión GitHub del founder configurado en VITE_FOUNDER_GITHUB_LOGIN.'
-          : ''
+      if (!isControlPlaneIdentityCompatible(me.client_id, githubLogin, me.role, me.principal_type)) {
         set({
           userRole: null,
           userClientId: null,
@@ -80,7 +77,7 @@ export function createOrganizationActions(
           selectedOrgValidated: false,
           controlPlaneAuthConfirmed: true,
           pendingControlPlaneSession: null,
-          error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.${founderHint}`,
+          error: `La API key autenticó como '${me.client_id}', pero tu sesión GitHub es '${githubLogin ?? 'desconocida'}'.`,
         })
         return false
       }
