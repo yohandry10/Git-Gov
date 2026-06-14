@@ -1,15 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, CheckCircle2, Circle, CircleAlert, CircleDot, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Plus, Save, ShieldCheck, Trash2, Workflow } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, Circle, CircleAlert, CircleDot, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { ReleaseGovernanceEnvironmentPolicyPanel } from './ReleaseGovernanceEnvironmentPolicyPanel'
+import {
+  ONBOARDING_TRACKING_STATUS_OPTIONS,
+  cloneDefaultProfile,
+  onboardingGuideStepBadgeVariant,
+  onboardingGuideStepClass,
+  onboardingGuideStepLabel,
+  onboardingReadinessBadgeVariant,
+  onboardingReadinessLabel,
+  providerHealthBadgeVariant,
+  providerHealthLabel,
+  selectedClass,
+  toggleValue,
+} from './enterprise-adoption-panel-helpers'
 import {
   ADOPTION_MODULE_OPTIONS,
   ADOPTION_POLICY_PRESET_OPTIONS,
   ADOPTION_PROVIDER_OPTIONS,
-  ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS,
-  DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
-  buildReleaseGovernancePolicy,
+  addReleaseGovernanceEnvironmentOverride,
   buildEnterpriseAdoptionPack,
   buildEnterpriseAdoptionPackFilename,
   buildEnterpriseOnboardingGuide,
@@ -22,6 +34,12 @@ import {
   buildEnterpriseProviderHealth,
   normalizeEnterpriseOnboardingChecklistTracking,
   normalizeEnterpriseAdoptionProfile,
+  removeReleaseGovernanceEnvironmentOverride,
+  releaseGovernanceModeNeedsFormalApproval,
+  updateReleaseGovernanceBaseEnvironment,
+  updateReleaseGovernanceBaseMode,
+  updateReleaseGovernanceEnvironmentOverrideEnvironment,
+  updateReleaseGovernanceEnvironmentOverrideMode,
   upsertEnterpriseOnboardingChecklistTrackingItem,
   validateEnterpriseAdoptionProfile,
   type AdoptionModule,
@@ -31,80 +49,7 @@ import {
   type EnterpriseAdoptionProfile,
   type EnterpriseOnboardingChecklistTracking,
   type EnterpriseOnboardingChecklistTrackingItem,
-  type EnterpriseOnboardingChecklistTrackingStatus,
-  type EnterpriseOnboardingGuideStepStatus,
-  type EnterpriseOnboardingReadinessStatus,
-  type EnterpriseReleaseGovernancePolicy,
-  type EnterpriseProviderHealthStatus,
 } from './dashboard-helpers'
-
-function cloneDefaultProfile(): EnterpriseAdoptionProfile {
-  return normalizeEnterpriseAdoptionProfile(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
-}
-
-function toggleValue<T extends string>(values: T[], value: T): T[] {
-  return values.includes(value)
-    ? values.filter((candidate) => candidate !== value)
-    : [...values, value]
-}
-
-function selectedClass(selected: boolean): string {
-  return selected
-    ? 'border-brand-500/60 bg-brand-500/12 text-brand-200'
-    : 'border-white/10 bg-white/[0.03] text-surface-300 hover:border-white/20 hover:bg-white/[0.05]'
-}
-
-function providerHealthBadgeVariant(status: EnterpriseProviderHealthStatus): 'success' | 'warning' | 'info' {
-  if (status === 'ready') return 'success'
-  if (status === 'needs-config') return 'warning'
-  return 'info'
-}
-
-function providerHealthLabel(status: EnterpriseProviderHealthStatus): string {
-  if (status === 'ready') return 'Ready'
-  if (status === 'needs-config') return 'Config'
-  return 'Evidence'
-}
-
-function onboardingReadinessBadgeVariant(status: EnterpriseOnboardingReadinessStatus): 'success' | 'warning' | 'info' {
-  if (status === 'ready') return 'success'
-  if (status === 'blocked') return 'warning'
-  return 'info'
-}
-
-function onboardingReadinessLabel(status: EnterpriseOnboardingReadinessStatus): string {
-  if (status === 'ready') return 'Ready'
-  if (status === 'blocked') return 'Blocked'
-  return 'Action'
-}
-
-function onboardingGuideStepBadgeVariant(status: EnterpriseOnboardingGuideStepStatus): 'success' | 'warning' | 'info' | 'neutral' {
-  if (status === 'complete') return 'success'
-  if (status === 'blocked') return 'warning'
-  if (status === 'next') return 'info'
-  return 'neutral'
-}
-
-function onboardingGuideStepLabel(status: EnterpriseOnboardingGuideStepStatus): string {
-  if (status === 'complete') return 'Done'
-  if (status === 'blocked') return 'Blocked'
-  if (status === 'next') return 'Next'
-  return 'Todo'
-}
-
-function onboardingGuideStepClass(status: EnterpriseOnboardingGuideStepStatus): string {
-  if (status === 'complete') return 'border-success-500/20 bg-success-500/8'
-  if (status === 'blocked') return 'border-warning-500/25 bg-warning-500/8'
-  if (status === 'next') return 'border-brand-500/25 bg-brand-500/8'
-  return 'border-white/8 bg-white/[0.03]'
-}
-
-const ONBOARDING_TRACKING_STATUS_OPTIONS: Array<{ id: EnterpriseOnboardingChecklistTrackingStatus; label: string }> = [
-  { id: 'open', label: 'Open' },
-  { id: 'in-progress', label: 'Doing' },
-  { id: 'waiting', label: 'Wait' },
-  { id: 'done', label: 'Done' },
-]
 
 export function EnterpriseAdoptionPanel() {
   const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
@@ -206,85 +151,54 @@ export function EnterpriseAdoptionPanel() {
   const updateReleaseGovernanceMode = (mode: AdoptionReleaseGovernanceMode) => {
     setProfile((current) => ({
       ...current,
-      release_governance: buildReleaseGovernancePolicy(
-        mode,
-        current.release_governance?.environment ?? 'production',
-      ),
-      modules: mode === 'record-only' || current.modules.includes('formal-approval')
+      release_governance: updateReleaseGovernanceBaseMode(current.release_governance, mode),
+      modules: !releaseGovernanceModeNeedsFormalApproval(mode) || current.modules.includes('formal-approval')
         ? current.modules
         : [...current.modules, 'formal-approval'],
     }))
   }
 
   const updateReleaseGovernanceEnvironment = (environment: string) => {
-    setProfile((current) => {
-      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
-      return {
-        ...current,
-        release_governance: {
-          ...currentGovernance,
-          environment: environment.trim() || 'production',
-        },
-      }
-    })
-  }
-
-  const updateReleaseGovernanceOverrides = (
-    updater: (overrides: EnterpriseReleaseGovernancePolicy[]) => EnterpriseReleaseGovernancePolicy[],
-  ) => {
-    setProfile((current) => {
-      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
-      return {
-        ...current,
-        release_governance: {
-          ...currentGovernance,
-          environment_overrides: updater(currentGovernance.environment_overrides ?? []),
-        },
-      }
-    })
+    setProfile((current) => ({
+      ...current,
+      release_governance: updateReleaseGovernanceBaseEnvironment(current.release_governance, environment),
+    }))
   }
 
   const addReleaseGovernanceOverride = () => {
-    setProfile((current) => {
-      const currentGovernance = current.release_governance ?? buildReleaseGovernancePolicy('record-only')
-      const usedEnvironments = new Set(
-        [currentGovernance.environment, ...(currentGovernance.environment_overrides ?? []).map((override) => override.environment)]
-          .map((environment) => environment.trim().toLowerCase())
-          .filter(Boolean),
-      )
-      const environment = ['production', 'staging', 'development'].find((candidate) => !usedEnvironments.has(candidate)) ?? `environment-${(currentGovernance.environment_overrides ?? []).length + 1}`
-      return {
-        ...current,
-        modules: current.modules.includes('formal-approval') ? current.modules : [...current.modules, 'formal-approval'],
-        release_governance: {
-          ...currentGovernance,
-          environment_overrides: [
-            ...(currentGovernance.environment_overrides ?? []),
-            buildReleaseGovernancePolicy('approval-required', environment),
-          ],
-        },
-      }
-    })
+    setProfile((current) => ({
+      ...current,
+      modules: current.modules.includes('formal-approval') ? current.modules : [...current.modules, 'formal-approval'],
+      release_governance: addReleaseGovernanceEnvironmentOverride(current.release_governance),
+    }))
   }
 
   const updateReleaseGovernanceOverrideEnvironment = (index: number, environment: string) => {
-    updateReleaseGovernanceOverrides((overrides) => overrides.map((override, overrideIndex) => (
-      overrideIndex === index
-        ? { ...override, environment: environment.trim() || 'production' }
-        : override
-    )))
+    setProfile((current) => ({
+      ...current,
+      release_governance: updateReleaseGovernanceEnvironmentOverrideEnvironment(
+        current.release_governance,
+        index,
+        environment,
+      ),
+    }))
   }
 
   const updateReleaseGovernanceOverrideMode = (index: number, mode: AdoptionReleaseGovernanceMode) => {
-    updateReleaseGovernanceOverrides((overrides) => overrides.map((override, overrideIndex) => (
-      overrideIndex === index
-        ? buildReleaseGovernancePolicy(mode, override.environment || 'production')
-        : override
-    )))
+    setProfile((current) => ({
+      ...current,
+      modules: !releaseGovernanceModeNeedsFormalApproval(mode) || current.modules.includes('formal-approval')
+        ? current.modules
+        : [...current.modules, 'formal-approval'],
+      release_governance: updateReleaseGovernanceEnvironmentOverrideMode(current.release_governance, index, mode),
+    }))
   }
 
   const removeReleaseGovernanceOverride = (index: number) => {
-    updateReleaseGovernanceOverrides((overrides) => overrides.filter((_, overrideIndex) => overrideIndex !== index))
+    setProfile((current) => ({
+      ...current,
+      release_governance: removeReleaseGovernanceEnvironmentOverride(current.release_governance, index),
+    }))
   }
 
   const toggleProvider = (provider: AdoptionProvider) => {
@@ -519,101 +433,17 @@ export function EnterpriseAdoptionPanel() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-surface-500 uppercase tracking-widest">Release governance</span>
-              <Badge variant={releaseGovernanceBadgeVariant}>
-                {releaseGovernance.enforcement}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => {
-                const selected = releaseGovernance.mode === option.id
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => updateReleaseGovernanceMode(option.id)}
-                    className={`rounded border px-3 py-2 text-xs font-medium transition-colors ${selectedClass(selected)}`}
-                  >
-                    {option.label}
-                  </button>
-                )
-              })}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.55fr)] gap-2">
-              <label className="space-y-1">
-                <span className="text-[10px] text-surface-500 uppercase tracking-widest">Environment</span>
-                <input
-                  value={releaseGovernance.environment}
-                  onChange={(event) => updateReleaseGovernanceEnvironment(event.target.value)}
-                  className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1.5 text-xs text-surface-200 focus:outline-none focus:border-surface-400"
-                />
-              </label>
-              <div className="rounded border border-white/8 bg-white/[0.03] p-2">
-                <div className="text-[10px] uppercase tracking-widest text-surface-500">Quorum</div>
-                <div className="mt-1 text-xs font-medium text-surface-100">
-                  {releaseGovernance.quorum.enabled ? `${releaseGovernance.quorum.rules.length} rules` : 'Off'}
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2 rounded border border-white/8 bg-white/[0.02] p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] text-surface-500 uppercase tracking-widest">Environment overrides</span>
-                <button
-                  type="button"
-                  onClick={addReleaseGovernanceOverride}
-                  className="inline-flex h-7 items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 text-[11px] text-surface-200 hover:border-white/20 hover:bg-white/[0.05]"
-                  title="Add environment override"
-                >
-                  <Plus size={13} />
-                  Add
-                </button>
-              </div>
-              {(releaseGovernance.environment_overrides ?? []).length === 0 ? (
-                <div className="text-[11px] text-surface-500">None</div>
-              ) : (
-                <div className="space-y-2">
-                  {(releaseGovernance.environment_overrides ?? []).map((override, index) => (
-                    <div key={`${override.environment}-${index}`} className="rounded border border-white/8 bg-surface-900/40 p-2">
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                        <input
-                          value={override.environment}
-                          onChange={(event) => updateReleaseGovernanceOverrideEnvironment(index, event.target.value)}
-                          className="w-full bg-surface-800 border border-surface-600 rounded px-2 py-1.5 text-xs text-surface-200 focus:outline-none focus:border-surface-400"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeReleaseGovernanceOverride(index)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/10 bg-white/[0.03] text-surface-300 hover:border-warning-500/30 hover:text-warning-200"
-                          title="Remove environment override"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        {ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => {
-                          const selected = override.mode === option.id
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              aria-pressed={selected}
-                              onClick={() => updateReleaseGovernanceOverrideMode(index, option.id)}
-                              className={`rounded border px-2 py-1.5 text-[11px] font-medium transition-colors ${selectedClass(selected)}`}
-                            >
-                              {option.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <ReleaseGovernanceEnvironmentPolicyPanel
+            policy={releaseGovernance}
+            badgeVariant={releaseGovernanceBadgeVariant}
+            onBaseModeChange={updateReleaseGovernanceMode}
+            onBaseEnvironmentChange={updateReleaseGovernanceEnvironment}
+            onAddOverride={addReleaseGovernanceOverride}
+            onOverrideEnvironmentChange={updateReleaseGovernanceOverrideEnvironment}
+            onOverrideModeChange={updateReleaseGovernanceOverrideMode}
+            onRemoveOverride={removeReleaseGovernanceOverride}
+            selectedClass={selectedClass}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="space-y-2">

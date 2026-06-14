@@ -10,10 +10,14 @@ import {
   buildEnterpriseWorkflowTemplatePackFilename,
   buildFirstGovernedRepoSetupBaseline,
   buildEnterpriseProviderHealth,
+  buildReleaseGovernanceEnvironmentRows,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
   normalizeFirstGovernedRepoSetupDraft,
   normalizeEnterpriseOnboardingChecklistTracking,
+  removeReleaseGovernanceEnvironmentOverride,
+  updateReleaseGovernanceBaseMode,
+  updateReleaseGovernanceEnvironmentOverrideMode,
   validateFirstGovernedRepoSetupDraft,
   upsertEnterpriseOnboardingChecklistTrackingItem,
   validateEnterpriseAdoptionProfile,
@@ -410,6 +414,141 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(gate?.content).toContain('default: true')
     expect(monitor?.content).toContain('ARTIFACT_PREFIX: "release-governance-gate-"')
     expect(JSON.stringify(workflowPack)).not.toContain('GITGOV_API_KEY=')
+  })
+
+  it('keeps production stricter than staging in the environment policy matrix', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      modules: [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules, 'formal-approval'],
+      release_governance: {
+        mode: 'record-only',
+        environment: 'staging',
+        approval_required: false,
+        enforcement: 'disabled',
+        quorum: { enabled: false, rules: [] },
+        environment_overrides: [
+          {
+            mode: 'approval-required',
+            environment: 'production',
+            approval_required: true,
+            enforcement: 'blocking',
+            quorum: { enabled: false, rules: [] },
+          },
+        ],
+      },
+    }
+
+    const rows = buildReleaseGovernanceEnvironmentRows(profile.release_governance)
+
+    expect(rows).toEqual([
+      {
+        source: 'base',
+        environment: 'staging',
+        mode: 'record-only',
+        approval_required: false,
+        enforcement: 'disabled',
+        quorum_summary: 'disabled',
+      },
+      {
+        source: 'override',
+        environment: 'production',
+        mode: 'approval-required',
+        approval_required: true,
+        enforcement: 'blocking',
+        quorum_summary: 'disabled',
+        override_index: 0,
+      },
+    ])
+  })
+
+  it('preserves environment overrides when the base release governance mode changes', () => {
+    const currentPolicy = {
+      mode: 'record-only' as const,
+      environment: 'staging',
+      approval_required: false,
+      enforcement: 'disabled' as const,
+      quorum: { enabled: false, rules: [] },
+      environment_overrides: [
+        {
+          mode: 'approval-required' as const,
+          environment: 'production',
+          approval_required: true,
+          enforcement: 'blocking' as const,
+          quorum: { enabled: false, rules: [] },
+        },
+      ],
+    }
+
+    const updatedPolicy = updateReleaseGovernanceBaseMode(currentPolicy, 'advisory')
+
+    expect(updatedPolicy.mode).toBe('advisory')
+    expect(updatedPolicy.environment).toBe('staging')
+    expect(updatedPolicy.environment_overrides).toHaveLength(1)
+    expect(updatedPolicy.environment_overrides?.[0]).toMatchObject({
+      mode: 'approval-required',
+      environment: 'production',
+      approval_required: true,
+      enforcement: 'blocking',
+    })
+  })
+
+  it('falls back to the base release policy after an environment override is removed', () => {
+    const currentPolicy = {
+      mode: 'record-only' as const,
+      environment: 'staging',
+      approval_required: false,
+      enforcement: 'disabled' as const,
+      quorum: { enabled: false, rules: [] },
+      environment_overrides: [
+        {
+          mode: 'approval-required' as const,
+          environment: 'production',
+          approval_required: true,
+          enforcement: 'blocking' as const,
+          quorum: { enabled: false, rules: [] },
+        },
+      ],
+    }
+
+    const removed = removeReleaseGovernanceEnvironmentOverride(currentPolicy, 0)
+    const rows = buildReleaseGovernanceEnvironmentRows(removed)
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      source: 'base',
+      environment: 'staging',
+      mode: 'record-only',
+      enforcement: 'disabled',
+    })
+  })
+
+  it('updates an override to quorum-required with concrete approver rules', () => {
+    const currentPolicy = {
+      mode: 'record-only' as const,
+      environment: 'staging',
+      approval_required: false,
+      enforcement: 'disabled' as const,
+      quorum: { enabled: false, rules: [] },
+      environment_overrides: [
+        {
+          mode: 'approval-required' as const,
+          environment: 'production',
+          approval_required: true,
+          enforcement: 'blocking' as const,
+          quorum: { enabled: false, rules: [] },
+        },
+      ],
+    }
+
+    const updated = updateReleaseGovernanceEnvironmentOverrideMode(currentPolicy, 0, 'quorum-required')
+    const production = buildReleaseGovernanceEnvironmentRows(updated).find((row) => row.environment === 'production')
+
+    expect(production).toMatchObject({
+      source: 'override',
+      mode: 'quorum-required',
+      enforcement: 'blocking',
+      quorum_summary: 'engineering:1, security:1',
+    })
   })
 
   it('validates customer adoption profile inputs', () => {
