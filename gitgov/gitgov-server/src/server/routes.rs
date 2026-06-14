@@ -249,6 +249,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
                 .post(handlers::create_deployment_gate_break_glass_approval),
         )
         .route(
+            "/agent-governance/evaluate",
+            post(handlers::evaluate_agent_governance),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )

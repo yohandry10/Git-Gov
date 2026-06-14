@@ -93,6 +93,23 @@ pub struct CreateDeploymentGateAuthorizationInput {
     pub requested_by: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct CreateAgentGovernanceEvaluationInput {
+    pub evaluation_id: String,
+    pub payload: AgentGovernanceEvaluationRequest,
+    pub agent_type: String,
+    pub decision: String,
+    pub allowed: bool,
+    pub requires_approval: bool,
+    pub reason: String,
+    pub reasons: Vec<String>,
+    pub required_evidence: Vec<String>,
+    pub policy_id: String,
+    pub policy_checksum: String,
+    pub evaluation: serde_json::Value,
+    pub request_payload: serde_json::Value,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct DistributedRateLimitCheck {
     pub allowed: bool,
@@ -182,6 +199,36 @@ fn deployment_gate_break_glass_approval_from_row(
         approval_hash: row.get("approval_hash"),
         metadata: row.get("metadata"),
         created_by: row.get("created_by"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
+fn agent_governance_evaluation_from_row(row: &PgRow) -> AgentGovernanceEvaluationRecord {
+    AgentGovernanceEvaluationRecord {
+        id: row.get("id"),
+        evaluation_id: row.get("evaluation_id"),
+        org_id: row.get("org_id"),
+        agent_id: row.get("agent_id"),
+        agent_type: row.get("agent_type"),
+        actor: row.get("actor"),
+        action: row.get("action"),
+        repository_full_name: row.get("repository_full_name"),
+        branch: row.get("branch"),
+        target_sha: row.get("target_sha"),
+        environment: row.get("environment"),
+        ticket_id: row.get("ticket_id"),
+        operation_id: row.get("operation_id"),
+        decision: row.get("decision"),
+        allowed: row.get("allowed"),
+        requires_approval: row.get("requires_approval"),
+        reason: row.get("reason"),
+        reasons: serde_json::from_value(row.get("reasons")).unwrap_or_default(),
+        required_evidence: serde_json::from_value(row.get("required_evidence")).unwrap_or_default(),
+        policy_id: row.get("policy_id"),
+        policy_checksum: row.get("policy_checksum"),
+        evaluation: row.get("evaluation"),
+        request_payload: row.get("request_payload"),
+        metadata: row.get("metadata"),
         created_at: row.get("created_at_ms"),
     }
 }
@@ -325,6 +372,7 @@ pub struct AcceptedOrgInvitation {
     pub api_key: String,
 }
 
+mod agent_governance;
 mod auth_api_keys;
 mod chat_queries_core;
 mod chat_queries_quality;

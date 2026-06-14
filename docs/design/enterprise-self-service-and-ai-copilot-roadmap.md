@@ -107,6 +107,13 @@ Why first:
   left behind.
 - This differentiates GitGov beyond generic DevOps dashboards.
 
+Current primitives:
+
+- `KAN-90` starts the REST Policy API with `POST /agent-governance/evaluate`. Agents can ask
+  GitGov whether `commit`, `push`, `open_pr`, `merge_pr`, `change_policy`, or `deploy` is
+  `allowed`, `requires_approval`, or `blocked`. The decision is deterministic and persisted as
+  audit evidence; `llm_decision=false` remains explicit in the response.
+
 Future scope:
 
 - MCP server exposing scoped governance tools:
@@ -117,19 +124,16 @@ Future scope:
   - `get_risk_score`
 - Agent-specific auth tokens with scopes such as `read:audit`, `read:policy`,
   `read:branch_status`, and tightly governed write scopes.
-- REST Policy API for "can I do this?" checks before an agent attempts a commit, push, merge, policy
-  change, or deploy.
+- Broader REST Policy API coverage beyond the KAN-90 MVP rules.
 - Agent dry-run/simulation endpoint for read-only evaluation before execution.
 - Human-in-the-loop approval for sensitive operations from agents.
 - Ephemeral agent session logs linked to existing audit trail.
 - Agent attribution chain showing agent, token, human approver, operation, commit/deploy outcome,
   timestamp, and scope at the time of action.
 
-Current primitives:
-
 - GitGov already has deterministic policy checks, audit logs, release governance evidence, Desktop
-  approval surfaces, and a governance copilot. Future agentic work must reuse those primitives rather
-  than create a parallel decision system.
+  approval surfaces, Deployment Gates, and a governance copilot. Future agentic work must reuse
+  those primitives rather than create a parallel decision system.
 
 Guardrail:
 

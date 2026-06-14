@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71` verificó `72` registros Axum `.route(...)` productivos, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `80` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -216,6 +216,8 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 | `/enterprise/release-governance/evaluate` | Bearer | Evaluar governance de release enterprise |
 | `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
+| `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
+| `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/signals/{signal_id}` | Bearer (scoped) | Actualizar señal individual |
 | `/signals/{signal_id}/confirm` | Bearer (scoped) | Confirmar señal |
 | `/signals/detect/{org_name}` | Bearer (admin) | Disparar detección de señales |
