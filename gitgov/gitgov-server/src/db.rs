@@ -153,6 +153,11 @@ fn enterprise_release_approval_from_row(row: &PgRow) -> EnterpriseReleaseApprova
 }
 
 fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthorizationRecord {
+    let details = row.get::<serde_json::Value, _>("details");
+    let governance_decision = details
+        .get("shared_governance_decision")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     DeploymentGateAuthorizationRecord {
         id: row.get("id"),
         authorization_id: row.get("authorization_id"),
@@ -183,7 +188,8 @@ fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthoriz
         break_glass_approval_hash: row.get("break_glass_approval_hash"),
         evaluation: serde_json::from_value(row.get("evaluation"))
             .unwrap_or_else(|_| EnterpriseReleaseGovernanceEvaluationResponse::default()),
-        details: row.get("details"),
+        governance_decision,
+        details,
         request_payload: row.get("request_payload"),
         requested_by: row.get("requested_by"),
         created_at: row.get("created_at_ms"),

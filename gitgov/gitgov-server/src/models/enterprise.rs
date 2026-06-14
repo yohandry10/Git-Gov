@@ -288,6 +288,8 @@ pub struct DeploymentGateAuthorizationRecord {
     pub break_glass_approval_hash: Option<String>,
     pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
     #[serde(default)]
+    pub governance_decision: serde_json::Value,
+    #[serde(default)]
     pub details: serde_json::Value,
     pub request_payload: serde_json::Value,
     pub requested_by: String,

@@ -54,6 +54,11 @@ function authorization(overrides: Partial<DeploymentGateAuthorizationRecord> = {
       issues: ['No valid release approval found for this release.'],
       next_steps: [],
     },
+    governance_decision: {
+      consumer_type: 'deployment_gate',
+      decision: 'requires_approval',
+      agent_governance_used: false,
+    },
     details: {},
     request_payload: {},
     requested_by: 'deploy-bot',
@@ -101,5 +106,9 @@ describe('DeploymentGateHistoryPanel', () => {
     expect(screen.getByText('pre-approved')).toBeInTheDocument()
     expect(screen.getByText('dgbga_1234567890abcdef')).toBeInTheDocument()
     expect(screen.getByText('Would block:')).toBeInTheDocument()
+    expect(screen.getByText('shared: requires_approval')).toBeInTheDocument()
+    expect(screen.getByText('agent not used')).toBeInTheDocument()
+    expect(screen.getByText('Mode:')).toBeInTheDocument()
+    expect(screen.getByText('manual-first')).toBeInTheDocument()
   })
 })

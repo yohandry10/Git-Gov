@@ -29,6 +29,15 @@ mod agent_governance_tests {
         assert!(!requires_approval);
         assert!(required.is_empty());
         assert_eq!(evaluation["policy"]["llm_decision"], false);
+        assert_eq!(
+            evaluation["shared_governance_decision"]["consumer_type"],
+            "agent_governance"
+        );
+        assert_eq!(
+            evaluation["shared_governance_decision"]["agent_governance_used"],
+            true
+        );
+        assert_eq!(evaluation["shared_governance_decision"]["decision"], "allowed");
     }
 
     #[test]
@@ -36,7 +45,7 @@ mod agent_governance_tests {
         let mut payload = base_payload("deploy");
         payload.target_sha = None;
         payload.operation_id = None;
-        let (decision, allowed, requires_approval, _, reasons, required, _) =
+        let (decision, allowed, requires_approval, _, reasons, required, evaluation) =
             decide_agent_governance(&payload);
         assert_eq!(decision, "blocked");
         assert!(!allowed);
@@ -44,6 +53,10 @@ mod agent_governance_tests {
         assert!(reasons[0].contains("Deploy requires"));
         assert!(required.contains(&"target_sha".to_string()));
         assert!(required.contains(&"operation_id".to_string()));
+        assert_eq!(
+            evaluation["shared_governance_decision"]["evidence"]["missing_evidence"],
+            serde_json::json!(["operation_id", "target_sha"])
+        );
     }
 
     #[test]

@@ -351,6 +351,38 @@ async fn deployment_gate_authorization_persists_advisory_history_without_setup()
         parsed["details"]["evidence"]["evidence_packet_hash"],
         evidence_hash
     );
+    assert_eq!(
+        parsed["governance_decision"]["consumer_type"],
+        "deployment_gate"
+    );
+    assert_eq!(
+        parsed["governance_decision"]["decision"],
+        "insufficient_evidence"
+    );
+    assert_eq!(
+        parsed["governance_decision"]["agent_governance_used"],
+        false
+    );
+    assert_eq!(
+        parsed["details"]["shared_governance_decision"]["agent_governance_used"],
+        false
+    );
+    assert!(
+        parsed["governance_decision"]["evidence"]["missing_evidence"]
+            .as_array()
+            .expect("missing evidence")
+            .iter()
+            .any(|value| value == "first_governed_repo_setup")
+    );
+
+    let agent_evaluation_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("agent governance evaluation count");
+    assert_eq!(agent_evaluation_count, 0);
 
     let history_uri = format!(
         "/deployment-gates/authorizations?repository_full_name={REPO_FULL_NAME}&branch={BRANCH}&environment={ENVIRONMENT}"
@@ -367,6 +399,10 @@ async fn deployment_gate_authorization_persists_advisory_history_without_setup()
     assert_eq!(
         history["items"][0]["request_payload"]["deployment_run_id"],
         "gha-123456"
+    );
+    assert_eq!(
+        history["items"][0]["governance_decision"]["agent_governance_used"],
+        false
     );
 
     teardown(&admin_pool, &schema).await;
@@ -405,6 +441,26 @@ async fn deployment_gate_authorization_blocks_when_policy_requires_approval() {
     assert_eq!(parsed["would_block"], true);
     assert_eq!(parsed["break_glass_eligible"], true);
     assert_eq!(parsed["evaluation"]["policy"]["enforcement"], "blocking");
+    assert_eq!(
+        parsed["governance_decision"]["consumer_type"],
+        "deployment_gate"
+    );
+    assert_eq!(
+        parsed["governance_decision"]["decision"],
+        "requires_approval"
+    );
+    assert_eq!(
+        parsed["governance_decision"]["manual_approval_required"],
+        true
+    );
+    assert_eq!(
+        parsed["governance_decision"]["agent_governance_used"],
+        false
+    );
+    assert_eq!(
+        parsed["governance_decision"]["policy"]["policy_checksum"],
+        parsed["policy_checksum"]
+    );
     assert!(parsed["blocked_by"]
         .as_array()
         .expect("blocked_by array")

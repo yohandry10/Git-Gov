@@ -282,6 +282,7 @@ export interface DeploymentGateAuthorizationRecord {
   break_glass_approval_id?: string | null
   break_glass_approval_hash?: string | null
   evaluation: EnterpriseReleaseGovernanceEvaluationResponse
+  governance_decision?: Record<string, unknown> | null
   details: Record<string, unknown>
   request_payload: Record<string, unknown>
   requested_by: string

@@ -17,6 +17,16 @@ function shortSha(value: string): string {
   return value.length > 12 ? value.slice(0, 12) : value
 }
 
+function governanceString(value: Record<string, unknown> | null | undefined, key: string): string | null {
+  const raw = value?.[key]
+  return typeof raw === 'string' && raw.trim() ? raw : null
+}
+
+function governanceBoolean(value: Record<string, unknown> | null | undefined, key: string): boolean | null {
+  const raw = value?.[key]
+  return typeof raw === 'boolean' ? raw : null
+}
+
 export function DeploymentGateHistoryPanel() {
   const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
   const enterpriseAdoptionProfile = useControlPlaneStore((state) => state.enterpriseAdoptionProfile)
@@ -117,6 +127,12 @@ export function DeploymentGateHistoryPanel() {
                 {authorization.break_glass_used && <Badge variant="warning">break-glass used</Badge>}
                 {authorization.break_glass_used && authorization.break_glass_approval_id && <Badge variant="success">pre-approved</Badge>}
                 {!authorization.break_glass_used && authorization.break_glass_eligible && <Badge variant="warning">break-glass eligible</Badge>}
+                {governanceString(authorization.governance_decision, 'decision') && (
+                  <Badge variant="info">shared: {governanceString(authorization.governance_decision, 'decision')}</Badge>
+                )}
+                {governanceBoolean(authorization.governance_decision, 'agent_governance_used') === false && (
+                  <Badge variant="neutral">agent not used</Badge>
+                )}
               </div>
 
               <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-surface-400 md:grid-cols-2">
@@ -127,6 +143,7 @@ export function DeploymentGateHistoryPanel() {
                 <span>Blocking: <span className="text-surface-200">{authorization.blocking ? 'yes' : 'no'}</span></span>
                 <span>Would block: <span className="text-surface-200">{authorization.would_block ? 'yes' : 'no'}</span></span>
                 <span>Approvals: <span className="text-surface-200">{authorization.evaluation.valid_approval_count}/{authorization.evaluation.required_approval_count}</span></span>
+                <span>Mode: <span className="text-surface-200">manual-first</span></span>
                 <span>Created: <span className="text-surface-200">{formatTs(authorization.created_at, displayTimezone)}</span></span>
               </div>
 

@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model
 
 ## Decision
 
@@ -83,6 +83,10 @@ Current primitives:
 - `KAN-88` adds pre-approved break-glass approval routing: Deployment Gate callers can use
   break-glass only when a valid unexpired approval matches the same release, repository, branch,
   target SHA, environment, optional ticket, and evidence packet hash.
+- `KAN-93` adds the shared governance decision model to Deployment Gates. Deployment authorizations
+  now expose `shared-governance-decision.v1` with `consumer_type=deployment_gate` and
+  `agent_governance_used=false`, so the CI/CD manual-first deploy path can feed future audit,
+  Action Center, and approval-routing surfaces without depending on Agent Governance.
 
 Future scope:
 
@@ -125,9 +129,15 @@ Current primitives:
   safe: Agent Governance is disabled by default per tenant, Admin opt-in is required, opt-in/out is
   audited, disabled evaluation attempts return `403 agent_governance_disabled` without creating
   evaluation evidence, history is Admin-only, and persisted request payload is minimized/redacted.
+- `KAN-93` adds the same `shared-governance-decision.v1` shape to Agent Governance evaluations, but
+  keeps Agent Governance optional. Deployment Gates do not call `/agent-governance/evaluate` and do
+  not create agent evaluation rows.
 
 Future scope:
 
+- `KAN-94` likely starts agent-specific API credentials. This should remain optional and scoped:
+  agent keys can ask for policy decisions only when a tenant has opted in, while human/Admin and
+  CI/CD Deployment Gate flows remain fully usable without agents.
 - MCP server exposing scoped governance tools:
   - `get_branch_status`
   - `check_policy_compliance`
