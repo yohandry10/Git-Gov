@@ -452,6 +452,69 @@ pub struct DeploymentGateAuthorizationListResponse {
     pub offset: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentGovernanceEvaluationRecord {
+    pub id: String,
+    pub evaluation_id: String,
+    pub org_id: String,
+    pub agent_id: String,
+    pub agent_type: String,
+    pub actor: String,
+    pub action: String,
+    pub repository_full_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_sha: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub operation_id: Option<String>,
+    pub decision: String,
+    pub allowed: bool,
+    pub requires_approval: bool,
+    pub reason: String,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+    #[serde(default)]
+    pub required_evidence: Vec<String>,
+    pub policy_id: String,
+    pub policy_checksum: String,
+    #[serde(default)]
+    pub evaluation: serde_json::Value,
+    #[serde(default)]
+    pub request_payload: serde_json::Value,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceEvaluationRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub agent_id: String,
+    #[serde(default)]
+    pub agent_type: Option<String>,
+    pub actor: String,
+    pub action: String,
+    pub repository_full_name: String,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    #[serde(default)]
+    pub operation_id: Option<String>,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CreateEnterpriseReleaseApprovalRequest {
     #[serde(default)]

@@ -10,6 +10,7 @@
 
 #[macro_use]
 mod common;
+mod agent_governance;
 mod alerts_exports_policy_requests;
 mod basic_auth;
 mod coverage_and_compliance;
