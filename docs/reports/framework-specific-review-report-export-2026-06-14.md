@@ -3,6 +3,8 @@
 Date: 2026-06-14
 Issue: GitHub `#368`
 Branch: `product/KAN-105-framework-review-report-export`
+PR: `#369`
+Merged Commit: `84420a7`
 
 ## Implemented
 
@@ -43,6 +45,25 @@ KAN-105 does not create official regulatory mappings, certification claims, comp
 - `cargo test --manifest-path gitgov/src-tauri/Cargo.toml` (`49` passed)
 - Local `v48` migration and postcheck against the ignored local `DATABASE_URL`
 - `git diff --check`
+
+## Production Validation
+
+- PR `#369` merged to `main` as `84420a7`.
+- Post-merge checks passed, including `CI` run `27512940457`, `Release Readiness Gate` run `27512940444`, `Secret Scan` run `27512940447`, `Public Naming Guard` run `27512940470`, and `Quality Gate Policy Matrix` run `27512940454`.
+- Render deploy `dep-d8ni0k647okc73f1jv70` for commit `84420a7` reached `live`.
+- Production `v48` postcheck passed.
+- Production `/health` returned `ok`.
+- Authenticated production `/stats` returned HTTP `200`.
+- Production end-to-end smoke created:
+  - Export `cee_cdbddd6037b8483a80ce8127ca7d0a07`
+  - Mapping `cem_962e49057e89497aa480b4dc0bb55139`
+  - Review package `crp_8c121f821fc98f759db5750329c3338e`
+  - Framework review report `frr_ac4ee214bc051caee783485d5755d34a`
+- Downloaded report schema was `gitgov_framework_review_report.v1`.
+- Report contained `10` controls.
+- Report hash was `sha256:7adb239ac4c00c67064ca39462f7bdce66898a818531b8f813b4cbb6cbee6a54`.
+- Source hashes matched the export, mapping hash from the review package, and review package hash.
+- No-claim flags remained safe: `compliance_claim=false`, `regulatory_claim=false`, `certification=false`, `requires_auditor_review=true`.
 
 ## Real Test Coverage
 
