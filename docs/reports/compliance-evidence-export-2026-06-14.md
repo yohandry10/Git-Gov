@@ -8,6 +8,10 @@ Issue: GitHub `#349`
 
 Branch: `feature/KAN-99-compliance-evidence-export`
 
+PR: `#350`
+
+Merge commit: `5f84655`
+
 ## Product Decision
 
 After `KAN-98`, GPT/product review and local repo analysis selected `KAN-99 Compliance Evidence Export v1` as the next roadmap slice. The decision is to pause MCP/agent expansion and package existing Deployment Gate evidence for audit review.
@@ -88,3 +92,36 @@ KAN-99 postcheck PASS: compliance evidence exports table, columns, and indexes e
 - This is not a regulatory mapper yet. It creates verified evidence packaging that future framework mapping can consume.
 - This is not a PDF/auditor portal yet. JSON is the canonical artifact for `KAN-99`.
 - This is not an agent feature. It must stay usable for regulated customers that do not allow agents.
+
+## Production Validation
+
+Production database:
+
+- `supabase_schema_v43.sql` applied through the ignored local `DATABASE_URL`.
+- `supabase_schema_v43_postcheck.sql` returned:
+
+```text
+KAN-99 postcheck PASS: compliance evidence exports table, columns, and indexes exist
+```
+
+Render:
+
+- Deploy `dep-d8na49naqgkc73c1porg` for commit `5f84655` reached `live`.
+
+Smoke results:
+
+```text
+/health = ok
+/stats = 200
+source deployment gate = dga_6bbb0ce5200a4d36ae6dc9fac1146c7a
+anonymous POST /compliance/evidence-exports = 401
+authenticated POST /compliance/evidence-exports = 201
+export id = cee_0043aae0507a4f52a1825774eed10bfb
+GET /compliance/evidence-exports/{export_id} = 200
+GET /compliance/evidence-exports/{export_id}/download = 200
+download hash verified = true
+Agent Governance evaluations before/after = 7 / 7
+agent_governance_used = false
+compliance_claim = false
+framework_mapping = false
+```
