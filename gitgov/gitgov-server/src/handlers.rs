@@ -20,6 +20,7 @@ include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
 include!("handlers/compliance_evidence_exports.rs");
 include!("handlers/compliance_evidence_mappings.rs");
+include!("handlers/compliance_review_packages.rs");
 include!("handlers/agent_governance.rs");
 include!("handlers/agent_governance_dry_run.rs");
 include!("handlers/agent_governance_context.rs");

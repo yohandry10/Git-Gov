@@ -161,6 +161,21 @@ pub struct CreateComplianceEvidenceMappingItemInput {
     pub notes_safe: String,
 }
 
+pub struct CreateComplianceReviewPackageInput<'a> {
+    pub review_package_id: &'a str,
+    pub org_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub mapping_id: &'a str,
+    pub evidence_export_id: &'a str,
+    pub evidence_export_hash: &'a str,
+    pub mapping_hash: &'a str,
+    pub framework_id: &'a str,
+    pub framework_version: &'a str,
+    pub format: &'a str,
+    pub artifact_hash: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
 #[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
@@ -621,6 +636,7 @@ mod chat_queries_release;
 mod compliance;
 mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
+mod compliance_review_packages;
 mod core;
 mod deployment_gates;
 mod enterprise;

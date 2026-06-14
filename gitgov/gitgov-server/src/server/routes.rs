@@ -228,6 +228,18 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             "/compliance/evidence-mappings/{mapping_id}",
             get(handlers::get_compliance_evidence_mapping),
         )
+        .route(
+            "/compliance/review-packages",
+            post(handlers::create_compliance_review_package),
+        )
+        .route(
+            "/compliance/review-packages/{review_package_id}",
+            get(handlers::get_compliance_review_package),
+        )
+        .route(
+            "/compliance/review-packages/{review_package_id}/download",
+            get(handlers::download_compliance_review_package),
+        )
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))
