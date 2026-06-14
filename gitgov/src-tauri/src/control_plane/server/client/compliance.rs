@@ -2,6 +2,85 @@ use super::super::models::*;
 use super::{server_error_from_response, ControlPlaneClient};
 
 impl ControlPlaneClient {
+    pub fn list_compliance_control_frameworks(
+        &self,
+        query: &ComplianceFrameworkPackQuery,
+    ) -> Result<ComplianceControlFrameworkListResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "control-frameworks"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn import_compliance_framework_pack(
+        &self,
+        payload: &ComplianceFrameworkPackImportRequest,
+    ) -> Result<ComplianceFrameworkPackImportResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "framework-packs", "import"])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_compliance_framework_packs(
+        &self,
+        query: &ComplianceFrameworkPackQuery,
+    ) -> Result<ComplianceFrameworkPackListResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "framework-packs"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_compliance_evidence_export(
         &self,
         payload: &ComplianceEvidenceExportRequest,

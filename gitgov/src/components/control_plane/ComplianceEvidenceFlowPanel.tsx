@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { AlertTriangle, Download, FileJson, Layers3, PackageCheck, ShieldCheck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Download, FileJson, Layers3, PackageCheck, ShieldCheck, Upload } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -34,7 +34,7 @@ function missingEvidence(items: ComplianceEvidenceMappingItem[]): string[] {
 function coverageCounts(items: ComplianceEvidenceMappingItem[]) {
   return items.reduce(
     (acc, item) => {
-      if (item.status === 'covered') acc.covered += 1
+      if (item.status === 'covered' || item.status === 'evidence_present') acc.covered += 1
       else if (item.status === 'partial') acc.partial += 1
       else acc.missing += 1
       return acc
@@ -49,17 +49,25 @@ function authorizationLabel(authorization: DeploymentGateAuthorizationRecord): s
 
 export function ComplianceEvidenceFlowPanel() {
   const authorizations = useControlPlaneStore((state) => state.deploymentGateAuthorizations)
+  const frameworks = useControlPlaneStore((state) => state.complianceControlFrameworks)
+  const selectedFrameworkId = useControlPlaneStore((state) => state.selectedComplianceFrameworkId)
+  const importResponse = useControlPlaneStore((state) => state.complianceFrameworkImportResponse)
   const selectedDeploymentGateId = useControlPlaneStore((state) => state.complianceEvidenceSelectedDeploymentGateId)
   const evidenceExport = useControlPlaneStore((state) => state.complianceEvidenceExport)
   const evidenceMapping = useControlPlaneStore((state) => state.complianceEvidenceMapping)
   const reviewPackage = useControlPlaneStore((state) => state.complianceReviewPackage)
   const reviewPackageArtifact = useControlPlaneStore((state) => state.complianceReviewPackageArtifact)
   const isExportCreating = useControlPlaneStore((state) => state.isComplianceEvidenceExportCreating)
+  const isFrameworksLoading = useControlPlaneStore((state) => state.isComplianceFrameworksLoading)
+  const isFrameworkImporting = useControlPlaneStore((state) => state.isComplianceFrameworkPackImporting)
   const isMappingCreating = useControlPlaneStore((state) => state.isComplianceEvidenceMappingCreating)
   const isPackageCreating = useControlPlaneStore((state) => state.isComplianceReviewPackageCreating)
   const isDownloading = useControlPlaneStore((state) => state.isComplianceReviewPackageDownloading)
   const error = useControlPlaneStore((state) => state.complianceEvidenceError)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
+  const loadFrameworks = useControlPlaneStore((state) => state.loadComplianceFrameworks)
+  const importFrameworkPack = useControlPlaneStore((state) => state.importComplianceFrameworkPack)
+  const selectFramework = useControlPlaneStore((state) => state.selectComplianceFramework)
   const createExport = useControlPlaneStore((state) => state.createComplianceEvidenceExport)
   const createMapping = useControlPlaneStore((state) => state.createComplianceEvidenceMapping)
   const createPackage = useControlPlaneStore((state) => state.createComplianceReviewPackage)
@@ -70,7 +78,14 @@ export function ComplianceEvidenceFlowPanel() {
   const [draftAuthorizationId, setDraftAuthorizationId] = useState(
     selectedDeploymentGateId || '',
   )
+  const [packFormat, setPackFormat] = useState<'json' | 'yaml'>('json')
+  const [packContent, setPackContent] = useState('')
   const effectiveAuthorizationId = draftAuthorizationId || defaultAuthorizationId
+  const selectedFramework = frameworks.find((framework) => framework.framework_id === selectedFrameworkId) ?? frameworks[0] ?? null
+
+  useEffect(() => {
+    void loadFrameworks()
+  }, [loadFrameworks])
 
   const selectedAuthorization = useMemo(
     () => authorizations.find((item) => item.authorization_id === effectiveAuthorizationId) ?? null,
@@ -92,7 +107,14 @@ export function ComplianceEvidenceFlowPanel() {
 
   const handleGenerateMapping = async () => {
     if (!exportRecord) return
-    await createMapping(exportRecord.export_id)
+    await createMapping(exportRecord.export_id, selectedFramework?.framework_id)
+  }
+
+  const handleImportFramework = async () => {
+    const response = await importFrameworkPack(packContent, packFormat)
+    if (response) {
+      setPackContent('')
+    }
   }
 
   const handleGeneratePackage = async () => {
@@ -263,6 +285,95 @@ export function ComplianceEvidenceFlowPanel() {
         </div>
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="rounded-lg border border-white/8 bg-surface-900/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-medium text-surface-200">Framework</div>
+              <p className="mt-1 text-[11px] text-surface-500">
+                Customer packs stay customer-owned and require customer or auditor review.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={isFrameworksLoading}
+              onClick={() => void loadFrameworks()}
+              title="Reload frameworks"
+            >
+              Reload
+            </Button>
+          </div>
+          <label htmlFor="compliance-framework-select" className="mt-3 block text-[10px] font-medium uppercase tracking-widest text-surface-500">
+            Mapping framework
+          </label>
+          <select
+            id="compliance-framework-select"
+            value={selectedFramework?.framework_id ?? selectedFrameworkId}
+            onChange={(event) => selectFramework(event.target.value)}
+            className="mt-2 w-full rounded border border-surface-600 bg-surface-800 px-2 py-2 text-xs text-surface-100 focus:border-brand-400 focus:outline-none"
+          >
+            {frameworks.length === 0 && <option value={selectedFrameworkId}>GitGov baseline loading</option>}
+            {frameworks.map((framework) => (
+              <option key={framework.framework_id} value={framework.framework_id}>
+                {framework.name} {framework.version} / {framework.owner_type}
+              </option>
+            ))}
+          </select>
+          {selectedFramework && (
+            <div className="mt-3 grid grid-cols-1 gap-1 text-[11px] text-surface-400 md:grid-cols-2">
+              <span>Owner: <span className="text-surface-200">{selectedFramework.owner_name ?? selectedFramework.owner_type}</span></span>
+              <span>Source: <span className="text-surface-200">{selectedFramework.source}</span></span>
+              <span>Claims: <span className="text-surface-200">false</span></span>
+              <span>Auditor review: <span className="text-surface-200">true</span></span>
+              <span className="truncate md:col-span-2" title={selectedFramework.pack_hash ?? undefined}>
+                Pack hash: <span className="font-mono text-surface-200">{shortHash(selectedFramework.pack_hash)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-white/8 bg-surface-900/60 p-3">
+          <div className="flex items-center gap-2">
+            <Upload size={14} className="text-brand-300" />
+            <span className="text-xs font-medium text-surface-200">Import Customer Framework Pack</span>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <select
+              value={packFormat}
+              onChange={(event) => setPackFormat(event.target.value as 'json' | 'yaml')}
+              className="w-24 rounded border border-surface-600 bg-surface-800 px-2 py-2 text-xs text-surface-100 focus:border-brand-400 focus:outline-none"
+              title="Framework pack format"
+            >
+              <option value="json">JSON</option>
+              <option value="yaml">YAML</option>
+            </select>
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={isFrameworkImporting}
+              disabled={!packContent.trim()}
+              onClick={() => void handleImportFramework()}
+              title="Import customer-owned framework pack"
+            >
+              <Upload size={13} />
+              Import
+            </Button>
+          </div>
+          <textarea
+            value={packContent}
+            onChange={(event) => setPackContent(event.target.value)}
+            placeholder="Paste customer-owned framework pack JSON or YAML"
+            className="mt-3 h-28 w-full resize-y rounded border border-surface-600 bg-surface-950 px-2 py-2 font-mono text-[11px] text-surface-100 placeholder:text-surface-600 focus:border-brand-400 focus:outline-none"
+          />
+          {importResponse && (
+            <p className="mt-2 text-[11px] text-success-200">
+              Imported {importResponse.framework.name} with {importResponse.framework.controls?.length ?? importResponse.framework_pack.control_count} controls.
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
         <div className="rounded border border-white/8 bg-white/[0.03] p-3">
           <div className="text-[10px] text-surface-500">Evidence export</div>
@@ -276,6 +387,9 @@ export function ComplianceEvidenceFlowPanel() {
           <div className="mt-1 truncate font-mono text-xs text-surface-100">{mappingRecord?.mapping_id ?? 'not generated'}</div>
           <div className="mt-1 text-[10px] text-surface-500">
             Controls: <span className="text-surface-300">{mappingItems.length || 0}</span>
+          </div>
+          <div className="mt-1 truncate text-[10px] text-surface-500" title={mappingRecord?.framework_id ?? selectedFramework?.framework_id}>
+            Framework: <span className="text-surface-300">{mappingRecord?.framework_id ?? selectedFramework?.framework_id ?? 'not selected'}</span>
           </div>
         </div>
         <div className="rounded border border-white/8 bg-white/[0.03] p-3">
@@ -301,7 +415,7 @@ export function ComplianceEvidenceFlowPanel() {
             {mappingItems.map((item) => (
               <div key={item.control_id} className="p-3 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={item.status === 'covered' ? 'success' : item.status === 'partial' ? 'warning' : 'danger'}>
+                  <Badge variant={item.status === 'covered' || item.status === 'evidence_present' ? 'success' : item.status === 'partial' ? 'warning' : 'danger'}>
                     {item.status}
                   </Badge>
                   <span className="font-mono text-surface-400">{item.control_id}</span>

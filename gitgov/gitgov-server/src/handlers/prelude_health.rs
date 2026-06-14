@@ -3,6 +3,7 @@ use crate::db::{
     AgentGovernanceReadContextInput, CreateAgentGovernanceAgentKeyInput,
     CreateAgentGovernanceEvaluationInput, CreateComplianceEvidenceExportInput,
     CreateComplianceEvidenceMappingInput, CreateComplianceEvidenceMappingItemInput,
+    CreateComplianceFrameworkPackControlInput, CreateComplianceFrameworkPackInput,
     CreateComplianceReviewPackageInput, CreateDeploymentGateAuthorizationInput,
     CreatePolicyChangeRequestInput, Database, DbError, Job, JobMetrics,
     ListAgentGovernanceEvaluationsInput, ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery,

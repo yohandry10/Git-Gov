@@ -11,14 +11,29 @@ fn normalize_evidence_mapping_request(
     normalize_release_approval_optional_text(&mut payload.org_name);
     payload.evidence_export_id = payload.evidence_export_id.trim().to_string();
     payload.framework_id = payload.framework_id.trim().to_ascii_lowercase();
+    payload.framework_version = payload
+        .framework_version
+        .take()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
 
     if !payload.evidence_export_id.starts_with("cee_") || payload.evidence_export_id.len() > 80 {
         errors.push("evidence_export_id must be a valid cee_ identifier.".to_string());
     }
-    if payload.framework_id != GITGOV_BASELINE_FRAMEWORK_ID {
-        errors.push(format!(
-            "framework_id must be {GITGOV_BASELINE_FRAMEWORK_ID} for the KAN-100 MVP."
-        ));
+    if payload.framework_id.is_empty()
+        || payload.framework_id.len() > 96
+        || payload.framework_id != payload.framework_id.to_ascii_lowercase()
+        || !payload
+            .framework_id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        errors.push("framework_id must be a valid lowercase GitGov/customer framework identifier.".to_string());
+    }
+    if let Some(version) = &payload.framework_version {
+        if version.len() > 64 {
+            errors.push("framework_version must be 64 characters or less.".to_string());
+        }
     }
 
     if errors.is_empty() {
@@ -407,55 +422,6 @@ async fn resolve_compliance_mapping_org(
     }
 }
 
-pub async fn list_compliance_control_frameworks(
-    Extension(auth_user): Extension<AuthUser>,
-    State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
-        return resp.into_response();
-    }
-
-    match state.db.list_compliance_control_frameworks().await {
-        Ok(frameworks) => (StatusCode::OK, Json(json!({ "frameworks": frameworks }))).into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to list compliance control frameworks");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal database error" })),
-            )
-                .into_response()
-        }
-    }
-}
-
-pub async fn get_compliance_control_framework(
-    Extension(auth_user): Extension<AuthUser>,
-    State(state): State<Arc<AppState>>,
-    Path(framework_id): Path<String>,
-) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
-        return resp.into_response();
-    }
-    let framework_id = framework_id.trim().to_ascii_lowercase();
-
-    match state.db.get_compliance_control_framework(&framework_id).await {
-        Ok(Some(framework)) => (StatusCode::OK, Json(framework)).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "Compliance control framework not found" })),
-        )
-            .into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, framework_id = %framework_id, "Failed to load compliance control framework");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal database error" })),
-            )
-                .into_response()
-        }
-    }
-}
-
 pub async fn create_compliance_evidence_mapping(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -479,7 +445,7 @@ pub async fn create_compliance_evidence_mapping(
 
     let framework = match state
         .db
-        .get_compliance_control_framework(&payload.framework_id)
+        .get_compliance_control_framework(Some(&org_id), &payload.framework_id)
         .await
     {
         Ok(Some(framework)) => framework,
@@ -503,9 +469,29 @@ pub async fn create_compliance_evidence_mapping(
     if framework.is_regulatory {
         return (
             StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Regulatory frameworks are not supported by the KAN-100 MVP" })),
+            Json(json!({ "error": "Regulatory frameworks are not supported for customer evidence mappings" })),
         )
             .into_response();
+    }
+    if framework.official_regulatory_mapping {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Official regulatory mappings are not supported by this customer-owned review flow" })),
+        )
+            .into_response();
+    }
+    if let Some(requested_version) = &payload.framework_version {
+        if requested_version != &framework.version {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "framework_version does not match the active framework version",
+                    "expected": framework.version,
+                    "received": requested_version
+                })),
+            )
+                .into_response();
+        }
     }
 
     let export = match state
@@ -554,7 +540,11 @@ pub async fn create_compliance_evidence_mapping(
         }
     };
 
-    let items = build_gitgov_baseline_mapping_items(&artifact, &framework);
+    let items = if framework.framework_id == GITGOV_BASELINE_FRAMEWORK_ID && framework.is_gitgov_owned {
+        build_gitgov_baseline_mapping_items(&artifact, &framework)
+    } else {
+        build_customer_framework_mapping_items(&artifact, &framework)
+    };
     let mapping_id = format!("cem_{}", Uuid::new_v4().simple());
     let item_inputs = items
         .into_iter()

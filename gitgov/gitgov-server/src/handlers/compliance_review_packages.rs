@@ -146,6 +146,7 @@ fn build_compliance_review_package_artifact(
     org_id: &str,
     created_by: &str,
     mapping: &ComplianceEvidenceMappingResponse,
+    framework: Option<&ComplianceControlFramework>,
     mapping_hash: &str,
     sections: &[String],
 ) -> serde_json::Value {
@@ -186,13 +187,38 @@ fn build_compliance_review_package_artifact(
     }
 
     if review_section_enabled(sections, "framework") {
+        let owner_type = framework
+            .map(|framework| framework.owner_type.as_str())
+            .unwrap_or("gitgov");
+        let owner_name = framework
+            .and_then(|framework| framework.owner_name.as_deref())
+            .unwrap_or("GitGov");
+        let source = framework
+            .map(|framework| framework.source.as_str())
+            .unwrap_or("gitgov_owned");
+        let is_gitgov_owned = framework
+            .map(|framework| framework.is_gitgov_owned)
+            .unwrap_or(true);
+        let official_regulatory_mapping = framework
+            .map(|framework| framework.official_regulatory_mapping)
+            .unwrap_or(false);
+        let framework_pack_id = framework.and_then(|framework| framework.framework_pack_id.clone());
+        let pack_hash = framework.and_then(|framework| framework.pack_hash.clone());
+
         artifact.insert(
             "framework".to_string(),
             json!({
                 "id": mapping.mapping.framework_id,
                 "version": mapping.mapping.framework_version,
-                "owner": "GitGov",
-                "is_regulatory": false
+                "owner": owner_name,
+                "owner_type": owner_type,
+                "source": source,
+                "is_gitgov_owned": is_gitgov_owned,
+                "is_regulatory": false,
+                "official_regulatory_mapping": official_regulatory_mapping,
+                "framework_pack_id": framework_pack_id,
+                "pack_hash": pack_hash,
+                "customer_provided": owner_type == "customer"
             }),
         );
     }
@@ -361,11 +387,27 @@ pub async fn create_compliance_review_package(
     let mapping_hash = compliance_mapping_hash(&mapping);
     let review_package_id =
         deterministic_review_package_id(&org_id, &mapping.mapping.mapping_id, &mapping_hash);
+    let framework = match state
+        .db
+        .get_compliance_control_framework(Some(&org_id), &mapping.mapping.framework_id)
+        .await
+    {
+        Ok(framework) => framework,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, framework_id = %mapping.mapping.framework_id, "Failed to load compliance framework for review package");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
     let artifact = build_compliance_review_package_artifact(
         &review_package_id,
         &org_id,
         &auth_user.client_id,
         &mapping,
+        framework.as_ref(),
         &mapping_hash,
         &sections,
     );

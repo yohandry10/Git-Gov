@@ -4,6 +4,9 @@ import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type { DeploymentGateAuthorizationRecord } from '@/store/useControlPlaneStore/types'
 
 const createComplianceEvidenceExport = vi.fn()
+const loadComplianceFrameworks = vi.fn()
+const importComplianceFrameworkPack = vi.fn()
+const selectComplianceFramework = vi.fn()
 const createComplianceEvidenceMapping = vi.fn()
 const createComplianceReviewPackage = vi.fn()
 const downloadComplianceReviewPackage = vi.fn()
@@ -78,16 +81,38 @@ describe('ComplianceEvidenceFlowPanel', () => {
       selectedOrgName: 'yohandry10',
       displayTimezone: 'UTC',
       deploymentGateAuthorizations: [authorization()],
+      complianceControlFrameworks: [{
+        framework_id: 'gitgov_release_governance_baseline_v1',
+        name: 'GitGov Release Governance Baseline',
+        version: '1.0.0',
+        description: 'GitGov-owned baseline',
+        is_regulatory: false,
+        is_active: true,
+        owner_type: 'gitgov',
+        owner_name: 'GitGov',
+        source: 'gitgov_owned',
+        is_gitgov_owned: true,
+        official_regulatory_mapping: false,
+        controls: [],
+      }],
+      complianceFrameworkPacks: [],
+      selectedComplianceFrameworkId: 'gitgov_release_governance_baseline_v1',
+      complianceFrameworkImportResponse: null,
       complianceEvidenceSelectedDeploymentGateId: null,
       complianceEvidenceExport: null,
       complianceEvidenceMapping: null,
       complianceReviewPackage: null,
       complianceReviewPackageArtifact: null,
       isComplianceEvidenceExportCreating: false,
+      isComplianceFrameworksLoading: false,
+      isComplianceFrameworkPackImporting: false,
       isComplianceEvidenceMappingCreating: false,
       isComplianceReviewPackageCreating: false,
       isComplianceReviewPackageDownloading: false,
       complianceEvidenceError: null,
+      loadComplianceFrameworks,
+      importComplianceFrameworkPack,
+      selectComplianceFramework,
       createComplianceEvidenceExport,
       createComplianceEvidenceMapping,
       createComplianceReviewPackage,
@@ -104,6 +129,8 @@ describe('ComplianceEvidenceFlowPanel', () => {
     expect(screen.getByText(/not SOC 2, ISO, NIST, PCI, SBS, LGPD/)).toBeInTheDocument()
     expect(screen.getByText('Manual-first:')).toBeInTheDocument()
     expect(screen.getByText('Agent required:')).toBeInTheDocument()
+    expect(screen.getByText('Import Customer Framework Pack')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mapping framework')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Export/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /Map/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Package/i })).toBeDisabled()
@@ -206,7 +233,7 @@ describe('ComplianceEvidenceFlowPanel', () => {
     })
     await waitFor(() => expect(screen.getByRole('button', { name: /Map/i })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: /Map/i }))
-    await waitFor(() => expect(createComplianceEvidenceMapping).toHaveBeenCalledWith('cee_kan102'))
+    await waitFor(() => expect(createComplianceEvidenceMapping).toHaveBeenCalledWith('cee_kan102', 'gitgov_release_governance_baseline_v1'))
 
     await act(async () => {
       useControlPlaneStore.setState({
@@ -233,5 +260,72 @@ describe('ComplianceEvidenceFlowPanel', () => {
     await waitFor(() => expect(downloadComplianceReviewPackage).toHaveBeenCalledWith('crp_kan102'))
     expect(clickSpy).toHaveBeenCalled()
     clickSpy.mockRestore()
+  })
+
+  it('imports a customer-owned framework pack from the panel', async () => {
+    importComplianceFrameworkPack.mockResolvedValue({
+      framework_pack: {
+        framework_pack_id: 'cfp_kan103',
+        org_id: 'org-1',
+        framework_id: 'customer_bank_controls_123',
+        framework_name: 'Bank Controls',
+        framework_version: '2026.06',
+        description: 'Customer controls',
+        owner_type: 'customer',
+        owner_name: 'Customer Security Office',
+        source: 'customer_provided',
+        review_status: 'customer_review_required',
+        schema_version: 'gitgov_customer_framework_pack.v1',
+        pack_hash: 'sha256:' + '1'.repeat(64),
+        control_count: 1,
+        compliance_claim: false,
+        regulatory_claim: false,
+        gitgov_certifies: false,
+        requires_auditor_review: true,
+        official_regulatory_mapping: false,
+        created_by_user_id: 'admin',
+        created_at: Date.UTC(2026, 5, 14, 4, 0, 0),
+      },
+      framework: {
+        framework_id: 'customer_bank_controls_123',
+        org_id: 'org-1',
+        name: 'Bank Controls',
+        version: '2026.06',
+        description: 'Customer controls',
+        is_regulatory: false,
+        is_active: true,
+        owner_type: 'customer',
+        owner_name: 'Customer Security Office',
+        source: 'customer_provided',
+        is_gitgov_owned: false,
+        official_regulatory_mapping: false,
+        framework_pack_id: 'cfp_kan103',
+        pack_hash: 'sha256:' + '1'.repeat(64),
+        controls: [{
+          control_id: 'BRC-01',
+          title: 'Deployment decision',
+          description: 'Decision required',
+          required_evidence_types: ['deployment_gate.decision'],
+          sort_order: 10,
+        }],
+      },
+    })
+
+    render(<ComplianceEvidenceFlowPanel />)
+
+    fireEvent.change(screen.getByPlaceholderText('Paste customer-owned framework pack JSON or YAML'), {
+      target: {
+        value: JSON.stringify({
+          schema_version: 'gitgov_customer_framework_pack.v1',
+          framework: { id: 'bank_controls', name: 'Bank Controls', version: '2026.06' },
+          controls: [],
+        }),
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Import/i }))
+
+    await waitFor(() => {
+      expect(importComplianceFrameworkPack).toHaveBeenCalledWith(expect.stringContaining('bank_controls'), 'json')
+    })
   })
 })
