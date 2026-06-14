@@ -812,6 +812,10 @@ mod opa_adapter_tests {
             org_id: Some("org-id".to_string()),
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         };
         let source = PolicySourceMetadata::control_plane_managed("policy-admin", "checksum");
         let native_response = PolicyCheckResponse {
@@ -873,6 +877,10 @@ mod opa_adapter_tests {
             org_id: Some("org-id".to_string()),
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         };
         let source = PolicySourceMetadata::control_plane_managed("policy-admin", "checksum");
         let native_response = PolicyCheckResponse {

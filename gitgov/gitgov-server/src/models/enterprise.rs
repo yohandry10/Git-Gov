@@ -490,7 +490,75 @@ pub struct AgentGovernanceEvaluationRecord {
     pub request_payload: serde_json::Value,
     #[serde(default)]
     pub metadata: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub principal_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_key_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_display_name: Option<String>,
     pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentGovernanceAgentKeyRecord {
+    pub id: String,
+    pub key_id: String,
+    pub org_id: String,
+    pub display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub scopes: Vec<String>,
+    #[serde(default)]
+    pub allowed_actions: Vec<String>,
+    pub token_preview: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_at: Option<i64>,
+    pub created_by: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_by: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateAgentGovernanceAgentKeyResponse {
+    #[serde(flatten)]
+    pub record: AgentGovernanceAgentKeyRecord,
+    pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceAgentKeyQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CreateAgentGovernanceAgentKeyRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub display_name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub allowed_actions: Vec<String>,
+    #[serde(default)]
+    pub expires_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceAgentKeyListResponse {
+    #[serde(default)]
+    pub items: Vec<AgentGovernanceAgentKeyRecord>,
+    pub total: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

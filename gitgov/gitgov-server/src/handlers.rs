@@ -19,6 +19,8 @@ include!("handlers/governance_decisions.rs");
 include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
 include!("handlers/agent_governance.rs");
+include!("handlers/agent_governance_admin.rs");
+include!("handlers/agent_governance_agent_keys.rs");
 #[cfg(test)]
 include!("handlers/agent_governance_tests.rs");
 #[cfg(test)]

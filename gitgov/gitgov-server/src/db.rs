@@ -57,6 +57,10 @@ pub struct ApiKeyAuthContext {
     pub org_id: Option<String>,
     pub platform_principal_id: Option<String>,
     pub is_platform_founder: bool,
+    pub principal_type: String,
+    pub scopes: Vec<String>,
+    pub agent_key_id: Option<String>,
+    pub agent_display_name: Option<String>,
 }
 
 type ApiKeyAuthCacheValue = ApiKeyAuthContext;
@@ -66,6 +70,33 @@ type StaleApiKeyAuthCacheValue = (ApiKeyAuthCacheValue, u64);
 pub struct ApiKeyAuthValidation {
     pub auth: Option<ApiKeyAuthCacheValue>,
     pub used_stale_cache: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct AgentKeyAuthContext {
+    pub client_id: String,
+    pub org_id: String,
+    pub agent_key_id: String,
+    pub display_name: String,
+    pub scopes: Vec<String>,
+    pub allowed_actions: Vec<String>,
+    pub denied_reason: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateAgentGovernanceAgentKeyInput<'a> {
+    pub key_id: &'a str,
+    pub org_id: &'a str,
+    pub token_hash: &'a str,
+    pub token_prefix: &'a str,
+    pub token_last4: &'a str,
+    pub display_name: &'a str,
+    pub description: Option<&'a str>,
+    pub environment: Option<&'a str>,
+    pub scopes: &'a [String],
+    pub allowed_actions: &'a [String],
+    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_by: &'a str,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +139,9 @@ pub struct CreateAgentGovernanceEvaluationInput {
     pub policy_checksum: String,
     pub evaluation: serde_json::Value,
     pub request_payload: serde_json::Value,
+    pub principal_type: Option<String>,
+    pub agent_key_id: Option<String>,
+    pub agent_display_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -247,6 +281,41 @@ fn agent_governance_evaluation_from_row(row: &PgRow) -> AgentGovernanceEvaluatio
         evaluation: row.get("evaluation"),
         request_payload: row.get("request_payload"),
         metadata: row.get("metadata"),
+        principal_type: row.try_get("principal_type").ok(),
+        agent_key_id: row.try_get("agent_key_id").ok(),
+        agent_display_name: row.try_get("agent_display_name").ok(),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
+fn string_vec_from_json(value: serde_json::Value) -> Vec<String> {
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(ToString::to_string))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+fn agent_governance_agent_key_from_row(row: &PgRow) -> AgentGovernanceAgentKeyRecord {
+    AgentGovernanceAgentKeyRecord {
+        id: row.get("id"),
+        key_id: row.get("key_id"),
+        org_id: row.get("org_id"),
+        display_name: row.get("display_name"),
+        description: row.get("description"),
+        environment: row.get("environment"),
+        scopes: string_vec_from_json(row.get("scopes")),
+        allowed_actions: string_vec_from_json(row.get("allowed_actions")),
+        token_preview: row.get("token_preview"),
+        expires_at: row.get("expires_at_ms"),
+        last_used_at: row.get("last_used_at_ms"),
+        revoked_at: row.get("revoked_at_ms"),
+        created_by: row.get("created_by"),
+        revoked_by: row.get("revoked_by"),
         created_at: row.get("created_at_ms"),
     }
 }

@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-14
-Ticket: `KAN-93` Shared Governance Decision Model
+Ticket: `KAN-94` Agent-Scoped API Keys
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,6 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- Active implementation ticket: GitHub issue `#332`, `KAN-94: Agent-scoped API keys for optional Agent Governance`, on branch `feature/KAN-94-agent-scoped-api-keys`.
+- KAN-94 product decision from GPT/product review: implement agent-scoped credentials as an optional Agent Governance hardening slice, not a chatbot, MCP server, BYOM feature, IAM replacement, provider mutation path, Deployment Gate dependency, or default requirement. GitGov remains manual-first. Agent keys are limited to `POST /agent-governance/evaluate`, require tenant opt-in, store only token hashes plus prefix/last-four metadata, return plaintext token only once, audit create/use/deny/revoke/invalid-scope events, and must not create evaluation rows for disabled tenants, revoked/expired keys, invalid scopes, tenant mismatch, or disallowed actions.
+- KAN-94 implementation status on 2026-06-14: backend Agent Governance agent-key management routes added (`GET/POST /agent-governance/agent-keys`, `DELETE /agent-governance/agent-keys/{key_id}`), agent-key auth path added for `ggag_` bearer tokens, `agent_governance_agent_keys` table and `agent_governance_evaluations` principal identity columns added through migration `v40`, Agent Governance handlers split into runtime/admin/key modules, and docs added under `docs/design/agent-scoped-api-keys-mvp.md` plus `docs/reports/agent-scoped-api-keys-2026-06-14.md`. Local validation so far passed: backend fmt/check/clippy, v40 migration/postcheck against temporary PostgreSQL 16 on `127.0.0.1:55437`, and focused Agent Governance tests (`14` passed). Remaining: full backend tests, publication guard, PR/merge, production migration/deploy/smoke.
 - Latest completed implementation ticket: GitHub issue `#329`, `KAN-93: Shared Governance Decision Model for Deployment Gates`, closed by PR `#330` and merged to `main` as `8a462bd` on 2026-06-14.
 - Previous completed implementation ticket: GitHub issue `#326`, `KAN-92: Agent Governance Control Boundary`, closed by PR `#327` and merged to `main` as `104131e` on 2026-06-14.
 - KAN-93 product decision from GPT/product review: implement a neutral `shared-governance-decision.v1` model consumed by Deployment Gates and Agent Governance, without coupling Deployment Gates to `/agent-governance/evaluate`. Deployment Gates remain CI/CD-facing/manual-first and emit `consumer_type=deployment_gate`, `actor_type=system`, and `agent_governance_used=false`; Agent Governance remains optional and emits `consumer_type=agent_governance` only when explicitly used. KAN-94 should likely be agent-scoped API credentials, but only as an opt-in tenant feature after KAN-93 is shipped.
@@ -836,7 +839,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-36 adds direct provider credential/reachability checks.
   - KAN-37 adds formal release approval persistence with evidence packet hash and risk expiration.
 - Current completed Deployment Gates 0.1 slice: `KAN-80` plus `KAN-83` through `KAN-88`, with
-  `KAN-93` active to unify decision evidence across Deployment Gates and optional Agent Governance.
+  `KAN-93` completed to unify decision evidence across Deployment Gates and optional Agent Governance.
   - KAN-80 adds first governed repo setup.
   - KAN-83 adds the CI/CD-facing deployment authorization API.
   - KAN-84 adds persisted authorization history in Desktop and generated workflow migration.
@@ -850,7 +853,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
   - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
-- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 is the selected bridge slice: shared deterministic decision evidence across Deployment Gates and optional Agent Governance. The next likely slice is KAN-94 agent-scoped credentials, still optional/customer-selected and not required for manual Deployment Gates.
+- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 added shared deterministic decision evidence across Deployment Gates and optional Agent Governance. KAN-94 is active to add optional agent-scoped credentials; it remains customer-selected and is not required for manual Deployment Gates.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
 ## Archived Ticket Notes
@@ -869,7 +872,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-No active implementation blocker remains after KAN-90 merge and production smoke validation.
+KAN-94 is active local implementation work. No product blocker is known; remaining blockers are only validation, PR, merge, production migration, deploy, and smoke.
 
 Current work types are:
 

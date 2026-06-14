@@ -1,6 +1,238 @@
 use super::*;
 
 impl Database {
+    pub async fn validate_agent_governance_agent_key(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<AgentKeyAuthContext>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                key_id,
+                org_id::text,
+                display_name,
+                scopes,
+                allowed_actions,
+                revoked_at,
+                expires_at
+            FROM agent_governance_agent_keys
+            WHERE token_hash = $1
+            "#,
+        )
+        .bind(token_hash)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let Some(row) = row else {
+            return Ok(None);
+        };
+
+        let key_id: String = row.get("key_id");
+        let org_id: String = row.get("org_id");
+        let display_name: String = row.get("display_name");
+        let scopes = string_vec_from_json(row.get("scopes"));
+        let allowed_actions = string_vec_from_json(row.get("allowed_actions"));
+        let revoked_at: Option<chrono::DateTime<chrono::Utc>> = row.get("revoked_at");
+        let expires_at: Option<chrono::DateTime<chrono::Utc>> = row.get("expires_at");
+        let denied_reason = if revoked_at.is_some() {
+            Some("revoked_key".to_string())
+        } else if expires_at
+            .map(|expires_at| expires_at <= chrono::Utc::now())
+            .unwrap_or(false)
+        {
+            Some("expired_key".to_string())
+        } else {
+            None
+        };
+
+        Ok(Some(AgentKeyAuthContext {
+            client_id: format!("agent:{key_id}"),
+            org_id,
+            agent_key_id: key_id,
+            display_name,
+            scopes,
+            allowed_actions,
+            denied_reason,
+        }))
+    }
+
+    pub async fn mark_agent_governance_agent_key_used(&self, key_id: &str) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE agent_governance_agent_keys
+            SET last_used_at = NOW()
+            WHERE key_id = $1
+              AND revoked_at IS NULL
+            "#,
+        )
+        .bind(key_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn create_agent_governance_agent_key(
+        &self,
+        input: &CreateAgentGovernanceAgentKeyInput<'_>,
+    ) -> Result<AgentGovernanceAgentKeyRecord, DbError> {
+        let scopes_json = serde_json::to_value(input.scopes)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let allowed_actions_json = serde_json::to_value(input.allowed_actions)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let token_preview = format!("{}****{}", input.token_prefix, input.token_last4);
+
+        let row = sqlx::query(
+            r#"
+            INSERT INTO agent_governance_agent_keys (
+                key_id,
+                org_id,
+                token_hash,
+                token_prefix,
+                token_last4,
+                token_preview,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                expires_at,
+                created_by
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10::jsonb,
+                $11::jsonb,
+                $12,
+                $13
+            )
+            RETURNING
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.key_id)
+        .bind(input.org_id)
+        .bind(input.token_hash)
+        .bind(input.token_prefix)
+        .bind(input.token_last4)
+        .bind(&token_preview)
+        .bind(input.display_name)
+        .bind(input.description)
+        .bind(input.environment)
+        .bind(&scopes_json)
+        .bind(&allowed_actions_json)
+        .bind(input.expires_at)
+        .bind(input.created_by)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(agent_governance_agent_key_from_row(&row))
+    }
+
+    pub async fn list_agent_governance_agent_keys(
+        &self,
+        org_id: &str,
+    ) -> Result<Vec<AgentGovernanceAgentKeyRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM agent_governance_agent_keys
+            WHERE org_id = $1::uuid
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(agent_governance_agent_key_from_row)
+            .collect())
+    }
+
+    pub async fn revoke_agent_governance_agent_key(
+        &self,
+        org_id: &str,
+        key_id: &str,
+        revoked_by: &str,
+    ) -> Result<Option<AgentGovernanceAgentKeyRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE agent_governance_agent_keys
+            SET revoked_at = COALESCE(revoked_at, NOW()),
+                revoked_by = COALESCE(revoked_by, $3)
+            WHERE org_id = $1::uuid
+              AND key_id = $2
+            RETURNING
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(org_id)
+        .bind(key_id)
+        .bind(revoked_by)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.as_ref().map(agent_governance_agent_key_from_row))
+    }
+
     pub async fn get_agent_governance_settings(
         &self,
         org_id: &str,
@@ -117,7 +349,10 @@ impl Database {
                 policy_checksum,
                 evaluation,
                 request_payload,
-                metadata
+                metadata,
+                principal_type,
+                agent_key_id,
+                agent_display_name
             )
             VALUES (
                 $1,
@@ -142,7 +377,10 @@ impl Database {
                 $20,
                 $21::jsonb,
                 $22::jsonb,
-                $23::jsonb
+                $23::jsonb,
+                $24,
+                $25,
+                $26
             )
             RETURNING
                 id::text,
@@ -169,6 +407,9 @@ impl Database {
                 evaluation,
                 request_payload,
                 metadata,
+                principal_type,
+                agent_key_id,
+                agent_display_name,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             "#,
         )
@@ -195,6 +436,9 @@ impl Database {
         .bind(&input.evaluation)
         .bind(&input.request_payload)
         .bind(&input.payload.metadata)
+        .bind(input.principal_type.as_deref())
+        .bind(input.agent_key_id.as_deref())
+        .bind(input.agent_display_name.as_deref())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -258,6 +502,9 @@ impl Database {
                 evaluation,
                 request_payload,
                 metadata,
+                principal_type,
+                agent_key_id,
+                agent_display_name,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             FROM agent_governance_evaluations
             WHERE org_id = $1::uuid

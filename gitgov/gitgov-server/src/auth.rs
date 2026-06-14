@@ -1,5 +1,5 @@
 use crate::db::Database;
-use crate::models::UserRole;
+use crate::models::{AdminAuditLogEntry, UserRole};
 use axum::{
     body::Body,
     extract::State,
@@ -18,6 +18,10 @@ pub struct AuthUser {
     pub org_id: Option<String>,
     pub platform_principal_id: Option<String>,
     pub is_platform_founder: bool,
+    pub principal_type: String,
+    pub scopes: Vec<String>,
+    pub agent_key_id: Option<String>,
+    pub agent_display_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +45,22 @@ impl AuthError {
             message: message.into(),
             status: StatusCode::FORBIDDEN,
             code: "FORBIDDEN",
+        }
+    }
+
+    fn forbidden_with_code(message: impl Into<String>, code: &'static str) -> Self {
+        Self {
+            message: message.into(),
+            status: StatusCode::FORBIDDEN,
+            code,
+        }
+    }
+
+    fn unauthorized_with_code(message: impl Into<String>, code: &'static str) -> Self {
+        Self {
+            message: message.into(),
+            status: StatusCode::UNAUTHORIZED,
+            code,
         }
     }
 
@@ -89,15 +109,125 @@ pub async fn auth_middleware(
     let key_hash = format!("{:x}", sha2::Sha256::digest(token.as_bytes()));
 
     let path = req.uri().path().to_string();
+    let method = req.method().clone();
     let auth_validation = db.validate_api_key(&key_hash).await.map_err(|e| {
         tracing::error!("Authentication backend error: {}", e);
         AuthError::service_unavailable("Authentication backend unavailable")
     })?;
-    let auth_user = auth_validation.auth.ok_or_else(|| {
-        metrics::counter!("gitgov_auth_total", "result" => "invalid_key", "role" => "unknown")
-            .increment(1);
-        AuthError::unauthorized("Invalid or expired API key")
-    })?;
+    let auth_user = match auth_validation.auth {
+        Some(auth_user) => auth_user,
+        None if token.starts_with("ggag_") => {
+            match db
+                .validate_agent_governance_agent_key(&key_hash)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Agent key authentication backend error: {}", e);
+                    AuthError::service_unavailable("Authentication backend unavailable")
+                })? {
+                Some(agent_key) => {
+                    if let Some(reason) = agent_key.denied_reason.as_deref() {
+                        write_agent_key_auth_audit(
+                            &db,
+                            &agent_key,
+                            "agent_key.denied",
+                            serde_json::json!({
+                                "reason": reason,
+                                "path": path,
+                                "method": method.as_str()
+                            }),
+                        )
+                        .await;
+                        metrics::counter!("gitgov_auth_total", "result" => reason.to_string(), "role" => "agent").increment(1);
+                        return Err(AuthError::unauthorized_with_code(
+                            "Invalid or expired agent key",
+                            if reason == "expired_key" {
+                                "expired_key"
+                            } else {
+                                "revoked_key"
+                            },
+                        ));
+                    }
+
+                    let has_evaluate_scope = agent_key
+                        .scopes
+                        .iter()
+                        .any(|scope| scope == "agent_governance:evaluate");
+                    let is_evaluate_path =
+                        method == axum::http::Method::POST && path == "/agent-governance/evaluate";
+                    if !has_evaluate_scope || !is_evaluate_path {
+                        write_agent_key_auth_audit(
+                            &db,
+                            &agent_key,
+                            "agent_key.invalid_scope",
+                            serde_json::json!({
+                                "reason": if has_evaluate_scope { "path_not_allowed" } else { "missing_agent_governance_evaluate_scope" },
+                                "path": path,
+                                "method": method.as_str(),
+                                "scopes": agent_key.scopes
+                            }),
+                        )
+                        .await;
+                        metrics::counter!("gitgov_auth_total", "result" => "invalid_scope", "role" => "agent").increment(1);
+                        return Err(AuthError::forbidden_with_code(
+                            "Agent key scope does not allow this request",
+                            "invalid_scope",
+                        ));
+                    }
+
+                    if let Err(e) = db
+                        .mark_agent_governance_agent_key_used(&agent_key.agent_key_id)
+                        .await
+                    {
+                        tracing::warn!(
+                            error = %e,
+                            agent_key_id = %agent_key.agent_key_id,
+                            "Failed to update agent key last_used_at"
+                        );
+                    }
+                    write_agent_key_auth_audit(
+                        &db,
+                        &agent_key,
+                        "agent_key.used",
+                        serde_json::json!({
+                            "path": path,
+                            "method": method.as_str(),
+                            "scope": "agent_governance:evaluate"
+                        }),
+                    )
+                    .await;
+
+                    let mut scopes = agent_key.scopes;
+                    if !agent_key.allowed_actions.is_empty() {
+                        scopes.push(format!(
+                            "agent_actions:{}",
+                            agent_key.allowed_actions.join(",")
+                        ));
+                    }
+
+                    crate::db::ApiKeyAuthContext {
+                        client_id: agent_key.client_id,
+                        role: UserRole::Developer,
+                        org_id: Some(agent_key.org_id),
+                        platform_principal_id: None,
+                        is_platform_founder: false,
+                        principal_type: "agent".to_string(),
+                        scopes,
+                        agent_key_id: Some(agent_key.agent_key_id),
+                        agent_display_name: Some(agent_key.display_name),
+                    }
+                }
+                None => {
+                    metrics::counter!("gitgov_auth_total", "result" => "invalid_key", "role" => "agent").increment(1);
+                    return Err(AuthError::unauthorized("Invalid or expired API key"));
+                }
+            }
+        }
+        None => {
+            metrics::counter!("gitgov_auth_total", "result" => "invalid_key", "role" => "unknown")
+                .increment(1);
+            return Err(AuthError::unauthorized("Invalid or expired API key"));
+        }
+    };
 
     if auth_validation.used_stale_cache
         && auth_user.role == UserRole::Admin
@@ -119,6 +249,10 @@ pub async fn auth_middleware(
         org_id: auth_user.org_id,
         platform_principal_id: auth_user.platform_principal_id,
         is_platform_founder: auth_user.is_platform_founder,
+        principal_type: auth_user.principal_type,
+        scopes: auth_user.scopes,
+        agent_key_id: auth_user.agent_key_id,
+        agent_display_name: auth_user.agent_display_name,
     };
 
     metrics::counter!("gitgov_auth_total", "result" => "success", "role" => user.role.as_str())
@@ -127,6 +261,32 @@ pub async fn auth_middleware(
     req.extensions_mut().insert(user);
 
     Ok(next.run(req).await)
+}
+
+async fn write_agent_key_auth_audit(
+    db: &Arc<Database>,
+    agent_key: &crate::db::AgentKeyAuthContext,
+    action: &str,
+    metadata: serde_json::Value,
+) {
+    let entry = AdminAuditLogEntry {
+        id: uuid::Uuid::new_v4().to_string(),
+        actor_client_id: agent_key.client_id.clone(),
+        action: action.to_string(),
+        target_type: Some("agent_governance_agent_key".to_string()),
+        target_id: Some(agent_key.agent_key_id.clone()),
+        metadata: serde_json::json!({
+            "org_id": agent_key.org_id,
+            "agent_key_id": agent_key.agent_key_id,
+            "agent_display_name": agent_key.display_name,
+            "principal_type": "agent",
+            "metadata": metadata
+        }),
+        created_at: chrono::Utc::now().timestamp_millis(),
+    };
+    if let Err(e) = db.insert_admin_audit_log(&entry).await {
+        tracing::warn!(error = %e, action, "Failed to write agent key auth audit");
+    }
 }
 
 fn is_sensitive_admin_path(path: &str) -> bool {
@@ -176,6 +336,10 @@ mod tests {
             org_id: None,
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }
     }
 
@@ -186,6 +350,10 @@ mod tests {
             org_id: None,
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }
     }
 
@@ -207,6 +375,10 @@ mod tests {
             org_id: None,
             platform_principal_id: Some("principal-1".to_string()),
             is_platform_founder: true,
+            principal_type: "platform_founder".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }));
         assert!(is_founder_global_admin(&AuthUser {
             client_id: "platform-service".to_string(),
@@ -214,6 +386,10 @@ mod tests {
             org_id: None,
             platform_principal_id: Some("principal-2".to_string()),
             is_platform_founder: true,
+            principal_type: "platform_founder".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }));
         assert!(!is_founder_global_admin(&AuthUser {
             client_id: "bootstrap-admin".to_string(),
@@ -221,6 +397,10 @@ mod tests {
             org_id: Some("org-123".to_string()),
             platform_principal_id: Some("principal-1".to_string()),
             is_platform_founder: true,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }));
         assert!(!is_founder_global_admin(&AuthUser {
             client_id: "bootstrap-admin".to_string(),
@@ -228,6 +408,10 @@ mod tests {
             org_id: None,
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }));
     }
 

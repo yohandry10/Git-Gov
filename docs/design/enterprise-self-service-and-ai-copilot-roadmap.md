@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys
 
 ## Decision
 
@@ -132,20 +132,20 @@ Current primitives:
 - `KAN-93` adds the same `shared-governance-decision.v1` shape to Agent Governance evaluations, but
   keeps Agent Governance optional. Deployment Gates do not call `/agent-governance/evaluate` and do
   not create agent evaluation rows.
+- `KAN-94` adds optional agent-scoped API keys for tenants that explicitly enable Agent Governance.
+  The key type is limited to `POST /agent-governance/evaluate`, stores only token hashes plus
+  prefix/last-four metadata, records agent identity on evaluation rows, audits create/use/deny/revoke
+  events, and keeps disabled/manual-only tenants unaffected.
 
 Future scope:
 
-- `KAN-94` likely starts agent-specific API credentials. This should remain optional and scoped:
-  agent keys can ask for policy decisions only when a tenant has opted in, while human/Admin and
-  CI/CD Deployment Gate flows remain fully usable without agents.
 - MCP server exposing scoped governance tools:
   - `get_branch_status`
   - `check_policy_compliance`
   - `list_audit_logs`
   - `get_pipeline_state`
   - `get_risk_score`
-- Agent-specific auth tokens with scopes such as `read:audit`, `read:policy`,
-  `read:branch_status`, and tightly governed write scopes.
+- Broader read-only agent scopes such as `read:audit`, `read:policy`, and `read:branch_status`.
 - Broader REST Policy API coverage beyond the KAN-90 MVP rules.
 - Agent dry-run/simulation endpoint for read-only evaluation before execution.
 - Human-in-the-loop approval for sensitive operations from agents.
