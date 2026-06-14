@@ -16,6 +16,7 @@ mod agent_governance_context;
 mod agent_governance_dry_run;
 mod alerts_exports_policy_requests;
 mod basic_auth;
+mod compliance_evidence_exports;
 mod coverage_and_compliance;
 mod events_and_admin;
 mod first_governed_repo_setup;

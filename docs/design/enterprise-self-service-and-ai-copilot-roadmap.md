@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export
 
 ## Decision
 
@@ -153,6 +153,9 @@ Current primitives:
   existing branch, policy, pipeline, deployment-gate, risk, and activity evidence. The endpoint is
   read-only, returns `will_authorize_execution=false` and `mcp_surface=false`, creates no formal
   evaluation rows, and is denied for agent principals while the tenant remains disabled/manual-only.
+- Post-KAN-98 product decision: pause Agentic Governance expansion before MCP. The next slice is
+  `KAN-99 Compliance Evidence Export v1`, because it strengthens the manual-first enterprise buyer
+  story and turns Deployment Gate decisions into audit-ready packages without requiring agents.
 
 Future scope:
 
@@ -198,6 +201,11 @@ Current primitives:
 
 - Evidence packets, audit export, GitHub/Jira/Jenkins/Sonar evidence, release approvals, policy
   history, and compliance/reporting helpers already exist.
+- `KAN-99` adds the prerequisite compliance package layer: Admins can create, inspect metadata for,
+  and download a JSON-only, hashable, read-only evidence export from an existing Deployment Gate
+  authorization. The artifact includes gate decision, policy checksum/source, readiness, approvals,
+  evidence counts/references, explicit gaps, audit timestamps, `agent_governance_used=false`, and
+  `compliance_claim=false`. It does not map controls yet and does not claim framework compliance.
 
 Future scope:
 
