@@ -64,4 +64,38 @@ Focused coverage:
 
 ## Production Validation
 
-Pending PR merge, Render deploy, and production smoke validation.
+Passed after PR `#336` merged to `main` as `d63fba3`.
+
+- Post-merge GitHub workflows passed for `d63fba3`:
+  - `CI`
+  - `Release Readiness Gate`
+  - `Secret Scan`
+  - `Public Naming Guard`
+  - `Quality Gate Policy Matrix (Optional)`
+  - `Governance Correlation Smoke (Optional)`
+  - `Desktop Updater Readiness (Optional)`
+  - `SonarQube Governance (Non-Blocking)`
+- Render deploy `dep-d8n79leq1p3s7383pu90` reached `live` for commit `d63fba3`.
+- `GET https://gitgov-api.onrender.com/health` returned `ok`.
+- Authenticated `GET https://gitgov-api.onrender.com/stats` returned HTTP `200`.
+- Before smoke, Agent Governance settings for `yohandry10` were
+  `enabled=false`, `mode=manual_only`, and `payload_mode=minimized`.
+- Authenticated dry-run while disabled returned HTTP `403`,
+  `code=agent_governance_disabled`, `dry_run=true`, and
+  `would_persist_evaluation=false`.
+- A temporary agent key `agk_1e3e5b1281714b1da883c2d9cd1fa5dc` was created with
+  `allowed_actions=["commit"]`; the one-time plaintext token was not printed in
+  logs or committed.
+- Agent Governance was temporarily enabled for the smoke and returned
+  `mode=opt_in_enabled`.
+- Agent-key dry-run for `commit` returned HTTP `200`, `decision=allowed`,
+  `dry_run=true`, `would_persist_evaluation=false`,
+  `would_authorize_execution=false`, `principal_type=agent`, matching
+  `agent_key_id`, and deterministic `llm_decision=false`.
+- Admin history lookup for smoke agent `kan95-smoke-agent` returned `total=0`,
+  proving dry-run did not persist an `agent_governance_evaluations` row.
+- Agent-key dry-run for disallowed `change_policy` returned HTTP `403` with
+  `code=action_not_allowed`.
+- Temporary agent key was revoked.
+- Agent Governance settings were restored to `enabled=false` and
+  `mode=manual_only`.
