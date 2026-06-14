@@ -491,6 +491,63 @@ pub struct AgentGovernanceEvaluationRecord {
     pub created_at: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentGovernanceSettingsRecord {
+    pub org_id: String,
+    pub enabled: bool,
+    pub mode: String,
+    pub payload_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub updated_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceSettingsQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpsertAgentGovernanceSettingsRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub enabled: bool,
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceEvaluationQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub evaluation_id: Option<String>,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub action: Option<String>,
+    #[serde(default)]
+    pub decision: Option<String>,
+    #[serde(default)]
+    pub agent_id: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceEvaluationListResponse {
+    #[serde(default)]
+    pub items: Vec<AgentGovernanceEvaluationRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AgentGovernanceEvaluationRequest {
     #[serde(default)]

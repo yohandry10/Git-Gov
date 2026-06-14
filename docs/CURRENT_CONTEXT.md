@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-14
-Ticket: `KAN-90` Agent Governance Policy API MVP
+Ticket: `KAN-92` Agent Governance Control Boundary
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- Active implementation ticket: GitHub issue `#326`, `KAN-92: Agent Governance Control Boundary`, on branch `feature/KAN-92-agent-governance-control-boundary`.
 - Latest completed implementation ticket: GitHub issue `#321`, `KAN-90: Agent Governance Policy API MVP`, closed by PR `#322` and merged to `main` as `f6a3603` on 2026-06-14.
+- KAN-92 local implementation adds tenant-level `agent_governance_settings`, Admin-only `GET/PUT /agent-governance/settings`, Admin-only `GET /agent-governance/evaluations`, disabled-by-default behavior for `POST /agent-governance/evaluate`, `403 agent_governance_disabled` without persisting evaluation rows when disabled, opt-in/out audit events, denied-attempt audit events, and minimized/redacted persisted request payload. Local validation passed on 2026-06-14: backend fmt/check/clippy, fresh PostgreSQL 16 migration/postcheck for `supabase_schema_v39.sql`, focused `agent_governance` tests (`10` passed), and full backend tests (`275` passed). PR/merge/production smoke are still pending at this handoff point.
 - KAN-90 adds `POST /agent-governance/evaluate`, append-only `agent_governance_evaluations`, deterministic action decisions for `commit`, `push`, `open_pr`, `merge_pr`, `change_policy`, and `deploy`, route-sensitive auth classification, API docs, and real Axum/Postgres integration coverage. Product decision: GitGov is manual-first; agent governance is optional/opt-in, not a chatbot, not a bring-your-own-model requirement, and not a replacement for human approvals. Agents can ask before acting only when a customer chooses to use them; GitGov policy decides; `evaluation.policy.llm_decision=false`.
 - KAN-90 local validation on 2026-06-14 passed: `cargo fmt --manifest-path gitgov\gitgov-server\Cargo.toml --check`, `cargo check --manifest-path gitgov\gitgov-server\Cargo.toml`, `cargo clippy --manifest-path gitgov\gitgov-server\Cargo.toml -- -D warnings`, local v38 migration/postcheck against temporary Postgres, focused `agent_governance` tests with explicit `TEST_DATABASE_URL=postgresql://gitgov:gitgov_dev_password@127.0.0.1:55434/gitgov` (`7` tests), sensitive path test (`1` test), full backend `cargo test --manifest-path gitgov\gitgov-server\Cargo.toml` with the same real Postgres (`272` tests), `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
 - KAN-90 PR and post-merge checks passed: `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.

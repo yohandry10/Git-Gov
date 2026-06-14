@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `80` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `82` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -218,6 +218,8 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
+| `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |
+| `/agent-governance/evaluations` | Bearer (admin) | Listar historial de evaluaciones agent governance con request payload minimizado |
 | `/signals/{signal_id}` | Bearer (scoped) | Actualizar señal individual |
 | `/signals/{signal_id}/confirm` | Bearer (scoped) | Confirmar señal |
 | `/signals/detect/{org_name}` | Bearer (admin) | Disparar detección de señales |
