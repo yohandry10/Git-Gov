@@ -42,3 +42,9 @@ Safe defaults:
 - `would_block=true` fails only when the provider job opts into advisory failure.
 - Secret values are read from provider secret stores and are not printed.
 
+Break-glass:
+
+- Provider jobs should not add `break_glass` automatically.
+- Break-glass is accepted only when GitGov would otherwise return a blocking decision.
+- A valid exception includes `requested=true`, a concrete reason, an authorizing actor, and optional expiry.
+- GitGov returns `decision=break_glass`, `approved=true`, `blocking=true`, and `would_block=true`; original blockers remain in `blocked_by`.

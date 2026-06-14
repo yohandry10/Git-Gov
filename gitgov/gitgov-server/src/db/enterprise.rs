@@ -517,6 +517,10 @@ impl Database {
                 warnings,
                 policy_checksum,
                 break_glass_eligible,
+                break_glass_used,
+                break_glass_reason,
+                break_glass_authorized_by,
+                break_glass_expires_at,
                 evaluation,
                 details,
                 request_payload,
@@ -543,10 +547,14 @@ impl Database {
                 $18::jsonb,
                 $19,
                 $20,
-                $21::jsonb,
-                $22::jsonb,
-                $23::jsonb,
-                $24
+                $21,
+                $22,
+                $23,
+                CASE WHEN $24::BIGINT IS NULL THEN NULL ELSE to_timestamp($24::DOUBLE PRECISION / 1000.0) END,
+                $25::jsonb,
+                $26::jsonb,
+                $27::jsonb,
+                $28
             )
             RETURNING
                 id::text,
@@ -570,6 +578,10 @@ impl Database {
                 warnings,
                 policy_checksum,
                 break_glass_eligible,
+                break_glass_used,
+                break_glass_reason,
+                break_glass_authorized_by,
+                ROUND(EXTRACT(EPOCH FROM break_glass_expires_at) * 1000)::BIGINT AS break_glass_expires_at_ms,
                 evaluation,
                 details,
                 request_payload,
@@ -597,6 +609,10 @@ impl Database {
         .bind(&warnings_json)
         .bind(&input.policy_checksum)
         .bind(input.break_glass_eligible)
+        .bind(input.break_glass_used)
+        .bind(input.break_glass_reason.as_deref())
+        .bind(input.break_glass_authorized_by.as_deref())
+        .bind(input.break_glass_expires_at)
         .bind(&evaluation_json)
         .bind(&input.details)
         .bind(&input.request_payload)
@@ -639,6 +655,10 @@ impl Database {
                 warnings,
                 policy_checksum,
                 break_glass_eligible,
+                break_glass_used,
+                break_glass_reason,
+                break_glass_authorized_by,
+                ROUND(EXTRACT(EPOCH FROM break_glass_expires_at) * 1000)::BIGINT AS break_glass_expires_at_ms,
                 evaluation,
                 details,
                 request_payload,

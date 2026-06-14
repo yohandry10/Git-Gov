@@ -241,6 +241,14 @@ pub struct DeploymentGateAuthorizationRecord {
     pub warnings: Vec<String>,
     pub policy_checksum: String,
     pub break_glass_eligible: bool,
+    #[serde(default)]
+    pub break_glass_used: bool,
+    #[serde(default)]
+    pub break_glass_reason: Option<String>,
+    #[serde(default)]
+    pub break_glass_authorized_by: Option<String>,
+    #[serde(default)]
+    pub break_glass_expires_at: Option<i64>,
     pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
     #[serde(default)]
     pub details: serde_json::Value,

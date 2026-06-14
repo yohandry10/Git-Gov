@@ -275,6 +275,10 @@ export interface DeploymentGateAuthorizationRecord {
   warnings: string[]
   policy_checksum: string
   break_glass_eligible: boolean
+  break_glass_used: boolean
+  break_glass_reason?: string | null
+  break_glass_authorized_by?: string | null
+  break_glass_expires_at?: number | null
   evaluation: EnterpriseReleaseGovernanceEvaluationResponse
   details: Record<string, unknown>
   request_payload: Record<string, unknown>

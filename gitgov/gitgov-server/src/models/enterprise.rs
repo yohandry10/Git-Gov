@@ -274,6 +274,14 @@ pub struct DeploymentGateAuthorizationRecord {
     pub warnings: Vec<String>,
     pub policy_checksum: String,
     pub break_glass_eligible: bool,
+    #[serde(default)]
+    pub break_glass_used: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub break_glass_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub break_glass_authorized_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub break_glass_expires_at: Option<i64>,
     pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
     #[serde(default)]
     pub details: serde_json::Value,
@@ -303,6 +311,19 @@ pub struct DeploymentGateAuthorizationRequest {
     pub deployment_run_id: Option<String>,
     #[serde(default)]
     pub metadata: serde_json::Value,
+    #[serde(default)]
+    pub break_glass: Option<DeploymentGateBreakGlassRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateBreakGlassRequest {
+    #[serde(default)]
+    pub requested: bool,
+    pub reason: String,
+    #[serde(default)]
+    pub authorized_by: Option<String>,
+    #[serde(default)]
+    pub expires_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

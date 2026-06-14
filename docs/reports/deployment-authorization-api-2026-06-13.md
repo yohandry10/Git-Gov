@@ -153,5 +153,5 @@ Covered:
 Remaining follow-up:
 
 - provider-specific deploy examples for Jenkins, GitHub Actions, GitLab CI, and other deployers;
-- break-glass workflow design and authorization evidence;
+- break-glass approval routing beyond the KAN-87 Admin-authorized exception contract;
 - advanced environment policy workflows beyond the Desktop/admin matrix.

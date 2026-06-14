@@ -214,7 +214,7 @@ La fuente operativa es `gitgov/gitgov-server/src/main.rs`. La auditoría `KAN-71
 | `/enterprise/onboarding-checklist-tracking` | Bearer | Obtener/actualizar tracking de checklist de onboarding |
 | `/enterprise/release-approvals` | Bearer | Listar/crear aprobaciones de release enterprise |
 | `/enterprise/release-governance/evaluate` | Bearer | Evaluar governance de release enterprise |
-| `/deployment-gates/authorize` | Bearer | Autorizar o registrar advisory/blocking decision para un deploy CI/CD |
+| `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/signals/{signal_id}` | Bearer (scoped) | Actualizar señal individual |
 | `/signals/{signal_id}/confirm` | Bearer (scoped) | Confirmar señal |

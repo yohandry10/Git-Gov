@@ -2,8 +2,10 @@
 // DEPLOYMENT GATE AUTHORIZATIONS
 // ============================================================================
 
-const DEPLOYMENT_GATE_DECISIONS: &[&str] = &["approved", "advisory", "blocked"];
+const DEPLOYMENT_GATE_DECISIONS: &[&str] = &["approved", "advisory", "blocked", "break_glass"];
 const DEPLOYMENT_GATE_METADATA_MAX_BYTES: usize = 16 * 1024;
+const DEPLOYMENT_GATE_BREAK_GLASS_REASON_MIN_CHARS: usize = 16;
+const DEPLOYMENT_GATE_BREAK_GLASS_REASON_MAX_CHARS: usize = 1200;
 
 fn normalize_and_validate_deployment_gate_authorization(
     payload: &mut DeploymentGateAuthorizationRequest,
@@ -83,6 +85,35 @@ fn normalize_and_validate_deployment_gate_authorization(
             .unwrap_or(0);
         if metadata_len > DEPLOYMENT_GATE_METADATA_MAX_BYTES {
             errors.push("metadata is too large.".to_string());
+        }
+    }
+
+    if let Some(break_glass) = payload.break_glass.as_mut() {
+        normalize_release_approval_optional_text(&mut break_glass.authorized_by);
+        break_glass.reason = break_glass.reason.trim().to_string();
+        if !break_glass.requested {
+            errors.push("break_glass.requested must be true when break_glass is provided.".to_string());
+        }
+        if break_glass.reason.len() < DEPLOYMENT_GATE_BREAK_GLASS_REASON_MIN_CHARS
+            || break_glass.reason.len() > DEPLOYMENT_GATE_BREAK_GLASS_REASON_MAX_CHARS
+            || has_control_chars(&break_glass.reason)
+        {
+            errors.push(format!(
+                "break_glass.reason must be {DEPLOYMENT_GATE_BREAK_GLASS_REASON_MIN_CHARS}-{DEPLOYMENT_GATE_BREAK_GLASS_REASON_MAX_CHARS} characters without control characters."
+            ));
+        }
+        if let Some(authorized_by) = break_glass.authorized_by.as_deref() {
+            if authorized_by.len() > 200 || has_control_chars(authorized_by) {
+                errors.push("break_glass.authorized_by is invalid or too long.".to_string());
+            }
+        }
+        if let Some(expires_at) = break_glass.expires_at {
+            let now_ms = chrono::Utc::now().timestamp_millis();
+            if expires_at <= now_ms {
+                errors.push("break_glass.expires_at must be in the future.".to_string());
+            } else if expires_at > now_ms + 24 * 60 * 60 * 1000 {
+                errors.push("break_glass.expires_at cannot be more than 24 hours in the future.".to_string());
+            }
         }
     }
 
@@ -257,8 +288,12 @@ fn deployment_gate_reason(
     decision: &str,
     evaluation: &EnterpriseReleaseGovernanceEvaluationResponse,
     warnings: &[String],
+    break_glass_reason: Option<&str>,
 ) -> String {
     match decision {
+        "break_glass" => break_glass_reason
+            .map(|reason| format!("Break-glass deployment authorized: {reason}"))
+            .unwrap_or_else(|| "Break-glass deployment authorized.".to_string()),
         "blocked" => evaluation
             .issues
             .first()
@@ -458,7 +493,22 @@ pub async fn authorize_deployment_gate(
         first_governed_repo_setup.as_ref(),
         &payload,
     ));
-    let decision = if evaluation.blocking {
+    let break_glass_eligible = evaluation.blocking && evaluation.policy.enforcement == "blocking";
+    let break_glass_request = payload.break_glass.clone();
+    if break_glass_request.is_some() && !break_glass_eligible {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Invalid deployment gate authorization",
+                "details": ["break_glass can only be used when the evaluated policy is blocking and break_glass_eligible is true."]
+            })),
+        )
+            .into_response();
+    }
+    let break_glass_used = break_glass_request.is_some() && break_glass_eligible;
+    let decision = if break_glass_used {
+        "break_glass"
+    } else if evaluation.blocking {
         "blocked"
     } else if evaluation.would_block || !warnings.is_empty() {
         "advisory"
@@ -471,9 +521,25 @@ pub async fn authorize_deployment_gate(
     } else {
         Vec::new()
     };
-    let reason = deployment_gate_reason(decision, &evaluation, &warnings);
+    let break_glass_reason = break_glass_request.as_ref().map(|request| request.reason.clone());
+    let break_glass_authorized_by = break_glass_request
+        .as_ref()
+        .and_then(|request| request.authorized_by.clone())
+        .or_else(|| {
+            if break_glass_used {
+                Some(auth_user.client_id.clone())
+            } else {
+                None
+            }
+        });
+    let break_glass_expires_at = break_glass_request.as_ref().and_then(|request| request.expires_at);
+    let reason = deployment_gate_reason(
+        decision,
+        &evaluation,
+        &warnings,
+        break_glass_reason.as_deref(),
+    );
     let policy_checksum = deployment_gate_policy_checksum(&evaluation);
-    let break_glass_eligible = evaluation.blocking && evaluation.policy.enforcement == "blocking";
     let details = deployment_gate_details(&binding, first_governed_repo_setup.as_ref(), &payload);
     let request_payload = match serde_json::to_value(&payload) {
         Ok(value) => value,
@@ -504,6 +570,10 @@ pub async fn authorize_deployment_gate(
         warnings: warnings.clone(),
         policy_checksum: policy_checksum.clone(),
         break_glass_eligible,
+        break_glass_used,
+        break_glass_reason,
+        break_glass_authorized_by,
+        break_glass_expires_at,
         evaluation,
         details,
         request_payload,
@@ -535,6 +605,9 @@ pub async fn authorize_deployment_gate(
                     "approved": record.approved,
                     "blocking": record.blocking,
                     "would_block": record.would_block,
+                    "break_glass_eligible": record.break_glass_eligible,
+                    "break_glass_used": record.break_glass_used,
+                    "break_glass_authorized_by": &record.break_glass_authorized_by,
                     "policy_checksum": &record.policy_checksum
                 }),
                 created_at: chrono::Utc::now().timestamp_millis(),
@@ -647,6 +720,7 @@ mod deployment_gate_tests {
             requested_by: Some("release-bot".to_string()),
             deployment_run_id: Some("run-123".to_string()),
             metadata: json!({ "workflow": "deploy-production" }),
+            break_glass: None,
         }
     }
 

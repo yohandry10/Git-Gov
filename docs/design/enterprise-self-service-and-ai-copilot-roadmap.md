@@ -78,12 +78,13 @@ Current primitives:
   contract.
 - `KAN-86` adds the Desktop/admin Environment Policy Matrix for release governance so stricter
   production policy can be reviewed without making the base policy blocking.
+- `KAN-87` adds audited break-glass deployment authorization for genuinely blocking policy results.
 
 Future scope:
 
 - Additional deployer examples beyond GitHub Actions, Jenkins Pipeline, and GitLab CI.
-- Advanced environment policy workflows, such as break-glass routing per environment.
-- Break-glass workflow design and authorization evidence.
+- Advanced environment policy workflows, such as environment-specific break-glass routing.
+- Break-glass approval routing beyond the initial Admin-authorized exception contract.
 
 ### 0.2 Agentic Governance Layer
 
@@ -420,6 +421,7 @@ First MVP:
 - `docs/design/release-governance-enforcement-gate-mvp.md`.
 - `docs/design/deployment-authorization-api-mvp.md`.
 - `docs/design/environment-policy-ux-mvp.md`.
+- `docs/design/break-glass-deployment-authorization-mvp.md`.
 - `docs/examples/enterprise-adoption-profile.example.json`.
 - `gitgov/src/components/control_plane/EnterpriseAdoptionPanel.tsx`.
 - `docs/design/adoption-profile-dashboard-mvp.md`.
@@ -427,7 +429,7 @@ First MVP:
 - `docs/design/provider-health-validation-mvp.md`.
 - `docs/design/release-governance-profile-policy-mvp.md`.
 
-This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, turns that readiness report into a prioritized remediation plan through both CLI and dashboard export, shows the same remediation state as a guided dashboard checklist, persists admin tracking notes for that checklist without changing readiness scoring, automates readiness as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, monitors trend deterioration in report-only mode by default, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, supports per-environment overrides so production can be stricter than staging without changing the safe default, persists first governed repo setup readiness, exposes a stable deployment authorization API plus history for CI/CD callers, and shows deployment authorization history in Desktop. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or automate break-glass routing.
+This MVP creates a reusable adoption pack from a customer profile, exposes the first dashboard UI for shaping that profile, persists it per organization, shows evidence-based provider health, generates reviewed workflow template packs from both CLI and dashboard, installs those packs into a local customer repository checkout only after dry-run review and explicit `-Apply`, can open a remote draft PR for those workflow templates only after explicit `-Apply`, validates remote workflow/configuration readiness read-only, consolidates onboarding readiness into one customer-facing Markdown/JSON report, turns that readiness report into a prioritized remediation plan through both CLI and dashboard export, shows the same remediation state as a guided dashboard checklist, persists admin tracking notes for that checklist without changing readiness scoring, automates readiness as a recurring/manual GitHub Actions evidence artifact, monitors that readiness artifact for freshness, trends readiness artifacts over time, monitors trend deterioration in report-only mode by default, validates explicitly provided provider credentials without printing secret values, stores formal release approvals with evidence packet hashes and risk expiration, provides a dashboard wizard for create/list approval workflows, carries explicit release governance policy through the adoption profile and generated packs, evaluates a release against that policy when an admin asks, provides an optional manual gate for customers who explicitly select enforcement, supports per-environment overrides so production can be stricter than staging without changing the safe default, persists first governed repo setup readiness, exposes a stable deployment authorization API plus history for CI/CD callers, shows deployment authorization history in Desktop, and records audited break-glass exceptions for genuinely blocking deployment decisions. It does not yet create GitHub Actions variables/secrets, mutate branch protection, require cryptographic signatures, or automate multi-person break-glass routing.
 
 Release governance default:
 

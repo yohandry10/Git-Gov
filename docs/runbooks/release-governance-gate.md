@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Tickets: `KAN-47`, `KAN-49`, `KAN-84`, `KAN-85`
+Tickets: `KAN-47`, `KAN-49`, `KAN-84`, `KAN-85`, `KAN-87`
 
 ## Purpose
 
@@ -52,6 +52,36 @@ Use `-FailOnWouldBlock` only when advisory/would-block states should fail too. U
 `-EvidencePacketHash` must be the SHA-256 hash of a release-bound GitGov evidence packet whose
 repository, branch, target SHA, release id, and environment match the request. This is deliberate:
 Deployment Gates should never authorize one commit with evidence generated for another commit.
+
+## Break-glass
+
+Since `KAN-87`, Deployment Gates can record a break-glass exception only when the evaluated policy is
+actually blocking. Do not send break-glass automatically from normal provider templates.
+
+When an incident commander approves an exception, the API payload may include:
+
+```json
+{
+  "break_glass": {
+    "requested": true,
+    "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
+    "authorized_by": "incident.commander@example.com",
+    "expires_at": 1781413200000
+  }
+}
+```
+
+Expected response:
+
+```text
+decision=break_glass
+approved=true
+blocking=true
+would_block=true
+```
+
+The original blockers remain in `blocked_by`, and `Governance > Releases` shows the exception reason,
+authorizing actor, expiry, and original policy result.
 
 ## GitHub Workflow
 

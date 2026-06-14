@@ -785,6 +785,7 @@ describe('useControlPlaneStore', () => {
           warnings: ['First governed repo setup is not configured.'],
           policy_checksum: 'f'.repeat(64),
           break_glass_eligible: false,
+          break_glass_used: false,
           evaluation: {
             status: 'recorded',
             policy_satisfied: true,
