@@ -348,6 +348,37 @@ async fn create_export(app: &axum::Router, api_key: &str, gate_id: &str) -> (Str
     )
 }
 
+async fn review_framework_pack(
+    app: &axum::Router,
+    api_key: &str,
+    framework_pack_id: &str,
+    review_status: &str,
+) -> serde_json::Value {
+    let body = json!({
+        "review_status": review_status,
+        "review_notes_safe": format!("KAN-104 integration review status {review_status}"),
+        "rejected_reason_safe": if review_status == "rejected" {
+            Some("KAN-104 rejected fixture".to_string())
+        } else {
+            None
+        }
+    });
+    let (status, response) = json_request(
+        app,
+        "PATCH",
+        &format!("/compliance/framework-packs/{framework_pack_id}/review"),
+        Some(&body.to_string()),
+        Some(api_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "framework pack review failed: {response}"
+    );
+    serde_json::from_str(&response).expect("framework pack review JSON")
+}
+
 fn item_by_control<'a>(items: &'a [serde_json::Value], control_id: &str) -> &'a serde_json::Value {
     items
         .iter()
@@ -412,6 +443,7 @@ async fn customer_framework_pack_import_maps_real_export_and_review_package_with
         false
     );
     assert_eq!(imported["framework_pack"]["requires_auditor_review"], true);
+    assert_eq!(imported["framework_pack"]["review_status"], "needs_review");
 
     let (status, framework_list) = json_request(
         &app,
@@ -427,7 +459,10 @@ async fn customer_framework_pack_import_maps_real_export_and_review_package_with
         "framework list failed: {framework_list}"
     );
     assert!(framework_list.contains("gitgov_release_governance_baseline_v1"));
-    assert!(framework_list.contains(framework_id));
+    assert!(
+        !framework_list.contains(framework_id),
+        "unreviewed customer framework must not be available for mapping"
+    );
 
     let (status, other_framework_list) = json_request(
         &app,
@@ -446,6 +481,41 @@ async fn customer_framework_pack_import_maps_real_export_and_review_package_with
         "framework_id": framework_id,
         "framework_version": "2026.06"
     });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/compliance/evidence-mappings",
+        Some(&mapping_body.to_string()),
+        Some(&admin_a),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "unreviewed customer framework should be blocked: {response}"
+    );
+    assert!(response.contains("framework_pack_not_reviewed"));
+
+    let reviewed_pack = review_framework_pack(&app, &admin_a, framework_pack_id, "reviewed").await;
+    assert_eq!(reviewed_pack["review_status"], "reviewed");
+    assert_eq!(reviewed_pack["reviewed_by_user_id"], "kan103-admin-a");
+    assert!(reviewed_pack["reviewed_at"].as_i64().unwrap_or_default() > 0);
+
+    let (status, framework_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/control-frameworks",
+        None,
+        Some(&admin_a),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "reviewed framework list failed: {framework_list}"
+    );
+    assert!(framework_list.contains(framework_id));
+
     let (status, response) = json_request(
         &app,
         "POST",
@@ -521,6 +591,20 @@ async fn customer_framework_pack_import_maps_real_export_and_review_package_with
     assert_eq!(
         package["artifact"]["framework"]["official_regulatory_mapping"],
         false
+    );
+    assert_eq!(
+        package["artifact"]["framework"]["review_status"],
+        "reviewed"
+    );
+    assert_eq!(
+        package["artifact"]["framework"]["reviewed_by_user_id"],
+        "kan103-admin-a"
+    );
+    assert!(
+        package["artifact"]["framework"]["reviewed_at"]
+            .as_i64()
+            .unwrap_or_default()
+            > 0
     );
     assert_eq!(package["artifact"]["claims"]["compliance_claim"], false);
     assert_eq!(package["artifact"]["claims"]["regulatory_claim"], false);
@@ -767,6 +851,144 @@ controls:
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert!(response.contains("secret-like"));
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn customer_framework_pack_review_states_gate_mapping_and_review_packages() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "kan104-review-gates").await;
+    let gate_id = seed_customer_framework_gate(&pool, &org_id, "kan104_review").await;
+    let admin = insert_test_api_key_for_org(&pool, "kan104-review-admin", "Admin", &org_id).await;
+    let developer =
+        insert_test_api_key_for_org(&pool, "kan104-review-dev", "Developer", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let import_body = json!({
+        "format": "json",
+        "pack": customer_pack()
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/compliance/framework-packs/import",
+        Some(&import_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "import failed: {response}");
+    let imported: serde_json::Value = serde_json::from_str(&response).expect("import JSON");
+    let framework_id = imported["framework"]["framework_id"]
+        .as_str()
+        .expect("framework id");
+    let framework_pack_id = imported["framework_pack"]["framework_pack_id"]
+        .as_str()
+        .expect("framework pack id");
+
+    let developer_review = json!({
+        "review_status": "reviewed",
+        "review_notes_safe": "developer should not review"
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-packs/{framework_pack_id}/review"),
+        Some(&developer_review.to_string()),
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not review framework packs: {response}"
+    );
+
+    let agent_token = create_customer_framework_agent_key(&app, &admin).await;
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-packs/{framework_pack_id}/review"),
+        Some(&developer_review.to_string()),
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not review framework packs: {response}"
+    );
+
+    let (export_id, _) = create_export(&app, &admin, &gate_id).await;
+    let mapping_body = json!({
+        "evidence_export_id": export_id,
+        "framework_id": framework_id,
+        "framework_version": "2026.06"
+    });
+
+    for (status_name, expected_code) in [
+        ("needs_changes", "framework_pack_needs_changes"),
+        ("rejected", "framework_pack_rejected"),
+        ("archived", "framework_pack_archived"),
+        ("needs_review", "framework_pack_not_reviewed"),
+    ] {
+        let reviewed = review_framework_pack(&app, &admin, framework_pack_id, status_name).await;
+        assert_eq!(reviewed["review_status"], status_name);
+        let (status, response) = json_request(
+            &app,
+            "POST",
+            "/compliance/evidence-mappings",
+            Some(&mapping_body.to_string()),
+            Some(&admin),
+        )
+        .await;
+        assert_eq!(
+            status,
+            StatusCode::CONFLICT,
+            "mapping should be blocked for {status_name}: {response}"
+        );
+        assert!(response.contains(expected_code));
+    }
+
+    review_framework_pack(&app, &admin, framework_pack_id, "reviewed").await;
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/compliance/evidence-mappings",
+        Some(&mapping_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "mapping failed after review: {response}"
+    );
+    let mapped: serde_json::Value = serde_json::from_str(&response).expect("mapping JSON");
+    let mapping_id = mapped["mapping"]["mapping_id"]
+        .as_str()
+        .expect("mapping id");
+
+    review_framework_pack(&app, &admin, framework_pack_id, "rejected").await;
+    let package_body = json!({
+        "mapping_id": mapping_id,
+        "format": "json"
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/compliance/review-packages",
+        Some(&package_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "package creation must re-check current pack status: {response}"
+    );
+    assert!(response.contains("framework_pack_rejected"));
 
     teardown(&admin_pool, &schema).await;
 }

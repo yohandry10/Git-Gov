@@ -84,6 +84,7 @@ describe('useControlPlaneStore', () => {
       complianceReviewPackageArtifact: null,
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
+      isComplianceFrameworkPackReviewing: false,
       isComplianceEvidenceExportCreating: false,
       isComplianceEvidenceMappingCreating: false,
       isComplianceReviewPackageCreating: false,
@@ -1021,7 +1022,7 @@ describe('useControlPlaneStore', () => {
             owner_type: 'customer',
             owner_name: 'Customer Security Office',
             source: 'customer_provided',
-            review_status: 'customer_review_required',
+            review_status: 'needs_review',
             schema_version: 'gitgov_customer_framework_pack.v1',
             pack_hash: 'sha256:' + '1'.repeat(64),
             control_count: 1,
@@ -1065,22 +1066,6 @@ describe('useControlPlaneStore', () => {
             is_gitgov_owned: true,
             official_regulatory_mapping: false,
             controls: [],
-          }, {
-            framework_id: 'customer_bank_controls_123',
-            org_id: 'org-1',
-            name: 'Bank Controls',
-            version: '2026.06',
-            description: 'Customer controls',
-            is_regulatory: false,
-            is_active: true,
-            owner_type: 'customer',
-            owner_name: 'Customer Security Office',
-            source: 'customer_provided',
-            is_gitgov_owned: false,
-            official_regulatory_mapping: false,
-            framework_pack_id: 'cfp_123',
-            pack_hash: 'sha256:' + '1'.repeat(64),
-            controls: [],
           }],
         })
         .mockResolvedValueOnce({
@@ -1094,7 +1079,7 @@ describe('useControlPlaneStore', () => {
             owner_type: 'customer',
             owner_name: 'Customer Security Office',
             source: 'customer_provided',
-            review_status: 'customer_review_required',
+            review_status: 'needs_review',
             schema_version: 'gitgov_customer_framework_pack.v1',
             pack_hash: 'sha256:' + '1'.repeat(64),
             control_count: 1,
@@ -1130,7 +1115,7 @@ describe('useControlPlaneStore', () => {
         query: { org_name: 'yohandry10' },
       })
       expect(response?.framework.framework_id).toBe('customer_bank_controls_123')
-      expect(useControlPlaneStore.getState().selectedComplianceFrameworkId).toBe('customer_bank_controls_123')
+      expect(useControlPlaneStore.getState().selectedComplianceFrameworkId).toBe('gitgov_release_governance_baseline_v1')
       expect(useControlPlaneStore.getState().complianceFrameworkPacks).toHaveLength(1)
     })
   })

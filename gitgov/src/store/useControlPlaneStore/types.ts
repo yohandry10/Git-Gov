@@ -367,6 +367,11 @@ export interface ComplianceControlFramework {
   official_regulatory_mapping: boolean
   framework_pack_id?: string | null
   pack_hash?: string | null
+  framework_pack_review_status?: string | null
+  framework_pack_reviewed_by_user_id?: string | null
+  framework_pack_reviewed_at?: number | null
+  framework_pack_review_notes_safe?: string | null
+  framework_pack_rejected_reason_safe?: string | null
   controls?: ComplianceControl[]
 }
 
@@ -402,7 +407,19 @@ export interface ComplianceFrameworkPackRecord {
   official_regulatory_mapping: boolean
   created_by_user_id: string
   created_at: number
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
+  rejected_reason_safe?: string | null
+  review_updated_at?: number | null
   archived_at?: number | null
+}
+
+export interface ComplianceFrameworkPackReviewRequest {
+  org_name?: string | null
+  review_status: 'needs_review' | 'reviewed' | 'needs_changes' | 'rejected' | 'archived' | string
+  review_notes_safe?: string | null
+  rejected_reason_safe?: string | null
 }
 
 export interface ComplianceFrameworkPackImportResponse {
@@ -921,6 +938,7 @@ export interface ControlPlaneState {
   isDeploymentGateAuthorizationsLoading: boolean
   isComplianceFrameworksLoading: boolean
   isComplianceFrameworkPackImporting: boolean
+  isComplianceFrameworkPackReviewing: boolean
   isComplianceEvidenceExportCreating: boolean
   isComplianceEvidenceMappingCreating: boolean
   isComplianceReviewPackageCreating: boolean
@@ -1006,6 +1024,11 @@ export interface ControlPlaneActions {
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
+  reviewComplianceFrameworkPack: (
+    frameworkPackId: string,
+    reviewStatus: ComplianceFrameworkPackReviewRequest['review_status'],
+    notes?: { review_notes_safe?: string | null; rejected_reason_safe?: string | null },
+  ) => Promise<ComplianceFrameworkPackRecord | null>
   selectComplianceFramework: (frameworkId: string) => void
   createComplianceEvidenceExport: (deploymentGateId: string) => Promise<ComplianceEvidenceExportResponse | null>
   createComplianceEvidenceMapping: (exportId: string, frameworkId?: string) => Promise<ComplianceEvidenceMappingResponse | null>

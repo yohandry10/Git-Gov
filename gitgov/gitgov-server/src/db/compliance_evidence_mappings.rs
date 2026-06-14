@@ -16,6 +16,11 @@ fn framework_from_row(row: &PgRow, controls: Vec<ComplianceControl>) -> Complian
         official_regulatory_mapping: row.get("official_regulatory_mapping"),
         framework_pack_id: row.get("framework_pack_id"),
         pack_hash: row.get("pack_hash"),
+        framework_pack_review_status: row.get("framework_pack_review_status"),
+        framework_pack_reviewed_by_user_id: row.get("framework_pack_reviewed_by_user_id"),
+        framework_pack_reviewed_at: row.get("framework_pack_reviewed_at_ms"),
+        framework_pack_review_notes_safe: row.get("framework_pack_review_notes_safe"),
+        framework_pack_rejected_reason_safe: row.get("framework_pack_rejected_reason_safe"),
         controls,
     }
 }
@@ -106,6 +111,11 @@ fn framework_pack_from_row(row: &PgRow) -> ComplianceFrameworkPackRecord {
         official_regulatory_mapping: row.get("official_regulatory_mapping"),
         created_by_user_id: row.get("created_by_user_id"),
         created_at: row.get("created_at_ms"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        review_notes_safe: row.get("review_notes_safe"),
+        rejected_reason_safe: row.get("rejected_reason_safe"),
+        review_updated_at: row.get("review_updated_at_ms"),
         archived_at: row.get("archived_at_ms"),
     }
 }
@@ -118,31 +128,48 @@ impl Database {
         let mut query = QueryBuilder::new(
             r#"
             SELECT
-                framework_id,
-                org_id::text,
-                name,
-                version,
-                description,
-                is_regulatory,
-                is_active,
-                owner_type,
-                owner_name,
-                source,
-                is_gitgov_owned,
-                official_regulatory_mapping,
-                framework_pack_id,
-                pack_hash
-            FROM compliance_control_frameworks
-            WHERE is_active = TRUE
-              AND (org_id IS NULL
+                cf.framework_id,
+                cf.org_id::text,
+                cf.name,
+                cf.version,
+                cf.description,
+                cf.is_regulatory,
+                cf.is_active,
+                cf.owner_type,
+                cf.owner_name,
+                cf.source,
+                cf.is_gitgov_owned,
+                cf.official_regulatory_mapping,
+                cf.framework_pack_id,
+                cf.pack_hash,
+                cfp.review_status AS framework_pack_review_status,
+                cfp.reviewed_by_user_id AS framework_pack_reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM cfp.reviewed_at) * 1000)::BIGINT AS framework_pack_reviewed_at_ms,
+                cfp.review_notes_safe AS framework_pack_review_notes_safe,
+                cfp.rejected_reason_safe AS framework_pack_rejected_reason_safe
+            FROM compliance_control_frameworks cf
+            LEFT JOIN compliance_framework_packs cfp ON cfp.id = cf.framework_pack_id
+            WHERE cf.is_active = TRUE
+              AND (cf.org_id IS NULL
             "#,
         );
         if let Some(org_id) = org_id {
-            query.push(" OR org_id = ");
+            query.push(" OR cf.org_id = ");
             query.push_bind(org_id);
             query.push("::uuid");
         }
-        query.push(") ORDER BY is_gitgov_owned DESC, name ASC, framework_id ASC");
+        query.push(
+            r#")
+              AND (
+                cf.owner_type = 'gitgov'
+                OR (
+                    cf.owner_type = 'customer'
+                    AND cfp.review_status = 'reviewed'
+                    AND cfp.archived_at IS NULL
+                )
+              )
+            ORDER BY cf.is_gitgov_owned DESC, cf.name ASC, cf.framework_id ASC"#,
+        );
 
         let rows = query
             .build()
@@ -182,6 +209,11 @@ impl Database {
                 requires_auditor_review,
                 official_regulatory_mapping,
                 created_by_user_id,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                rejected_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms
             FROM compliance_framework_packs
@@ -225,17 +257,79 @@ impl Database {
                 requires_auditor_review,
                 official_regulatory_mapping,
                 created_by_user_id,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                rejected_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms
             FROM compliance_framework_packs
             WHERE org_id = $1::uuid
               AND id = $2
-              AND archived_at IS NULL
             LIMIT 1
             "#,
         )
         .bind(org_id)
         .bind(framework_pack_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| framework_pack_from_row(&row)))
+    }
+
+    pub async fn review_compliance_framework_pack(
+        &self,
+        input: ReviewComplianceFrameworkPackInput,
+    ) -> Result<Option<ComplianceFrameworkPackRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_framework_packs
+            SET review_status = $3,
+                reviewed_by_user_id = CASE WHEN $3 = 'reviewed' THEN $4 ELSE reviewed_by_user_id END,
+                reviewed_at = CASE WHEN $3 = 'reviewed' THEN NOW() ELSE reviewed_at END,
+                review_notes_safe = $5,
+                rejected_reason_safe = CASE WHEN $3 = 'rejected' THEN $6 ELSE NULL END,
+                review_updated_at = NOW(),
+                archived_at = CASE WHEN $3 = 'archived' THEN NOW() ELSE NULL END
+            WHERE org_id = $1::uuid
+              AND id = $2
+            RETURNING
+                id AS framework_pack_id,
+                org_id::text,
+                framework_id,
+                framework_name,
+                framework_version,
+                description,
+                owner_type,
+                owner_name,
+                source,
+                review_status,
+                schema_version,
+                pack_hash,
+                control_count,
+                compliance_claim,
+                regulatory_claim,
+                gitgov_certifies,
+                requires_auditor_review,
+                official_regulatory_mapping,
+                created_by_user_id,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                rejected_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms
+            "#,
+        )
+        .bind(&input.org_id)
+        .bind(&input.framework_pack_id)
+        .bind(&input.review_status)
+        .bind(&input.reviewed_by_user_id)
+        .bind(&input.review_notes_safe)
+        .bind(&input.rejected_reason_safe)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -251,33 +345,39 @@ impl Database {
         let mut query = QueryBuilder::new(
             r#"
             SELECT
-                framework_id,
-                org_id::text,
-                name,
-                version,
-                description,
-                is_regulatory,
-                is_active,
-                owner_type,
-                owner_name,
-                source,
-                is_gitgov_owned,
-                official_regulatory_mapping,
-                framework_pack_id,
-                pack_hash
-            FROM compliance_control_frameworks
-            WHERE framework_id =
+                cf.framework_id,
+                cf.org_id::text,
+                cf.name,
+                cf.version,
+                cf.description,
+                cf.is_regulatory,
+                cf.is_active,
+                cf.owner_type,
+                cf.owner_name,
+                cf.source,
+                cf.is_gitgov_owned,
+                cf.official_regulatory_mapping,
+                cf.framework_pack_id,
+                cf.pack_hash,
+                cfp.review_status AS framework_pack_review_status,
+                cfp.reviewed_by_user_id AS framework_pack_reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM cfp.reviewed_at) * 1000)::BIGINT AS framework_pack_reviewed_at_ms,
+                cfp.review_notes_safe AS framework_pack_review_notes_safe,
+                cfp.rejected_reason_safe AS framework_pack_rejected_reason_safe
+            FROM compliance_control_frameworks cf
+            LEFT JOIN compliance_framework_packs cfp ON cfp.id = cf.framework_pack_id
+            WHERE cf.framework_id =
             "#,
         );
         query.push_bind(framework_id);
         query.push(
             r#"
-              AND is_active = TRUE
-              AND (org_id IS NULL
+              AND cf.is_active = TRUE
+              AND (cf.org_id IS NULL
             "#,
         );
         if let Some(org_id) = org_id {
-            query.push(" OR org_id = ");
+            query.push(" OR cf.org_id = ");
             query.push_bind(org_id);
             query.push("::uuid");
         }
@@ -354,7 +454,7 @@ impl Database {
                 'customer',
                 $7,
                 'customer_provided',
-                'customer_review_required',
+                'needs_review',
                 $8,
                 $9,
                 $10::jsonb,
@@ -375,6 +475,30 @@ impl Database {
                 pack_hash = EXCLUDED.pack_hash,
                 raw_pack_redacted = EXCLUDED.raw_pack_redacted,
                 control_count = EXCLUDED.control_count,
+                review_status = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN 'needs_review'
+                    ELSE compliance_framework_packs.review_status
+                END,
+                reviewed_by_user_id = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN NULL
+                    ELSE compliance_framework_packs.reviewed_by_user_id
+                END,
+                reviewed_at = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN NULL
+                    ELSE compliance_framework_packs.reviewed_at
+                END,
+                review_notes_safe = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN NULL
+                    ELSE compliance_framework_packs.review_notes_safe
+                END,
+                rejected_reason_safe = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN NULL
+                    ELSE compliance_framework_packs.rejected_reason_safe
+                END,
+                review_updated_at = CASE
+                    WHEN compliance_framework_packs.review_status = 'archived' THEN NOW()
+                    ELSE compliance_framework_packs.review_updated_at
+                END,
                 archived_at = NULL
             RETURNING
                 id AS framework_pack_id,
@@ -396,6 +520,11 @@ impl Database {
                 requires_auditor_review,
                 official_regulatory_mapping,
                 created_by_user_id,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                rejected_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms
             "#,

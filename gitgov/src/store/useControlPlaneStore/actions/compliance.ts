@@ -3,6 +3,8 @@ import type {
   ComplianceControlFrameworkListResponse,
   ComplianceEvidenceExportResponse,
   ComplianceEvidenceMappingResponse,
+  ComplianceFrameworkPackRecord,
+  ComplianceFrameworkPackReviewRequest,
   ComplianceFrameworkPackImportResponse,
   ComplianceFrameworkPackListResponse,
   ComplianceReviewPackageResponse,
@@ -15,6 +17,7 @@ const GITGOV_RELEASE_GOVERNANCE_BASELINE = 'gitgov_release_governance_baseline_v
 type ComplianceActionKeys =
   | 'loadComplianceFrameworks'
   | 'importComplianceFrameworkPack'
+  | 'reviewComplianceFrameworkPack'
   | 'selectComplianceFramework'
   | 'createComplianceEvidenceExport'
   | 'createComplianceEvidenceMapping'
@@ -93,10 +96,13 @@ export function createComplianceActions(
           payload,
         })
         const frameworks = await get().loadComplianceFrameworks()
+        const importedFrameworkIsReady = frameworks.some((framework) => framework.framework_id === response.framework.framework_id)
         set({
           complianceFrameworkImportResponse: response,
-          selectedComplianceFrameworkId: response.framework.framework_id,
-          complianceControlFrameworks: frameworks.length > 0 ? frameworks : [response.framework],
+          selectedComplianceFrameworkId: importedFrameworkIsReady
+            ? response.framework.framework_id
+            : GITGOV_RELEASE_GOVERNANCE_BASELINE,
+          complianceControlFrameworks: frameworks,
           isComplianceFrameworkPackImporting: false,
         })
         return response
@@ -105,6 +111,57 @@ export function createComplianceActions(
         set({
           complianceEvidenceError: message,
           isComplianceFrameworkPackImporting: false,
+        })
+        return null
+      }
+    },
+
+    reviewComplianceFrameworkPack: async (frameworkPackId, reviewStatus, notes = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPackId = frameworkPackId.trim()
+      if (!serverConfig || !normalizedPackId) return null
+
+      set({
+        isComplianceFrameworkPackReviewing: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const payload: ComplianceFrameworkPackReviewRequest = {
+          org_name: selectedOrgName.trim() || null,
+          review_status: reviewStatus,
+          review_notes_safe: notes.review_notes_safe?.trim() || null,
+          rejected_reason_safe: notes.rejected_reason_safe?.trim() || null,
+        }
+        const response = await tauriInvoke<ComplianceFrameworkPackRecord>('cmd_server_review_compliance_framework_pack', {
+          config: serverConfig,
+          frameworkPackId: normalizedPackId,
+          payload,
+        })
+        await get().loadComplianceFrameworks()
+        set((state) => ({
+          complianceFrameworkPacks: state.complianceFrameworkPacks.map((pack) =>
+            pack.framework_pack_id === response.framework_pack_id ? response : pack,
+          ).filter((pack) => pack.review_status !== 'archived'),
+          selectedComplianceFrameworkId:
+            response.review_status === 'reviewed'
+              ? response.framework_id
+              : state.selectedComplianceFrameworkId === response.framework_id
+                ? GITGOV_RELEASE_GOVERNANCE_BASELINE
+                : state.selectedComplianceFrameworkId,
+          complianceEvidenceMapping:
+            state.selectedComplianceFrameworkId === response.framework_id ? null : state.complianceEvidenceMapping,
+          complianceReviewPackage:
+            state.selectedComplianceFrameworkId === response.framework_id ? null : state.complianceReviewPackage,
+          complianceReviewPackageArtifact:
+            state.selectedComplianceFrameworkId === response.framework_id ? null : state.complianceReviewPackageArtifact,
+          isComplianceFrameworkPackReviewing: false,
+        }))
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkPackReviewing: false,
         })
         return null
       }

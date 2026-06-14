@@ -81,6 +81,31 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn review_compliance_framework_pack(
+        &self,
+        framework_pack_id: &str,
+        payload: &ComplianceFrameworkPackReviewRequest,
+    ) -> Result<ComplianceFrameworkPackRecord, ServerError> {
+        let url =
+            self.endpoint_url(&["compliance", "framework-packs", framework_pack_id, "review"])?;
+        let mut request = self.client.patch(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_compliance_evidence_export(
         &self,
         payload: &ComplianceEvidenceExportRequest,
