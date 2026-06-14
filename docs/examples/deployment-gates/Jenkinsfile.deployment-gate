@@ -1,0 +1,86 @@
+pipeline {
+  agent any
+
+  parameters {
+    string(name: 'RELEASE_ID', description: 'Release identifier or ticket id')
+    string(name: 'DEPLOY_ENVIRONMENT', defaultValue: 'production', description: 'Deployment environment')
+    string(name: 'EVIDENCE_PACKET_HASH', description: 'Release-bound GitGov evidence packet SHA-256')
+    booleanParam(name: 'ENFORCE_GATE', defaultValue: true, description: 'Fail when GitGov returns blocking=true')
+    booleanParam(name: 'FAIL_ON_WOULD_BLOCK', defaultValue: false, description: 'Also fail on advisory would_block=true')
+  }
+
+  environment {
+    GITGOV_URL = credentials('gitgov-url')
+    GITGOV_ORG_NAME = credentials('gitgov-org-name')
+    GITGOV_API_KEY = credentials('gitgov-api-key')
+  }
+
+  stages {
+    stage('Authorize deployment with GitGov') {
+      steps {
+        script {
+          def repositoryFullName = env.GIT_URL
+            .replace('git@github.com:', '')
+            .replace('https://github.com/', '')
+            .replaceAll(/\.git$/, '')
+          def branchName = env.BRANCH_NAME ?: 'main'
+          def targetSha = env.GIT_COMMIT
+          def deploymentRunId = "${env.JOB_NAME}-${env.BUILD_NUMBER}"
+          def payload = [
+            org_name: env.GITGOV_ORG_NAME?.trim() ? env.GITGOV_ORG_NAME : null,
+            release_id: params.RELEASE_ID,
+            repository_full_name: repositoryFullName,
+            branch: branchName,
+            target_sha: targetSha,
+            environment: params.DEPLOY_ENVIRONMENT,
+            deployer: env.BUILD_USER_ID ?: 'jenkins',
+            ticket_id: params.RELEASE_ID,
+            evidence_packet_hash: params.EVIDENCE_PACKET_HASH,
+            requested_by: 'jenkins',
+            deployment_run_id: deploymentRunId,
+            metadata: [
+              provider: 'jenkins',
+              job_name: env.JOB_NAME,
+              build_number: env.BUILD_NUMBER
+            ]
+          ]
+
+          writeFile file: 'gitgov-deployment-payload.json', text: groovy.json.JsonOutput.toJson(payload)
+          sh '''
+            set +x
+            mkdir -p gitgov-evidence
+            curl --fail --silent --show-error \
+              -X POST "${GITGOV_URL%/}/deployment-gates/authorize" \
+              -H "Authorization: Bearer ${GITGOV_API_KEY}" \
+              -H "Accept: application/json" \
+              -H "Content-Type: application/json" \
+              --data @gitgov-deployment-payload.json \
+              --output gitgov-evidence/deployment-gate.json
+          '''
+
+          def authorization = readJSON file: 'gitgov-evidence/deployment-gate.json'
+          echo "GitGov deployment decision: ${authorization.decision}; authorization_id=${authorization.authorization_id}"
+
+          if (authorization.blocking == true && params.ENFORCE_GATE) {
+            error('GitGov blocked this deployment.')
+          }
+          if (authorization.would_block == true && params.FAIL_ON_WOULD_BLOCK) {
+            error('GitGov reports this deployment would block under stricter enforcement.')
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'gitgov-evidence/deployment-gate.json', fingerprint: true, onlyIfSuccessful: false
+        }
+      }
+    }
+
+    stage('Deploy') {
+      steps {
+        echo 'Deploy here after GitGov authorization.'
+      }
+    }
+  }
+}
+

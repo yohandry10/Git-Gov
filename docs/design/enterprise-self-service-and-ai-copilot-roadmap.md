@@ -73,10 +73,13 @@ Current primitives:
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated
   release governance workflow templates plus `validate_release_governance_gate.ps1` to call
   `POST /deployment-gates/authorize` instead of the lower-level evaluator.
+- `KAN-85` adds provider-specific Deployment Gate examples for GitHub Actions, Jenkins Pipeline, and
+  GitLab CI, plus a validator that keeps those examples on the Deployment Gates authorization
+  contract.
 
 Future scope:
 
-- Provider-specific examples for Jenkins, GitHub Actions, GitLab CI, and other deployers.
+- Additional deployer examples beyond GitHub Actions, Jenkins Pipeline, and GitLab CI.
 - Per-environment policy: production stricter than staging, without making blocking the default.
 - Break-glass workflow design and authorization evidence.
 
