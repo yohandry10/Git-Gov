@@ -43,3 +43,11 @@ Notes:
 - Full frontend suite passed with `360` tests.
 - Build still reports the existing Vite large chunk warning.
 - `EnterpriseAdoptionPanel.tsx` was reduced from `934` lines to `764` lines by extracting focused helpers and the release governance environment panel.
+
+## GitHub Validation
+
+- Issue: `#309 - KAN-86: Environment Policy UX`.
+- PR: `#310 - product(KAN-86): add environment policy UX`.
+- Merge commit: `b280570`.
+- PR checks passed before merge.
+- Post-merge `main` checks passed for `b280570`: `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
