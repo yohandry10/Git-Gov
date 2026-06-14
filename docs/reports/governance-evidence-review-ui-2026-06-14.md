@@ -63,6 +63,30 @@ Browser/Vite smoke opened `http://127.0.0.1:5174/governance/releases` and verifi
 
 ## Production Validation
 
-Pending merge/deploy. The production smoke should reuse a real Deployment Gate authorization and verify the same chain:
+Production validation found and fixed one UI payload-contract mismatch before the final docs/patch merge:
+
+- The KAN-99 export route accepts `gate_decision`, `policy`, `readiness`, `approvals`, `evidence`, `gaps`, and `audit`.
+- The KAN-101 review-package route accepts `summary`, `source_hashes`, `framework`, `control_matrix`, `missing_evidence`, `no_claims`, and `audit_metadata`.
+
+Final production smoke against `https://gitgov-api.onrender.com` reused a real Deployment Gate authorization and verified:
 
 `Deployment Gate authorization -> KAN-99 export -> KAN-100 mapping -> KAN-101 review package -> server JSON download`.
+
+- Render deploy for merge commit `88cda2a` reached `live` as `dep-d8nbjmp9rddc739n0jj0`.
+- `/health` returned `ok`.
+- Authenticated `/stats` returned HTTP `200`.
+- Source authorization: `dga_6bbb0ce5200a4d36ae6dc9fac1146c7a`.
+- Created export: `cee_7610ff2db7a44f56875ee2709b486295`.
+- Created mapping: `cem_1e731f2983e4451ea89722c48a27adae`.
+- Mapping returned `10` controls.
+- Created review package: `crp_6f36f65322b3da03f404ee24edd38855`.
+- Downloaded artifact schema: `gitgov_control_review_package.v1`.
+- Downloaded artifact contained `10` controls and `summary.total_controls=10`.
+- `compliance_claim=false`.
+- `regulatory_claim=false`.
+- `requires_auditor_review=true`.
+- `certification=false`.
+- `agent_governance_required=false`.
+- `policy_mutation=false`.
+- `provider_mutation=false`.
+- `raw_payload_included=false`.
