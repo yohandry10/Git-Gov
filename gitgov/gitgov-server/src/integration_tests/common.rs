@@ -353,8 +353,20 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             principal_type TEXT,
             agent_key_id TEXT,
             agent_display_name TEXT,
+            attribution_id TEXT,
+            correlation_id TEXT,
+            parent_correlation_id TEXT,
+            session_id TEXT,
+            tool_name TEXT,
+            tool_version TEXT,
+            agent_name TEXT,
+            external_run_id TEXT,
+            consumer_type TEXT DEFAULT 'agent_governance',
             created_at TIMESTAMPTZ DEFAULT NOW(),
             CHECK (evaluation_id LIKE 'agv_%'),
+            CHECK (attribution_id IS NULL OR attribution_id LIKE 'attr_%'),
+            CHECK (correlation_id IS NULL OR length(correlation_id) BETWEEN 1 AND 128),
+            CHECK (consumer_type IS NULL OR consumer_type IN ('agent_governance', 'agent_dry_run')),
             CHECK (
                 (decision = 'allowed' AND allowed = TRUE AND requires_approval = FALSE)
                 OR
@@ -378,6 +390,14 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_agent_governance_evaluations_agent
             ON agent_governance_evaluations(org_id, agent_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_evaluations_correlation
+            ON agent_governance_evaluations(org_id, correlation_id, created_at DESC)
+            WHERE correlation_id IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_evaluations_session
+            ON agent_governance_evaluations(org_id, session_id, created_at DESC)
+            WHERE session_id IS NOT NULL;
 
         CREATE TABLE IF NOT EXISTS release_evidence_packets (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

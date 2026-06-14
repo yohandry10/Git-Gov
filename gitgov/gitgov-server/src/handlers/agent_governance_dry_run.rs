@@ -76,6 +76,7 @@ pub async fn dry_run_agent_governance(
                 "principal_type": auth_user.principal_type,
                 "agent_key_id": auth_user.agent_key_id,
                 "agent_display_name": auth_user.agent_display_name,
+                "attribution": payload.attribution,
                 "reason": "agent_governance_disabled"
             }),
         )
@@ -146,6 +147,16 @@ pub async fn dry_run_agent_governance(
     }
     let policy_checksum = agent_policy_checksum();
     let previewed_at = chrono::Utc::now().timestamp_millis();
+    let attribution = build_agent_governance_attribution(
+        &payload,
+        &auth_user,
+        "agent_dry_run",
+        &decision,
+        previewed_at,
+    );
+    if let Some(object) = evaluation.as_object_mut() {
+        object.insert("attribution".to_string(), json!(&attribution));
+    }
 
     write_agent_governance_audit(
         &state,
@@ -174,6 +185,10 @@ pub async fn dry_run_agent_governance(
             "principal_type": auth_user.principal_type,
             "agent_key_id": auth_user.agent_key_id,
             "agent_display_name": auth_user.agent_display_name,
+            "attribution": &attribution,
+            "correlation_id": &attribution.correlation_id,
+            "session_id": &attribution.session_id,
+            "tool_name": &attribution.tool_name,
             "scope": if auth_user.principal_type == "agent" {
                 Some(AGENT_GOVERNANCE_EVALUATE_SCOPE)
             } else {
@@ -211,6 +226,8 @@ pub async fn dry_run_agent_governance(
         principal_type: Some(auth_user.principal_type),
         agent_key_id: auth_user.agent_key_id,
         agent_display_name: auth_user.agent_display_name,
+        consumer_type: "agent_dry_run".to_string(),
+        attribution,
         previewed_at,
     };
 

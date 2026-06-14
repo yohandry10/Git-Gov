@@ -352,7 +352,16 @@ impl Database {
                 metadata,
                 principal_type,
                 agent_key_id,
-                agent_display_name
+                agent_display_name,
+                attribution_id,
+                correlation_id,
+                parent_correlation_id,
+                session_id,
+                tool_name,
+                tool_version,
+                agent_name,
+                external_run_id,
+                consumer_type
             )
             VALUES (
                 $1,
@@ -380,7 +389,16 @@ impl Database {
                 $23::jsonb,
                 $24,
                 $25,
-                $26
+                $26,
+                $27,
+                $28,
+                $29,
+                $30,
+                $31,
+                $32,
+                $33,
+                $34,
+                $35
             )
             RETURNING
                 id::text,
@@ -410,6 +428,15 @@ impl Database {
                 principal_type,
                 agent_key_id,
                 agent_display_name,
+                attribution_id,
+                correlation_id,
+                parent_correlation_id,
+                session_id,
+                tool_name,
+                tool_version,
+                agent_name,
+                external_run_id,
+                consumer_type,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             "#,
         )
@@ -439,6 +466,15 @@ impl Database {
         .bind(input.principal_type.as_deref())
         .bind(input.agent_key_id.as_deref())
         .bind(input.agent_display_name.as_deref())
+        .bind(&input.attribution.attribution_id)
+        .bind(&input.attribution.correlation_id)
+        .bind(input.attribution.parent_correlation_id.as_deref())
+        .bind(input.attribution.session_id.as_deref())
+        .bind(input.attribution.tool_name.as_deref())
+        .bind(input.attribution.tool_version.as_deref())
+        .bind(input.attribution.agent_name.as_deref())
+        .bind(input.attribution.external_run_id.as_deref())
+        .bind(&input.attribution.consumer_type)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -463,6 +499,7 @@ impl Database {
               AND ($4::text IS NULL OR action = $4)
               AND ($5::text IS NULL OR decision = $5)
               AND ($6::text IS NULL OR agent_id = $6)
+              AND ($7::text IS NULL OR correlation_id = $7)
             "#,
         )
         .bind(input.org_id)
@@ -471,6 +508,7 @@ impl Database {
         .bind(input.action)
         .bind(input.decision)
         .bind(input.agent_id)
+        .bind(input.correlation_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
@@ -505,6 +543,15 @@ impl Database {
                 principal_type,
                 agent_key_id,
                 agent_display_name,
+                attribution_id,
+                correlation_id,
+                parent_correlation_id,
+                session_id,
+                tool_name,
+                tool_version,
+                agent_name,
+                external_run_id,
+                consumer_type,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             FROM agent_governance_evaluations
             WHERE org_id = $1::uuid
@@ -513,8 +560,9 @@ impl Database {
               AND ($4::text IS NULL OR action = $4)
               AND ($5::text IS NULL OR decision = $5)
               AND ($6::text IS NULL OR agent_id = $6)
+              AND ($7::text IS NULL OR correlation_id = $7)
             ORDER BY created_at DESC
-            LIMIT $7 OFFSET $8
+            LIMIT $8 OFFSET $9
             "#,
         )
         .bind(input.org_id)
@@ -523,6 +571,7 @@ impl Database {
         .bind(input.action)
         .bind(input.decision)
         .bind(input.agent_id)
+        .bind(input.correlation_id)
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)

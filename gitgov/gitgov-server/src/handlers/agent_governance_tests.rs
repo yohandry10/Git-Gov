@@ -15,6 +15,7 @@ mod agent_governance_tests {
             environment: Some("production".to_string()),
             ticket_id: Some("KAN-90".to_string()),
             operation_id: Some("op-123".to_string()),
+            attribution: None,
             metadata: json!({}),
         }
     }

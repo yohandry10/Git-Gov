@@ -496,6 +496,8 @@ pub struct AgentGovernanceEvaluationRecord {
     pub agent_key_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<AgentGovernanceAttributionEnvelope>,
     pub created_at: i64,
 }
 
@@ -604,6 +606,8 @@ pub struct AgentGovernanceEvaluationQuery {
     #[serde(default)]
     pub agent_id: Option<String>,
     #[serde(default)]
+    pub correlation_id: Option<String>,
+    #[serde(default)]
     pub limit: Option<i64>,
     #[serde(default)]
     pub offset: Option<i64>,
@@ -639,7 +643,55 @@ pub struct AgentGovernanceEvaluationRequest {
     #[serde(default)]
     pub operation_id: Option<String>,
     #[serde(default)]
+    pub attribution: Option<AgentGovernanceAttributionInput>,
+    #[serde(default)]
     pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct AgentGovernanceAttributionInput {
+    #[serde(default)]
+    pub correlation_id: Option<String>,
+    #[serde(default)]
+    pub parent_correlation_id: Option<String>,
+    #[serde(default)]
+    pub session_id: Option<String>,
+    #[serde(default)]
+    pub tool_name: Option<String>,
+    #[serde(default)]
+    pub tool_version: Option<String>,
+    #[serde(default)]
+    pub agent_name: Option<String>,
+    #[serde(default)]
+    pub external_run_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentGovernanceAttributionEnvelope {
+    pub attribution_id: String,
+    pub correlation_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_correlation_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_run_id: Option<String>,
+    pub principal_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_key_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_display_name: Option<String>,
+    pub consumer_type: String,
+    pub action: String,
+    pub decision: String,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -683,6 +735,8 @@ pub struct AgentGovernanceDryRunResponse {
     pub agent_key_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_display_name: Option<String>,
+    pub consumer_type: String,
+    pub attribution: AgentGovernanceAttributionEnvelope,
     pub previewed_at: i64,
 }
 

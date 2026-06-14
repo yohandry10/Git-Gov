@@ -142,6 +142,7 @@ pub struct CreateAgentGovernanceEvaluationInput {
     pub principal_type: Option<String>,
     pub agent_key_id: Option<String>,
     pub agent_display_name: Option<String>,
+    pub attribution: AgentGovernanceAttributionEnvelope,
 }
 
 #[derive(Debug, Clone)]
@@ -152,6 +153,7 @@ pub struct ListAgentGovernanceEvaluationsInput<'a> {
     pub action: Option<&'a str>,
     pub decision: Option<&'a str>,
     pub agent_id: Option<&'a str>,
+    pub correlation_id: Option<&'a str>,
     pub limit: i64,
     pub offset: i64,
 }
@@ -256,6 +258,35 @@ fn deployment_gate_break_glass_approval_from_row(
 }
 
 fn agent_governance_evaluation_from_row(row: &PgRow) -> AgentGovernanceEvaluationRecord {
+    let attribution_id: Option<String> = row.try_get("attribution_id").ok().flatten();
+    let correlation_id: Option<String> = row.try_get("correlation_id").ok().flatten();
+    let attribution = attribution_id.and_then(|attribution_id| {
+        correlation_id.map(|correlation_id| AgentGovernanceAttributionEnvelope {
+            attribution_id,
+            correlation_id,
+            parent_correlation_id: row.try_get("parent_correlation_id").ok().flatten(),
+            session_id: row.try_get("session_id").ok().flatten(),
+            tool_name: row.try_get("tool_name").ok().flatten(),
+            tool_version: row.try_get("tool_version").ok().flatten(),
+            agent_name: row.try_get("agent_name").ok().flatten(),
+            external_run_id: row.try_get("external_run_id").ok().flatten(),
+            principal_type: row
+                .try_get("principal_type")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "human".to_string()),
+            agent_key_id: row.try_get("agent_key_id").ok().flatten(),
+            agent_display_name: row.try_get("agent_display_name").ok().flatten(),
+            consumer_type: row
+                .try_get("consumer_type")
+                .ok()
+                .flatten()
+                .unwrap_or_else(|| "agent_governance".to_string()),
+            action: row.get("action"),
+            decision: row.get("decision"),
+            created_at: row.get("created_at_ms"),
+        })
+    });
     AgentGovernanceEvaluationRecord {
         id: row.get("id"),
         evaluation_id: row.get("evaluation_id"),
@@ -284,6 +315,7 @@ fn agent_governance_evaluation_from_row(row: &PgRow) -> AgentGovernanceEvaluatio
         principal_type: row.try_get("principal_type").ok(),
         agent_key_id: row.try_get("agent_key_id").ok(),
         agent_display_name: row.try_get("agent_display_name").ok(),
+        attribution,
         created_at: row.get("created_at_ms"),
     }
 }

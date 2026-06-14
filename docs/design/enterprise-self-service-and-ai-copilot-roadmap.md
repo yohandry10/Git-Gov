@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope
 
 ## Decision
 
@@ -139,11 +139,15 @@ Current primitives:
 - `KAN-95` adds `POST /agent-governance/dry-run`, a safe preview that returns the deterministic
   decision, missing evidence, principal identity, and shared governance decision without persisting
   an `agent_governance_evaluations` row and without authorizing execution.
+- `KAN-96` adds a minimal attribution envelope for optional Agent Governance dry-run/evaluate
+  requests. It records safe correlation, session, tool, agent, external run, principal, and
+  consumer metadata for formal evaluations, returns the same envelope in dry-run responses, and keeps
+  dry-run out of `agent_governance_evaluations`.
 
 Future scope:
 
-- Agent attribution chain that links agent key, tool/session, action, decision, policy checksum, and
-  evidence references beyond the basic KAN-94/KAN-95 identity fields.
+- Broader agent attribution chain beyond the KAN-96 minimal envelope, if customers need full
+  session/operation linking later.
 - MCP server exposing scoped governance tools:
   - `get_branch_status`
   - `check_policy_compliance`

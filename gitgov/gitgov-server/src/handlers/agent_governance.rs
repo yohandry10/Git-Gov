@@ -15,7 +15,118 @@ const AGENT_GOVERNANCE_POLICY_ID: &str = "agent-governance.v1";
 const AGENT_GOVERNANCE_EVALUATE_SCOPE: &str = "agent_governance:evaluate";
 const AGENT_GOVERNANCE_METADATA_MAX_BYTES: usize = 16 * 1024;
 const AGENT_GOVERNANCE_REASON_MAX_CHARS: usize = 500;
+const AGENT_GOVERNANCE_ATTRIBUTION_MAX_CHARS: usize = 128;
 const REDACTED_VALUE: &str = "[REDACTED]";
+
+fn normalize_agent_governance_attribution_text(value: &mut Option<String>) {
+    if let Some(text) = value.as_mut() {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            *value = None;
+        } else {
+            *text = trimmed.to_string();
+        }
+    }
+}
+
+fn validate_agent_governance_attribution_field(
+    field: &str,
+    value: Option<&str>,
+    errors: &mut Vec<String>,
+) {
+    if let Some(value) = value {
+        if value.len() > AGENT_GOVERNANCE_ATTRIBUTION_MAX_CHARS || has_control_chars(value) {
+            errors.push(format!(
+                "attribution.{field} must be 1-128 characters without control characters."
+            ));
+        }
+        if value.to_ascii_lowercase().contains("bearer ") {
+            errors.push(format!("attribution.{field} must not contain credential material."));
+        }
+    }
+}
+
+fn normalize_and_validate_agent_governance_attribution(
+    attribution: &mut Option<AgentGovernanceAttributionInput>,
+    errors: &mut Vec<String>,
+) {
+    let Some(attribution) = attribution.as_mut() else {
+        return;
+    };
+
+    normalize_agent_governance_attribution_text(&mut attribution.correlation_id);
+    normalize_agent_governance_attribution_text(&mut attribution.parent_correlation_id);
+    normalize_agent_governance_attribution_text(&mut attribution.session_id);
+    normalize_agent_governance_attribution_text(&mut attribution.tool_name);
+    normalize_agent_governance_attribution_text(&mut attribution.tool_version);
+    normalize_agent_governance_attribution_text(&mut attribution.agent_name);
+    normalize_agent_governance_attribution_text(&mut attribution.external_run_id);
+
+    validate_agent_governance_attribution_field(
+        "correlation_id",
+        attribution.correlation_id.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "parent_correlation_id",
+        attribution.parent_correlation_id.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "session_id",
+        attribution.session_id.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "tool_name",
+        attribution.tool_name.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "tool_version",
+        attribution.tool_version.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "agent_name",
+        attribution.agent_name.as_deref(),
+        errors,
+    );
+    validate_agent_governance_attribution_field(
+        "external_run_id",
+        attribution.external_run_id.as_deref(),
+        errors,
+    );
+}
+
+fn build_agent_governance_attribution(
+    payload: &AgentGovernanceEvaluationRequest,
+    auth_user: &AuthUser,
+    consumer_type: &str,
+    decision: &str,
+    created_at: i64,
+) -> AgentGovernanceAttributionEnvelope {
+    let attribution = payload.attribution.clone().unwrap_or_default();
+    AgentGovernanceAttributionEnvelope {
+        attribution_id: format!("attr_{}", Uuid::new_v4().simple()),
+        correlation_id: attribution
+            .correlation_id
+            .unwrap_or_else(|| format!("agcorr_{}", Uuid::new_v4().simple())),
+        parent_correlation_id: attribution.parent_correlation_id,
+        session_id: attribution.session_id,
+        tool_name: attribution.tool_name,
+        tool_version: attribution.tool_version,
+        agent_name: attribution.agent_name,
+        external_run_id: attribution.external_run_id,
+        principal_type: auth_user.principal_type.clone(),
+        agent_key_id: auth_user.agent_key_id.clone(),
+        agent_display_name: auth_user.agent_display_name.clone(),
+        consumer_type: consumer_type.to_string(),
+        action: payload.action.clone(),
+        decision: decision.to_string(),
+        created_at,
+    }
+}
 
 fn normalize_and_validate_agent_governance_request(
     payload: &mut AgentGovernanceEvaluationRequest,
@@ -50,6 +161,7 @@ fn normalize_and_validate_agent_governance_request(
     if payload.metadata.is_null() {
         payload.metadata = json!({});
     }
+    normalize_and_validate_agent_governance_attribution(&mut payload.attribution, &mut errors);
 
     if payload.agent_id.is_empty()
         || payload.agent_id.len() > 160
@@ -197,6 +309,7 @@ fn minimized_agent_governance_request_payload(
         "environment": payload.environment,
         "ticket_id": payload.ticket_id,
         "operation_id": payload.operation_id,
+        "attribution": payload.attribution,
         "metadata": minimize_agent_governance_json(&payload.metadata),
         "payload_mode": "minimized"
     })
@@ -579,6 +692,7 @@ pub async fn evaluate_agent_governance(
                 "repository_full_name": payload.repository_full_name,
                 "branch": payload.branch,
                 "ticket_id": payload.ticket_id,
+                "attribution": payload.attribution,
                 "reason": "agent_governance_disabled"
             }),
         )
@@ -638,6 +752,17 @@ pub async fn evaluate_agent_governance(
         );
     }
     let policy_checksum = agent_policy_checksum();
+    let created_at = chrono::Utc::now().timestamp_millis();
+    let attribution = build_agent_governance_attribution(
+        &payload,
+        &auth_user,
+        "agent_governance",
+        &decision,
+        created_at,
+    );
+    if let Some(object) = evaluation.as_object_mut() {
+        object.insert("attribution".to_string(), json!(&attribution));
+    }
 
     let create_input = CreateAgentGovernanceEvaluationInput {
         evaluation_id: format!("agv_{}", Uuid::new_v4().simple()),
@@ -656,6 +781,7 @@ pub async fn evaluate_agent_governance(
         principal_type: Some(auth_user.principal_type.clone()),
         agent_key_id: auth_user.agent_key_id.clone(),
         agent_display_name: auth_user.agent_display_name.clone(),
+        attribution: attribution.clone(),
     };
 
     match state
@@ -689,6 +815,10 @@ pub async fn evaluate_agent_governance(
                     "principal_type": &record.principal_type,
                     "agent_key_id": &record.agent_key_id,
                     "agent_display_name": &record.agent_display_name,
+                    "attribution": &record.attribution,
+                    "correlation_id": &attribution.correlation_id,
+                    "session_id": &attribution.session_id,
+                    "tool_name": &attribution.tool_name,
                     "scope": if record.principal_type.as_deref() == Some("agent") {
                         Some(AGENT_GOVERNANCE_EVALUATE_SCOPE)
                     } else {
