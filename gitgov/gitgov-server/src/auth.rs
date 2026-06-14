@@ -327,7 +327,7 @@ fn is_sensitive_admin_path(path: &str) -> bool {
         || path.starts_with("/org-invitations")
         || path.starts_with("/dashboard")
         || path.starts_with("/enterprise/")
-        || path.starts_with("/compliance/evidence-exports")
+        || path.starts_with("/compliance/")
         || path.starts_with("/deployment-gates/")
         || path.starts_with("/agent-governance/")
         || path.starts_with("/jobs/metrics")
@@ -480,9 +480,15 @@ mod tests {
         assert!(is_sensitive_admin_path(
             "/enterprise/release-governance/evaluate"
         ));
+        assert!(is_sensitive_admin_path("/compliance/acme"));
+        assert!(is_sensitive_admin_path("/compliance/control-frameworks"));
         assert!(is_sensitive_admin_path("/compliance/evidence-exports"));
         assert!(is_sensitive_admin_path(
             "/compliance/evidence-exports/cee_123/download"
+        ));
+        assert!(is_sensitive_admin_path("/compliance/evidence-mappings"));
+        assert!(is_sensitive_admin_path(
+            "/compliance/evidence-mappings/cem_123"
         ));
         assert!(is_sensitive_admin_path("/deployment-gates/authorize"));
         assert!(is_sensitive_admin_path("/deployment-gates/authorizations"));

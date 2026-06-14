@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping
 
 ## Decision
 
@@ -206,11 +206,18 @@ Current primitives:
   authorization. The artifact includes gate decision, policy checksum/source, readiness, approvals,
   evidence counts/references, explicit gaps, audit timestamps, `agent_governance_used=false`, and
   `compliance_claim=false`. It does not map controls yet and does not claim framework compliance.
+- `KAN-100` starts mapping without overclaiming: Admins can map a KAN-99 export to the
+  GitGov-owned `gitgov_release_governance_baseline_v1` control catalog. The output is a persisted
+  Evidence-to-Control matrix with control status, evidence references, missing evidence, and safe
+  notes. It always returns `compliance_claim=false`, `regulatory_claim=false`, and
+  `requires_auditor_review=true`. It is not SOC 2, ISO, NIST, PCI, SBS, LGPD, a score, a badge, or
+  a certification claim.
 
 Future scope:
 
-- Static, versioned control mapping from GitGov event/evidence types to framework control IDs.
-- Framework-specific report output with evidence links and hashes.
+- Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
+- Framework-specific report output with evidence links and hashes, without compliance scores unless
+  a reviewed product/legal decision allows them.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.
 - PDF/JSON export suitable for quarterly or annual audits.

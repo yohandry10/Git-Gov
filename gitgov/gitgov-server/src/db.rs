@@ -139,6 +139,29 @@ pub struct CreateComplianceEvidenceExportInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateComplianceEvidenceMappingInput {
+    pub mapping_id: String,
+    pub org_id: String,
+    pub evidence_export_id: String,
+    pub evidence_export_hash: String,
+    pub framework_id: String,
+    pub framework_version: String,
+    pub created_by_user_id: String,
+    pub items: Vec<CreateComplianceEvidenceMappingItemInput>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateComplianceEvidenceMappingItemInput {
+    pub item_id: String,
+    pub control_id: String,
+    pub control_title: String,
+    pub status: String,
+    pub evidence_refs: Vec<String>,
+    pub missing_evidence: Vec<String>,
+    pub notes_safe: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
     pub replaced: AgentGovernanceAgentKeyRecord,
@@ -597,6 +620,7 @@ mod chat_queries_quality;
 mod chat_queries_release;
 mod compliance;
 mod compliance_evidence_exports;
+mod compliance_evidence_mappings;
 mod core;
 mod deployment_gates;
 mod enterprise;

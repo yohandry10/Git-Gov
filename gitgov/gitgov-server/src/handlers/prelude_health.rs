@@ -2,6 +2,7 @@ use crate::auth::{is_founder_global_admin, require_admin, AuthUser};
 use crate::db::{
     AgentGovernanceReadContextInput, CreateAgentGovernanceAgentKeyInput,
     CreateAgentGovernanceEvaluationInput, CreateComplianceEvidenceExportInput,
+    CreateComplianceEvidenceMappingInput, CreateComplianceEvidenceMappingItemInput,
     CreateDeploymentGateAuthorizationInput, CreatePolicyChangeRequestInput, Database, DbError, Job,
     JobMetrics,
     ListAgentGovernanceEvaluationsInput, ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery,
