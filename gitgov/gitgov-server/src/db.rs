@@ -177,6 +177,16 @@ pub struct CreateComplianceFrameworkPackControlInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct ReviewComplianceFrameworkPackInput {
+    pub org_id: String,
+    pub framework_pack_id: String,
+    pub review_status: String,
+    pub reviewed_by_user_id: String,
+    pub review_notes_safe: Option<String>,
+    pub rejected_reason_safe: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateComplianceEvidenceMappingItemInput {
     pub item_id: String,
     pub control_id: String,

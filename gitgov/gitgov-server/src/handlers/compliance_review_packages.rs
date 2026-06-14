@@ -204,6 +204,13 @@ fn build_compliance_review_package_artifact(
             .unwrap_or(false);
         let framework_pack_id = framework.and_then(|framework| framework.framework_pack_id.clone());
         let pack_hash = framework.and_then(|framework| framework.pack_hash.clone());
+        let review_status = framework
+            .and_then(|framework| framework.framework_pack_review_status.clone());
+        let reviewed_by_user_id = framework
+            .and_then(|framework| framework.framework_pack_reviewed_by_user_id.clone());
+        let reviewed_at = framework.and_then(|framework| framework.framework_pack_reviewed_at);
+        let review_notes_safe = framework
+            .and_then(|framework| framework.framework_pack_review_notes_safe.clone());
 
         artifact.insert(
             "framework".to_string(),
@@ -218,6 +225,10 @@ fn build_compliance_review_package_artifact(
                 "official_regulatory_mapping": official_regulatory_mapping,
                 "framework_pack_id": framework_pack_id,
                 "pack_hash": pack_hash,
+                "review_status": review_status,
+                "reviewed_by_user_id": reviewed_by_user_id,
+                "reviewed_at": reviewed_at,
+                "review_notes_safe": review_notes_safe,
                 "customer_provided": owner_type == "customer"
             }),
         );
@@ -402,6 +413,11 @@ pub async fn create_compliance_review_package(
                 .into_response();
         }
     };
+    if let Some(framework) = framework.as_ref() {
+        if let Some(resp) = customer_framework_review_block_response(framework) {
+            return resp;
+        }
+    }
     let artifact = build_compliance_review_package_artifact(
         &review_package_id,
         &org_id,

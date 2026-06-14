@@ -223,13 +223,13 @@ Current primitives:
   create the KAN-101 review package, inspect ids/hashes/no-claim flags/missing evidence, and
   download the server-generated JSON without Postman or curl. It remains manual-first and does not
   require Agent Governance.
-
-Future scope:
-
 - `KAN-103`: Customer-provided framework pack import. This should accept reviewed YAML/JSON control
   packs with explicit ownership/provenance and no official GitGov regulatory claim.
 - `KAN-104`: Framework pack review/provenance UX before any official or customer-specific mapping is
   treated as tenant-ready.
+
+Future scope:
+
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Framework-specific report output with evidence links and hashes, without compliance scores unless
   a reviewed product/legal decision allows them.

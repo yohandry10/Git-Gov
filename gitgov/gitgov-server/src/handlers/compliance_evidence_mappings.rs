@@ -480,6 +480,9 @@ pub async fn create_compliance_evidence_mapping(
         )
             .into_response();
     }
+    if let Some(resp) = customer_framework_review_block_response(&framework) {
+        return resp;
+    }
     if let Some(requested_version) = &payload.framework_version {
         if requested_version != &framework.version {
             return (

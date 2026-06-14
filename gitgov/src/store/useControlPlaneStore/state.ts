@@ -64,6 +64,7 @@ export function createInitialControlPlaneState(): ControlPlaneState {
   isDeploymentGateAuthorizationsLoading: false,
   isComplianceFrameworksLoading: false,
   isComplianceFrameworkPackImporting: false,
+  isComplianceFrameworkPackReviewing: false,
   isComplianceEvidenceExportCreating: false,
   isComplianceEvidenceMappingCreating: false,
   isComplianceReviewPackageCreating: false,

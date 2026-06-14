@@ -297,8 +297,8 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             owner_type TEXT NOT NULL DEFAULT 'customer' CHECK (owner_type IN ('customer')),
             owner_name TEXT NOT NULL,
             source TEXT NOT NULL DEFAULT 'customer_provided' CHECK (source = 'customer_provided'),
-            review_status TEXT NOT NULL DEFAULT 'customer_review_required'
-                CHECK (review_status IN ('customer_review_required', 'customer_reviewed', 'archived')),
+            review_status TEXT NOT NULL DEFAULT 'needs_review'
+                CHECK (review_status IN ('needs_review', 'reviewed', 'needs_changes', 'rejected', 'archived')),
             schema_version TEXT NOT NULL,
             pack_hash TEXT NOT NULL,
             raw_pack_redacted JSONB NOT NULL,
@@ -310,6 +310,11 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             official_regulatory_mapping BOOLEAN NOT NULL DEFAULT FALSE CHECK (official_regulatory_mapping = FALSE),
             created_by_user_id TEXT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            reviewed_by_user_id TEXT,
+            reviewed_at TIMESTAMPTZ,
+            review_notes_safe TEXT,
+            rejected_reason_safe TEXT,
+            review_updated_at TIMESTAMPTZ,
             archived_at TIMESTAMPTZ,
             CHECK (id LIKE 'cfp_%'),
             CHECK (framework_id = lower(framework_id)),
@@ -1475,6 +1480,10 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/framework-packs/{framework_pack_id}",
             get(handlers::get_compliance_framework_pack),
+        )
+        .route(
+            "/compliance/framework-packs/{framework_pack_id}/review",
+            patch(handlers::review_compliance_framework_pack),
         )
         .route(
             "/compliance/evidence-exports",

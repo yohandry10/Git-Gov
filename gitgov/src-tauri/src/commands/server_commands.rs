@@ -7,10 +7,12 @@ use crate::control_plane::{
     ComplianceEvidenceMappingQuery, ComplianceEvidenceMappingRequest,
     ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
     ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
-    ComplianceFrameworkPackQuery, ComplianceReviewPackageQuery, ComplianceReviewPackageRequest,
-    ComplianceReviewPackageResponse, ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest,
-    CreateOrgInvitationRequest, CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse,
-    CreateOrgUserRequest, CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
+    ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
+    ComplianceFrameworkPackReviewRequest, ComplianceReviewPackageQuery,
+    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
+    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
+    CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
     EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
@@ -938,6 +940,24 @@ pub async fn cmd_server_list_compliance_framework_packs(
         });
         client
             .list_compliance_framework_packs(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_review_compliance_framework_pack(
+    config: ServerConnectionConfig,
+    framework_pack_id: String,
+    payload: ComplianceFrameworkPackReviewRequest,
+) -> Result<ComplianceFrameworkPackRecord, String> {
+    run_blocking_command("REVIEW_COMPLIANCE_FRAMEWORK_PACK", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .review_compliance_framework_pack(&framework_pack_id, &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

@@ -80,6 +80,16 @@ pub struct ComplianceControlFramework {
     #[serde(default)]
     pub pack_hash: Option<String>,
     #[serde(default)]
+    pub framework_pack_review_status: Option<String>,
+    #[serde(default)]
+    pub framework_pack_reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub framework_pack_reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub framework_pack_review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub framework_pack_rejected_reason_safe: Option<String>,
+    #[serde(default)]
     pub controls: Vec<ComplianceControl>,
 }
 
@@ -118,7 +128,28 @@ pub struct ComplianceFrameworkPackRecord {
     pub created_by_user_id: String,
     pub created_at: i64,
     #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub rejected_reason_safe: Option<String>,
+    #[serde(default)]
+    pub review_updated_at: Option<i64>,
+    #[serde(default)]
     pub archived_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkPackReviewRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub review_status: String,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub rejected_reason_safe: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

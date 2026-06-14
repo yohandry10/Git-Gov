@@ -5,6 +5,7 @@ import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type { ComplianceEvidenceMappingItem, DeploymentGateAuthorizationRecord } from '@/store/useControlPlaneStore/types'
+import { ComplianceFrameworkPackReviewPanel } from './ComplianceFrameworkPackReviewPanel'
 
 function shortHash(value?: string | null): string {
   if (!value) return 'not available'
@@ -373,6 +374,8 @@ export function ComplianceEvidenceFlowPanel() {
           )}
         </div>
       </div>
+
+      <ComplianceFrameworkPackReviewPanel />
 
       <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
         <div className="rounded border border-white/8 bg-white/[0.03] p-3">

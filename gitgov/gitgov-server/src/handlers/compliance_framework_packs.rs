@@ -32,6 +32,13 @@ const RESERVED_CUSTOMER_FRAMEWORK_PREFIXES: &[&str] = &[
     "lgpd_",
 ];
 
+const FRAMEWORK_PACK_REVIEW_NEEDS_REVIEW: &str = "needs_review";
+const FRAMEWORK_PACK_REVIEW_REVIEWED: &str = "reviewed";
+const FRAMEWORK_PACK_REVIEW_NEEDS_CHANGES: &str = "needs_changes";
+const FRAMEWORK_PACK_REVIEW_REJECTED: &str = "rejected";
+const FRAMEWORK_PACK_REVIEW_ARCHIVED: &str = "archived";
+const MAX_FRAMEWORK_PACK_REVIEW_NOTE_LEN: usize = 1000;
+
 fn customer_framework_pack_hash(pack: &serde_json::Value) -> String {
     let content = serde_json::to_string(pack).unwrap_or_else(|_| "{}".to_string());
     format!("sha256:{:x}", Sha256::digest(content.as_bytes()))
@@ -58,6 +65,157 @@ fn safe_pack_slug(value: &str) -> String {
     } else {
         slug
     }
+}
+
+fn normalize_safe_framework_pack_review_text(value: &mut Option<String>) -> Result<(), String> {
+    let Some(text) = value.take() else {
+        return Ok(());
+    };
+    let normalized = text.trim().to_string();
+    if normalized.is_empty() {
+        *value = None;
+        return Ok(());
+    }
+    if normalized.len() > MAX_FRAMEWORK_PACK_REVIEW_NOTE_LEN {
+        return Err(format!(
+            "review notes must be {MAX_FRAMEWORK_PACK_REVIEW_NOTE_LEN} characters or less"
+        ));
+    }
+    let lowered = normalized.to_ascii_lowercase();
+    if lowered.contains("<script")
+        || lowered.contains("</")
+        || lowered.contains("<iframe")
+        || lowered.contains("bearer ")
+        || lowered.contains("ghp_")
+        || lowered.contains("glpat-")
+    {
+        return Err("review notes must be plain text and cannot contain secrets".to_string());
+    }
+    *value = Some(normalized);
+    Ok(())
+}
+
+fn normalize_framework_pack_review_request(
+    payload: &mut ComplianceFrameworkPackReviewRequest,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    normalize_release_approval_optional_text(&mut payload.org_name);
+    payload.review_status = payload.review_status.trim().to_ascii_lowercase();
+    if ![
+        FRAMEWORK_PACK_REVIEW_NEEDS_REVIEW,
+        FRAMEWORK_PACK_REVIEW_REVIEWED,
+        FRAMEWORK_PACK_REVIEW_NEEDS_CHANGES,
+        FRAMEWORK_PACK_REVIEW_REJECTED,
+        FRAMEWORK_PACK_REVIEW_ARCHIVED,
+    ]
+    .contains(&payload.review_status.as_str())
+    {
+        errors.push("review_status must be needs_review, reviewed, needs_changes, rejected, or archived.".to_string());
+    }
+    if let Err(error) = normalize_safe_framework_pack_review_text(&mut payload.review_notes_safe) {
+        errors.push(error);
+    }
+    if let Err(error) = normalize_safe_framework_pack_review_text(&mut payload.rejected_reason_safe)
+    {
+        errors.push(error);
+    }
+    if payload.review_status == FRAMEWORK_PACK_REVIEW_REJECTED
+        && payload.rejected_reason_safe.is_none()
+    {
+        errors.push("rejected_reason_safe is required when review_status is rejected.".to_string());
+    }
+    if payload.review_status == FRAMEWORK_PACK_REVIEW_NEEDS_CHANGES
+        && payload.review_notes_safe.is_none()
+    {
+        errors.push("review_notes_safe is required when review_status is needs_changes.".to_string());
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn validate_framework_pack_can_be_marked_reviewed(
+    pack: &ComplianceFrameworkPackRecord,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    if pack.owner_type != "customer" {
+        errors.push("only customer-owned framework packs can be reviewed in this flow.".to_string());
+    }
+    if pack.source != "customer_provided" {
+        errors.push("framework pack source must be customer_provided.".to_string());
+    }
+    if pack.control_count <= 0 {
+        errors.push("framework pack must contain at least one control.".to_string());
+    }
+    if !pack.pack_hash.starts_with("sha256:") || pack.pack_hash.len() != 71 {
+        errors.push("framework pack hash must be present before review.".to_string());
+    }
+    if pack.compliance_claim
+        || pack.regulatory_claim
+        || pack.gitgov_certifies
+        || pack.official_regulatory_mapping
+        || !pack.requires_auditor_review
+    {
+        errors.push("framework pack claim/provenance flags are not safe for customer review.".to_string());
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn customer_framework_review_block(
+    framework: &ComplianceControlFramework,
+) -> Option<(&'static str, &'static str)> {
+    if framework.owner_type != "customer" && framework.framework_pack_id.is_none() {
+        return None;
+    }
+    let status = framework
+        .framework_pack_review_status
+        .as_deref()
+        .unwrap_or(FRAMEWORK_PACK_REVIEW_NEEDS_REVIEW);
+    match status {
+        FRAMEWORK_PACK_REVIEW_REVIEWED => None,
+        FRAMEWORK_PACK_REVIEW_NEEDS_CHANGES => Some((
+            "framework_pack_needs_changes",
+            "Customer framework pack requires changes before evidence mapping",
+        )),
+        FRAMEWORK_PACK_REVIEW_REJECTED => Some((
+            "framework_pack_rejected",
+            "Customer framework pack was rejected and cannot be used for evidence mapping",
+        )),
+        FRAMEWORK_PACK_REVIEW_ARCHIVED => Some((
+            "framework_pack_archived",
+            "Customer framework pack is archived and cannot be used for evidence mapping",
+        )),
+        _ => Some((
+            "framework_pack_not_reviewed",
+            "Customer framework pack must be reviewed before evidence mapping",
+        )),
+    }
+}
+
+fn customer_framework_review_block_response(
+    framework: &ComplianceControlFramework,
+) -> Option<axum::response::Response> {
+    customer_framework_review_block(framework).map(|(code, message)| {
+        (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "error": message,
+                "code": code,
+                "framework_id": framework.framework_id,
+                "framework_pack_id": framework.framework_pack_id,
+                "review_status": framework.framework_pack_review_status
+            })),
+        )
+            .into_response()
+    })
 }
 
 fn json_str_field<'a>(value: &'a serde_json::Value, pointer: &str) -> Option<&'a str> {
@@ -580,6 +738,133 @@ pub async fn get_compliance_framework_pack(
             .into_response(),
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, framework_pack_id = %framework_pack_id, "Failed to load compliance framework pack");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn review_compliance_framework_pack(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(framework_pack_id): Path<String>,
+    Query(mut query): Query<ComplianceFrameworkPackQuery>,
+    Json(mut payload): Json<ComplianceFrameworkPackReviewRequest>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+    normalize_release_approval_optional_text(&mut query.org_name);
+    if payload.org_name.is_none() {
+        payload.org_name = query.org_name;
+    }
+    if let Err(errors) = normalize_framework_pack_review_request(&mut payload) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Invalid framework pack review request", "details": errors })),
+        )
+            .into_response();
+    }
+
+    let org_id = match resolve_required_compliance_framework_org(
+        &state,
+        &auth_user,
+        payload.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    let framework_pack_id = framework_pack_id.trim().to_string();
+    let current_pack = match state
+        .db
+        .get_compliance_framework_pack(&org_id, &framework_pack_id)
+        .await
+    {
+        Ok(Some(pack)) => pack,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Compliance framework pack not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, framework_pack_id = %framework_pack_id, "Failed to load compliance framework pack for review");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    if payload.review_status == FRAMEWORK_PACK_REVIEW_REVIEWED {
+        if let Err(errors) = validate_framework_pack_can_be_marked_reviewed(&current_pack) {
+            return (
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "error": "Framework pack cannot be marked reviewed",
+                    "code": "framework_pack_review_invariant_failed",
+                    "details": errors
+                })),
+            )
+                .into_response();
+        }
+    }
+
+    match state
+        .db
+        .review_compliance_framework_pack(ReviewComplianceFrameworkPackInput {
+            org_id: org_id.clone(),
+            framework_pack_id: framework_pack_id.clone(),
+            review_status: payload.review_status.clone(),
+            reviewed_by_user_id: auth_user.client_id.clone(),
+            review_notes_safe: payload.review_notes_safe.clone(),
+            rejected_reason_safe: payload.rejected_reason_safe.clone(),
+        })
+        .await
+    {
+        Ok(Some(framework_pack)) => {
+            let audit_entry = AdminAuditLogEntry {
+                id: Uuid::new_v4().to_string(),
+                actor_client_id: auth_user.client_id.clone(),
+                action: "compliance_framework_pack.review_updated".to_string(),
+                target_type: Some("compliance_framework_pack".to_string()),
+                target_id: Some(framework_pack.framework_pack_id.clone()),
+                metadata: json!({
+                    "org_id": org_id,
+                    "framework_pack_id": framework_pack.framework_pack_id,
+                    "framework_id": framework_pack.framework_id,
+                    "review_status": framework_pack.review_status,
+                    "reviewed_by_user_id": framework_pack.reviewed_by_user_id,
+                    "reviewed_at": framework_pack.reviewed_at,
+                    "review_updated_at": framework_pack.review_updated_at,
+                    "archived_at": framework_pack.archived_at,
+                    "compliance_claim": false,
+                    "regulatory_claim": false,
+                    "gitgov_certifies": false,
+                    "official_regulatory_mapping": false
+                }),
+                created_at: chrono::Utc::now().timestamp_millis(),
+            };
+            if let Err(e) = state.db.insert_admin_audit_log(&audit_entry).await {
+                tracing::warn!("Failed to write framework pack review audit log: {}", e);
+            }
+            (StatusCode::OK, Json(framework_pack)).into_response()
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Compliance framework pack not found" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, framework_pack_id = %framework_pack_id, "Failed to update compliance framework pack review");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),
