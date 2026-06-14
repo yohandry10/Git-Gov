@@ -276,6 +276,7 @@ pub fn run() {
             commands::cmd_server_create_compliance_framework_review_report,
             commands::cmd_server_list_compliance_framework_review_reports,
             commands::cmd_server_get_compliance_framework_review_report,
+            commands::cmd_server_review_compliance_framework_review_report,
             commands::cmd_server_download_compliance_framework_review_report,
             commands::cmd_server_create_enterprise_release_approval,
             commands::cmd_server_get_me,

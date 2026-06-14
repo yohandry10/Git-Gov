@@ -408,6 +408,11 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             regulatory_claim BOOLEAN NOT NULL DEFAULT FALSE,
             requires_auditor_review BOOLEAN NOT NULL DEFAULT TRUE,
             certification BOOLEAN NOT NULL DEFAULT FALSE,
+            review_status TEXT NOT NULL DEFAULT 'needs_review'
+                CHECK (review_status IN ('needs_review', 'reviewed', 'needs_changes', 'rejected')),
+            reviewed_by_user_id TEXT,
+            reviewed_at TIMESTAMPTZ,
+            review_notes_safe TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             downloaded_at TIMESTAMPTZ,
             error_message_safe TEXT,
@@ -484,6 +489,16 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_framework_package
             ON compliance_framework_review_reports(org_id, framework_id, review_package_id);
+
+        ALTER TABLE compliance_framework_review_reports
+            ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'needs_review'
+                CHECK (review_status IN ('needs_review', 'reviewed', 'needs_changes', 'rejected')),
+            ADD COLUMN IF NOT EXISTS reviewed_by_user_id TEXT,
+            ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS review_notes_safe TEXT;
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_review_status
+            ON compliance_framework_review_reports(org_id, review_status, created_at DESC);
 
         INSERT INTO compliance_control_frameworks (
             framework_id,
@@ -1583,6 +1598,10 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/framework-review-reports/{report_id}",
             get(handlers::get_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/review",
+            patch(handlers::review_compliance_framework_review_report),
         )
         .route(
             "/compliance/framework-review-reports/{report_id}/download",

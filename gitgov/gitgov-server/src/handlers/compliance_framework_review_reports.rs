@@ -6,6 +6,11 @@ const COMPLIANCE_FRAMEWORK_REVIEW_REPORT_SCHEMA_VERSION: &str =
     "gitgov_framework_review_report.v1";
 const DEFAULT_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 25;
 const MAX_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 100;
+const FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_REVIEW: &str = "needs_review";
+const FRAMEWORK_REVIEW_REPORT_REVIEW_REVIEWED: &str = "reviewed";
+const FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_CHANGES: &str = "needs_changes";
+const FRAMEWORK_REVIEW_REPORT_REVIEW_REJECTED: &str = "rejected";
+const MAX_FRAMEWORK_REVIEW_REPORT_REVIEW_NOTE_LEN: usize = 1000;
 
 fn normalize_framework_review_report_request(
     payload: &mut ComplianceFrameworkReviewReportRequest,
@@ -78,6 +83,79 @@ fn normalize_framework_review_report_query(
 
     if errors.is_empty() {
         Ok(limit)
+    } else {
+        Err(errors)
+    }
+}
+
+fn normalize_safe_framework_review_report_review_text(
+    value: &mut Option<String>,
+) -> Result<(), String> {
+    let Some(text) = value.take() else {
+        return Ok(());
+    };
+    let normalized = text.trim().to_string();
+    if normalized.is_empty() {
+        *value = None;
+        return Ok(());
+    }
+    if normalized.len() > MAX_FRAMEWORK_REVIEW_REPORT_REVIEW_NOTE_LEN {
+        return Err(format!(
+            "review notes must be {MAX_FRAMEWORK_REVIEW_REPORT_REVIEW_NOTE_LEN} characters or less"
+        ));
+    }
+    let lowered = normalized.to_ascii_lowercase();
+    if lowered.contains("<script")
+        || lowered.contains("</")
+        || lowered.contains("<iframe")
+        || lowered.contains("bearer ")
+        || lowered.contains("ghp_")
+        || lowered.contains("glpat-")
+        || lowered.contains("sk-")
+    {
+        return Err("review notes must be plain text and cannot contain secrets".to_string());
+    }
+    *value = Some(normalized);
+    Ok(())
+}
+
+fn normalize_framework_review_report_review_request(
+    payload: &mut ComplianceFrameworkReviewReportReviewRequest,
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    normalize_release_approval_optional_text(&mut payload.org_name);
+    payload.review_status = payload.review_status.trim().to_ascii_lowercase();
+    if ![
+        FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_REVIEW,
+        FRAMEWORK_REVIEW_REPORT_REVIEW_REVIEWED,
+        FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_CHANGES,
+        FRAMEWORK_REVIEW_REPORT_REVIEW_REJECTED,
+    ]
+    .contains(&payload.review_status.as_str())
+    {
+        errors.push(
+            "review_status must be needs_review, reviewed, needs_changes, or rejected."
+                .to_string(),
+        );
+    }
+    if let Err(error) =
+        normalize_safe_framework_review_report_review_text(&mut payload.review_notes_safe)
+    {
+        errors.push(error);
+    }
+    if payload.review_status == FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_CHANGES
+        && payload.review_notes_safe.is_none()
+    {
+        errors.push("review_notes_safe is required when review_status is needs_changes.".to_string());
+    }
+    if payload.review_status == FRAMEWORK_REVIEW_REPORT_REVIEW_REJECTED
+        && payload.review_notes_safe.is_none()
+    {
+        errors.push("review_notes_safe is required when review_status is rejected.".to_string());
+    }
+
+    if errors.is_empty() {
+        Ok(())
     } else {
         Err(errors)
     }
@@ -589,6 +667,103 @@ pub async fn get_compliance_framework_review_report(
             .into_response(),
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to load compliance framework review report");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn review_compliance_framework_review_report(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(report_id): Path<String>,
+    Json(mut payload): Json<ComplianceFrameworkReviewReportReviewRequest>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+    if !report_id.starts_with("frr_") || report_id.len() > 80 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "report_id must be a valid frr_ identifier" })),
+        )
+            .into_response();
+    }
+    if let Err(errors) = normalize_framework_review_report_review_request(&mut payload) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Invalid compliance framework review report review request", "details": errors })),
+        )
+            .into_response();
+    }
+
+    let org_id = match resolve_compliance_framework_review_report_org(
+        &state,
+        &auth_user,
+        payload.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    match state
+        .db
+        .update_compliance_framework_review_report_review(
+            &UpdateComplianceFrameworkReviewReportReviewInput {
+                org_id: &org_id,
+                report_id: &report_id,
+                review_status: &payload.review_status,
+                reviewed_by_user_id: &auth_user.client_id,
+                review_notes_safe: payload.review_notes_safe.as_deref(),
+            },
+        )
+        .await
+    {
+        Ok(Some(record)) => {
+            let audit_entry = AdminAuditLogEntry {
+                id: Uuid::new_v4().to_string(),
+                actor_client_id: auth_user.client_id.clone(),
+                action: "compliance_framework_review_report.reviewed".to_string(),
+                target_type: Some("compliance_framework_review_report".to_string()),
+                target_id: Some(record.report_id.clone()),
+                metadata: json!({
+                    "org_id": org_id,
+                    "report_id": record.report_id,
+                    "review_status": record.review_status,
+                    "reviewed_by_user_id": record.reviewed_by_user_id,
+                    "reviewed_at": record.reviewed_at,
+                    "has_review_notes_safe": record.review_notes_safe.is_some(),
+                    "artifact_hash": record.artifact_hash,
+                    "hash_changed": false,
+                    "compliance_claim": record.compliance_claim,
+                    "regulatory_claim": record.regulatory_claim,
+                    "requires_auditor_review": record.requires_auditor_review,
+                    "certification": record.certification,
+                    "agent_governance_required": false
+                }),
+                created_at: chrono::Utc::now().timestamp_millis(),
+            };
+            if let Err(e) = state.db.insert_admin_audit_log(&audit_entry).await {
+                tracing::warn!("Failed to write framework review report review audit log: {}", e);
+            }
+            (
+                StatusCode::OK,
+                Json(framework_review_report_response(record, None)),
+            )
+                .into_response()
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Compliance framework review report not found" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to review compliance framework review report");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),

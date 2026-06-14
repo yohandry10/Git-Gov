@@ -24,6 +24,10 @@ fn compliance_framework_review_report_from_row(
         regulatory_claim: row.get("regulatory_claim"),
         requires_auditor_review: row.get("requires_auditor_review"),
         certification: row.get("certification"),
+        review_status: row.get("review_status"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        review_notes_safe: row.get("review_notes_safe"),
         created_at: row.get("created_at_ms"),
         downloaded_at: row.get("downloaded_at_ms"),
         error_message_safe: row.get("error_message_safe"),
@@ -58,6 +62,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
@@ -165,6 +173,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
@@ -222,6 +234,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
@@ -233,6 +249,62 @@ impl Database {
         )
         .bind(org_id)
         .bind(report_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_framework_review_report_from_row(&row)))
+    }
+
+    pub async fn update_compliance_framework_review_report_review(
+        &self,
+        input: &UpdateComplianceFrameworkReviewReportReviewInput<'_>,
+    ) -> Result<Option<ComplianceFrameworkReviewReportRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_framework_review_reports
+            SET review_status = $3,
+                reviewed_by_user_id = $4,
+                reviewed_at = NOW(),
+                review_notes_safe = $5,
+                error_message_safe = NULL
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+            RETURNING
+                report_id,
+                org_id::text,
+                created_by_user_id,
+                mapping_id,
+                review_package_id,
+                evidence_export_id,
+                evidence_export_hash,
+                mapping_hash,
+                review_package_hash,
+                framework_id,
+                framework_version,
+                framework_owner_type,
+                framework_review_status,
+                pack_hash,
+                format,
+                artifact_hash,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                error_message_safe
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.report_id)
+        .bind(input.review_status)
+        .bind(input.reviewed_by_user_id)
+        .bind(input.review_notes_safe)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
