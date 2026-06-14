@@ -1,6 +1,6 @@
 # KAN-83 Deployment Authorization API MVP
 
-Updated: 2026-06-13
+Updated: 2026-06-14
 
 ## Summary
 
@@ -44,6 +44,12 @@ Both routes are Admin-only and use the same org scoping model as enterprise rele
   "evidence_packet_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   "requested_by": "deploy-bot",
   "deployment_run_id": "gha-123456",
+  "break_glass": {
+    "requested": true,
+    "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
+    "authorized_by": "incident.commander@example.com",
+    "expires_at": 1781413200000
+  },
   "metadata": {
     "workflow": "deploy-production"
   }
@@ -76,6 +82,7 @@ Response:
   "warnings": [],
   "policy_checksum": "...",
   "break_glass_eligible": false,
+  "break_glass_used": false,
   "evaluation": {
     "status": "recorded",
     "policy_satisfied": true
@@ -91,6 +98,7 @@ Decision semantics:
 | Evaluator result | API decision | `approved` | Meaning |
 | --- | --- | --- | --- |
 | `blocking=true` | `blocked` | `false` | Customer policy explicitly blocks this deployment. |
+| `blocking=true` with valid `break_glass` | `break_glass` | `true` | Deployment is authorized by audited exception while original blockers remain recorded. |
 | `would_block=true` without blocking enforcement | `advisory` | `true` | Deployment may proceed, but GitGov records what would block under enforcement. |
 | setup warnings only | `advisory` | `true` | Release policy allows deploy, but onboarding/setup evidence is incomplete. |
 | no issues | `approved` | `true` | Current policy is satisfied or record-only. |
@@ -116,6 +124,7 @@ The table stores:
 - evidence packet hash/URI;
 - `decision`, `approved`, `blocking`, `would_block`;
 - reason, warnings, blockers, policy checksum;
+- break-glass eligibility, usage, reason, authorizer, and optional expiry;
 - full release-governance evaluation;
 - compact details including first governed repo setup status;
 - original normalized request payload;

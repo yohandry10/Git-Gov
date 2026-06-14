@@ -77,6 +77,5 @@ branch, target SHA, and environment.
 - No GitHub/Jenkins/GitLab mutation.
 - No automatic secret creation.
 - No branch protection updates.
-- No break-glass workflow.
+- No automatic break-glass request generation in provider examples; KAN-87 documents the explicit exception contract.
 - No OPA/Rego execution.
-

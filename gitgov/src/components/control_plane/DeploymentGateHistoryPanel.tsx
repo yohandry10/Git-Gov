@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { History, RefreshCw, ShieldCheck, ShieldX } from 'lucide-react'
+import { AlertTriangle, History, RefreshCw, ShieldCheck, ShieldX } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -7,6 +7,7 @@ import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 
 function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
   if (decision === 'approved') return 'success'
+  if (decision === 'break_glass') return 'warning'
   if (decision === 'advisory') return 'warning'
   if (decision === 'blocked') return 'danger'
   return 'neutral'
@@ -113,7 +114,8 @@ export function DeploymentGateHistoryPanel() {
                 <Badge variant={decisionVariant(authorization.decision)}>{authorization.decision}</Badge>
                 <span className="font-medium text-surface-100">{authorization.release_id}</span>
                 <span className="text-surface-500">{authorization.environment}</span>
-                {authorization.break_glass_eligible && <Badge variant="warning">break-glass eligible</Badge>}
+                {authorization.break_glass_used && <Badge variant="warning">break-glass used</Badge>}
+                {!authorization.break_glass_used && authorization.break_glass_eligible && <Badge variant="warning">break-glass eligible</Badge>}
               </div>
 
               <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-surface-400 md:grid-cols-2">
@@ -128,6 +130,21 @@ export function DeploymentGateHistoryPanel() {
               </div>
 
               <div className="mt-2 text-[11px] text-surface-300">{authorization.reason}</div>
+              {authorization.break_glass_used && (
+                <div className="mt-2 rounded border border-warning-500/20 bg-warning-500/8 p-2 text-[11px] text-warning-100">
+                  <div className="flex items-center gap-1 font-medium">
+                    <AlertTriangle size={13} />
+                    Break-glass authorization
+                  </div>
+                  <div className="mt-1">
+                    Reason: <span className="text-warning-50">{authorization.break_glass_reason || authorization.reason}</span>
+                  </div>
+                  <div className="mt-1 grid grid-cols-1 gap-1 md:grid-cols-2">
+                    <span>Authorized by: <span className="text-warning-50">{authorization.break_glass_authorized_by || authorization.requested_by}</span></span>
+                    <span>Expires: <span className="text-warning-50">{authorization.break_glass_expires_at ? formatTs(authorization.break_glass_expires_at, displayTimezone) : 'Not set'}</span></span>
+                  </div>
+                </div>
+              )}
               {authorization.warnings.length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-warning-100">
                   {authorization.warnings.slice(0, 3).map((warning) => <li key={warning}>{warning}</li>)}

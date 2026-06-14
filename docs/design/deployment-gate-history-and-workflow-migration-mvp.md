@@ -18,7 +18,7 @@ Out of scope for this slice:
 
 - mutating customer deploy providers;
 - branch protection or environment protection updates;
-- break-glass execution;
+- break-glass routing beyond the KAN-87 Admin-authorized exception contract;
 - OPA/Rego execution;
 - making blocking the default for record-only customers.
 
