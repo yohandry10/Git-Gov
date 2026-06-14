@@ -76,3 +76,18 @@ Focused backend tests cover:
 - normal blocked/advisory deployment authorization history.
 
 No local pre-PR validation gap remains.
+
+## Production Validation
+
+PR `#316` merged to `main` as `bd44db1` on 2026-06-14. Post-merge checks passed, including `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+
+Production validation completed:
+
+- Applied `supabase_schema_v37.sql`.
+- `checks/v37_postcheck.sql` returned `PASS` for the new table, constraints, authorization link columns, and link constraint.
+- Render deploy `dep-d8n324u8bjmc73en5qgg` for `bd44db1` reached `live`.
+- `GET https://gitgov-api.onrender.com/health` returned `ok`.
+- Authenticated `GET /stats` returned HTTP `200`.
+- Anonymous `GET /deployment-gates/break-glass-approvals?org_name=yohandry10&limit=1` returned HTTP `401`.
+- Authenticated `POST /deployment-gates/break-glass-approvals` created approval `dgbga_8be2e0b2a33741368ab211e7d4b5e77f` against existing release evidence.
+- Authenticated `GET /deployment-gates/break-glass-approvals?org_name=yohandry10&approval_id=dgbga_8be2e0b2a33741368ab211e7d4b5e77f&active_only=true` returned `total=1`.
