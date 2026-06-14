@@ -54,10 +54,29 @@ Observed result:
 - Focused KAN-98 integration tests: `4` passed.
 - Full backend suite: `296` passed.
 
+## Production Smoke Finding
+
+After PR `#346` merged, Render deployed commit `0e4ee1c` as `dep-d8n9687aqgkc73c19310`.
+
+The first production smoke validated the auth boundary but exposed a production-schema drift in the
+new context query:
+
+- `/health` returned `ok`.
+- Authenticated `/stats` returned `200`.
+- Agent Governance started and ended as `enabled=false/mode=manual_only`.
+- A temporary `agent_governance:read` key was created and later revoked.
+- Disabled/manual-only agent context returned `403 agent_governance_disabled`.
+- Read-only key evaluation returned `403 invalid_scope`.
+- Evaluation history for the smoke agent stayed empty.
+- Enabled read context returned `500` because production `pipeline_events` uses `ingested_at`,
+  while the first implementation ordered by the integration-test-only `created_at` helper column.
+
+Follow-up hotfix: KAN-98 now reads pipeline context from `pipeline_events.ingested_at`, which is the
+production migration column from `supabase_schema_v5.sql`. The integration test harness already has
+`ingested_at`, so the focused and full backend suites cover the corrected path.
+
 ## Remaining Before Production Closure
 
-- Open PR for `KAN-98`.
-- Wait for required GitHub checks.
-- Merge.
-- Verify Render deploy and production smoke with temporary read-scoped agent key.
-- Revoke temporary production key and restore Agent Governance settings to disabled/manual-only.
+- Merge the KAN-98 production hotfix.
+- Verify Render deploy and rerun production smoke with a temporary read-scoped agent key.
+- Revoke the temporary production key and restore Agent Governance settings to disabled/manual-only.

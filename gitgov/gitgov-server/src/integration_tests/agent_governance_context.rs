@@ -297,6 +297,10 @@ async fn read_only_agent_key_can_load_context_without_persisting_evaluation() {
         parsed["recent_activity"]["latest_deployment_gate"]["decision"],
         "approved"
     );
+    assert_eq!(
+        parsed["recent_activity"]["latest_deployment_gate"]["policy_checksum"],
+        "policy-kan98"
+    );
     assert_eq!(parsed["risk_score"]["level"], "low");
 
     let after_count: i64 = sqlx::query_scalar(
