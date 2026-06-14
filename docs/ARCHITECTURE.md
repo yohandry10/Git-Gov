@@ -220,6 +220,9 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |
 | `/agent-governance/evaluations` | Bearer (admin) | Listar historial de evaluaciones agent governance con request payload minimizado |
+| `/agent-governance/agent-keys` | Bearer (admin) | Crear/listar agent keys opcionales con expiry, estado derivado y token mostrado una sola vez |
+| `/agent-governance/agent-keys/{key_id}/rotate` | Bearer (admin) | Rotar una agent key creando reemplazo, enlazando old/new y aplicando grace period |
+| `/agent-governance/agent-keys/{key_id}` | Bearer (admin) | Revocar una agent key |
 | `/signals/{signal_id}` | Bearer (scoped) | Actualizar señal individual |
 | `/signals/{signal_id}/confirm` | Bearer (scoped) | Confirmar señal |
 | `/signals/detect/{org_name}` | Bearer (admin) | Disparar detección de señales |

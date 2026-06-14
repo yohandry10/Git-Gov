@@ -27,6 +27,7 @@ Admin key management:
 ```text
 GET /agent-governance/agent-keys
 POST /agent-governance/agent-keys
+POST /agent-governance/agent-keys/{key_id}/rotate
 DELETE /agent-governance/agent-keys/{key_id}
 ```
 
@@ -45,8 +46,8 @@ Agent tokens are accepted only for this route and only with scope:
 agent_governance:evaluate
 ```
 
-The created token is returned once at creation time. List/revoke responses expose key metadata,
-prefix, and last four characters, but never plaintext token material.
+The created token is returned once at creation or rotation time. List/revoke responses expose key
+metadata, prefix, and last four characters, but never plaintext token material.
 
 ## Scope Model
 
@@ -61,6 +62,27 @@ The first allowed action set defaults to:
 `change_policy` is deliberately not included by default. An agent key can only request an action
 that is present in its `allowed_actions` list. Unsupported actions, revoked keys, expired keys,
 tenant mismatch, disabled tenants, and invalid scopes do not create evaluation rows.
+
+## Lifecycle
+
+KAN-97 extends KAN-94 with operational credential lifecycle.
+
+New keys default to a 90-day expiry. Admins can explicitly request `no_expiry=true`, which keeps
+the key active but exposes `status=no_expiry` as an operational risk signal. `expires_at` and
+`no_expiry=true` cannot be combined.
+
+Agent key records expose derived lifecycle status:
+
+- `active`
+- `expiring_soon`
+- `expired`
+- `revoked`
+- `rotation_pending`
+- `no_expiry`
+
+Rotation creates a replacement key, returns the new plaintext token once, links the old key to the
+replacement, and sets the old key's effective expiry to the configured grace period. Revocation
+wins over expiry if both apply.
 
 ## Database
 
@@ -85,6 +107,10 @@ Important fields:
 - `expires_at`
 - `last_used_at`
 - `revoked_at`
+- `rotated_at`
+- `rotated_from_key_id`
+- `replaced_by_key_id`
+- `rotation_reason`
 - `created_by`
 - `revoked_by`
 
@@ -102,8 +128,11 @@ KAN-94 writes:
 
 - `agent_key.created`
 - `agent_key.used`
+- `agent_key.rotated`
 - `agent_key.revoked`
 - `agent_key.denied`
+- `agent_key.denied_expired`
+- `agent_key.denied_revoked`
 - `agent_key.invalid_scope`
 
 Denied and invalid-scope events intentionally do not create evaluation evidence.

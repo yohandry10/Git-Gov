@@ -516,12 +516,23 @@ pub struct AgentGovernanceAgentKeyRecord {
     #[serde(default)]
     pub allowed_actions: Vec<String>,
     pub token_preview: String,
+    pub status: String,
+    pub expiring_soon: bool,
+    pub no_expiry: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_used_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub revoked_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotated_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotated_from_key_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replaced_by_key_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation_reason: Option<String>,
     pub created_by: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub revoked_by: Option<String>,
@@ -532,6 +543,13 @@ pub struct AgentGovernanceAgentKeyRecord {
 pub struct CreateAgentGovernanceAgentKeyResponse {
     #[serde(flatten)]
     pub record: AgentGovernanceAgentKeyRecord,
+    pub token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RotateAgentGovernanceAgentKeyResponse {
+    pub replacement: AgentGovernanceAgentKeyRecord,
+    pub replaced: AgentGovernanceAgentKeyRecord,
     pub token: String,
 }
 
@@ -554,6 +572,18 @@ pub struct CreateAgentGovernanceAgentKeyRequest {
     pub allowed_actions: Vec<String>,
     #[serde(default)]
     pub expires_at: Option<i64>,
+    #[serde(default)]
+    pub no_expiry: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RotateAgentGovernanceAgentKeyRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub grace_period_hours: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

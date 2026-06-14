@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation
 
 ## Decision
 
@@ -143,17 +143,22 @@ Current primitives:
   requests. It records safe correlation, session, tool, agent, external run, principal, and
   consumer metadata for formal evaluations, returns the same envelope in dry-run responses, and keeps
   dry-run out of `agent_governance_evaluations`.
+- `KAN-97` hardens the lifecycle of optional agent-scoped keys before any MCP surface. New keys
+  default to 90-day expiry unless an Admin explicitly chooses `no_expiry=true`; key records expose
+  derived lifecycle status; `POST /agent-governance/agent-keys/{key_id}/rotate` creates a
+  replacement token shown once, links old and new keys, gives the old key a bounded grace period,
+  and audits rotate/expired/revoked outcomes without storing plaintext tokens.
 
 Future scope:
 
-- Broader agent attribution chain beyond the KAN-96 minimal envelope, if customers need full
-  session/operation linking later.
 - MCP server exposing scoped governance tools:
   - `get_branch_status`
   - `check_policy_compliance`
   - `list_audit_logs`
   - `get_pipeline_state`
   - `get_risk_score`
+- Broader agent attribution chain beyond the KAN-96 minimal envelope, if customers need full
+  session/operation linking later.
 - Broader read-only agent scopes such as `read:audit`, `read:policy`, and `read:branch_status`.
 - Broader REST Policy API coverage beyond the KAN-90 MVP rules.
 - Human-in-the-loop approval for sensitive operations from agents.

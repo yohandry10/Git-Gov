@@ -572,6 +572,9 @@ async fn agent_governance_agent_keys_are_admin_only_and_token_is_one_time() {
     assert_eq!(listed["total"], 1);
     assert!(listed["items"][0].get("token").is_none());
     assert_eq!(listed["items"][0]["token_preview"], stored.1);
+    assert_eq!(listed["items"][0]["status"], "active");
+    assert_eq!(listed["items"][0]["no_expiry"], false);
+    assert!(listed["items"][0]["expires_at"].as_i64().is_some());
 
     let created_audit_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.created'",
@@ -780,7 +783,7 @@ async fn agent_key_allowed_actions_revoke_and_tenant_scope_are_enforced() {
         "revoked key should be unauthorized: {response}"
     );
     let parsed: serde_json::Value = serde_json::from_str(&response).expect("revoked response JSON");
-    assert_eq!(parsed["code"], "revoked_key");
+    assert_eq!(parsed["code"], "agent_key_revoked");
 
     let count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id IN ($1::uuid, $2::uuid)",
@@ -793,7 +796,7 @@ async fn agent_key_allowed_actions_revoke_and_tenant_scope_are_enforced() {
     assert_eq!(count, 0);
 
     let denied_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied'",
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied_revoked'",
     )
     .fetch_one(&pool)
     .await
@@ -838,7 +841,7 @@ async fn agent_key_expiration_is_enforced_before_evaluation_persistence() {
         "expired key should be unauthorized: {response}"
     );
     let parsed: serde_json::Value = serde_json::from_str(&response).expect("expired response JSON");
-    assert_eq!(parsed["code"], "expired_key");
+    assert_eq!(parsed["code"], "agent_key_expired");
 
     let count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
@@ -850,12 +853,274 @@ async fn agent_key_expiration_is_enforced_before_evaluation_persistence() {
     assert_eq!(count, 0);
 
     let denied_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied'",
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied_expired'",
     )
     .fetch_one(&pool)
     .await
     .expect("denied audit count");
     assert_eq!(denied_count, 1);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_no_expiry_is_explicit_and_visible() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-no-expiry").await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-no-expiry-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/agent-keys",
+        Some(
+            &json!({
+                "display_name": "codex-agent-explicit-no-expiry",
+                "allowed_actions": ["commit"],
+                "no_expiry": true
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "unexpected create: {response}");
+    let created: serde_json::Value = serde_json::from_str(&response).expect("created JSON");
+    assert_eq!(created["status"], "no_expiry");
+    assert_eq!(created["no_expiry"], true);
+    assert!(created.get("expires_at").is_none());
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/agent-keys",
+        Some(
+            &json!({
+                "display_name": "codex-agent-invalid-no-expiry",
+                "allowed_actions": ["commit"],
+                "no_expiry": true,
+                "expires_at": chrono::Utc::now().timestamp_millis() + 86_400_000
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "unexpected invalid create: {response}"
+    );
+    assert!(
+        response.contains("cannot be combined"),
+        "unexpected validation response: {response}"
+    );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_rotation_creates_replacement_and_allows_grace_period() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-rotation").await;
+    enable_agent_governance(&pool, &org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-rotation-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(&app, &admin_key, "codex-agent-rotate", vec!["commit"]).await;
+    let old_token = created["token"].as_str().expect("old agent token");
+    let old_key_id = created["key_id"].as_str().expect("old agent key id");
+
+    let rotate_path = format!("/agent-governance/agent-keys/{old_key_id}/rotate");
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        &rotate_path,
+        Some(
+            &json!({
+                "reason": "quarterly_rotation",
+                "grace_period_hours": 24
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "unexpected rotate: {response}");
+    let rotated: serde_json::Value = serde_json::from_str(&response).expect("rotate JSON");
+    let new_token = rotated["token"].as_str().expect("new one-time token");
+    let new_key_id = rotated["replacement"]["key_id"]
+        .as_str()
+        .expect("replacement key id");
+    assert!(new_token.starts_with("ggag_"));
+    assert_ne!(new_token, old_token);
+    assert_eq!(rotated["replaced"]["key_id"], old_key_id);
+    assert_eq!(rotated["replaced"]["replaced_by_key_id"], new_key_id);
+    assert_eq!(rotated["replaced"]["status"], "rotation_pending");
+    assert_eq!(rotated["replacement"]["rotated_from_key_id"], old_key_id);
+    assert_eq!(rotated["replacement"]["status"], "active");
+    assert_eq!(
+        rotated["replacement"]["rotation_reason"],
+        "quarterly_rotation"
+    );
+    assert!(rotated["replacement"].get("token").is_none());
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(old_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "old key should work during grace: {response}"
+    );
+    let old_eval: serde_json::Value = serde_json::from_str(&response).expect("old eval JSON");
+    assert_eq!(old_eval["agent_key_id"], old_key_id);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(new_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "new key should work: {response}"
+    );
+    let new_eval: serde_json::Value = serde_json::from_str(&response).expect("new eval JSON");
+    assert_eq!(new_eval["agent_key_id"], new_key_id);
+
+    sqlx::query(
+        "UPDATE agent_governance_agent_keys SET expires_at = NOW() - INTERVAL '1 minute' WHERE key_id = $1",
+    )
+    .bind(old_key_id)
+    .execute(&pool)
+    .await
+    .expect("expire replaced key");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(old_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "old key should expire after grace: {response}"
+    );
+    let expired: serde_json::Value = serde_json::from_str(&response).expect("expired JSON");
+    assert_eq!(expired["code"], "agent_key_expired");
+
+    let eval_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("evaluation count");
+    assert_eq!(eval_count, 2);
+
+    let rotated_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.rotated'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("rotated audit count");
+    assert_eq!(rotated_audit_count, 1);
+
+    let expired_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied_expired'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("expired audit count");
+    assert_eq!(expired_audit_count, 1);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn revoked_rotated_key_is_rejected_before_expiry_state() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-rotation-revoke").await;
+    enable_agent_governance(&pool, &org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-rotation-revoke-admin", "Admin", &org_id)
+            .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(
+        &app,
+        &admin_key,
+        "codex-agent-rotate-revoke",
+        vec!["commit"],
+    )
+    .await;
+    let old_token = created["token"].as_str().expect("old token");
+    let old_key_id = created["key_id"].as_str().expect("old key id");
+
+    let rotate_path = format!("/agent-governance/agent-keys/{old_key_id}/rotate");
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        &rotate_path,
+        Some(&json!({ "reason": "operator_requested", "grace_period_hours": 24 }).to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "unexpected rotate: {response}");
+
+    let revoke_path = format!("/agent-governance/agent-keys/{old_key_id}");
+    let (status, response) =
+        json_request(&app, "DELETE", &revoke_path, None, Some(&admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "unexpected revoke: {response}");
+
+    sqlx::query(
+        "UPDATE agent_governance_agent_keys SET expires_at = NOW() - INTERVAL '1 minute' WHERE key_id = $1",
+    )
+    .bind(old_key_id)
+    .execute(&pool)
+    .await
+    .expect("also expire old key");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(old_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "revoked old key should be rejected: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("revoked JSON");
+    assert_eq!(parsed["code"], "agent_key_revoked");
+
+    let eval_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("evaluation count");
+    assert_eq!(eval_count, 0);
 
     teardown(&admin_pool, &schema).await;
 }
