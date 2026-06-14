@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Tickets: `KAN-47`, `KAN-49`, `KAN-84`, `KAN-85`, `KAN-87`
+Tickets: `KAN-47`, `KAN-49`, `KAN-84`, `KAN-85`, `KAN-87`, `KAN-88`
 
 ## Purpose
 
@@ -56,7 +56,25 @@ Deployment Gates should never authorize one commit with evidence generated for a
 ## Break-glass
 
 Since `KAN-87`, Deployment Gates can record a break-glass exception only when the evaluated policy is
-actually blocking. Do not send break-glass automatically from normal provider templates.
+actually blocking. Since `KAN-88`, that exception must be backed by a prior break-glass approval. Do not send break-glass automatically from normal provider templates.
+
+Create the approval first:
+
+```json
+{
+  "release_id": "release-2026.06.14",
+  "repository_full_name": "owner/repo",
+  "branch": "main",
+  "target_sha": "abcdef1234567890abcdef1234567890abcdef12",
+  "environment": "production",
+  "ticket_id": "KAN-88",
+  "evidence_packet_hash": "64-hex-content-hash",
+  "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
+  "approver": "incident.commander@example.com",
+  "approver_role": "incident_commander",
+  "expires_at": 1781413200000
+}
+```
 
 When an incident commander approves an exception, the API payload may include:
 
@@ -64,6 +82,7 @@ When an incident commander approves an exception, the API payload may include:
 {
   "break_glass": {
     "requested": true,
+    "approval_id": "dgbga_...",
     "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
     "authorized_by": "incident.commander@example.com",
     "expires_at": 1781413200000
@@ -81,7 +100,7 @@ would_block=true
 ```
 
 The original blockers remain in `blocked_by`, and `Governance > Releases` shows the exception reason,
-authorizing actor, expiry, and original policy result.
+approver, approval id/hash, expiry, and original policy result.
 
 ## GitHub Workflow
 

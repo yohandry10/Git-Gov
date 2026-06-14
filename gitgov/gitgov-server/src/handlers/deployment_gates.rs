@@ -89,6 +89,7 @@ fn normalize_and_validate_deployment_gate_authorization(
     }
 
     if let Some(break_glass) = payload.break_glass.as_mut() {
+        normalize_release_approval_optional_text(&mut break_glass.approval_id);
         normalize_release_approval_optional_text(&mut break_glass.authorized_by);
         break_glass.reason = break_glass.reason.trim().to_string();
         if !break_glass.requested {
@@ -105,6 +106,14 @@ fn normalize_and_validate_deployment_gate_authorization(
         if let Some(authorized_by) = break_glass.authorized_by.as_deref() {
             if authorized_by.len() > 200 || has_control_chars(authorized_by) {
                 errors.push("break_glass.authorized_by is invalid or too long.".to_string());
+            }
+        }
+        if let Some(approval_id) = break_glass.approval_id.as_deref() {
+            if approval_id.len() > 80
+                || has_control_chars(approval_id)
+                || !approval_id.starts_with("dgbga_")
+            {
+                errors.push("break_glass.approval_id is invalid.".to_string());
             }
         }
         if let Some(expires_at) = break_glass.expires_at {
@@ -505,7 +514,60 @@ pub async fn authorize_deployment_gate(
         )
             .into_response();
     }
-    let break_glass_used = break_glass_request.is_some() && break_glass_eligible;
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let break_glass_approval = if let Some(request) = break_glass_request.as_ref() {
+        let approval_query = DeploymentGateBreakGlassApprovalQuery {
+            org_name: None,
+            approval_id: request.approval_id.clone(),
+            repository_full_name: Some(payload.repository_full_name.clone()),
+            branch: Some(payload.branch.clone()),
+            target_sha: Some(payload.target_sha.clone()),
+            release_id: Some(payload.release_id.clone()),
+            environment: Some(payload.environment.clone()),
+            evidence_packet_hash: Some(payload.evidence_packet_hash.clone()),
+            approver: request.authorized_by.clone(),
+            active_only: Some(true),
+            limit: Some(10),
+            offset: Some(0),
+        };
+        let approvals = match state
+            .db
+            .list_deployment_gate_break_glass_approvals(&org_id, &approval_query, 10, 0)
+            .await
+        {
+            Ok((items, _)) => items,
+            Err(e) => {
+                tracing::error!(error = %e, org_id = %org_id, "Failed to load break-glass approvals");
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": "Internal database error" })),
+                )
+                    .into_response();
+            }
+        };
+        let valid_approval = approvals
+            .into_iter()
+            .find(|approval| {
+                break_glass_approval_matches_authorization(approval, &payload, request, now_ms)
+                    .is_ok()
+            });
+        match valid_approval {
+            Some(approval) => Some(approval),
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "error": "Invalid deployment gate authorization",
+                        "details": ["break_glass requires a valid unexpired matching break-glass approval."]
+                    })),
+                )
+                    .into_response();
+            }
+        }
+    } else {
+        None
+    };
+    let break_glass_used = break_glass_approval.is_some() && break_glass_eligible;
     let decision = if break_glass_used {
         "break_glass"
     } else if evaluation.blocking {
@@ -521,18 +583,24 @@ pub async fn authorize_deployment_gate(
     } else {
         Vec::new()
     };
-    let break_glass_reason = break_glass_request.as_ref().map(|request| request.reason.clone());
-    let break_glass_authorized_by = break_glass_request
+    let break_glass_reason = break_glass_approval
         .as_ref()
-        .and_then(|request| request.authorized_by.clone())
-        .or_else(|| {
-            if break_glass_used {
-                Some(auth_user.client_id.clone())
-            } else {
-                None
-            }
-        });
-    let break_glass_expires_at = break_glass_request.as_ref().and_then(|request| request.expires_at);
+        .map(|approval| approval.reason.clone())
+        .or_else(|| break_glass_request.as_ref().map(|request| request.reason.clone()));
+    let break_glass_authorized_by = break_glass_approval
+        .as_ref()
+        .map(|approval| approval.approver.clone())
+        .or_else(|| break_glass_request.as_ref().and_then(|request| request.authorized_by.clone()));
+    let break_glass_expires_at = break_glass_approval
+        .as_ref()
+        .map(|approval| approval.expires_at)
+        .or_else(|| break_glass_request.as_ref().and_then(|request| request.expires_at));
+    let break_glass_approval_id = break_glass_approval
+        .as_ref()
+        .map(|approval| approval.approval_id.clone());
+    let break_glass_approval_hash = break_glass_approval
+        .as_ref()
+        .map(|approval| approval.approval_hash.clone());
     let reason = deployment_gate_reason(
         decision,
         &evaluation,
@@ -540,7 +608,21 @@ pub async fn authorize_deployment_gate(
         break_glass_reason.as_deref(),
     );
     let policy_checksum = deployment_gate_policy_checksum(&evaluation);
-    let details = deployment_gate_details(&binding, first_governed_repo_setup.as_ref(), &payload);
+    let mut details = deployment_gate_details(&binding, first_governed_repo_setup.as_ref(), &payload);
+    if let Some(approval) = break_glass_approval.as_ref() {
+        if let Some(object) = details.as_object_mut() {
+            object.insert(
+                "break_glass_approval".to_string(),
+                json!({
+                    "approval_id": approval.approval_id,
+                    "approval_hash": approval.approval_hash,
+                    "approver": approval.approver,
+                    "approver_role": approval.approver_role,
+                    "expires_at": approval.expires_at
+                }),
+            );
+        }
+    }
     let request_payload = match serde_json::to_value(&payload) {
         Ok(value) => value,
         Err(e) => {
@@ -574,6 +656,8 @@ pub async fn authorize_deployment_gate(
         break_glass_reason,
         break_glass_authorized_by,
         break_glass_expires_at,
+        break_glass_approval_id,
+        break_glass_approval_hash,
         evaluation,
         details,
         request_payload,
@@ -608,6 +692,7 @@ pub async fn authorize_deployment_gate(
                     "break_glass_eligible": record.break_glass_eligible,
                     "break_glass_used": record.break_glass_used,
                     "break_glass_authorized_by": &record.break_glass_authorized_by,
+                    "break_glass_approval_id": &record.break_glass_approval_id,
                     "policy_checksum": &record.policy_checksum
                 }),
                 created_at: chrono::Utc::now().timestamp_millis(),
@@ -697,63 +782,5 @@ pub async fn list_deployment_gate_authorizations(
             )
                 .into_response()
         }
-    }
-}
-
-#[cfg(test)]
-mod deployment_gate_tests {
-    use super::*;
-
-    fn valid_authorization() -> DeploymentGateAuthorizationRequest {
-        DeploymentGateAuthorizationRequest {
-            org_name: Some("yohandry10".to_string()),
-            release_id: "release-2026.06.13".to_string(),
-            repository_full_name: "yohandry10/Git-Gov".to_string(),
-            branch: "main".to_string(),
-            target_sha: "abcdef1234567890abcdef1234567890abcdef12".to_string(),
-            environment: "production".to_string(),
-            deployer: "github-actions".to_string(),
-            ticket_id: Some("KAN-83".to_string()),
-            evidence_packet_hash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-                .to_string(),
-            evidence_packet_uri: Some("/evidence/packets/tickets/KAN-83".to_string()),
-            requested_by: Some("release-bot".to_string()),
-            deployment_run_id: Some("run-123".to_string()),
-            metadata: json!({ "workflow": "deploy-production" }),
-            break_glass: None,
-        }
-    }
-
-    #[test]
-    fn deployment_gate_authorization_validation_requires_full_sha() {
-        let mut payload = valid_authorization();
-        payload.target_sha = "abcdef1".to_string();
-
-        let errors = normalize_and_validate_deployment_gate_authorization(&mut payload).unwrap_err();
-
-        assert!(errors.contains(
-            &"target_sha must be a full 40 or 64 character hexadecimal commit SHA.".to_string()
-        ));
-    }
-
-    #[test]
-    fn deployment_gate_authorization_checksum_is_policy_stable() {
-        let evaluation = EnterpriseReleaseGovernanceEvaluationResponse {
-            policy: EnterpriseReleaseGovernancePolicySummary {
-                mode: "record-only".to_string(),
-                environment: "production".to_string(),
-                approval_required: false,
-                enforcement: "disabled".to_string(),
-                policy_applies: true,
-                quorum_enabled: false,
-                quorum_rules: Vec::new(),
-            },
-            ..EnterpriseReleaseGovernanceEvaluationResponse::default()
-        };
-
-        assert_eq!(
-            deployment_gate_policy_checksum(&evaluation),
-            deployment_gate_policy_checksum(&evaluation)
-        );
     }
 }

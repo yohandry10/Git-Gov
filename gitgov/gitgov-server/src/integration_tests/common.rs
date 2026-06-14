@@ -217,6 +217,8 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             break_glass_reason TEXT,
             break_glass_authorized_by TEXT,
             break_glass_expires_at TIMESTAMPTZ,
+            break_glass_approval_id TEXT,
+            break_glass_approval_hash TEXT,
             evaluation JSONB NOT NULL,
             details JSONB NOT NULL DEFAULT '{}'::jsonb,
             request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -234,6 +236,41 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
                 branch,
                 environment,
                 created_at DESC
+            );
+
+        CREATE TABLE IF NOT EXISTS deployment_gate_break_glass_approvals (
+            approval_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            release_id TEXT NOT NULL,
+            repository_full_name TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            target_sha TEXT NOT NULL,
+            environment TEXT NOT NULL,
+            ticket_id TEXT,
+            evidence_packet_hash TEXT NOT NULL,
+            evidence_packet_uri TEXT,
+            reason TEXT NOT NULL,
+            approver TEXT NOT NULL,
+            approver_role TEXT NOT NULL DEFAULT 'incident_commander'
+                CHECK (approver_role IN ('incident_commander', 'security', 'release_manager', 'platform_admin')),
+            expires_at TIMESTAMPTZ NOT NULL,
+            approval_hash TEXT NOT NULL UNIQUE,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_by TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            CHECK (approval_id LIKE 'dgbga_%'),
+            CHECK (length(trim(reason)) >= 16)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_deployment_gate_break_glass_approvals_scope
+            ON deployment_gate_break_glass_approvals(
+                org_id,
+                repository_full_name,
+                branch,
+                environment,
+                target_sha,
+                evidence_packet_hash,
+                expires_at DESC
             );
 
         CREATE TABLE IF NOT EXISTS release_evidence_packets (
@@ -1060,6 +1097,11 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/deployment-gates/authorizations",
             get(handlers::list_deployment_gate_authorizations),
+        )
+        .route(
+            "/deployment-gates/break-glass-approvals",
+            get(handlers::list_deployment_gate_break_glass_approvals)
+                .post(handlers::create_deployment_gate_break_glass_approval),
         )
         .route("/policy/{repo_name}", get(handlers::get_policy))
         .route(

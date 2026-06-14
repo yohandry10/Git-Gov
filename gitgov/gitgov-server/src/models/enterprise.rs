@@ -282,6 +282,10 @@ pub struct DeploymentGateAuthorizationRecord {
     pub break_glass_authorized_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub break_glass_expires_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub break_glass_approval_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub break_glass_approval_hash: Option<String>,
     pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
     #[serde(default)]
     pub details: serde_json::Value,
@@ -321,9 +325,96 @@ pub struct DeploymentGateBreakGlassRequest {
     pub requested: bool,
     pub reason: String,
     #[serde(default)]
+    pub approval_id: Option<String>,
+    #[serde(default)]
     pub authorized_by: Option<String>,
     #[serde(default)]
     pub expires_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeploymentGateBreakGlassApprovalRecord {
+    pub approval_id: String,
+    pub org_id: String,
+    pub release_id: String,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub target_sha: String,
+    pub environment: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<String>,
+    pub evidence_packet_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_uri: Option<String>,
+    pub reason: String,
+    pub approver: String,
+    pub approver_role: String,
+    pub expires_at: i64,
+    pub approval_hash: String,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
+    pub created_by: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CreateDeploymentGateBreakGlassApprovalRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub release_id: String,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub target_sha: String,
+    pub environment: String,
+    #[serde(default)]
+    pub ticket_id: Option<String>,
+    pub evidence_packet_hash: String,
+    #[serde(default)]
+    pub evidence_packet_uri: Option<String>,
+    pub reason: String,
+    pub approver: String,
+    #[serde(default)]
+    pub approver_role: Option<String>,
+    pub expires_at: i64,
+    #[serde(default)]
+    pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateBreakGlassApprovalQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub approval_id: Option<String>,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    #[serde(default)]
+    pub release_id: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(default)]
+    pub approver: Option<String>,
+    #[serde(default)]
+    pub active_only: Option<bool>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateBreakGlassApprovalListResponse {
+    #[serde(default)]
+    pub items: Vec<DeploymentGateBreakGlassApprovalRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

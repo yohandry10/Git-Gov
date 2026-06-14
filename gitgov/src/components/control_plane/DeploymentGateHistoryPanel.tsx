@@ -115,6 +115,7 @@ export function DeploymentGateHistoryPanel() {
                 <span className="font-medium text-surface-100">{authorization.release_id}</span>
                 <span className="text-surface-500">{authorization.environment}</span>
                 {authorization.break_glass_used && <Badge variant="warning">break-glass used</Badge>}
+                {authorization.break_glass_used && authorization.break_glass_approval_id && <Badge variant="success">pre-approved</Badge>}
                 {!authorization.break_glass_used && authorization.break_glass_eligible && <Badge variant="warning">break-glass eligible</Badge>}
               </div>
 
@@ -142,6 +143,8 @@ export function DeploymentGateHistoryPanel() {
                   <div className="mt-1 grid grid-cols-1 gap-1 md:grid-cols-2">
                     <span>Authorized by: <span className="text-warning-50">{authorization.break_glass_authorized_by || authorization.requested_by}</span></span>
                     <span>Expires: <span className="text-warning-50">{authorization.break_glass_expires_at ? formatTs(authorization.break_glass_expires_at, displayTimezone) : 'Not set'}</span></span>
+                    <span className="truncate" title={authorization.break_glass_approval_id || undefined}>Approval: <span className="font-mono text-warning-50">{authorization.break_glass_approval_id || 'Not linked'}</span></span>
+                    <span className="truncate" title={authorization.break_glass_approval_hash || undefined}>Approval hash: <span className="font-mono text-warning-50">{authorization.break_glass_approval_hash ? authorization.break_glass_approval_hash.slice(0, 16) : 'Not linked'}</span></span>
                   </div>
                 </div>
               )}

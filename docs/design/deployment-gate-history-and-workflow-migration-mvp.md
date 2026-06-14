@@ -18,7 +18,7 @@ Out of scope for this slice:
 
 - mutating customer deploy providers;
 - branch protection or environment protection updates;
-- break-glass routing beyond the KAN-87 Admin-authorized exception contract;
+- automatic break-glass approval creation from provider templates;
 - OPA/Rego execution;
 - making blocking the default for record-only customers.
 
@@ -45,5 +45,5 @@ The evidence hash requirement is intentional. The API validates that the evidenc
 ## Follow-Ups
 
 - Provider-specific deployment examples for Jenkins, GitHub Actions, GitLab CI, and other deployers.
-- Break-glass workflow design and authorization evidence.
+- Break-glass approval routing and authorization evidence. Completed by `KAN-88`.
 - Environment policy UX that makes production stricter than staging while preserving safe defaults.

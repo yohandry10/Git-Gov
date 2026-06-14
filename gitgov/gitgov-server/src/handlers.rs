@@ -15,7 +15,10 @@ include!("handlers/org_users_api_keys.rs");
 include!("handlers/adoption_profiles.rs");
 include!("handlers/first_governed_repo_setup.rs");
 include!("handlers/release_approvals.rs");
+include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
+#[cfg(test)]
+include!("handlers/deployment_gate_tests.rs");
 include!("handlers/audit_stream_governance.rs");
 include!("handlers/jobs_merges_admin_audit.rs");
 include!("handlers/gdpr_clients_identities_scope.rs");
