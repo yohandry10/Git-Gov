@@ -152,9 +152,12 @@ pub async fn auth_middleware(
                         .scopes
                         .iter()
                         .any(|scope| scope == "agent_governance:evaluate");
-                    let is_evaluate_path =
-                        method == axum::http::Method::POST && path == "/agent-governance/evaluate";
-                    if !has_evaluate_scope || !is_evaluate_path {
+                    let is_agent_governance_decision_path = method == axum::http::Method::POST
+                        && matches!(
+                            path.as_str(),
+                            "/agent-governance/evaluate" | "/agent-governance/dry-run"
+                        );
+                    if !has_evaluate_scope || !is_agent_governance_decision_path {
                         write_agent_key_auth_audit(
                             &db,
                             &agent_key,

@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run
 
 ## Decision
 
@@ -136,9 +136,14 @@ Current primitives:
   The key type is limited to `POST /agent-governance/evaluate`, stores only token hashes plus
   prefix/last-four metadata, records agent identity on evaluation rows, audits create/use/deny/revoke
   events, and keeps disabled/manual-only tenants unaffected.
+- `KAN-95` adds `POST /agent-governance/dry-run`, a safe preview that returns the deterministic
+  decision, missing evidence, principal identity, and shared governance decision without persisting
+  an `agent_governance_evaluations` row and without authorizing execution.
 
 Future scope:
 
+- Agent attribution chain that links agent key, tool/session, action, decision, policy checksum, and
+  evidence references beyond the basic KAN-94/KAN-95 identity fields.
 - MCP server exposing scoped governance tools:
   - `get_branch_status`
   - `check_policy_compliance`
@@ -147,7 +152,6 @@ Future scope:
   - `get_risk_score`
 - Broader read-only agent scopes such as `read:audit`, `read:policy`, and `read:branch_status`.
 - Broader REST Policy API coverage beyond the KAN-90 MVP rules.
-- Agent dry-run/simulation endpoint for read-only evaluation before execution.
 - Human-in-the-loop approval for sensitive operations from agents.
 - Ephemeral agent session logs linked to existing audit trail.
 - Agent attribution chain showing agent, token, human approver, operation, commit/deploy outcome,
