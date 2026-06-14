@@ -266,6 +266,8 @@ mod tests {
         assert!(is_sensitive_admin_path("/deployment-gates/authorize"));
         assert!(is_sensitive_admin_path("/deployment-gates/authorizations"));
         assert!(is_sensitive_admin_path("/agent-governance/evaluate"));
+        assert!(is_sensitive_admin_path("/agent-governance/settings"));
+        assert!(is_sensitive_admin_path("/agent-governance/evaluations"));
         assert!(is_sensitive_admin_path("/jobs/metrics"));
         assert!(is_sensitive_admin_path("/outbox/lease/metrics"));
         assert!(!is_sensitive_admin_path("/logs"));

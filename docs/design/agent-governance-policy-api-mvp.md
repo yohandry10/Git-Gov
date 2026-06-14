@@ -1,4 +1,4 @@
-# KAN-90 Agent Governance Policy API MVP
+# Agent Governance Policy API
 
 KAN-90 starts roadmap block `0.2 Agentic Governance Layer`, but it does not make GitGov an
 agent-first product.
@@ -32,15 +32,59 @@ For agent-enabled customers, the API is a control point: an agent asks before ac
 the deterministic decision, and sensitive operations route back to human approval or existing GitGov
 controls. For manual-only customers, the endpoint can simply remain unused.
 
-## Route
+KAN-92 adds the required control boundary around that primitive:
+
+- Agent Governance is disabled by default per tenant.
+- Only Admin users can enable or disable it.
+- Disabled tenants get `403 agent_governance_disabled` and no evaluation record is created.
+- The denied attempt is still audit-logged as `agent_governance.evaluation_denied`.
+- Persisted request payload is minimized and redacts secret-like fields.
+- Evaluation history is Admin-only.
+
+## Routes
 
 ```text
 POST /agent-governance/evaluate
+GET /agent-governance/settings
+PUT /agent-governance/settings
+GET /agent-governance/evaluations
 ```
 
-The route is authenticated, org-scoped, and treated as a sensitive governance route by the auth
-middleware. It is not Admin-only in this MVP because developer-scoped or future agent-scoped keys
-must be able to ask before acting. Global admin keys must pass `org_name`.
+All routes are authenticated, org-scoped, and treated as sensitive governance routes by the auth
+middleware.
+
+`POST /agent-governance/evaluate` is not Admin-only because developer-scoped or future agent-scoped
+keys must be able to ask before acting after a tenant has opted in. Global admin keys must pass
+`org_name`.
+
+`GET/PUT /agent-governance/settings` and `GET /agent-governance/evaluations` are Admin-only.
+
+## Settings
+
+Default settings are virtual until an Admin writes an explicit row:
+
+```json
+{
+  "enabled": false,
+  "mode": "manual_only",
+  "payload_mode": "minimized",
+  "reason": null,
+  "updated_by": "system"
+}
+```
+
+Admin opt-in request:
+
+```json
+{
+  "org_name": "yohandry10",
+  "enabled": true,
+  "reason": "Approved controlled agent governance pilot"
+}
+```
+
+When enabled, the stored mode is `opt_in_enabled`. When disabled, the stored mode is
+`manual_only`. Payload mode is fixed to `minimized`.
 
 ## Request
 
@@ -83,7 +127,22 @@ Each evaluation is persisted with an `agv_...` id and returns:
 - `policy_id`.
 - `policy_checksum`.
 - `evaluation`: deterministic policy summary with `llm_decision=false`.
-- `request_payload`.
+- `request_payload`, minimized and secret-redacted.
+
+If the tenant has not opted in, `POST /agent-governance/evaluate` returns:
+
+```json
+{
+  "error": "Agent Governance is disabled for this organization",
+  "code": "agent_governance_disabled",
+  "enabled": false,
+  "mode": "manual_only",
+  "manual_governance_available": true,
+  "next_step": "An Admin must explicitly enable Agent Governance before agent evaluations are accepted."
+}
+```
+
+No `agent_governance_evaluations` row is created for that denied request.
 
 ## MVP Policy
 
@@ -117,6 +176,18 @@ agent_governance_evaluations
 It stores the request, deterministic decision, policy checksum, required evidence, and metadata. The
 handler also writes an admin audit log entry best-effort for operational traceability.
 
+KAN-92 adds:
+
+```text
+agent_governance_settings
+```
+
+This table stores the tenant-level opt-in boundary, reason, updater, mode, and payload mode.
+
+Persisted `request_payload` is intentionally not a raw request dump. It keeps governance context and
+redacts secret-like keys such as `token`, `secret`, `password`, `credential`, `authorization`,
+`api_key`, `apikey`, and `key`. It also truncates long strings and large arrays.
+
 ## Non-goals
 
 - No LLM-decided permissions.
@@ -124,4 +195,4 @@ handler also writes an admin audit log entry best-effort for operational traceab
 - No agent-specific token scopes yet.
 - No provider mutation.
 - No branch protection or repository configuration changes.
-- No UI in this slice.
+- No Desktop UI in this slice; the control is exposed by Admin API.

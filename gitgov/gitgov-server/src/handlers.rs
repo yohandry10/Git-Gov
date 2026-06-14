@@ -19,6 +19,8 @@ include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
 include!("handlers/agent_governance.rs");
 #[cfg(test)]
+include!("handlers/agent_governance_tests.rs");
+#[cfg(test)]
 include!("handlers/deployment_gate_tests.rs");
 include!("handlers/audit_stream_governance.rs");
 include!("handlers/jobs_merges_admin_audit.rs");

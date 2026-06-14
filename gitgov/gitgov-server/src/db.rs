@@ -110,6 +110,18 @@ pub struct CreateAgentGovernanceEvaluationInput {
     pub request_payload: serde_json::Value,
 }
 
+#[derive(Debug, Clone)]
+pub struct ListAgentGovernanceEvaluationsInput<'a> {
+    pub org_id: &'a str,
+    pub evaluation_id: Option<&'a str>,
+    pub repository_full_name: Option<&'a str>,
+    pub action: Option<&'a str>,
+    pub decision: Option<&'a str>,
+    pub agent_id: Option<&'a str>,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct DistributedRateLimitCheck {
     pub allowed: bool,
@@ -230,6 +242,19 @@ fn agent_governance_evaluation_from_row(row: &PgRow) -> AgentGovernanceEvaluatio
         request_payload: row.get("request_payload"),
         metadata: row.get("metadata"),
         created_at: row.get("created_at_ms"),
+    }
+}
+
+fn agent_governance_settings_from_row(row: &PgRow) -> AgentGovernanceSettingsRecord {
+    AgentGovernanceSettingsRecord {
+        org_id: row.get("org_id"),
+        enabled: row.get("enabled"),
+        mode: row.get("mode"),
+        payload_mode: row.get("payload_mode"),
+        reason: row.get("reason"),
+        updated_by: row.get("updated_by"),
+        created_at: row.get("created_at_ms"),
+        updated_at: row.get("updated_at_ms"),
     }
 }
 

@@ -253,6 +253,15 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             post(handlers::evaluate_agent_governance),
         )
         .route(
+            "/agent-governance/settings",
+            get(handlers::get_agent_governance_settings)
+                .put(handlers::upsert_agent_governance_settings),
+        )
+        .route(
+            "/agent-governance/evaluations",
+            get(handlers::list_agent_governance_evaluations),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )

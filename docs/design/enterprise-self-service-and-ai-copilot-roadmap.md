@@ -121,6 +121,10 @@ Current primitives:
 - KAN-90 is optional. It is not a chatbot, not a bring-your-own-model requirement, and not a
   replacement for manual GitGov flows. Human pull request review, policy review, formal release
   approval, Deployment Gates, and Policy-as-Code remain valid without any agent integration.
+- `KAN-92` adds the control boundary required before agent governance can be considered enterprise
+  safe: Agent Governance is disabled by default per tenant, Admin opt-in is required, opt-in/out is
+  audited, disabled evaluation attempts return `403 agent_governance_disabled` without creating
+  evaluation evidence, history is Admin-only, and persisted request payload is minimized/redacted.
 
 Future scope:
 
