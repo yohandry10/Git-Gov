@@ -23,6 +23,16 @@ returns a deterministic decision:
 High-impact actions such as merge, policy change, and deploy require human approval or an existing
 GitGov control. Missing critical context blocks the operation instead of guessing.
 
+KAN-90 is opt-in infrastructure, not a mandatory product mode. GitGov remains manual-first:
+
+- it is not a chatbot feature
+- it is not a bring-your-own-model requirement
+- it is not required for banks or regulated customers that prohibit autonomous agents
+- it does not replace human pull request review, policy review, release approval, Deployment Gates,
+  or Policy-as-Code
+- if a customer does not permit agents, the endpoint can remain unused without reducing GitGov's
+  manual governance value
+
 ## Local Validation
 
 Local validation completed on 2026-06-14:

@@ -1,10 +1,36 @@
 # KAN-90 Agent Governance Policy API MVP
 
-KAN-90 starts roadmap block `0.2 Agentic Governance Layer`.
+KAN-90 starts roadmap block `0.2 Agentic Governance Layer`, but it does not make GitGov an
+agent-first product.
 
 Agents can ask GitGov whether a planned operation is allowed before they act. The control remains
 deterministic: GitGov policy returns the decision; an LLM or coding agent can request, simulate, and
 explain, but it does not decide the control.
+
+## Product Posture
+
+GitGov remains manual-first.
+
+KAN-90 is optional infrastructure for customers that already use agents or want to pilot them under
+governance. It is not:
+
+- a chatbot feature
+- a bring-your-own-model onboarding requirement
+- a replacement for human approvals
+- a requirement for regulated customers that prohibit autonomous agents
+- a default path for banks or enterprises that want manual-only governance
+
+The canonical governance path still works without this API:
+
+- humans create commits and pull requests
+- humans review and approve policy changes
+- humans approve releases when policy requires it
+- Deployment Gates and Policy-as-Code remain usable without agents
+- audit evidence stays valid even when no agent ever calls this route
+
+For agent-enabled customers, the API is a control point: an agent asks before acting, GitGov returns
+the deterministic decision, and sensitive operations route back to human approval or existing GitGov
+controls. For manual-only customers, the endpoint can simply remain unused.
 
 ## Route
 
