@@ -3,6 +3,9 @@
 Date: 2026-06-14
 Branch: `product/KAN-107-framework-report-review`
 Issue: GitHub `#374`
+PR: GitHub `#375`
+Merged commit: `bd4583a`
+Render deploy: `dep-d8njkhsvikkc73alv9l0`
 
 ## Implemented
 
@@ -41,4 +44,16 @@ Validation completed during implementation:
 - `git diff --check`
 - `.\scripts\security\publication_guard.ps1`
 
-PR checks, merge, Render deploy, and production smoke are recorded in `docs/CURRENT_CONTEXT.md` after completion.
+PR checks and post-merge `main` checks passed. Render deployed commit `bd4583a` and deploy `dep-d8njkhsvikkc73alv9l0` reached `live`.
+
+Production smoke passed:
+
+- `/health=ok`
+- Authenticated `/stats=200`
+- Listed Framework Review Reports for `org_name=yohandry10` and `framework_id=gitgov_release_governance_baseline_v1`.
+- Reviewed report `frr_ac4ee214bc051caee783485d5755d34a` as `needs_changes` with a safe production-smoke note.
+- Verified reviewer provenance was present.
+- Verified `artifact_hash` was unchanged after review.
+- Verified list metadata reflected `needs_changes`.
+- Verified no-claim flags stayed intact.
+- Verified invalid `review_status=approved` returned `400`.
