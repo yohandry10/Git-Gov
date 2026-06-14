@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `94` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `97` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -189,6 +189,9 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/evidence-exports/{export_id}/download` | Bearer (admin) | Descargar el artifact JSON redacted de un export de evidencia compliance |
 | `/compliance/evidence-mappings` | Bearer (admin) | Crear matriz determinística Evidence-to-Control desde un export KAN-99 |
 | `/compliance/evidence-mappings/{mapping_id}` | Bearer (admin) | Consultar matriz Evidence-to-Control persistida |
+| `/compliance/review-packages` | Bearer (admin) | Crear artifact JSON hashable de revisión desde un mapping KAN-100 |
+| `/compliance/review-packages/{review_package_id}` | Bearer (admin) | Consultar metadata de un Control Mapping Review Package |
+| `/compliance/review-packages/{review_package_id}/download` | Bearer (admin) | Descargar el JSON redacted del review package; no es certificación ni claim regulatorio |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
