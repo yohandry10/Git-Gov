@@ -43,8 +43,9 @@ Source: external planning note `GITGOV_ROADMAP.md` reviewed on 2026-06-12.
 
 These are future product bets, not claims of complete implementation. They should sit ahead of the
 older roadmap queue because they define the next enterprise story after KAN-69/KAN-77: GitGov as the
-governance gate for human and agentic delivery. Several items already have partial GitGov primitives;
-the future work is to turn those primitives into complete customer-facing product flows.
+governance gate for human delivery first, and optionally for agentic delivery when a customer
+chooses to allow agents. Several items already have partial GitGov primitives; the future work is to
+turn those primitives into complete customer-facing product flows.
 
 ### 0.1 Deployment Gates: GitGov Authorizes Deploy
 
@@ -97,14 +98,18 @@ Next major roadmap block after the KAN-80 through KAN-88 Deployment Gates slice:
 
 ### 0.2 Agentic Governance Layer
 
-Future goal: agents such as Codex, Claude Code, Cursor, Windsurf, Copilot, and JetBrains AI consult
-GitGov before acting on production code.
+Future goal: when a customer explicitly allows agents such as Codex, Claude Code, Cursor, Windsurf,
+Copilot, JetBrains AI, internal bots, or CI agents to operate near production code, those agents
+consult GitGov before acting.
+
+This block is opt-in. It is not the default operating model for GitGov, and it must not weaken the
+manual governance path for banks or other regulated customers that prohibit autonomous agents.
 
 Why first:
 
-- Agents already operate in customer repositories; enterprise governance has not caught up.
-- GitGov can own the governance gap: what an agent may do, what needs approval, and what evidence is
-  left behind.
+- Agents already operate in some customer repositories; enterprise governance has not caught up.
+- GitGov can own that optional governance gap: what an allowed agent may do, what needs approval,
+  and what evidence is left behind.
 - This differentiates GitGov beyond generic DevOps dashboards.
 
 Current primitives:
@@ -113,6 +118,9 @@ Current primitives:
   GitGov whether `commit`, `push`, `open_pr`, `merge_pr`, `change_policy`, or `deploy` is
   `allowed`, `requires_approval`, or `blocked`. The decision is deterministic and persisted as
   audit evidence; `llm_decision=false` remains explicit in the response.
+- KAN-90 is optional. It is not a chatbot, not a bring-your-own-model requirement, and not a
+  replacement for manual GitGov flows. Human pull request review, policy review, formal release
+  approval, Deployment Gates, and Policy-as-Code remain valid without any agent integration.
 
 Future scope:
 
@@ -139,6 +147,8 @@ Guardrail:
 
 - LLMs/agents should not decide critical controls. They can request, explain, simulate, and propose;
   GitGov policy and human approval decide.
+- Manual-first remains non-negotiable. Agentic features must degrade to "unused" for customers that
+  do not permit agents, not to a broken or reduced GitGov experience.
 
 ### 0.3 Regulatory Framework Mapper
 
