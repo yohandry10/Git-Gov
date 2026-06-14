@@ -1,0 +1,133 @@
+name: GitGov Deployment Gate Example
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Release identifier or ticket id
+        required: true
+        type: string
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: string
+      evidence_packet_hash:
+        description: Release-bound GitGov evidence packet SHA-256
+        required: true
+        type: string
+      enforce_gate:
+        description: Fail when GitGov returns blocking=true
+        required: true
+        default: true
+        type: boolean
+      fail_on_would_block:
+        description: Also fail on advisory would_block=true
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  authorize-deployment:
+    runs-on: ubuntu-latest
+    outputs:
+      authorization_id: ${{ steps.gitgov.outputs.authorization_id }}
+      decision: ${{ steps.gitgov.outputs.decision }}
+    steps:
+      - name: Authorize deployment with GitGov
+        id: gitgov
+        shell: pwsh
+        env:
+          GITGOV_URL: ${{ vars.GITGOV_URL }}
+          GITGOV_ORG_NAME: ${{ vars.GITGOV_ORG_NAME }}
+          GITGOV_API_KEY: ${{ secrets.GITGOV_API_KEY }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          EVIDENCE_PACKET_HASH: ${{ inputs.evidence_packet_hash }}
+          ENFORCE_GATE: ${{ inputs.enforce_gate }}
+          FAIL_ON_WOULD_BLOCK: ${{ inputs.fail_on_would_block }}
+          REPOSITORY_FULL_NAME: ${{ github.repository }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          TARGET_SHA: ${{ github.sha }}
+          DEPLOYER: ${{ github.actor }}
+          DEPLOYMENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "gitgov-evidence" | Out-Null
+          $outputPath = "gitgov-evidence/deployment-gate-$env:DEPLOYMENT_RUN_ID.json"
+
+          if ([string]::IsNullOrWhiteSpace($env:GITGOV_URL) -or [string]::IsNullOrWhiteSpace($env:GITGOV_API_KEY)) {
+            @{ status = "skipped"; reason = "missing_gitgov_configuration"; generated_at = [DateTimeOffset]::UtcNow.ToString("o") } |
+              ConvertTo-Json -Depth 8 | Out-File -FilePath $outputPath -Encoding UTF8
+            if ($env:ENFORCE_GATE -eq "true") { throw "Missing GitGov configuration for enforced deployment gate." }
+            exit 0
+          }
+
+          if ([string]::IsNullOrWhiteSpace($env:EVIDENCE_PACKET_HASH)) {
+            @{ status = "skipped"; reason = "missing_release_bound_evidence_packet_hash"; generated_at = [DateTimeOffset]::UtcNow.ToString("o") } |
+              ConvertTo-Json -Depth 8 | Out-File -FilePath $outputPath -Encoding UTF8
+            if ($env:ENFORCE_GATE -eq "true") { throw "Missing release-bound evidence packet hash for enforced deployment gate." }
+            exit 0
+          }
+
+          $payload = [ordered]@{
+            org_name = if ([string]::IsNullOrWhiteSpace($env:GITGOV_ORG_NAME)) { $null } else { $env:GITGOV_ORG_NAME }
+            release_id = $env:RELEASE_ID
+            repository_full_name = $env:REPOSITORY_FULL_NAME
+            branch = $env:BRANCH_NAME
+            target_sha = $env:TARGET_SHA
+            environment = $env:DEPLOY_ENVIRONMENT
+            deployer = $env:DEPLOYER
+            ticket_id = $env:RELEASE_ID
+            evidence_packet_hash = $env:EVIDENCE_PACKET_HASH
+            requested_by = "github-actions"
+            deployment_run_id = $env:DEPLOYMENT_RUN_ID
+            metadata = @{
+              provider = "github-actions"
+              workflow = $env:GITHUB_WORKFLOW
+              run_attempt = $env:GITHUB_RUN_ATTEMPT
+            }
+          }
+
+          $baseUrl = $env:GITGOV_URL.TrimEnd("/")
+          $headers = @{ Authorization = "Bearer $env:GITGOV_API_KEY"; Accept = "application/json"; "Content-Type" = "application/json" }
+          $authorization = Invoke-RestMethod -Method POST -Uri "$baseUrl/deployment-gates/authorize" -Headers $headers -Body ($payload | ConvertTo-Json -Depth 8)
+
+          "authorization_id=$($authorization.authorization_id)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          "decision=$($authorization.decision)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+
+          [ordered]@{
+            status = "authorized"
+            authorization_id = $authorization.authorization_id
+            decision = $authorization.decision
+            approved = $authorization.approved
+            blocking = $authorization.blocking
+            would_block = $authorization.would_block
+            policy_checksum = $authorization.policy_checksum
+            warnings = $authorization.warnings
+            blocked_by = $authorization.blocked_by
+            generated_at = [DateTimeOffset]::UtcNow.ToString("o")
+          } | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
+
+          if ($authorization.blocking -eq $true) { throw "GitGov blocked this deployment." }
+          if ($env:FAIL_ON_WOULD_BLOCK -eq "true" -and $authorization.would_block -eq $true) { throw "GitGov reports this deployment would block under stricter enforcement." }
+
+      - name: Upload GitGov deployment gate evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitgov-deployment-gate-${{ github.run_id }}
+          path: gitgov-evidence
+          if-no-files-found: error
+
+  deploy:
+    needs: authorize-deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy after GitGov authorization
+        shell: bash
+        run: |
+          echo "Deploy here after GitGov authorization ${{ needs.authorize-deployment.outputs.authorization_id }}"
+

@@ -1,8 +1,8 @@
 # Release Governance Gate Runbook
 
-Updated: 2026-06-13
+Updated: 2026-06-14
 
-Tickets: `KAN-47`, `KAN-49`, `KAN-84`
+Tickets: `KAN-47`, `KAN-49`, `KAN-84`, `KAN-85`
 
 ## Purpose
 
@@ -73,6 +73,24 @@ Required configuration:
 - GitHub Actions secret: `GITGOV_API_KEY`.
 
 Do not paste secret values into workflow YAML.
+
+## Provider Examples
+
+KAN-85 adds reviewed provider examples for teams that want to wire Deployment Gates into existing
+CI/CD jobs without using GitGov-generated workflow packs directly:
+
+```text
+docs/examples/deployment-gates/github-actions-deployment-gate.yml
+docs/examples/deployment-gates/Jenkinsfile.deployment-gate
+docs/examples/deployment-gates/gitlab-ci-deployment-gate.yml
+```
+
+Validate the examples before publishing a change:
+
+```powershell
+.\scripts\control-plane\validate_deployment_gate_provider_examples.ps1 `
+  -OutputPath out\deployment-gate-provider-examples-validation.json
+```
 
 ## Expected Safe Default
 
