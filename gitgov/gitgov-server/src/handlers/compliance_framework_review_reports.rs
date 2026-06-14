@@ -4,6 +4,8 @@
 
 const COMPLIANCE_FRAMEWORK_REVIEW_REPORT_SCHEMA_VERSION: &str =
     "gitgov_framework_review_report.v1";
+const DEFAULT_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 25;
+const MAX_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 100;
 
 fn normalize_framework_review_report_request(
     payload: &mut ComplianceFrameworkReviewReportRequest,
@@ -31,6 +33,51 @@ fn normalize_framework_review_report_request(
 
     if errors.is_empty() {
         Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn normalize_framework_review_report_query(
+    query: &mut ComplianceFrameworkReviewReportQuery,
+) -> Result<i64, Vec<String>> {
+    let mut errors = Vec::new();
+    normalize_release_approval_optional_text(&mut query.org_name);
+    normalize_release_approval_optional_text(&mut query.framework_id);
+    normalize_release_approval_optional_text(&mut query.mapping_id);
+    normalize_release_approval_optional_text(&mut query.review_package_id);
+
+    if let Some(framework_id) = query.framework_id.as_mut() {
+        *framework_id = framework_id.trim().to_ascii_lowercase();
+        if framework_id.len() > 96
+            || framework_id.is_empty()
+            || !framework_id
+                .chars()
+                .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+        {
+            errors.push("framework_id must be a valid lowercase framework identifier.".to_string());
+        }
+    }
+    if let Some(mapping_id) = query.mapping_id.as_mut() {
+        *mapping_id = mapping_id.trim().to_string();
+        if !mapping_id.starts_with("cem_") || mapping_id.len() > 80 {
+            errors.push("mapping_id must be a valid cem_ identifier.".to_string());
+        }
+    }
+    if let Some(review_package_id) = query.review_package_id.as_mut() {
+        *review_package_id = review_package_id.trim().to_string();
+        if !review_package_id.starts_with("crp_") || review_package_id.len() > 80 {
+            errors.push("review_package_id must be a valid crp_ identifier.".to_string());
+        }
+    }
+
+    let limit = query
+        .limit
+        .unwrap_or(DEFAULT_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT)
+        .clamp(1, MAX_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT);
+
+    if errors.is_empty() {
+        Ok(limit)
     } else {
         Err(errors)
     }
@@ -432,6 +479,69 @@ pub async fn create_compliance_framework_review_report(
         }
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, mapping_id = %payload.mapping_id, "Failed to create compliance framework review report");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn list_compliance_framework_review_reports(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Query(mut query): Query<ComplianceFrameworkReviewReportQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+    let limit = match normalize_framework_review_report_query(&mut query) {
+        Ok(limit) => limit,
+        Err(errors) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Invalid compliance framework review report query", "details": errors })),
+            )
+                .into_response();
+        }
+    };
+    let org_id = match resolve_compliance_framework_review_report_org(
+        &state,
+        &auth_user,
+        query.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    match state
+        .db
+        .list_compliance_framework_review_reports(&ListComplianceFrameworkReviewReportsInput {
+            org_id: &org_id,
+            framework_id: query.framework_id.as_deref(),
+            mapping_id: query.mapping_id.as_deref(),
+            review_package_id: query.review_package_id.as_deref(),
+            limit,
+        })
+        .await
+    {
+        Ok(items) => {
+            let count = items.len();
+            (
+                StatusCode::OK,
+                Json(ComplianceFrameworkReviewReportListResponse {
+                    items,
+                    count,
+                    limit,
+                }),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to list compliance framework review reports");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),

@@ -192,7 +192,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/review-packages` | Bearer (admin) | Crear artifact JSON hashable de revisión desde un mapping KAN-100 |
 | `/compliance/review-packages/{review_package_id}` | Bearer (admin) | Consultar metadata de un Control Mapping Review Package |
 | `/compliance/review-packages/{review_package_id}/download` | Bearer (admin) | Descargar el JSON redacted del review package; no es certificación ni claim regulatorio |
-| `/compliance/framework-review-reports` | Bearer (admin) | Crear reporte JSON framework-specific desde mapping + review package; sin score ni claim regulatorio |
+| `/compliance/framework-review-reports` | Bearer (admin) | Crear o listar reportes JSON framework-specific; el listado devuelve metadata filtrable sin payload pesado |
 | `/compliance/framework-review-reports/{report_id}` | Bearer (admin) | Consultar metadata del Framework Review Report |
 | `/compliance/framework-review-reports/{report_id}/download` | Bearer (admin) | Descargar reporte JSON redacted con controles, evidencias, faltantes, hashes y provenance |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
@@ -669,6 +669,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v24.sql` | Enterprise release approvals (`enterprise_release_approvals`) — append-only |
 | `supabase_schema_v25.sql` | Enterprise onboarding checklist tracking (`enterprise_onboarding_checklist_tracking`) |
 | `supabase_schema_v26.sql` | Tenant isolation: scope `commit_ticket_correlations` uniqueness to `(org_id, commit_sha, ticket_id)` so the same commit/ticket in different orgs no longer collide |
+| `supabase_schema_v49.sql` | Índices de inventario KAN-106 para listar Framework Review Reports por tenant/framework/mapping/package |
 
 ### Relaciones entre Entidades
 

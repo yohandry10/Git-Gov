@@ -284,6 +284,14 @@ pub struct ComplianceFrameworkReviewReportRequest {
 pub struct ComplianceFrameworkReviewReportQuery {
     #[serde(default)]
     pub org_name: Option<String>,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub mapping_id: Option<String>,
+    #[serde(default)]
+    pub review_package_id: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -323,4 +331,11 @@ pub struct ComplianceFrameworkReviewReportResponse {
     pub download_url: String,
     #[serde(default)]
     pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportListResponse {
+    pub items: Vec<ComplianceFrameworkReviewReportRecord>,
+    pub count: usize,
+    pub limit: i64,
 }

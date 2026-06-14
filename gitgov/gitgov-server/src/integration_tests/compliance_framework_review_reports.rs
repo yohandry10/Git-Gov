@@ -435,8 +435,16 @@ fn canonical_json_hash(value: &serde_json::Value) -> String {
 async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and_no_claims() {
     let (pool, schema, admin_pool) = setup_or_skip!();
     let org_id = insert_test_org(&pool, "kan105-baseline-report").await;
+    let other_org_id = insert_test_org(&pool, "kan106-report-history-other").await;
     let gate_id = seed_framework_report_gate(&pool, &org_id, "baseline").await;
     let admin = insert_test_api_key_for_org(&pool, "kan105-report-admin", "Admin", &org_id).await;
+    let other_admin = insert_test_api_key_for_org(
+        &pool,
+        "kan106-report-history-other-admin",
+        "Admin",
+        &other_org_id,
+    )
+    .await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
 
@@ -505,6 +513,53 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     let metadata: serde_json::Value = serde_json::from_str(&metadata).expect("report metadata");
     assert!(metadata.get("artifact").is_none());
     assert_eq!(metadata["report"]["artifact_hash"], artifact_hash);
+
+    let (status, list) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports?framework_id={BASELINE_FRAMEWORK_ID}&mapping_id={mapping_id}&review_package_id={package_id}&limit=500"
+        ),
+        None,
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "list report failed: {list}");
+    let list: serde_json::Value = serde_json::from_str(&list).expect("report list JSON");
+    assert_eq!(list["count"], 1);
+    assert_eq!(list["limit"], 100);
+    assert_eq!(list["items"][0]["report_id"], report_id);
+    assert_eq!(list["items"][0]["framework_id"], BASELINE_FRAMEWORK_ID);
+    assert!(list["items"][0].get("artifact").is_none());
+    assert!(list["items"][0].get("payload_json_redacted").is_none());
+
+    let (status, other_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/framework-review-reports",
+        None,
+        Some(&other_admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "other tenant list failed: {other_list}"
+    );
+    let other_list: serde_json::Value =
+        serde_json::from_str(&other_list).expect("other report list JSON");
+    assert_eq!(other_list["count"], 0);
+
+    let (status, invalid_query) = json_request(
+        &app,
+        "GET",
+        "/compliance/framework-review-reports?mapping_id=bad",
+        None,
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(invalid_query.contains("mapping_id"));
 
     let (status, download) = json_request(
         &app,
