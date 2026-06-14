@@ -12,6 +12,7 @@
 mod common;
 mod agent_governance;
 mod agent_governance_attribution;
+mod agent_governance_context;
 mod agent_governance_dry_run;
 mod alerts_exports_policy_requests;
 mod basic_auth;

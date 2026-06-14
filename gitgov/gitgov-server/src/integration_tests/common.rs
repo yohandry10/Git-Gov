@@ -1254,6 +1254,10 @@ pub(super) fn build_test_app_with_options(
             post(handlers::dry_run_agent_governance),
         )
         .route(
+            "/agent-governance/context",
+            get(handlers::get_agent_governance_context),
+        )
+        .route(
             "/agent-governance/settings",
             get(handlers::get_agent_governance_settings)
                 .put(handlers::upsert_agent_governance_settings),

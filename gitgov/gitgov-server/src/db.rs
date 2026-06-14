@@ -114,6 +114,15 @@ pub struct RotateAgentGovernanceAgentKeyInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct AgentGovernanceReadContextInput<'a> {
+    pub org_id: &'a str,
+    pub repository_full_name: &'a str,
+    pub branch: Option<&'a str>,
+    pub target_sha: Option<&'a str>,
+    pub environment: Option<&'a str>,
+}
+
+#[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
     pub replaced: AgentGovernanceAgentKeyRecord,

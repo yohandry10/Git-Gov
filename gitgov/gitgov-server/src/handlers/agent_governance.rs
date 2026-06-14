@@ -13,6 +13,7 @@ const AGENT_GOVERNANCE_ACTIONS: &[&str] = &[
 const AGENT_GOVERNANCE_DECISIONS: &[&str] = &["allowed", "requires_approval", "blocked"];
 const AGENT_GOVERNANCE_POLICY_ID: &str = "agent-governance.v1";
 const AGENT_GOVERNANCE_EVALUATE_SCOPE: &str = "agent_governance:evaluate";
+const AGENT_GOVERNANCE_READ_SCOPE: &str = "agent_governance:read";
 const AGENT_GOVERNANCE_METADATA_MAX_BYTES: usize = 16 * 1024;
 const AGENT_GOVERNANCE_REASON_MAX_CHARS: usize = 500;
 const AGENT_GOVERNANCE_ATTRIBUTION_MAX_CHARS: usize = 128;
