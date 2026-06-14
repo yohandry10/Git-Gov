@@ -182,6 +182,7 @@ pub async fn list_agent_governance_evaluations(
         action: query.action.as_deref(),
         decision: query.decision.as_deref(),
         agent_id: query.agent_id.as_deref(),
+        correlation_id: query.correlation_id.as_deref(),
         limit,
         offset,
     };
