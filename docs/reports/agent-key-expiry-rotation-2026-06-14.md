@@ -91,4 +91,44 @@ All passed.
 
 ## Production Validation
 
-Pending until PR merge, Render deployment, production `v42` application, and smoke validation.
+Completed after PR `#342` merged to `main` as `58fb41a`.
+
+Production migration:
+
+```text
+supabase_schema_v42.sql
+checks/v42_postcheck.sql
+```
+
+Result:
+
+```text
+agent_governance_agent_keys.lifecycle_columns PASS
+agent_governance_agent_keys.lifecycle_indexes PASS
+```
+
+Render:
+
+```text
+dep-d8n86cfaqgkc73c0ojt0 live
+```
+
+Smoke:
+
+```text
+health=ok
+stats=200
+settingsBefore=enabled:False,mode:manual_only
+createdKey=[redacted-old-smoke-key-id] status=active expires=True noExpiry=False
+rotatedOld=[redacted-old-smoke-key-id] oldStatus=rotation_pending new=[redacted-new-smoke-key-id] newStatus=active
+newKeyEvaluate=allowed evaluation=agv_8c7a3924c7254417a3db512a233b9f53 principal=agent key=[redacted-new-smoke-key-id]
+oldKeyDuringGrace=dryRun:True,decision:allowed,key=[redacted-old-smoke-key-id]
+oldRevokeHttp=200
+oldRevokedStatus=401 code=agent_key_revoked
+expiredStatus=401 code=agent_key_expired
+settingsAfter=enabled:False,mode:manual_only
+activeTempCount=0
+```
+
+No plaintext agent token was printed or stored in docs. Temporary production smoke keys were revoked,
+and Agent Governance settings were restored to `enabled=false`, `mode=manual_only`.
