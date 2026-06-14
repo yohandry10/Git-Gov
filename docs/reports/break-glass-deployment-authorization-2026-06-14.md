@@ -9,6 +9,8 @@ KAN-87 adds audited break-glass authorization for Deployment Gates. A blocked de
 Traceability:
 
 - GitHub issue: `#312 - KAN-87: Break-glass Deployment Authorization`.
+- PR: `#313 - product(KAN-87): add break-glass deployment authorization`.
+- Merge commit: `b415391`.
 
 ## Changes
 
@@ -67,4 +69,14 @@ Notes:
 
 ## Remaining Validation
 
-- GitHub PR and post-merge checks.
+- Docs-only context refresh PR checks.
+
+## GitHub And Production Validation
+
+- PR checks passed before merge.
+- Post-merge `main` checks passed for `b415391`: `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8n2977aqgkc73bu6780` for commit `b415391` reached `live`.
+- Production smoke passed:
+  - `/health` returned `ok`;
+  - authenticated `/stats` returned HTTP `200`;
+  - authenticated `GET /deployment-gates/authorizations?org_name=yohandry10&limit=1` returned `total=1` and included the `break_glass_used` field.
