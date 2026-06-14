@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-14
-Ticket: `KAN-96` Minimal Agent Attribution Envelope
+Ticket: `KAN-97` Agent Key Expiry And Rotation UX
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Active implementation ticket: GitHub issue `#338`, `KAN-96: Minimal Agent Attribution Envelope`, on branch `feature/KAN-96-agent-attribution-envelope`.
+- Active implementation ticket: GitHub issue `#341`, `KAN-97: Agent Key Expiry and Rotation UX`, on branch `feature/KAN-97-agent-key-lifecycle`.
+- KAN-97 product decision from GPT/product review: do not start MCP yet. The next enterprise-safe slice is agent credential lifecycle hardening because GitGov already has deterministic evaluate, disabled-by-default settings, shared governance decisions, agent-scoped keys, dry-run, and minimal attribution. KAN-97 keeps GitGov manual-first and Agent Governance opt-in; Deployment Gates do not use agent keys.
+- KAN-97 implementation status on 2026-06-14: local implementation is in progress. It adds default 90-day expiry for new agent keys unless `no_expiry=true` is explicit, derived key lifecycle status (`active`, `expiring_soon`, `expired`, `revoked`, `rotation_pending`, `no_expiry`), `POST /agent-governance/agent-keys/{key_id}/rotate`, old/new key linkage with `rotated_from_key_id` and `replaced_by_key_id`, bounded grace-period rotation, specific `agent_key.denied_expired` and `agent_key.denied_revoked` audit events, Supabase migration `v42`, and docs under `docs/design/agent-key-expiry-rotation-ux-mvp.md` plus `docs/reports/agent-key-expiry-rotation-2026-06-14.md`. Local validation so far passed: `cargo check`, `cargo clippy -- -D warnings`, `v42_postcheck` against temporary PostgreSQL 16 on `127.0.0.1:55440`, focused Agent Governance tests (`27` passed), and full backend tests (`292` passed). PR, merge, production migration/deploy, production smoke, and final documentation refresh are still pending.
 - KAN-96 product decision from GPT/product review: implement a minimal attribution envelope for optional Agent Governance dry-run/evaluate requests, not a full agent observability system. The slice answers which agent key/tool/session/correlation/external run asked for a decision, whether it was dry-run or formal evaluation, and what deterministic decision GitGov returned. No MCP, chatbot, BYOM, autonomous execution, provider mutation, Deployment Gate behavior change, prompt storage, raw tool traces, source code storage, or Action Center writes are in scope.
 - KAN-96 implementation status on 2026-06-14: PR `#339` merged to `main` as `3f24c0b`. It adds optional `attribution` to `POST /agent-governance/dry-run` and `POST /agent-governance/evaluate`, strict 128-character safe string validation, generated `agcorr_` correlation ids, response `attr_` attribution envelopes, formal evaluation persistence columns through Supabase migration `v41`, `GET /agent-governance/evaluations?correlation_id=...`, and dry-run audit metadata without formal evaluation persistence. Local validation passed: backend check/clippy/fmt, v41 postcheck against temporary PostgreSQL 16 on `127.0.0.1:55439`, focused Agent Governance tests (`24` passed), full backend tests (`289` passed), `git diff --check`, and publication guard. Post-merge GitHub workflows passed. Production migration `v41` was applied and postcheck passed. Render deploy `dep-d8n7nb4m0tmc73b5hveg` reached `live`. Production smoke passed: `/health=ok`, authenticated `/stats=200`, manual-only attributed evaluate returned `403 agent_governance_disabled` with history `total=0`, temporary agent key `agk_ec4eec47df1f42ec9a78b921309ee44c` dry-ran `commit` with `consumer_type=agent_dry_run`, correlation `corr-kan96-prod-dry-1781431652106`, and no formal evaluation rows, formal evaluate created `agv_833b8b31c41947ccaf5c69d153890035` with persisted correlation `corr-kan96-prod-eval-1781431652106`, parent correlation, tool `codex-cli`, and `llm_decision=false`, history filter returned `total=1`, unsafe attribution returned `400`, the temporary key was revoked, and settings were restored to `enabled=false/mode=manual_only`.
 - KAN-95 product decision from GPT/product review: implement Agent Governance dry-run as the next small safe slice after KAN-94. Dry-run answers "what would GitGov decide?" without authorizing execution and without persisting an `agent_governance_evaluations` row. It remains tenant opt-in, optional, manual-first, and not required for Deployment Gates or regulated/manual-only customers.
@@ -858,7 +860,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
   - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
-- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 added shared deterministic decision evidence across Deployment Gates and optional Agent Governance. KAN-94 added optional agent-scoped credentials; it remains customer-selected and is not required for manual Deployment Gates. KAN-95 is active to add a dry-run preview that does not persist evaluation evidence or authorize execution.
+- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 added shared deterministic decision evidence across Deployment Gates and optional Agent Governance. KAN-94 added optional agent-scoped credentials; KAN-95 added dry-run preview; KAN-96 added minimal attribution; KAN-97 hardens agent key expiry/rotation before any MCP surface. Agent Governance remains customer-selected and is not required for manual Deployment Gates.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
 ## Archived Ticket Notes
@@ -877,7 +879,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-95 is active local implementation work. No product blocker is known; remaining blockers are full validation, PR, merge, production deploy, smoke, and documentation of production evidence.
+KAN-97 is active local implementation work. No product blocker is known; remaining blockers are PR, merge, production deploy/migration, smoke, and final documentation of production evidence.
 
 Current work types are:
 

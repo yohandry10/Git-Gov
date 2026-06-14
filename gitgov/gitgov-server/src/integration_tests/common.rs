@@ -310,6 +310,10 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             expires_at TIMESTAMPTZ,
             last_used_at TIMESTAMPTZ,
             revoked_at TIMESTAMPTZ,
+            rotated_at TIMESTAMPTZ,
+            rotated_from_key_id TEXT,
+            replaced_by_key_id TEXT,
+            rotation_reason TEXT,
             created_by TEXT NOT NULL,
             revoked_by TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -324,6 +328,18 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_active
             ON agent_governance_agent_keys(org_id, revoked_at, expires_at);
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_rotation_from
+            ON agent_governance_agent_keys(org_id, rotated_from_key_id)
+            WHERE rotated_from_key_id IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_replaced_by
+            ON agent_governance_agent_keys(org_id, replaced_by_key_id)
+            WHERE replaced_by_key_id IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_expiry
+            ON agent_governance_agent_keys(org_id, expires_at)
+            WHERE revoked_at IS NULL AND expires_at IS NOT NULL;
 
         CREATE TABLE IF NOT EXISTS agent_governance_evaluations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1254,6 +1270,10 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/agent-governance/agent-keys/{key_id}",
             axum::routing::delete(handlers::revoke_agent_governance_agent_key),
+        )
+        .route(
+            "/agent-governance/agent-keys/{key_id}/rotate",
+            post(handlers::rotate_agent_governance_agent_key),
         )
         .route("/policy/{repo_name}", get(handlers::get_policy))
         .route(

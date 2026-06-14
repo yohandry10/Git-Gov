@@ -275,6 +275,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             axum::routing::delete(handlers::revoke_agent_governance_agent_key),
         )
         .route(
+            "/agent-governance/agent-keys/{key_id}/rotate",
+            post(handlers::rotate_agent_governance_agent_key),
+        )
+        .route(
             "/org-users",
             get(handlers::list_org_users).post(handlers::create_org_user),
         )

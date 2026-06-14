@@ -100,6 +100,34 @@ pub struct CreateAgentGovernanceAgentKeyInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct RotateAgentGovernanceAgentKeyInput<'a> {
+    pub org_id: &'a str,
+    pub key_id: &'a str,
+    pub replacement_key_id: &'a str,
+    pub replacement_token_hash: &'a str,
+    pub replacement_token_prefix: &'a str,
+    pub replacement_token_last4: &'a str,
+    pub rotated_by: &'a str,
+    pub rotation_reason: Option<&'a str>,
+    pub grace_expires_at: chrono::DateTime<chrono::Utc>,
+    pub replacement_expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RotateAgentGovernanceAgentKeyRecords {
+    pub replacement: AgentGovernanceAgentKeyRecord,
+    pub replaced: AgentGovernanceAgentKeyRecord,
+}
+
+#[derive(Debug, Clone)]
+pub enum RotateAgentGovernanceAgentKeyOutcome {
+    Rotated(Box<RotateAgentGovernanceAgentKeyRecords>),
+    NotFound,
+    Revoked,
+    Expired,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateDeploymentGateAuthorizationInput {
     pub authorization_id: String,
     pub payload: DeploymentGateAuthorizationRequest,
@@ -333,6 +361,32 @@ fn string_vec_from_json(value: serde_json::Value) -> Vec<String> {
 }
 
 fn agent_governance_agent_key_from_row(row: &PgRow) -> AgentGovernanceAgentKeyRecord {
+    const EXPIRING_SOON_WINDOW_MS: i64 = 7 * 24 * 60 * 60 * 1000;
+
+    let expires_at: Option<i64> = row.get("expires_at_ms");
+    let revoked_at: Option<i64> = row.get("revoked_at_ms");
+    let rotated_at: Option<i64> = row.try_get("rotated_at_ms").ok().flatten();
+    let replaced_by_key_id: Option<String> = row.try_get("replaced_by_key_id").ok().flatten();
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let no_expiry = expires_at.is_none();
+    let expiring_soon = expires_at
+        .map(|expires_at| expires_at > now_ms && expires_at - now_ms <= EXPIRING_SOON_WINDOW_MS)
+        .unwrap_or(false);
+    let status = if revoked_at.is_some() {
+        "revoked"
+    } else if expires_at.map(|value| value <= now_ms).unwrap_or(false) {
+        "expired"
+    } else if replaced_by_key_id.is_some() {
+        "rotation_pending"
+    } else if expiring_soon {
+        "expiring_soon"
+    } else if no_expiry {
+        "no_expiry"
+    } else {
+        "active"
+    }
+    .to_string();
+
     AgentGovernanceAgentKeyRecord {
         id: row.get("id"),
         key_id: row.get("key_id"),
@@ -343,9 +397,16 @@ fn agent_governance_agent_key_from_row(row: &PgRow) -> AgentGovernanceAgentKeyRe
         scopes: string_vec_from_json(row.get("scopes")),
         allowed_actions: string_vec_from_json(row.get("allowed_actions")),
         token_preview: row.get("token_preview"),
-        expires_at: row.get("expires_at_ms"),
+        status,
+        expiring_soon,
+        no_expiry,
+        expires_at,
         last_used_at: row.get("last_used_at_ms"),
-        revoked_at: row.get("revoked_at_ms"),
+        revoked_at,
+        rotated_at,
+        rotated_from_key_id: row.try_get("rotated_from_key_id").ok().flatten(),
+        replaced_by_key_id,
+        rotation_reason: row.try_get("rotation_reason").ok().flatten(),
         created_by: row.get("created_by"),
         revoked_by: row.get("revoked_by"),
         created_at: row.get("created_at_ms"),

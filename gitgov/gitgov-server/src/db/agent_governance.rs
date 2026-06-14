@@ -36,12 +36,12 @@ impl Database {
         let revoked_at: Option<chrono::DateTime<chrono::Utc>> = row.get("revoked_at");
         let expires_at: Option<chrono::DateTime<chrono::Utc>> = row.get("expires_at");
         let denied_reason = if revoked_at.is_some() {
-            Some("revoked_key".to_string())
+            Some("agent_key_revoked".to_string())
         } else if expires_at
             .map(|expires_at| expires_at <= chrono::Utc::now())
             .unwrap_or(false)
         {
-            Some("expired_key".to_string())
+            Some("agent_key_expired".to_string())
         } else {
             None
         };
@@ -129,6 +129,10 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
                 ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
                 ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
                 created_by,
                 revoked_by,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
@@ -173,6 +177,10 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
                 ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
                 ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
                 created_by,
                 revoked_by,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
@@ -218,6 +226,10 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
                 ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
                 ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
                 created_by,
                 revoked_by,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
@@ -231,6 +243,214 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.as_ref().map(agent_governance_agent_key_from_row))
+    }
+
+    pub async fn rotate_agent_governance_agent_key(
+        &self,
+        input: &RotateAgentGovernanceAgentKeyInput<'_>,
+    ) -> Result<RotateAgentGovernanceAgentKeyOutcome, DbError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let old_row = sqlx::query(
+            r#"
+            SELECT
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM agent_governance_agent_keys
+            WHERE org_id = $1::uuid
+              AND key_id = $2
+            FOR UPDATE
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.key_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let Some(old_row) = old_row else {
+            tx.rollback()
+                .await
+                .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+            return Ok(RotateAgentGovernanceAgentKeyOutcome::NotFound);
+        };
+
+        let old_revoked_at: Option<i64> = old_row.get("revoked_at_ms");
+        if old_revoked_at.is_some() {
+            tx.rollback()
+                .await
+                .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+            return Ok(RotateAgentGovernanceAgentKeyOutcome::Revoked);
+        }
+
+        let old_expires_at: Option<i64> = old_row.get("expires_at_ms");
+        if old_expires_at
+            .map(|value| value <= chrono::Utc::now().timestamp_millis())
+            .unwrap_or(false)
+        {
+            tx.rollback()
+                .await
+                .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+            return Ok(RotateAgentGovernanceAgentKeyOutcome::Expired);
+        }
+
+        let scopes_value: serde_json::Value = old_row.get("scopes");
+        let allowed_actions_value: serde_json::Value = old_row.get("allowed_actions");
+        let replacement_token_preview = format!(
+            "{}****{}",
+            input.replacement_token_prefix, input.replacement_token_last4
+        );
+
+        let replacement_row = sqlx::query(
+            r#"
+            INSERT INTO agent_governance_agent_keys (
+                key_id,
+                org_id,
+                token_hash,
+                token_prefix,
+                token_last4,
+                token_preview,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                expires_at,
+                rotated_at,
+                rotated_from_key_id,
+                rotation_reason,
+                created_by
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10::jsonb,
+                $11::jsonb,
+                $12,
+                NOW(),
+                $13,
+                $14,
+                $15
+            )
+            RETURNING
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.replacement_key_id)
+        .bind(input.org_id)
+        .bind(input.replacement_token_hash)
+        .bind(input.replacement_token_prefix)
+        .bind(input.replacement_token_last4)
+        .bind(&replacement_token_preview)
+        .bind(old_row.get::<String, _>("display_name"))
+        .bind(old_row.get::<Option<String>, _>("description"))
+        .bind(old_row.get::<Option<String>, _>("environment"))
+        .bind(scopes_value)
+        .bind(allowed_actions_value)
+        .bind(input.replacement_expires_at)
+        .bind(input.key_id)
+        .bind(input.rotation_reason)
+        .bind(input.rotated_by)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let replaced_row = sqlx::query(
+            r#"
+            UPDATE agent_governance_agent_keys
+            SET expires_at = LEAST(COALESCE(expires_at, $3), $3),
+                replaced_by_key_id = $4,
+                rotated_at = NOW(),
+                rotation_reason = $5
+            WHERE org_id = $1::uuid
+              AND key_id = $2
+            RETURNING
+                id::text,
+                key_id,
+                org_id::text,
+                display_name,
+                description,
+                environment,
+                scopes,
+                allowed_actions,
+                token_preview,
+                ROUND(EXTRACT(EPOCH FROM expires_at) * 1000)::BIGINT AS expires_at_ms,
+                ROUND(EXTRACT(EPOCH FROM last_used_at) * 1000)::BIGINT AS last_used_at_ms,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                ROUND(EXTRACT(EPOCH FROM rotated_at) * 1000)::BIGINT AS rotated_at_ms,
+                rotated_from_key_id,
+                replaced_by_key_id,
+                rotation_reason,
+                created_by,
+                revoked_by,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.key_id)
+        .bind(input.grace_expires_at)
+        .bind(input.replacement_key_id)
+        .bind(input.rotation_reason)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(RotateAgentGovernanceAgentKeyOutcome::Rotated(Box::new(
+            RotateAgentGovernanceAgentKeyRecords {
+                replacement: agent_governance_agent_key_from_row(&replacement_row),
+                replaced: agent_governance_agent_key_from_row(&replaced_row),
+            },
+        )))
     }
 
     pub async fn get_agent_governance_settings(

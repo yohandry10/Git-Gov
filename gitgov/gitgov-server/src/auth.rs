@@ -126,10 +126,17 @@ pub async fn auth_middleware(
                 })? {
                 Some(agent_key) => {
                     if let Some(reason) = agent_key.denied_reason.as_deref() {
+                        let audit_action = if reason == "agent_key_expired" {
+                            "agent_key.denied_expired"
+                        } else if reason == "agent_key_revoked" {
+                            "agent_key.denied_revoked"
+                        } else {
+                            "agent_key.denied"
+                        };
                         write_agent_key_auth_audit(
                             &db,
                             &agent_key,
-                            "agent_key.denied",
+                            audit_action,
                             serde_json::json!({
                                 "reason": reason,
                                 "path": path,
@@ -140,10 +147,10 @@ pub async fn auth_middleware(
                         metrics::counter!("gitgov_auth_total", "result" => reason.to_string(), "role" => "agent").increment(1);
                         return Err(AuthError::unauthorized_with_code(
                             "Invalid or expired agent key",
-                            if reason == "expired_key" {
-                                "expired_key"
+                            if reason == "agent_key_expired" {
+                                "agent_key_expired"
                             } else {
-                                "revoked_key"
+                                "agent_key_revoked"
                             },
                         ));
                     }
