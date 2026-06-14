@@ -40,9 +40,33 @@ Completed locally:
   - the old lower-level evaluator route appears only in the validator's negative rule, not in provider examples;
   - `GITGOV_API_KEY` is referenced through provider secret/env mechanisms, not as a committed value.
 
-Pending before completion:
+## Merge Validation
 
-- PR checks and merge.
+- PR `#307` merged to `main` as `047f213`.
+- PR checks passed:
+  - `Security Guard`;
+  - `Block internal-assistant markers in branch/commits`;
+  - `Desktop Rust Clippy`;
+  - `Frontend Lint + Typecheck`;
+  - `Server Clippy + Check`;
+  - `Website Lint + Typecheck + Build`;
+  - `Workflow Lint`;
+  - `Validate Policy-as-Code`;
+  - `Validate quality_gates warn/block matrix`;
+  - `Sonar Scan + Quality Gate`;
+  - `Vercel`.
+- Post-merge checks on `main` passed:
+  - `CI`;
+  - `Release Readiness Gate`;
+  - `Secret Scan`;
+  - `Public Naming Guard`;
+  - `Quality Gate Policy Matrix`;
+  - `Governance Correlation Smoke`;
+  - `Desktop Updater Readiness`;
+  - `SonarQube Governance`.
+- Render did not deploy `047f213` because this slice changes docs/examples outside the backend deploy root.
+  The live backend remains KAN-84 deploy `dep-d8mfnd19rddc7398b640`, which already exposes
+  `/deployment-gates/authorize` and `/deployment-gates/authorizations`.
 
 ## Follow-Ups
 
