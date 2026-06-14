@@ -9,10 +9,11 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Latest completed implementation ticket: GitHub issue `#318`, `KAN-89: Roadmap sync after break-glass approval routing`, closed by PR `#319` and merged to `main` as `cbe5f95` on 2026-06-14.
-- Active implementation ticket: GitHub issue `#321`, `KAN-90: Agent Governance Policy API MVP`, on branch `feature/KAN-90-agent-governance-policy-api`.
-- KAN-90 local implementation adds `POST /agent-governance/evaluate`, append-only `agent_governance_evaluations`, deterministic action decisions for `commit`, `push`, `open_pr`, `merge_pr`, `change_policy`, and `deploy`, route-sensitive auth classification, API docs, and real Axum/Postgres integration coverage. Product decision: agents can ask before acting, but GitGov policy decides; `evaluation.policy.llm_decision=false`.
-- KAN-90 local validation on 2026-06-14 passed: `cargo fmt --manifest-path gitgov\gitgov-server\Cargo.toml --check`, `cargo check --manifest-path gitgov\gitgov-server\Cargo.toml`, `cargo clippy --manifest-path gitgov\gitgov-server\Cargo.toml -- -D warnings`, local v38 migration/postcheck against temporary Postgres, focused `agent_governance` tests with explicit `TEST_DATABASE_URL=postgresql://gitgov:gitgov_dev_password@127.0.0.1:55434/gitgov` (`7` tests), sensitive path test (`1` test), and full backend `cargo test --manifest-path gitgov\gitgov-server\Cargo.toml` with the same real Postgres (`272` tests).
+- Latest completed implementation ticket: GitHub issue `#321`, `KAN-90: Agent Governance Policy API MVP`, closed by PR `#322` and merged to `main` as `f6a3603` on 2026-06-14.
+- KAN-90 adds `POST /agent-governance/evaluate`, append-only `agent_governance_evaluations`, deterministic action decisions for `commit`, `push`, `open_pr`, `merge_pr`, `change_policy`, and `deploy`, route-sensitive auth classification, API docs, and real Axum/Postgres integration coverage. Product decision: agents can ask before acting, but GitGov policy decides; `evaluation.policy.llm_decision=false`.
+- KAN-90 local validation on 2026-06-14 passed: `cargo fmt --manifest-path gitgov\gitgov-server\Cargo.toml --check`, `cargo check --manifest-path gitgov\gitgov-server\Cargo.toml`, `cargo clippy --manifest-path gitgov\gitgov-server\Cargo.toml -- -D warnings`, local v38 migration/postcheck against temporary Postgres, focused `agent_governance` tests with explicit `TEST_DATABASE_URL=postgresql://gitgov:gitgov_dev_password@127.0.0.1:55434/gitgov` (`7` tests), sensitive path test (`1` test), full backend `cargo test --manifest-path gitgov\gitgov-server\Cargo.toml` with the same real Postgres (`272` tests), `git diff --check`, and `.\scripts\security\publication_guard.ps1`.
+- KAN-90 PR and post-merge checks passed: `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- KAN-90 production validation on 2026-06-14: production `supabase_schema_v38.sql` was applied manually through ignored `DATABASE_URL`, and `v38_postcheck.sql` returned `PASS` for table, constraints, and indexes. Render deploy `dep-d8n4sj19rddc739je0n0` for `f6a3603` reached `live`. Smoke returned `/health=ok`, authenticated `/stats=200`, anonymous `POST /agent-governance/evaluate` returned `401`, authenticated ticketed `commit` returned `evaluation_id=agv_3962e78980d84ab58a4ccece859226c2`, `decision=allowed`, `allowed=true`, `evaluation.policy.llm_decision=false`, and authenticated protected-branch `push` to `main` returned `evaluation_id=agv_5c6c0d80faa54e7790a02d97a2b12aa8`, `decision=requires_approval`, `requires_approval=true`, `evaluation.policy.llm_decision=false`.
 - KAN-89 was documentation/product-state synchronization only: it did not change runtime behavior,
   database schema, provider configuration, or production deployment.
 - KAN-80 implements the first concrete Deployment Gates 0.1 slice, not a broad integration wizard: one Admin-managed first-repo setup per org, stable `run_id`, repo/branch selection, provider/module/preset selection, policy/workflow preview acknowledgement, backend-normalized baseline readiness, Action Center gaps, Desktop UI under `Governance > Adoption`, and CTA into advisory gate simulation.
@@ -842,7 +843,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
   - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
-- Active product block after KAN-89: `0.2 Agentic Governance Layer`. KAN-90 is the first deterministic agent policy/API slice rather than an LLM-decided control. The next roadmap slice should build on this primitive with agent-scoped credentials, provider/webhook integration, or human approval routing for `requires_approval` decisions.
+- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic agent policy/API slice rather than an LLM-decided control. The next roadmap slice should build on this primitive with agent-scoped credentials, provider/webhook integration, or human approval routing for `requires_approval` decisions.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
 ## Archived Ticket Notes
@@ -861,14 +862,14 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-90 is the active implementation work. No product blocker is known locally; remaining work is PR publication, required checks, merge, production migration `v38`, Render deploy, and production smoke.
+No active implementation blocker remains after KAN-90 merge and production smoke validation.
 
 Current work types are:
 
 - Operational validation cadence.
 - Evidence freshness.
-- KAN-90 publication and production validation.
-- Optional product enhancements after KAN-90 lands.
+- Optional product enhancements after KAN-90.
+- Future implementation only when explicitly requested.
 
 ## Practical Next Steps
 

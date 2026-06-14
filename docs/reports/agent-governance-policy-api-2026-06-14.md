@@ -43,9 +43,17 @@ smoke. It does not require Desktop UI changes.
 
 ## Production Readiness
 
-Before closing KAN-90, apply `supabase_schema_v38.sql` in production, run
-`checks/v38_postcheck.sql`, wait for the Render backend deploy from `main`, and smoke:
+Production validation completed on 2026-06-14:
 
-- anonymous `POST /agent-governance/evaluate` returns `401`
-- authenticated ticketed `commit` returns `decision=allowed`
-- authenticated protected-branch `push` returns `decision=requires_approval`
+- `supabase_schema_v38.sql` applied through ignored production `DATABASE_URL`
+- `checks/v38_postcheck.sql` returned `PASS` for table, constraints, and indexes
+- Render deploy `dep-d8n4sj19rddc739je0n0` for `f6a3603` reached `live`
+- `/health` returned `ok`
+- authenticated `/stats` returned `200`
+- anonymous `POST /agent-governance/evaluate` returned `401`
+- authenticated ticketed `commit` returned `evaluation_id=agv_3962e78980d84ab58a4ccece859226c2`,
+  `decision=allowed`, `allowed=true`, and `evaluation.policy.llm_decision=false`
+- authenticated protected-branch `push` to `main` returned
+  `evaluation_id=agv_5c6c0d80faa54e7790a02d97a2b12aa8`,
+  `decision=requires_approval`, `requires_approval=true`, and
+  `evaluation.policy.llm_decision=false`
