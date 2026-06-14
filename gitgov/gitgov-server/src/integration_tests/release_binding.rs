@@ -238,6 +238,48 @@ fn add_break_glass_request(payload: &mut serde_json::Value) {
     });
 }
 
+fn break_glass_approval_payload(evidence_hash: &str) -> serde_json::Value {
+    serde_json::json!({
+        "release_id": RELEASE_ID,
+        "repository_full_name": REPO_FULL_NAME,
+        "branch": BRANCH,
+        "target_sha": TARGET_SHA,
+        "environment": ENVIRONMENT,
+        "ticket_id": TICKET_ID,
+        "evidence_packet_hash": evidence_hash,
+        "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
+        "approver": "incident.commander@example.com",
+        "approver_role": "incident_commander",
+        "expires_at": chrono::Utc::now().timestamp_millis() + 60 * 60 * 1000,
+        "metadata": {
+            "incident": "INC-2026-0614",
+            "pager": "primary"
+        }
+    })
+}
+
+async fn create_break_glass_approval(
+    app: &axum::Router,
+    api_key: &str,
+    evidence_hash: &str,
+) -> serde_json::Value {
+    let body = break_glass_approval_payload(evidence_hash).to_string();
+    let (status, response) = json_request(
+        app,
+        "POST",
+        "/deployment-gates/break-glass-approvals",
+        Some(&body),
+        Some(api_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "break-glass approval create failed: {response}"
+    );
+    serde_json::from_str(&response).expect("break-glass approval JSON")
+}
+
 #[tokio::test]
 async fn release_approval_rejects_unregistered_evidence_hash() {
     let (pool, schema, admin_pool) = setup_or_skip!();
@@ -385,8 +427,10 @@ async fn deployment_gate_authorization_allows_break_glass_when_policy_blocks() {
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
     let evidence_hash = generate_bound_packet(&app, &api_key).await;
+    let approval = create_break_glass_approval(&app, &api_key, &evidence_hash).await;
     let mut payload = deployment_gate_authorization_payload(&evidence_hash);
     add_break_glass_request(&mut payload);
+    payload["break_glass"]["approval_id"] = approval["approval_id"].clone();
 
     let (status, response) = json_request(
         &app,
@@ -412,6 +456,11 @@ async fn deployment_gate_authorization_allows_break_glass_when_policy_blocks() {
     assert_eq!(
         parsed["break_glass_authorized_by"],
         "incident.commander@example.com"
+    );
+    assert_eq!(parsed["break_glass_approval_id"], approval["approval_id"]);
+    assert_eq!(
+        parsed["details"]["break_glass_approval"]["approval_hash"],
+        approval["approval_hash"]
     );
     assert!(parsed["break_glass_reason"]
         .as_str()
@@ -441,6 +490,149 @@ async fn deployment_gate_authorization_allows_break_glass_when_policy_blocks() {
         parsed["authorization_id"]
     );
     assert_eq!(history["items"][0]["break_glass_used"], true);
+    assert_eq!(
+        history["items"][0]["break_glass_approval_id"],
+        approval["approval_id"]
+    );
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_rejects_break_glass_without_prior_approval() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    seed_blocking_release_governance_profile(&pool, &org_id).await;
+    let api_key = insert_test_api_key_for_org(
+        &pool,
+        "deployment-gate-break-glass-missing-approval",
+        "Admin",
+        &org_id,
+    )
+    .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+    let mut payload = deployment_gate_authorization_payload(&evidence_hash);
+    add_break_glass_request(&mut payload);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("valid unexpired matching break-glass approval"),
+        "missing approval should be explicit: {response}"
+    );
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count deployment authorizations");
+    assert_eq!(count, 0);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_authorization_rejects_expired_break_glass_approval() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    seed_blocking_release_governance_profile(&pool, &org_id).await;
+    let api_key = insert_test_api_key_for_org(
+        &pool,
+        "deployment-gate-break-glass-expired-approval",
+        "Admin",
+        &org_id,
+    )
+    .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+    let approval = create_break_glass_approval(&app, &api_key, &evidence_hash).await;
+
+    sqlx::query(
+        "UPDATE deployment_gate_break_glass_approvals SET expires_at = NOW() - INTERVAL '1 minute' WHERE approval_id = $1",
+    )
+    .bind(approval["approval_id"].as_str().expect("approval id"))
+    .execute(&pool)
+    .await
+    .expect("expire break-glass approval");
+
+    let mut payload = deployment_gate_authorization_payload(&evidence_hash);
+    add_break_glass_request(&mut payload);
+    payload["break_glass"]["approval_id"] = approval["approval_id"].clone();
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/authorize",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "unexpected response: {response}"
+    );
+    assert!(
+        response.contains("valid unexpired matching break-glass approval"),
+        "expired approval should be explicit: {response}"
+    );
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count deployment authorizations");
+    assert_eq!(count, 0);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn deployment_gate_break_glass_approval_rejects_evidence_mismatch() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let (org_id, _) = seed_release_evidence(&pool).await;
+    let api_key =
+        insert_test_api_key_for_org(&pool, "break-glass-approval-mismatch", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let evidence_hash = generate_bound_packet(&app, &api_key).await;
+    let mut payload = break_glass_approval_payload(&evidence_hash);
+    payload["branch"] = serde_json::json!("release/wrong");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/deployment-gates/break-glass-approvals",
+        Some(&payload.to_string()),
+        Some(&api_key),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(
+        response.contains("does not match branch"),
+        "evidence mismatch should be explicit: {response}"
+    );
 
     teardown(&admin_pool, &schema).await;
 }

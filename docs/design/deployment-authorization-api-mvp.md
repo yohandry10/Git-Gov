@@ -21,6 +21,8 @@ Routes:
 ```text
 POST /deployment-gates/authorize
 GET /deployment-gates/authorizations
+POST /deployment-gates/break-glass-approvals
+GET /deployment-gates/break-glass-approvals
 ```
 
 Both routes are Admin-only and use the same org scoping model as enterprise release governance:
@@ -46,6 +48,7 @@ Both routes are Admin-only and use the same org scoping model as enterprise rele
   "deployment_run_id": "gha-123456",
   "break_glass": {
     "requested": true,
+    "approval_id": "dgbga_...",
     "reason": "Production incident INC-2026-0614 requires immediate rollback while approval evidence is restored.",
     "authorized_by": "incident.commander@example.com",
     "expires_at": 1781413200000
@@ -98,7 +101,7 @@ Decision semantics:
 | Evaluator result | API decision | `approved` | Meaning |
 | --- | --- | --- | --- |
 | `blocking=true` | `blocked` | `false` | Customer policy explicitly blocks this deployment. |
-| `blocking=true` with valid `break_glass` | `break_glass` | `true` | Deployment is authorized by audited exception while original blockers remain recorded. |
+| `blocking=true` with valid pre-approved `break_glass` | `break_glass` | `true` | Deployment is authorized by audited exception while original blockers remain recorded. |
 | `would_block=true` without blocking enforcement | `advisory` | `true` | Deployment may proceed, but GitGov records what would block under enforcement. |
 | setup warnings only | `advisory` | `true` | Release policy allows deploy, but onboarding/setup evidence is incomplete. |
 | no issues | `approved` | `true` | Current policy is satisfied or record-only. |
@@ -125,12 +128,34 @@ The table stores:
 - `decision`, `approved`, `blocking`, `would_block`;
 - reason, warnings, blockers, policy checksum;
 - break-glass eligibility, usage, reason, authorizer, and optional expiry;
+- break-glass approval id/hash when an exception is used;
 - full release-governance evaluation;
 - compact details including first governed repo setup status;
 - original normalized request payload;
 - requester and timestamp.
 
 `GET /deployment-gates/authorizations` lists persisted attempts with filters for authorization id, repository, branch, target SHA, release id, environment, decision, and deployer.
+
+## Break-glass Approval Routing
+
+KAN-88 adds explicit pre-approval before a deployment request can use break-glass.
+
+`POST /deployment-gates/break-glass-approvals` persists an approval bound to:
+
+- organization;
+- release id;
+- repository;
+- branch;
+- target SHA;
+- environment;
+- ticket id when present;
+- evidence packet hash and URI;
+- reason;
+- approver and approver role;
+- expiry no more than 24 hours ahead;
+- approval hash and creator.
+
+`POST /deployment-gates/authorize` accepts `break_glass` only when the evaluated policy is blocking and an active approval with the same binding exists. If `break_glass.approval_id` is sent, that exact approval must match. If it is omitted, GitGov still requires a matching active approval for the same evidence-bound deployment scope.
 
 ## Relationship To Existing Work
 

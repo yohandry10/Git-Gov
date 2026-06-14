@@ -85,6 +85,8 @@ pub struct CreateDeploymentGateAuthorizationInput {
     pub break_glass_reason: Option<String>,
     pub break_glass_authorized_by: Option<String>,
     pub break_glass_expires_at: Option<i64>,
+    pub break_glass_approval_id: Option<String>,
+    pub break_glass_approval_hash: Option<String>,
     pub evaluation: EnterpriseReleaseGovernanceEvaluationResponse,
     pub details: serde_json::Value,
     pub request_payload: serde_json::Value,
@@ -148,11 +150,38 @@ fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthoriz
         break_glass_reason: row.get("break_glass_reason"),
         break_glass_authorized_by: row.get("break_glass_authorized_by"),
         break_glass_expires_at: row.get("break_glass_expires_at_ms"),
+        break_glass_approval_id: row.get("break_glass_approval_id"),
+        break_glass_approval_hash: row.get("break_glass_approval_hash"),
         evaluation: serde_json::from_value(row.get("evaluation"))
             .unwrap_or_else(|_| EnterpriseReleaseGovernanceEvaluationResponse::default()),
         details: row.get("details"),
         request_payload: row.get("request_payload"),
         requested_by: row.get("requested_by"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
+fn deployment_gate_break_glass_approval_from_row(
+    row: &PgRow,
+) -> DeploymentGateBreakGlassApprovalRecord {
+    DeploymentGateBreakGlassApprovalRecord {
+        approval_id: row.get("approval_id"),
+        org_id: row.get("org_id"),
+        release_id: row.get("release_id"),
+        repository_full_name: row.get("repository_full_name"),
+        branch: row.get("branch"),
+        target_sha: row.get("target_sha"),
+        environment: row.get("environment"),
+        ticket_id: row.get("ticket_id"),
+        evidence_packet_hash: row.get("evidence_packet_hash"),
+        evidence_packet_uri: row.get("evidence_packet_uri"),
+        reason: row.get("reason"),
+        approver: row.get("approver"),
+        approver_role: row.get("approver_role"),
+        expires_at: row.get("expires_at_ms"),
+        approval_hash: row.get("approval_hash"),
+        metadata: row.get("metadata"),
+        created_by: row.get("created_by"),
         created_at: row.get("created_at_ms"),
     }
 }
@@ -302,6 +331,7 @@ mod chat_queries_quality;
 mod chat_queries_release;
 mod compliance;
 mod core;
+mod deployment_gates;
 mod enterprise;
 mod events_client;
 mod events_github;

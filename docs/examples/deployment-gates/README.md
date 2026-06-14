@@ -46,5 +46,5 @@ Break-glass:
 
 - Provider jobs should not add `break_glass` automatically.
 - Break-glass is accepted only when GitGov would otherwise return a blocking decision.
-- A valid exception includes `requested=true`, a concrete reason, an authorizing actor, and optional expiry.
+- A valid exception requires a prior `POST /deployment-gates/break-glass-approvals` record bound to the same release evidence. The deploy request may include `approval_id`, `requested=true`, a concrete reason, an authorizing actor, and optional expiry.
 - GitGov returns `decision=break_glass`, `approved=true`, `blocking=true`, and `would_block=true`; original blockers remain in `blocked_by`.

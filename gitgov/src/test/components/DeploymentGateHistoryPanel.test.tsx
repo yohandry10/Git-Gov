@@ -32,6 +32,8 @@ function authorization(overrides: Partial<DeploymentGateAuthorizationRecord> = {
     break_glass_reason: 'Production incident INC-2026-0614 requires immediate rollback.',
     break_glass_authorized_by: 'incident.commander@example.com',
     break_glass_expires_at: Date.UTC(2026, 5, 14, 4, 0, 0),
+    break_glass_approval_id: 'dgbga_1234567890abcdef',
+    break_glass_approval_hash: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
     evaluation: {
       status: 'blocked',
       policy_satisfied: false,
@@ -96,6 +98,8 @@ describe('DeploymentGateHistoryPanel', () => {
     expect(screen.getByText('Break-glass authorization')).toBeInTheDocument()
     expect(screen.getByText(/INC-2026-0614/)).toBeInTheDocument()
     expect(screen.getByText('incident.commander@example.com')).toBeInTheDocument()
+    expect(screen.getByText('pre-approved')).toBeInTheDocument()
+    expect(screen.getByText('dgbga_1234567890abcdef')).toBeInTheDocument()
     expect(screen.getByText('Would block:')).toBeInTheDocument()
   })
 })
