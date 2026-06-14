@@ -81,4 +81,45 @@ Focused coverage:
 
 ## Production Validation
 
-Pending PR merge, Render deploy, production migration `v40`, and smoke validation.
+PR `#333` merged to `main` as `aa0a9c9`.
+
+Post-merge `main` checks passed:
+
+- `CI`
+- `Release Readiness Gate`
+- `Secret Scan`
+- `Public Naming Guard`
+- `Quality Gate Policy Matrix`
+- `Governance Correlation Smoke`
+- `Desktop Updater Readiness`
+- `SonarQube Governance`
+
+Production migration `supabase_schema_v40.sql` was applied manually through ignored
+`DATABASE_URL`. `v40_postcheck.sql` returned `PASS` for:
+
+- `agent_governance_agent_keys.table`
+- `agent_governance_agent_keys.constraints`
+- `agent_governance_agent_keys.indexes`
+- `agent_governance_evaluations.agent_identity_columns`
+
+Render deploy `dep-d8n6pv77f7vs73fgfta0` for `aa0a9c9` reached `live`.
+
+Production smoke passed:
+
+- `/health` returned `ok`.
+- authenticated `/stats` returned `200`.
+- Agent Governance started as `enabled=false`, `mode=manual_only`.
+- Disabled evaluation returned `403 agent_governance_disabled` before opt-in.
+- Admin-created temporary agent key `agk_fcbda5f73c324fba99d33b195400bbcc` returned a one-time
+  token and list response did not expose plaintext token material.
+- Temporary opt-in changed settings to `enabled=true`, `mode=opt_in_enabled`.
+- Agent-key evaluation created `agv_356ca31100864046b104e2184eaec0ba` with
+  `decision=allowed`, `principal_type=agent`, matching agent key id, and `llm_decision=false`.
+- `change_policy` with the same key returned `403 action_not_allowed`.
+- Revoking the key set `revoked_at`.
+- Reusing the revoked token returned `401 revoked_key`.
+- Agent Governance was restored to `enabled=false`, `mode=manual_only`.
+
+## Status
+
+Implemented and production-validated.
