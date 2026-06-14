@@ -15,6 +15,7 @@ include!("handlers/org_users_api_keys.rs");
 include!("handlers/adoption_profiles.rs");
 include!("handlers/first_governed_repo_setup.rs");
 include!("handlers/release_approvals.rs");
+include!("handlers/governance_decisions.rs");
 include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
 include!("handlers/agent_governance.rs");

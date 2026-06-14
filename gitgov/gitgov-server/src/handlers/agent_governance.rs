@@ -382,11 +382,22 @@ fn decide_agent_governance(
         .first()
         .cloned()
         .unwrap_or_else(|| "Agent governance evaluated the request.".to_string());
+    let policy_checksum = agent_policy_checksum();
+    let governance_decision = build_agent_governance_decision(AgentGovernanceDecisionInput {
+        payload,
+        decision,
+        allowed,
+        requires_approval,
+        reasons: &reasons,
+        required_evidence: &required_evidence,
+        policy_checksum: &policy_checksum,
+        protected_branch,
+    });
     let evaluation = json!({
         "contract_version": "agent-governance-evaluation.v1",
         "policy": {
             "policy_id": AGENT_GOVERNANCE_POLICY_ID,
-            "policy_checksum": agent_policy_checksum(),
+            "policy_checksum": policy_checksum,
             "deterministic": true,
             "llm_decision": false
         },
@@ -407,7 +418,8 @@ fn decide_agent_governance(
         "requires_approval": requires_approval,
         "protected_branch": protected_branch,
         "reasons": reasons,
-        "required_evidence": required_evidence
+        "required_evidence": required_evidence,
+        "shared_governance_decision": governance_decision
     });
 
     (

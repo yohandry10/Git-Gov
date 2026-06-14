@@ -609,6 +609,24 @@ pub async fn authorize_deployment_gate(
     );
     let policy_checksum = deployment_gate_policy_checksum(&evaluation);
     let mut details = deployment_gate_details(&binding, first_governed_repo_setup.as_ref(), &payload);
+    let governance_decision =
+        build_deployment_gate_governance_decision(DeploymentGateGovernanceDecisionInput {
+            payload: &payload,
+            binding: &binding,
+            first_governed_repo_setup: first_governed_repo_setup.as_ref(),
+            evaluation: &evaluation,
+            legacy_decision: decision,
+            policy_checksum: &policy_checksum,
+            warnings: &warnings,
+            blocked_by: &blocked_by,
+            break_glass_used,
+        });
+    if let Some(object) = details.as_object_mut() {
+        object.insert(
+            "shared_governance_decision".to_string(),
+            governance_decision.clone(),
+        );
+    }
     if let Some(approval) = break_glass_approval.as_ref() {
         if let Some(object) = details.as_object_mut() {
             object.insert(
@@ -693,7 +711,8 @@ pub async fn authorize_deployment_gate(
                     "break_glass_used": record.break_glass_used,
                     "break_glass_authorized_by": &record.break_glass_authorized_by,
                     "break_glass_approval_id": &record.break_glass_approval_id,
-                    "policy_checksum": &record.policy_checksum
+                    "policy_checksum": &record.policy_checksum,
+                    "governance_decision": governance_decision
                 }),
                 created_at: chrono::Utc::now().timestamp_millis(),
             };
