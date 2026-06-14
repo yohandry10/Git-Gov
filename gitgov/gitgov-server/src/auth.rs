@@ -494,6 +494,12 @@ mod tests {
         assert!(is_sensitive_admin_path(
             "/compliance/review-packages/crp_123/download"
         ));
+        assert!(is_sensitive_admin_path(
+            "/compliance/framework-review-reports"
+        ));
+        assert!(is_sensitive_admin_path(
+            "/compliance/framework-review-reports/frr_123/download"
+        ));
         assert!(is_sensitive_admin_path("/deployment-gates/authorize"));
         assert!(is_sensitive_admin_path("/deployment-gates/authorizations"));
         assert!(is_sensitive_admin_path("/agent-governance/evaluate"));

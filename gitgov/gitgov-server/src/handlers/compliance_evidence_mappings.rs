@@ -4,6 +4,10 @@
 
 const GITGOV_BASELINE_FRAMEWORK_ID: &str = "gitgov_release_governance_baseline_v1";
 
+fn is_supported_evidence_mapping_framework_id(framework_id: &str) -> bool {
+    framework_id == GITGOV_BASELINE_FRAMEWORK_ID || framework_id.starts_with("customer_")
+}
+
 fn normalize_evidence_mapping_request(
     payload: &mut ComplianceEvidenceMappingRequest,
 ) -> Result<(), Vec<String>> {
@@ -434,6 +438,16 @@ pub async fn create_compliance_evidence_mapping(
         return (
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": "Invalid compliance evidence mapping request", "details": errors })),
+        )
+            .into_response();
+    }
+    if !is_supported_evidence_mapping_framework_id(&payload.framework_id) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Unsupported compliance framework for this customer evidence mapping flow",
+                "supported_frameworks": [GITGOV_BASELINE_FRAMEWORK_ID, "customer_*"]
+            })),
         )
             .into_response();
     }

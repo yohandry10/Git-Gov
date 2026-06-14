@@ -227,15 +227,16 @@ Current primitives:
   packs with explicit ownership/provenance and no official GitGov regulatory claim.
 - `KAN-104`: Framework pack review/provenance UX before any official or customer-specific mapping is
   treated as tenant-ready.
+- `KAN-105`: Framework-specific Review Report Export. This consumes a KAN-100 mapping plus KAN-101
+  review package and emits JSON with control-by-control evidence refs, missing evidence, source
+  hashes, framework provenance, and no certification/regulatory/compliance score claim.
 
 Future scope:
 
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
-- Framework-specific report output with evidence links and hashes, without compliance scores unless
-  a reviewed product/legal decision allows them.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.
-- PDF/JSON export suitable for quarterly or annual audits.
+- PDF export suitable for quarterly or annual audits.
 
 ### 0.4 Bring Your Own Model And AI Routing
 

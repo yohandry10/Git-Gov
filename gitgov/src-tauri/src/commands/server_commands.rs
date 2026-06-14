@@ -8,9 +8,10 @@ use crate::control_plane::{
     ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
     ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
     ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
-    ComplianceFrameworkPackReviewRequest, ComplianceReviewPackageQuery,
-    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
-    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportQuery,
+    ComplianceFrameworkReviewReportRequest, ComplianceFrameworkReviewReportResponse,
+    ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
+    ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
@@ -1046,6 +1047,59 @@ pub async fn cmd_server_download_compliance_review_package(
         });
         client
             .download_compliance_review_package(&review_package_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_framework_review_report(
+    config: ServerConnectionConfig,
+    payload: ComplianceFrameworkReviewReportRequest,
+) -> Result<ComplianceFrameworkReviewReportResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_FRAMEWORK_REVIEW_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_framework_review_report(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_framework_review_report(
+    config: ServerConnectionConfig,
+    report_id: String,
+    query: ComplianceFrameworkReviewReportQuery,
+) -> Result<ComplianceFrameworkReviewReportResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_FRAMEWORK_REVIEW_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_framework_review_report(&report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_framework_review_report(
+    config: ServerConnectionConfig,
+    report_id: String,
+    query: ComplianceFrameworkReviewReportQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_COMPLIANCE_FRAMEWORK_REVIEW_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_compliance_framework_review_report(&report_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

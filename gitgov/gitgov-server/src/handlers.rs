@@ -23,6 +23,7 @@ include!("handlers/compliance_framework_packs.rs");
 include!("handlers/compliance_evidence_mappings.rs");
 include!("handlers/compliance_customer_framework_mapper.rs");
 include!("handlers/compliance_review_packages.rs");
+include!("handlers/compliance_framework_review_reports.rs");
 include!("handlers/agent_governance.rs");
 include!("handlers/agent_governance_dry_run.rs");
 include!("handlers/agent_governance_context.rs");
