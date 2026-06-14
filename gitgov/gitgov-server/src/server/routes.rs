@@ -201,6 +201,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
         .route("/export", post(handlers::export_events))
         .route("/exports", get(handlers::list_exports))
         .route(
+            "/compliance/control-frameworks",
+            get(handlers::list_compliance_control_frameworks),
+        )
+        .route(
+            "/compliance/control-frameworks/{framework_id}",
+            get(handlers::get_compliance_control_framework),
+        )
+        .route(
             "/compliance/evidence-exports",
             post(handlers::create_compliance_evidence_export),
         )
@@ -211,6 +219,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
         .route(
             "/compliance/evidence-exports/{export_id}/download",
             get(handlers::download_compliance_evidence_export),
+        )
+        .route(
+            "/compliance/evidence-mappings",
+            post(handlers::create_compliance_evidence_mapping),
+        )
+        .route(
+            "/compliance/evidence-mappings/{mapping_id}",
+            get(handlers::get_compliance_evidence_mapping),
         )
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))

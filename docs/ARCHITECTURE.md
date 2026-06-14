@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `90` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `94` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -182,9 +182,13 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/policy/requests/{request_id}/reject` | Bearer (admin) | Rechazar request de cambio de política |
 | `/export` | Bearer (admin) | Export de audit data |
 | `/exports` | Bearer (admin) | Historial de exports generados |
+| `/compliance/control-frameworks` | Bearer (admin) | Lista frameworks de controles GitGov no regulatorios activos |
+| `/compliance/control-frameworks/{framework_id}` | Bearer (admin) | Detalle de framework y controles versionados |
 | `/compliance/evidence-exports` | Bearer (admin) | Crear export JSON read-only de evidencia manual-first para un Deployment Gate |
 | `/compliance/evidence-exports/{export_id}` | Bearer (admin) | Consultar metadata de un export de evidencia compliance |
 | `/compliance/evidence-exports/{export_id}/download` | Bearer (admin) | Descargar el artifact JSON redacted de un export de evidencia compliance |
+| `/compliance/evidence-mappings` | Bearer (admin) | Crear matriz determinística Evidence-to-Control desde un export KAN-99 |
+| `/compliance/evidence-mappings/{mapping_id}` | Bearer (admin) | Consultar matriz Evidence-to-Control persistida |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
