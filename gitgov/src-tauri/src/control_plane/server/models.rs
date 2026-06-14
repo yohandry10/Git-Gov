@@ -1,4 +1,5 @@
 mod base;
+mod compliance;
 mod enterprise;
 mod evidence;
 mod misc;
@@ -6,6 +7,7 @@ mod org;
 mod policy;
 
 pub use base::*;
+pub use compliance::*;
 pub use enterprise::*;
 pub use evidence::*;
 pub use misc::*;

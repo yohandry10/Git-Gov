@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI
 
 ## Decision
 
@@ -218,12 +218,18 @@ Current primitives:
   includes the GitGov-owned baseline version, summarizes the matrix, exposes missing evidence, and
   repeats `compliance_claim=false`, `regulatory_claim=false`, `requires_auditor_review=true`, and
   `certification=false`. It is evidence for customer/auditor review, not a regulatory report.
+- `KAN-102` makes those primitives usable in Governance > Releases: Admins can select a
+  Deployment Gate authorization, generate the KAN-99 export, generate the KAN-100 control mapping,
+  create the KAN-101 review package, inspect ids/hashes/no-claim flags/missing evidence, and
+  download the server-generated JSON without Postman or curl. It remains manual-first and does not
+  require Agent Governance.
 
 Future scope:
 
-- `KAN-102`: Customer-provided framework pack import. This should accept reviewed YAML/JSON control
+- `KAN-103`: Customer-provided framework pack import. This should accept reviewed YAML/JSON control
   packs with explicit ownership/provenance and no official GitGov regulatory claim.
-- `KAN-103`: Governance/Desktop UI for KAN-99/KAN-100/KAN-101 generation, inspection, and download.
+- `KAN-104`: Framework pack review/provenance UX before any official or customer-specific mapping is
+  treated as tenant-ready.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Framework-specific report output with evidence links and hashes, without compliance scores unless
   a reviewed product/legal decision allows them.

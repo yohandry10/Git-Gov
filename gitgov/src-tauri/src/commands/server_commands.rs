@@ -1,7 +1,11 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
     AuditFilter, ChatAskRequest, ChatAskResponse, CliCommandInput, CliCommandListResponse,
-    CliCommandResponse, CombinedEvent, CommitPipelineCorrelation, ControlPlaneClient,
+    CliCommandResponse, CombinedEvent, CommitPipelineCorrelation, ComplianceEvidenceExportQuery,
+    ComplianceEvidenceExportRequest, ComplianceEvidenceExportResponse,
+    ComplianceEvidenceMappingQuery, ComplianceEvidenceMappingRequest,
+    ComplianceEvidenceMappingResponse, ComplianceReviewPackageQuery,
+    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
     CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
@@ -828,6 +832,147 @@ pub async fn cmd_server_list_deployment_gate_authorizations(
         });
         client
             .list_deployment_gate_authorizations(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_evidence_export(
+    config: ServerConnectionConfig,
+    payload: ComplianceEvidenceExportRequest,
+) -> Result<ComplianceEvidenceExportResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_EVIDENCE_EXPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_evidence_export(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_evidence_export(
+    config: ServerConnectionConfig,
+    export_id: String,
+    query: ComplianceEvidenceExportQuery,
+) -> Result<ComplianceEvidenceExportResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_EVIDENCE_EXPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_evidence_export(&export_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_evidence_export(
+    config: ServerConnectionConfig,
+    export_id: String,
+    query: ComplianceEvidenceExportQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_COMPLIANCE_EVIDENCE_EXPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_compliance_evidence_export(&export_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_evidence_mapping(
+    config: ServerConnectionConfig,
+    payload: ComplianceEvidenceMappingRequest,
+) -> Result<ComplianceEvidenceMappingResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_EVIDENCE_MAPPING", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_evidence_mapping(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_evidence_mapping(
+    config: ServerConnectionConfig,
+    mapping_id: String,
+    query: ComplianceEvidenceMappingQuery,
+) -> Result<ComplianceEvidenceMappingResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_EVIDENCE_MAPPING", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_evidence_mapping(&mapping_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_review_package(
+    config: ServerConnectionConfig,
+    payload: ComplianceReviewPackageRequest,
+) -> Result<ComplianceReviewPackageResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_REVIEW_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_review_package(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_review_package(
+    config: ServerConnectionConfig,
+    review_package_id: String,
+    query: ComplianceReviewPackageQuery,
+) -> Result<ComplianceReviewPackageResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_REVIEW_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_review_package(&review_package_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_review_package(
+    config: ServerConnectionConfig,
+    review_package_id: String,
+    query: ComplianceReviewPackageQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_COMPLIANCE_REVIEW_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_compliance_review_package(&review_package_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

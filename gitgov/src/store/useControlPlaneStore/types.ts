@@ -310,6 +310,116 @@ export interface DeploymentGateAuthorizationListResponse {
   offset: number
 }
 
+export interface ComplianceEvidenceExportRequest {
+  org_name?: string | null
+  scope: string
+  deployment_gate_id?: string | null
+  format?: string | null
+  include_sections?: string[]
+}
+
+export interface ComplianceEvidenceExportQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceEvidenceExportRecord {
+  export_id: string
+  org_id: string
+  created_by_user_id: string
+  scope: string
+  deployment_gate_id?: string | null
+  release_id?: string | null
+  status: string
+  format: string
+  artifact_hash: string
+  policy_checksum?: string | null
+  gate_decision?: string | null
+  created_at: number
+  completed_at?: number | null
+  error_message_safe?: string | null
+}
+
+export interface ComplianceEvidenceExportResponse {
+  export: ComplianceEvidenceExportRecord
+  artifact?: Record<string, unknown> | null
+}
+
+export interface ComplianceEvidenceMappingRequest {
+  org_name?: string | null
+  evidence_export_id: string
+  framework_id: string
+}
+
+export interface ComplianceEvidenceMappingQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceEvidenceMappingRecord {
+  mapping_id: string
+  org_id: string
+  evidence_export_id: string
+  evidence_export_hash: string
+  framework_id: string
+  framework_version: string
+  created_by_user_id: string
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  created_at: number
+}
+
+export interface ComplianceEvidenceMappingItem {
+  control_id: string
+  control_title: string
+  status: string
+  evidence_refs: string[]
+  missing_evidence: string[]
+  notes_safe: string
+}
+
+export interface ComplianceEvidenceMappingResponse {
+  mapping: ComplianceEvidenceMappingRecord
+  items: ComplianceEvidenceMappingItem[]
+}
+
+export interface ComplianceReviewPackageRequest {
+  org_name?: string | null
+  mapping_id: string
+  format?: string | null
+  include_sections?: string[]
+}
+
+export interface ComplianceReviewPackageQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceReviewPackageRecord {
+  review_package_id: string
+  org_id: string
+  created_by_user_id: string
+  mapping_id: string
+  evidence_export_id: string
+  evidence_export_hash: string
+  mapping_hash: string
+  framework_id: string
+  framework_version: string
+  format: string
+  artifact_hash: string
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  certification: boolean
+  created_at: number
+  downloaded_at?: number | null
+  error_message_safe?: string | null
+}
+
+export interface ComplianceReviewPackageResponse {
+  review_package: ComplianceReviewPackageRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -721,12 +831,22 @@ export interface ControlPlaneState {
   deploymentGateAuthorizationsTotal: number
   deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
   deploymentGateAuthorizationsUpdatedAt: number | null
+  complianceEvidenceSelectedDeploymentGateId: string | null
+  complianceEvidenceExport: ComplianceEvidenceExportResponse | null
+  complianceEvidenceMapping: ComplianceEvidenceMappingResponse | null
+  complianceReviewPackage: ComplianceReviewPackageResponse | null
+  complianceReviewPackageArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
   isDeploymentGateAuthorizationsLoading: boolean
+  isComplianceEvidenceExportCreating: boolean
+  isComplianceEvidenceMappingCreating: boolean
+  isComplianceReviewPackageCreating: boolean
+  isComplianceReviewPackageDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
+  complianceEvidenceError: string | null
   userRole: string | null
   userClientId: string | null
   userOrgId: string | null
@@ -803,6 +923,11 @@ export interface ControlPlaneActions {
   saveFirstGovernedRepoSetup: (payload: UpsertFirstGovernedRepoSetupRequest, orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
+  createComplianceEvidenceExport: (deploymentGateId: string) => Promise<ComplianceEvidenceExportResponse | null>
+  createComplianceEvidenceMapping: (exportId: string, frameworkId?: string) => Promise<ComplianceEvidenceMappingResponse | null>
+  createComplianceReviewPackage: (mappingId: string) => Promise<ComplianceReviewPackageResponse | null>
+  downloadComplianceReviewPackage: (reviewPackageId: string) => Promise<Record<string, unknown> | null>
+  resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>
   loadMe: () => Promise<boolean>
