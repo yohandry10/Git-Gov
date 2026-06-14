@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory
 
 ## Decision
 
@@ -230,9 +230,15 @@ Current primitives:
 - `KAN-105`: Framework-specific Review Report Export. This consumes a KAN-100 mapping plus KAN-101
   review package and emits JSON with control-by-control evidence refs, missing evidence, source
   hashes, framework provenance, and no certification/regulatory/compliance score claim.
+- `KAN-106`: Framework Review Report Inventory History. This closes the recoverability gap after
+  KAN-105 by letting Admins list recent reports by tenant, framework, mapping, or review package,
+  inspect metadata without downloading payload JSON, and download a historical report from Desktop.
 
 Future scope:
 
+- Auditor review workflow over an existing Framework Review Report: assignments, reviewer comments,
+  approve/reject decision, and final audit evidence. This should come before any official
+  regulatory claim.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.

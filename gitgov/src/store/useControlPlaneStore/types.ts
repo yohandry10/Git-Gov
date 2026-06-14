@@ -521,6 +521,10 @@ export interface ComplianceFrameworkReviewReportRequest {
 
 export interface ComplianceFrameworkReviewReportQuery {
   org_name?: string | null
+  framework_id?: string | null
+  mapping_id?: string | null
+  review_package_id?: string | null
+  limit?: number | null
 }
 
 export interface ComplianceFrameworkReviewReportRecord {
@@ -553,6 +557,12 @@ export interface ComplianceFrameworkReviewReportResponse {
   report: ComplianceFrameworkReviewReportRecord
   download_url: string
   artifact?: Record<string, unknown> | null
+}
+
+export interface ComplianceFrameworkReviewReportListResponse {
+  items: ComplianceFrameworkReviewReportRecord[]
+  count: number
+  limit: number
 }
 
 export interface EnterpriseReleaseApprovalQuery {
@@ -976,6 +986,7 @@ export interface ControlPlaneState {
   complianceReviewPackage: ComplianceReviewPackageResponse | null
   complianceReviewPackageArtifact: Record<string, unknown> | null
   complianceFrameworkReviewReport: ComplianceFrameworkReviewReportResponse | null
+  complianceFrameworkReviewReports: ComplianceFrameworkReviewReportListResponse | null
   complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
@@ -989,6 +1000,7 @@ export interface ControlPlaneState {
   isComplianceReviewPackageCreating: boolean
   isComplianceReviewPackageDownloading: boolean
   isComplianceFrameworkReviewReportCreating: boolean
+  isComplianceFrameworkReviewReportsLoading: boolean
   isComplianceFrameworkReviewReportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
@@ -1082,6 +1094,7 @@ export interface ControlPlaneActions {
   createComplianceReviewPackage: (mappingId: string) => Promise<ComplianceReviewPackageResponse | null>
   downloadComplianceReviewPackage: (reviewPackageId: string) => Promise<Record<string, unknown> | null>
   createComplianceFrameworkReviewReport: (mappingId: string, reviewPackageId: string) => Promise<ComplianceFrameworkReviewReportResponse | null>
+  loadComplianceFrameworkReviewReports: (filters?: Omit<ComplianceFrameworkReviewReportQuery, 'org_name'>) => Promise<ComplianceFrameworkReviewReportListResponse | null>
   downloadComplianceFrameworkReviewReport: (reportId: string) => Promise<Record<string, unknown> | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>

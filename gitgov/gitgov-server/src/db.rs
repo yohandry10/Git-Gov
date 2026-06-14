@@ -233,6 +233,15 @@ pub struct CreateComplianceFrameworkReviewReportInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct ListComplianceFrameworkReviewReportsInput<'a> {
+    pub org_id: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub mapping_id: Option<&'a str>,
+    pub review_package_id: Option<&'a str>,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
     pub replaced: AgentGovernanceAgentKeyRecord,

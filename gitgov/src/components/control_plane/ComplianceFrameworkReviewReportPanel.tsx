@@ -1,4 +1,4 @@
-import { Download, FileCheck2, ShieldAlert } from 'lucide-react'
+import { Download, FileCheck2, History, RefreshCw, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -29,11 +29,14 @@ export function ComplianceFrameworkReviewReportPanel() {
   const mapping = useControlPlaneStore((state) => state.complianceEvidenceMapping?.mapping ?? null)
   const packageRecord = useControlPlaneStore((state) => state.complianceReviewPackage?.review_package ?? null)
   const report = useControlPlaneStore((state) => state.complianceFrameworkReviewReport?.report ?? null)
+  const reportHistory = useControlPlaneStore((state) => state.complianceFrameworkReviewReports)
   const reportArtifact = useControlPlaneStore((state) => state.complianceFrameworkReviewReportArtifact)
   const isCreating = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportCreating)
+  const isHistoryLoading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportsLoading)
   const isDownloading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportDownloading)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const createReport = useControlPlaneStore((state) => state.createComplianceFrameworkReviewReport)
+  const loadReports = useControlPlaneStore((state) => state.loadComplianceFrameworkReviewReports)
   const downloadReport = useControlPlaneStore((state) => state.downloadComplianceFrameworkReviewReport)
 
   const canGenerate = Boolean(mapping?.mapping_id && packageRecord?.review_package_id)
@@ -49,6 +52,20 @@ export function ComplianceFrameworkReviewReportPanel() {
     const artifact = await downloadReport(report.report_id)
     if (artifact) {
       downloadJson(`gitgov-framework-review-${safeDownloadName(report.report_id)}.json`, artifact)
+    }
+  }
+
+  const handleLoadHistory = async () => {
+    await loadReports({
+      framework_id: mapping?.framework_id ?? null,
+      limit: 25,
+    })
+  }
+
+  const handleDownloadHistory = async (reportId: string) => {
+    const artifact = await downloadReport(reportId)
+    if (artifact) {
+      downloadJson(`gitgov-framework-review-${safeDownloadName(reportId)}.json`, artifact)
     }
   }
 
@@ -76,6 +93,16 @@ export function ComplianceFrameworkReviewReportPanel() {
           >
             <FileCheck2 size={13} />
             Report
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            loading={isHistoryLoading}
+            onClick={() => void handleLoadHistory()}
+            title="Load recent framework review reports"
+          >
+            <RefreshCw size={13} />
+            History
           </Button>
           <Button
             size="sm"
@@ -140,6 +167,52 @@ export function ComplianceFrameworkReviewReportPanel() {
         <p className="mt-3 text-[11px] text-success-200">
           Server framework report artifact downloaded and ready for local JSON save.
         </p>
+      )}
+
+      {reportHistory && (
+        <div className="mt-3 border-t border-white/8 pt-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-surface-200">
+            <History size={13} className="text-brand-300" />
+            Framework report history
+            <Badge variant="info">{reportHistory.count} loaded</Badge>
+          </div>
+          {reportHistory.items.length === 0 ? (
+            <p className="text-[11px] text-surface-500">No framework review reports found for the current filter.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {reportHistory.items.map((item) => (
+                <div key={item.report_id} className="rounded border border-white/6 bg-white/[0.03] p-2">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-mono text-[11px] text-surface-100" title={item.report_id}>
+                        {item.report_id}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-surface-500">
+                        <span>Framework: <span className="text-surface-300">{item.framework_id}</span></span>
+                        <span>Owner: <span className="text-surface-300">{item.framework_owner_type}</span></span>
+                        <span>Created: <span className="text-surface-300">{formatTs(item.created_at, displayTimezone)}</span></span>
+                        <span>Downloaded: <span className="text-surface-300">{item.downloaded_at ? formatTs(item.downloaded_at, displayTimezone) : 'not yet'}</span></span>
+                      </div>
+                      <div className="mt-1 truncate text-[11px] text-surface-500" title={item.artifact_hash}>
+                        Report hash: <span className="font-mono text-surface-300">{shortHash(item.artifact_hash)}</span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      loading={isDownloading}
+                      onClick={() => void handleDownloadHistory(item.report_id)}
+                      title="Download this framework review report JSON"
+                    >
+                      <Download size={13} />
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

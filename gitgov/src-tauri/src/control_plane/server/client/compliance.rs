@@ -1,6 +1,31 @@
 use super::super::models::*;
 use super::{server_error_from_response, ControlPlaneClient};
 
+fn framework_review_report_query_params(
+    query: &ComplianceFrameworkReviewReportQuery,
+    include_filters: bool,
+) -> Vec<(String, String)> {
+    let mut query_params: Vec<(String, String)> = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    if include_filters {
+        if let Some(framework_id) = &query.framework_id {
+            query_params.push(("framework_id".to_string(), framework_id.clone()));
+        }
+        if let Some(mapping_id) = &query.mapping_id {
+            query_params.push(("mapping_id".to_string(), mapping_id.clone()));
+        }
+        if let Some(review_package_id) = &query.review_package_id {
+            query_params.push(("review_package_id".to_string(), review_package_id.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+    }
+    query_params
+}
+
 impl ControlPlaneClient {
     pub fn list_compliance_control_frameworks(
         &self,
@@ -348,16 +373,37 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn list_compliance_framework_review_reports(
+        &self,
+        query: &ComplianceFrameworkReviewReportQuery,
+    ) -> Result<ComplianceFrameworkReviewReportListResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "framework-review-reports"])?;
+        let query_params = framework_review_report_query_params(query, true);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn get_compliance_framework_review_report(
         &self,
         report_id: &str,
         query: &ComplianceFrameworkReviewReportQuery,
     ) -> Result<ComplianceFrameworkReviewReportResponse, ServerError> {
         let url = self.endpoint_url(&["compliance", "framework-review-reports", report_id])?;
-        let mut query_params: Vec<(String, String)> = Vec::new();
-        if let Some(org_name) = &query.org_name {
-            query_params.push(("org_name".to_string(), org_name.clone()));
-        }
+        let query_params = framework_review_report_query_params(query, false);
 
         let mut request = self.client.get(url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {
@@ -388,10 +434,7 @@ impl ControlPlaneClient {
             report_id,
             "download",
         ])?;
-        let mut query_params: Vec<(String, String)> = Vec::new();
-        if let Some(org_name) = &query.org_name {
-            query_params.push(("org_name".to_string(), org_name.clone()));
-        }
+        let query_params = framework_review_report_query_params(query, false);
 
         let mut request = self.client.get(url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {

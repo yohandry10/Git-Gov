@@ -31,6 +31,60 @@ fn compliance_framework_review_report_from_row(
 }
 
 impl Database {
+    pub async fn list_compliance_framework_review_reports(
+        &self,
+        input: &ListComplianceFrameworkReviewReportsInput<'_>,
+    ) -> Result<Vec<ComplianceFrameworkReviewReportRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                report_id,
+                org_id::text,
+                created_by_user_id,
+                mapping_id,
+                review_package_id,
+                evidence_export_id,
+                evidence_export_hash,
+                mapping_hash,
+                review_package_hash,
+                framework_id,
+                framework_version,
+                framework_owner_type,
+                framework_review_status,
+                pack_hash,
+                format,
+                artifact_hash,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                error_message_safe
+            FROM compliance_framework_review_reports
+            WHERE org_id = $1::uuid
+              AND ($2::text IS NULL OR framework_id = $2)
+              AND ($3::text IS NULL OR mapping_id = $3)
+              AND ($4::text IS NULL OR review_package_id = $4)
+            ORDER BY created_at DESC, report_id DESC
+            LIMIT $5
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.framework_id)
+        .bind(input.mapping_id)
+        .bind(input.review_package_id)
+        .bind(input.limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_framework_review_report_from_row(&row))
+            .collect())
+    }
+
     pub async fn create_compliance_framework_review_report(
         &self,
         input: &CreateComplianceFrameworkReviewReportInput<'_>,

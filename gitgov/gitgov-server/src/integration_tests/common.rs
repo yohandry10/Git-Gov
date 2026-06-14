@@ -476,6 +476,15 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_package
             ON compliance_framework_review_reports(org_id, review_package_id);
 
+        CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_framework_created
+            ON compliance_framework_review_reports(org_id, framework_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_framework_mapping
+            ON compliance_framework_review_reports(org_id, framework_id, mapping_id);
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_framework_package
+            ON compliance_framework_review_reports(org_id, framework_id, review_package_id);
+
         INSERT INTO compliance_control_frameworks (
             framework_id,
             name,
@@ -1568,7 +1577,8 @@ pub(super) fn build_test_app_with_options(
         )
         .route(
             "/compliance/framework-review-reports",
-            post(handlers::create_compliance_framework_review_report),
+            get(handlers::list_compliance_framework_review_reports)
+                .post(handlers::create_compliance_framework_review_report),
         )
         .route(
             "/compliance/framework-review-reports/{report_id}",

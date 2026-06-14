@@ -8,10 +8,11 @@ use crate::control_plane::{
     ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
     ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
     ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
-    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportQuery,
-    ComplianceFrameworkReviewReportRequest, ComplianceFrameworkReviewReportResponse,
-    ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
-    ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportListResponse,
+    ComplianceFrameworkReviewReportQuery, ComplianceFrameworkReviewReportRequest,
+    ComplianceFrameworkReviewReportResponse, ComplianceReviewPackageQuery,
+    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
+    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
@@ -1064,6 +1065,23 @@ pub async fn cmd_server_create_compliance_framework_review_report(
         });
         client
             .create_compliance_framework_review_report(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_framework_review_reports(
+    config: ServerConnectionConfig,
+    query: ComplianceFrameworkReviewReportQuery,
+) -> Result<ComplianceFrameworkReviewReportListResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_FRAMEWORK_REVIEW_REPORTS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_framework_review_reports(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

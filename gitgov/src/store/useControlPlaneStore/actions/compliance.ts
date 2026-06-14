@@ -7,6 +7,7 @@ import type {
   ComplianceFrameworkPackReviewRequest,
   ComplianceFrameworkPackImportResponse,
   ComplianceFrameworkPackListResponse,
+  ComplianceFrameworkReviewReportListResponse,
   ComplianceFrameworkReviewReportResponse,
   ComplianceReviewPackageResponse,
   ControlPlaneActions,
@@ -25,6 +26,7 @@ type ComplianceActionKeys =
   | 'createComplianceReviewPackage'
   | 'downloadComplianceReviewPackage'
   | 'createComplianceFrameworkReviewReport'
+  | 'loadComplianceFrameworkReviewReports'
   | 'downloadComplianceFrameworkReviewReport'
   | 'resetComplianceEvidenceFlow'
 
@@ -372,8 +374,22 @@ export function createComplianceActions(
             format: 'json',
           },
         })
+        const currentReports = get().complianceFrameworkReviewReports
+        const updatedReportItems = currentReports
+          ? [
+              response.report,
+              ...currentReports.items.filter((item) => item.report_id !== response.report.report_id),
+            ].slice(0, currentReports.limit)
+          : null
         set({
           complianceFrameworkReviewReport: response,
+          complianceFrameworkReviewReports: currentReports
+            ? {
+                ...currentReports,
+                items: updatedReportItems ?? currentReports.items,
+                count: updatedReportItems?.length ?? currentReports.count,
+              }
+            : currentReports,
           complianceFrameworkReviewReportArtifact: response.artifact ?? null,
           isComplianceFrameworkReviewReportCreating: false,
         })
@@ -383,6 +399,40 @@ export function createComplianceActions(
         set({
           complianceEvidenceError: message,
           isComplianceFrameworkReviewReportCreating: false,
+        })
+        return null
+      }
+    },
+
+    loadComplianceFrameworkReviewReports: async (filters = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      if (!serverConfig) return null
+
+      set({
+        isComplianceFrameworkReviewReportsLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportListResponse>('cmd_server_list_compliance_framework_review_reports', {
+          config: serverConfig,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+            framework_id: filters.framework_id?.trim() || null,
+            mapping_id: filters.mapping_id?.trim() || null,
+            review_package_id: filters.review_package_id?.trim() || null,
+            limit: filters.limit ?? 25,
+          },
+        })
+        set({
+          complianceFrameworkReviewReports: response,
+          isComplianceFrameworkReviewReportsLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportsLoading: false,
         })
         return null
       }
@@ -429,6 +479,7 @@ export function createComplianceActions(
       complianceReviewPackage: null,
       complianceReviewPackageArtifact: null,
       complianceFrameworkReviewReport: null,
+      complianceFrameworkReviewReports: null,
       complianceFrameworkReviewReportArtifact: null,
       complianceEvidenceError: null,
     }),
