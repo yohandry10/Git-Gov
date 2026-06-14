@@ -344,10 +344,85 @@ export interface ComplianceEvidenceExportResponse {
   artifact?: Record<string, unknown> | null
 }
 
+export interface ComplianceControl {
+  control_id: string
+  title: string
+  description: string
+  required_evidence_types: string[]
+  sort_order: number
+}
+
+export interface ComplianceControlFramework {
+  framework_id: string
+  org_id?: string | null
+  name: string
+  version: string
+  description: string
+  is_regulatory: boolean
+  is_active: boolean
+  owner_type: 'gitgov' | 'customer' | string
+  owner_name?: string | null
+  source: 'gitgov_owned' | 'customer_provided' | string
+  is_gitgov_owned: boolean
+  official_regulatory_mapping: boolean
+  framework_pack_id?: string | null
+  pack_hash?: string | null
+  controls?: ComplianceControl[]
+}
+
+export interface ComplianceControlFrameworkListResponse {
+  frameworks: ComplianceControlFramework[]
+}
+
+export interface ComplianceFrameworkPackImportRequest {
+  org_name?: string | null
+  format?: 'json' | 'yaml' | 'yml' | string | null
+  pack?: Record<string, unknown> | null
+  content?: string | null
+}
+
+export interface ComplianceFrameworkPackRecord {
+  framework_pack_id: string
+  org_id: string
+  framework_id: string
+  framework_name: string
+  framework_version: string
+  description: string
+  owner_type: string
+  owner_name: string
+  source: string
+  review_status: string
+  schema_version: string
+  pack_hash: string
+  control_count: number
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  gitgov_certifies: boolean
+  requires_auditor_review: boolean
+  official_regulatory_mapping: boolean
+  created_by_user_id: string
+  created_at: number
+  archived_at?: number | null
+}
+
+export interface ComplianceFrameworkPackImportResponse {
+  framework_pack: ComplianceFrameworkPackRecord
+  framework: ComplianceControlFramework
+}
+
+export interface ComplianceFrameworkPackListResponse {
+  framework_packs: ComplianceFrameworkPackRecord[]
+}
+
+export interface ComplianceFrameworkPackQuery {
+  org_name?: string | null
+}
+
 export interface ComplianceEvidenceMappingRequest {
   org_name?: string | null
   evidence_export_id: string
   framework_id: string
+  framework_version?: string | null
 }
 
 export interface ComplianceEvidenceMappingQuery {
@@ -832,6 +907,10 @@ export interface ControlPlaneState {
   deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
   deploymentGateAuthorizationsUpdatedAt: number | null
   complianceEvidenceSelectedDeploymentGateId: string | null
+  complianceControlFrameworks: ComplianceControlFramework[]
+  complianceFrameworkPacks: ComplianceFrameworkPackRecord[]
+  selectedComplianceFrameworkId: string
+  complianceFrameworkImportResponse: ComplianceFrameworkPackImportResponse | null
   complianceEvidenceExport: ComplianceEvidenceExportResponse | null
   complianceEvidenceMapping: ComplianceEvidenceMappingResponse | null
   complianceReviewPackage: ComplianceReviewPackageResponse | null
@@ -840,6 +919,8 @@ export interface ControlPlaneState {
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
   isDeploymentGateAuthorizationsLoading: boolean
+  isComplianceFrameworksLoading: boolean
+  isComplianceFrameworkPackImporting: boolean
   isComplianceEvidenceExportCreating: boolean
   isComplianceEvidenceMappingCreating: boolean
   isComplianceReviewPackageCreating: boolean
@@ -923,6 +1004,9 @@ export interface ControlPlaneActions {
   saveFirstGovernedRepoSetup: (payload: UpsertFirstGovernedRepoSetupRequest, orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
+  loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
+  importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
+  selectComplianceFramework: (frameworkId: string) => void
   createComplianceEvidenceExport: (deploymentGateId: string) => Promise<ComplianceEvidenceExportResponse | null>
   createComplianceEvidenceMapping: (exportId: string, frameworkId?: string) => Promise<ComplianceEvidenceMappingResponse | null>
   createComplianceReviewPackage: (mappingId: string) => Promise<ComplianceReviewPackageResponse | null>

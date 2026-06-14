@@ -268,14 +268,53 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE TABLE IF NOT EXISTS compliance_control_frameworks (
             framework_id TEXT PRIMARY KEY,
+            org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
             name TEXT NOT NULL,
             version TEXT NOT NULL,
             description TEXT NOT NULL,
             is_regulatory BOOLEAN NOT NULL DEFAULT FALSE,
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            owner_type TEXT NOT NULL DEFAULT 'gitgov' CHECK (owner_type IN ('gitgov', 'customer')),
+            owner_name TEXT,
+            source TEXT NOT NULL DEFAULT 'gitgov_owned' CHECK (source IN ('gitgov_owned', 'customer_provided')),
+            is_gitgov_owned BOOLEAN NOT NULL DEFAULT TRUE,
+            official_regulatory_mapping BOOLEAN NOT NULL DEFAULT FALSE CHECK (official_regulatory_mapping = FALSE),
+            framework_pack_id TEXT,
+            pack_hash TEXT,
+            created_by_user_id TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CHECK (framework_id = lower(framework_id)),
             CHECK (is_regulatory = FALSE)
+        );
+
+        CREATE TABLE IF NOT EXISTS compliance_framework_packs (
+            id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            framework_id TEXT NOT NULL,
+            framework_name TEXT NOT NULL,
+            framework_version TEXT NOT NULL,
+            description TEXT NOT NULL,
+            owner_type TEXT NOT NULL DEFAULT 'customer' CHECK (owner_type IN ('customer')),
+            owner_name TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'customer_provided' CHECK (source = 'customer_provided'),
+            review_status TEXT NOT NULL DEFAULT 'customer_review_required'
+                CHECK (review_status IN ('customer_review_required', 'customer_reviewed', 'archived')),
+            schema_version TEXT NOT NULL,
+            pack_hash TEXT NOT NULL,
+            raw_pack_redacted JSONB NOT NULL,
+            control_count INTEGER NOT NULL CHECK (control_count BETWEEN 1 AND 50),
+            compliance_claim BOOLEAN NOT NULL DEFAULT FALSE CHECK (compliance_claim = FALSE),
+            regulatory_claim BOOLEAN NOT NULL DEFAULT FALSE CHECK (regulatory_claim = FALSE),
+            gitgov_certifies BOOLEAN NOT NULL DEFAULT FALSE CHECK (gitgov_certifies = FALSE),
+            requires_auditor_review BOOLEAN NOT NULL DEFAULT TRUE CHECK (requires_auditor_review = TRUE),
+            official_regulatory_mapping BOOLEAN NOT NULL DEFAULT FALSE CHECK (official_regulatory_mapping = FALSE),
+            created_by_user_id TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            archived_at TIMESTAMPTZ,
+            CHECK (id LIKE 'cfp_%'),
+            CHECK (framework_id = lower(framework_id)),
+            CHECK (framework_id LIKE 'customer_%'),
+            CHECK (pack_hash ~ '^sha256:[a-f0-9]{64}$')
         );
 
         CREATE TABLE IF NOT EXISTS compliance_controls (
@@ -288,8 +327,12 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             sort_order INTEGER NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             UNIQUE (framework_id, control_id),
-            CHECK (control_id ~ '^GG-RG-[0-9]{2}$')
+            CHECK (control_id ~ '^[A-Z0-9][A-Z0-9_.:-]{0,63}$')
         );
+
+        ALTER TABLE compliance_control_frameworks
+            ADD CONSTRAINT compliance_control_frameworks_framework_pack_fk
+                FOREIGN KEY (framework_pack_id) REFERENCES compliance_framework_packs(id) ON DELETE SET NULL;
 
         CREATE TABLE IF NOT EXISTS compliance_evidence_mappings (
             mapping_id TEXT PRIMARY KEY,
@@ -385,7 +428,12 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             version,
             description,
             is_regulatory,
-            is_active
+            is_active,
+            owner_type,
+            owner_name,
+            source,
+            is_gitgov_owned,
+            official_regulatory_mapping
         )
         VALUES (
             'gitgov_release_governance_baseline_v1',
@@ -393,14 +441,24 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             '1.0.0',
             'GitGov-owned, non-regulatory evidence baseline for reviewing release governance controls.',
             FALSE,
-            TRUE
+            TRUE,
+            'gitgov',
+            'GitGov',
+            'gitgov_owned',
+            TRUE,
+            FALSE
         )
         ON CONFLICT (framework_id) DO UPDATE SET
             name = EXCLUDED.name,
             version = EXCLUDED.version,
             description = EXCLUDED.description,
             is_regulatory = FALSE,
-            is_active = TRUE;
+            is_active = TRUE,
+            owner_type = 'gitgov',
+            owner_name = 'GitGov',
+            source = 'gitgov_owned',
+            is_gitgov_owned = TRUE,
+            official_regulatory_mapping = FALSE;
 
         INSERT INTO compliance_controls (
             id,
@@ -1405,6 +1463,18 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/control-frameworks/{framework_id}",
             get(handlers::get_compliance_control_framework),
+        )
+        .route(
+            "/compliance/framework-packs",
+            get(handlers::list_compliance_framework_packs),
+        )
+        .route(
+            "/compliance/framework-packs/import",
+            post(handlers::import_compliance_framework_pack),
+        )
+        .route(
+            "/compliance/framework-packs/{framework_pack_id}",
+            get(handlers::get_compliance_framework_pack),
         )
         .route(
             "/compliance/evidence-exports",

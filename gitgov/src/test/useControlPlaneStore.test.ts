@@ -74,10 +74,16 @@ describe('useControlPlaneStore', () => {
       deploymentGateAuthorizationsFilters: { limit: 10, offset: 0 },
       deploymentGateAuthorizationsUpdatedAt: null,
       complianceEvidenceSelectedDeploymentGateId: null,
+      complianceControlFrameworks: [],
+      complianceFrameworkPacks: [],
+      selectedComplianceFrameworkId: 'gitgov_release_governance_baseline_v1',
+      complianceFrameworkImportResponse: null,
       complianceEvidenceExport: null,
       complianceEvidenceMapping: null,
       complianceReviewPackage: null,
       complianceReviewPackageArtifact: null,
+      isComplianceFrameworksLoading: false,
+      isComplianceFrameworkPackImporting: false,
       isComplianceEvidenceExportCreating: false,
       isComplianceEvidenceMappingCreating: false,
       isComplianceReviewPackageCreating: false,
@@ -964,6 +970,7 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
           evidence_export_id: 'cee_123',
           framework_id: 'gitgov_release_governance_baseline_v1',
+          framework_version: null,
         },
       })
       expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_create_compliance_review_package', {
@@ -995,6 +1002,136 @@ describe('useControlPlaneStore', () => {
       expect(packageResponse?.review_package.certification).toBe(false)
       expect(artifact?.certification).toBe(false)
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
+    })
+
+    it('imports customer-owned compliance framework packs and selects the imported framework', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke
+        .mockResolvedValueOnce({
+          framework_pack: {
+            framework_pack_id: 'cfp_123',
+            org_id: 'org-1',
+            framework_id: 'customer_bank_controls_123',
+            framework_name: 'Bank Controls',
+            framework_version: '2026.06',
+            description: 'Customer controls',
+            owner_type: 'customer',
+            owner_name: 'Customer Security Office',
+            source: 'customer_provided',
+            review_status: 'customer_review_required',
+            schema_version: 'gitgov_customer_framework_pack.v1',
+            pack_hash: 'sha256:' + '1'.repeat(64),
+            control_count: 1,
+            compliance_claim: false,
+            regulatory_claim: false,
+            gitgov_certifies: false,
+            requires_auditor_review: true,
+            official_regulatory_mapping: false,
+            created_by_user_id: 'admin',
+            created_at: 1,
+          },
+          framework: {
+            framework_id: 'customer_bank_controls_123',
+            org_id: 'org-1',
+            name: 'Bank Controls',
+            version: '2026.06',
+            description: 'Customer controls',
+            is_regulatory: false,
+            is_active: true,
+            owner_type: 'customer',
+            owner_name: 'Customer Security Office',
+            source: 'customer_provided',
+            is_gitgov_owned: false,
+            official_regulatory_mapping: false,
+            framework_pack_id: 'cfp_123',
+            pack_hash: 'sha256:' + '1'.repeat(64),
+            controls: [],
+          },
+        })
+        .mockResolvedValueOnce({
+          frameworks: [{
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            name: 'GitGov Release Governance Baseline',
+            version: '1.0.0',
+            description: 'Baseline',
+            is_regulatory: false,
+            is_active: true,
+            owner_type: 'gitgov',
+            owner_name: 'GitGov',
+            source: 'gitgov_owned',
+            is_gitgov_owned: true,
+            official_regulatory_mapping: false,
+            controls: [],
+          }, {
+            framework_id: 'customer_bank_controls_123',
+            org_id: 'org-1',
+            name: 'Bank Controls',
+            version: '2026.06',
+            description: 'Customer controls',
+            is_regulatory: false,
+            is_active: true,
+            owner_type: 'customer',
+            owner_name: 'Customer Security Office',
+            source: 'customer_provided',
+            is_gitgov_owned: false,
+            official_regulatory_mapping: false,
+            framework_pack_id: 'cfp_123',
+            pack_hash: 'sha256:' + '1'.repeat(64),
+            controls: [],
+          }],
+        })
+        .mockResolvedValueOnce({
+          framework_packs: [{
+            framework_pack_id: 'cfp_123',
+            org_id: 'org-1',
+            framework_id: 'customer_bank_controls_123',
+            framework_name: 'Bank Controls',
+            framework_version: '2026.06',
+            description: 'Customer controls',
+            owner_type: 'customer',
+            owner_name: 'Customer Security Office',
+            source: 'customer_provided',
+            review_status: 'customer_review_required',
+            schema_version: 'gitgov_customer_framework_pack.v1',
+            pack_hash: 'sha256:' + '1'.repeat(64),
+            control_count: 1,
+            compliance_claim: false,
+            regulatory_claim: false,
+            gitgov_certifies: false,
+            requires_auditor_review: true,
+            official_regulatory_mapping: false,
+            created_by_user_id: 'admin',
+            created_at: 1,
+          }],
+        })
+
+      const response = await useControlPlaneStore
+        .getState()
+        .importComplianceFrameworkPack('{"schema_version":"gitgov_customer_framework_pack.v1"}', 'json')
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_import_compliance_framework_pack', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          format: 'json',
+          pack: { schema_version: 'gitgov_customer_framework_pack.v1' },
+          content: null,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_list_compliance_control_frameworks', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_list_compliance_framework_packs', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: { org_name: 'yohandry10' },
+      })
+      expect(response?.framework.framework_id).toBe('customer_bank_controls_123')
+      expect(useControlPlaneStore.getState().selectedComplianceFrameworkId).toBe('customer_bank_controls_123')
+      expect(useControlPlaneStore.getState().complianceFrameworkPacks).toHaveLength(1)
     })
   })
 })

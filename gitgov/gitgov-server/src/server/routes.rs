@@ -209,6 +209,18 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::get_compliance_control_framework),
         )
         .route(
+            "/compliance/framework-packs",
+            get(handlers::list_compliance_framework_packs),
+        )
+        .route(
+            "/compliance/framework-packs/import",
+            post(handlers::import_compliance_framework_pack),
+        )
+        .route(
+            "/compliance/framework-packs/{framework_pack_id}",
+            get(handlers::get_compliance_framework_pack),
+        )
+        .route(
             "/compliance/evidence-exports",
             post(handlers::create_compliance_evidence_export),
         )

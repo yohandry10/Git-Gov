@@ -151,6 +151,32 @@ pub struct CreateComplianceEvidenceMappingInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateComplianceFrameworkPackInput {
+    pub framework_pack_id: String,
+    pub org_id: String,
+    pub framework_id: String,
+    pub framework_name: String,
+    pub framework_version: String,
+    pub description: String,
+    pub owner_name: String,
+    pub schema_version: String,
+    pub pack_hash: String,
+    pub raw_pack_redacted: serde_json::Value,
+    pub created_by_user_id: String,
+    pub controls: Vec<CreateComplianceFrameworkPackControlInput>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateComplianceFrameworkPackControlInput {
+    pub control_row_id: String,
+    pub control_id: String,
+    pub title: String,
+    pub description: String,
+    pub required_evidence_types: Vec<String>,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateComplianceEvidenceMappingItemInput {
     pub item_id: String,
     pub control_id: String,

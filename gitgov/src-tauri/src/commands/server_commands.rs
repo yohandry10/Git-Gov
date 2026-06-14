@@ -1,14 +1,16 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
     AuditFilter, ChatAskRequest, ChatAskResponse, CliCommandInput, CliCommandListResponse,
-    CliCommandResponse, CombinedEvent, CommitPipelineCorrelation, ComplianceEvidenceExportQuery,
+    CliCommandResponse, CombinedEvent, CommitPipelineCorrelation,
+    ComplianceControlFrameworkListResponse, ComplianceEvidenceExportQuery,
     ComplianceEvidenceExportRequest, ComplianceEvidenceExportResponse,
     ComplianceEvidenceMappingQuery, ComplianceEvidenceMappingRequest,
-    ComplianceEvidenceMappingResponse, ComplianceReviewPackageQuery,
-    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
-    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
-    CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
-    CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
+    ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
+    ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
+    ComplianceFrameworkPackQuery, ComplianceReviewPackageQuery, ComplianceReviewPackageRequest,
+    ComplianceReviewPackageResponse, ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest,
+    CreateOrgInvitationRequest, CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse,
+    CreateOrgUserRequest, CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
     EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
@@ -885,6 +887,57 @@ pub async fn cmd_server_download_compliance_evidence_export(
         });
         client
             .download_compliance_evidence_export(&export_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_control_frameworks(
+    config: ServerConnectionConfig,
+    query: ComplianceFrameworkPackQuery,
+) -> Result<ComplianceControlFrameworkListResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_CONTROL_FRAMEWORKS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_control_frameworks(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_import_compliance_framework_pack(
+    config: ServerConnectionConfig,
+    payload: ComplianceFrameworkPackImportRequest,
+) -> Result<ComplianceFrameworkPackImportResponse, String> {
+    run_blocking_command("IMPORT_COMPLIANCE_FRAMEWORK_PACK", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .import_compliance_framework_pack(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_framework_packs(
+    config: ServerConnectionConfig,
+    query: ComplianceFrameworkPackQuery,
+) -> Result<ComplianceFrameworkPackListResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_FRAMEWORK_PACKS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_framework_packs(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
