@@ -212,6 +212,26 @@ pub struct CreateComplianceReviewPackageInput<'a> {
     pub payload_json_redacted: &'a serde_json::Value,
 }
 
+pub struct CreateComplianceFrameworkReviewReportInput<'a> {
+    pub report_id: &'a str,
+    pub org_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub mapping_id: &'a str,
+    pub review_package_id: &'a str,
+    pub evidence_export_id: &'a str,
+    pub evidence_export_hash: &'a str,
+    pub mapping_hash: &'a str,
+    pub review_package_hash: &'a str,
+    pub framework_id: &'a str,
+    pub framework_version: &'a str,
+    pub framework_owner_type: &'a str,
+    pub framework_review_status: Option<&'a str>,
+    pub pack_hash: Option<&'a str>,
+    pub format: &'a str,
+    pub artifact_hash: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
 #[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
@@ -672,6 +692,7 @@ mod chat_queries_release;
 mod compliance;
 mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
+mod compliance_framework_review_reports;
 mod compliance_review_packages;
 mod core;
 mod deployment_gates;

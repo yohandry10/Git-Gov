@@ -512,6 +512,49 @@ export interface ComplianceReviewPackageResponse {
   artifact?: Record<string, unknown> | null
 }
 
+export interface ComplianceFrameworkReviewReportRequest {
+  org_name?: string | null
+  mapping_id: string
+  review_package_id: string
+  format?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportRecord {
+  report_id: string
+  org_id: string
+  created_by_user_id: string
+  mapping_id: string
+  review_package_id: string
+  evidence_export_id: string
+  evidence_export_hash: string
+  mapping_hash: string
+  review_package_hash: string
+  framework_id: string
+  framework_version: string
+  framework_owner_type: string
+  framework_review_status?: string | null
+  pack_hash?: string | null
+  format: string
+  artifact_hash: string
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  certification: boolean
+  created_at: number
+  downloaded_at?: number | null
+  error_message_safe?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportResponse {
+  report: ComplianceFrameworkReviewReportRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -932,6 +975,8 @@ export interface ControlPlaneState {
   complianceEvidenceMapping: ComplianceEvidenceMappingResponse | null
   complianceReviewPackage: ComplianceReviewPackageResponse | null
   complianceReviewPackageArtifact: Record<string, unknown> | null
+  complianceFrameworkReviewReport: ComplianceFrameworkReviewReportResponse | null
+  complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -943,6 +988,8 @@ export interface ControlPlaneState {
   isComplianceEvidenceMappingCreating: boolean
   isComplianceReviewPackageCreating: boolean
   isComplianceReviewPackageDownloading: boolean
+  isComplianceFrameworkReviewReportCreating: boolean
+  isComplianceFrameworkReviewReportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1034,6 +1081,8 @@ export interface ControlPlaneActions {
   createComplianceEvidenceMapping: (exportId: string, frameworkId?: string) => Promise<ComplianceEvidenceMappingResponse | null>
   createComplianceReviewPackage: (mappingId: string) => Promise<ComplianceReviewPackageResponse | null>
   downloadComplianceReviewPackage: (reviewPackageId: string) => Promise<Record<string, unknown> | null>
+  createComplianceFrameworkReviewReport: (mappingId: string, reviewPackageId: string) => Promise<ComplianceFrameworkReviewReportResponse | null>
+  downloadComplianceFrameworkReviewReport: (reportId: string) => Promise<Record<string, unknown> | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

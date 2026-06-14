@@ -82,6 +82,8 @@ describe('useControlPlaneStore', () => {
       complianceEvidenceMapping: null,
       complianceReviewPackage: null,
       complianceReviewPackageArtifact: null,
+      complianceFrameworkReviewReport: null,
+      complianceFrameworkReviewReportArtifact: null,
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
       isComplianceFrameworkPackReviewing: false,
@@ -89,6 +91,8 @@ describe('useControlPlaneStore', () => {
       isComplianceEvidenceMappingCreating: false,
       isComplianceReviewPackageCreating: false,
       isComplianceReviewPackageDownloading: false,
+      isComplianceFrameworkReviewReportCreating: false,
+      isComplianceFrameworkReviewReportDownloading: false,
       complianceEvidenceError: null,
       isDeploymentGateAuthorizationsLoading: false,
       isReleaseApprovalsLoading: false,
@@ -941,11 +945,42 @@ describe('useControlPlaneStore', () => {
           regulatory_claim: false,
           certification: false,
         })
+        .mockResolvedValueOnce({
+          report: {
+            report_id: 'frr_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            mapping_id: 'cem_123',
+            review_package_id: 'crp_123',
+            evidence_export_id: 'cee_123',
+            evidence_export_hash: 'a'.repeat(64),
+            mapping_hash: 'b'.repeat(64),
+            review_package_hash: 'c'.repeat(64),
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            framework_version: '1.0.0',
+            framework_owner_type: 'gitgov',
+            format: 'json',
+            artifact_hash: 'd'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 5,
+          },
+          download_url: '/compliance/framework-review-reports/frr_123/download',
+          artifact: { schema_version: 'gitgov_framework_review_report.v1', certification: false },
+        })
+        .mockResolvedValueOnce({
+          schema_version: 'gitgov_framework_review_report.v1',
+          certification: false,
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
       const packageResponse = await useControlPlaneStore.getState().createComplianceReviewPackage(' cem_123 ')
       const artifact = await useControlPlaneStore.getState().downloadComplianceReviewPackage(' crp_123 ')
+      const reportResponse = await useControlPlaneStore.getState().createComplianceFrameworkReviewReport(' cem_123 ', ' crp_123 ')
+      const reportArtifact = await useControlPlaneStore.getState().downloadComplianceFrameworkReviewReport(' frr_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -998,10 +1033,28 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(5, 'cmd_server_create_compliance_framework_review_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          mapping_id: 'cem_123',
+          review_package_id: 'crp_123',
+          format: 'json',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(6, 'cmd_server_download_compliance_framework_review_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
       expect(artifact?.certification).toBe(false)
+      expect(reportResponse?.report.report_id).toBe('frr_123')
+      expect(reportArtifact?.schema_version).toBe('gitgov_framework_review_report.v1')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 

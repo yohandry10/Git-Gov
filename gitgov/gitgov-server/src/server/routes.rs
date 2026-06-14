@@ -256,6 +256,18 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             "/compliance/review-packages/{review_package_id}/download",
             get(handlers::download_compliance_review_package),
         )
+        .route(
+            "/compliance/framework-review-reports",
+            post(handlers::create_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}",
+            get(handlers::get_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/download",
+            get(handlers::download_compliance_framework_review_report),
+        )
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))

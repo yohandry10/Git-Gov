@@ -192,6 +192,9 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/review-packages` | Bearer (admin) | Crear artifact JSON hashable de revisión desde un mapping KAN-100 |
 | `/compliance/review-packages/{review_package_id}` | Bearer (admin) | Consultar metadata de un Control Mapping Review Package |
 | `/compliance/review-packages/{review_package_id}/download` | Bearer (admin) | Descargar el JSON redacted del review package; no es certificación ni claim regulatorio |
+| `/compliance/framework-review-reports` | Bearer (admin) | Crear reporte JSON framework-specific desde mapping + review package; sin score ni claim regulatorio |
+| `/compliance/framework-review-reports/{report_id}` | Bearer (admin) | Consultar metadata del Framework Review Report |
+| `/compliance/framework-review-reports/{report_id}/download` | Bearer (admin) | Descargar reporte JSON redacted con controles, evidencias, faltantes, hashes y provenance |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
