@@ -73,6 +73,7 @@ Final production smoke against `https://gitgov-api.onrender.com` reused a real D
 `Deployment Gate authorization -> KAN-99 export -> KAN-100 mapping -> KAN-101 review package -> server JSON download`.
 
 - Render deploy for merge commit `88cda2a` reached `live` as `dep-d8nbjmp9rddc739n0jj0`.
+- Render deploy for final hotfix commit `ba655c2` reached `live` as `dep-d8nbnatckfvc73em0vrg`.
 - `/health` returned `ok`.
 - Authenticated `/stats` returned HTTP `200`.
 - Source authorization: `dga_6bbb0ce5200a4d36ae6dc9fac1146c7a`.
