@@ -54,4 +54,44 @@ Focused coverage:
 
 ## Production Validation
 
-Pending PR merge, Render deploy, production migration `v41`, and production smoke validation.
+Passed after PR `#339` merged to `main` as `3f24c0b`.
+
+- Post-merge GitHub workflows passed for `3f24c0b`:
+  - `CI`
+  - `Release Readiness Gate`
+  - `Secret Scan`
+  - `Public Naming Guard`
+  - `Quality Gate Policy Matrix (Optional)`
+  - `Governance Correlation Smoke (Optional)`
+  - `Desktop Updater Readiness (Optional)`
+  - `SonarQube Governance (Non-Blocking)`
+- Production migration `supabase_schema_v41.sql` was applied manually through ignored
+  `DATABASE_URL`.
+- Production `v41_postcheck.sql` returned `PASS` for:
+  - `agent_governance_evaluations.attribution_columns`
+  - `agent_governance_evaluations.attribution_indexes`
+- Render deploy `dep-d8n7nb4m0tmc73b5hveg` reached `live` for commit `3f24c0b`.
+- `GET https://gitgov-api.onrender.com/health` returned `ok`.
+- Authenticated `GET https://gitgov-api.onrender.com/stats` returned HTTP `200`.
+- Before smoke, Agent Governance settings for `yohandry10` were
+  `enabled=false`, `mode=manual_only`, and `payload_mode=minimized`.
+- Manual-only attributed evaluate returned HTTP `403` with
+  `code=agent_governance_disabled`; history for the smoke agent returned `total=0`.
+- Temporary agent key `agk_ec4eec47df1f42ec9a78b921309ee44c` was created with
+  `allowed_actions=["commit"]`; the one-time plaintext token was not printed in logs or committed.
+- Agent Governance was temporarily enabled for smoke and returned `mode=opt_in_enabled`.
+- Agent-key dry-run with attribution returned HTTP `200`,
+  `consumer_type=agent_dry_run`, matching correlation
+  `corr-kan96-prod-dry-1781431652106`, and `would_persist_evaluation=false`.
+- Dry-run history for the smoke dry-run agent returned `total=0`, proving no formal evaluation row
+  was created.
+- Agent-key formal evaluate with attribution returned HTTP `201`, created
+  `agv_833b8b31c41947ccaf5c69d153890035`, returned correlation
+  `corr-kan96-prod-eval-1781431652106`, parent correlation
+  `corr-kan96-prod-dry-1781431652106`, matching agent key id, and deterministic
+  `llm_decision=false`.
+- History lookup by `correlation_id=corr-kan96-prod-eval-1781431652106` returned `total=1` with
+  `tool_name=codex-cli`.
+- Unsafe attribution with credential-looking `tool_name` returned HTTP `400`.
+- Temporary agent key was revoked.
+- Agent Governance settings were restored to `enabled=false` and `mode=manual_only`.
