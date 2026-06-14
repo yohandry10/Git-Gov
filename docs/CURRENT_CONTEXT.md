@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-14
-Ticket: `KAN-88` Break-glass Approval Routing
+Ticket: `KAN-89` Roadmap Sync After Break-glass Approval Routing
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,8 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Active implementation ticket: GitHub issue `#295`, retitled to `KAN-80: First Governed Repo Setup MVP`.
-- Active branch for KAN-80: `feature/KAN-80-first-repo-setup`. The repository publication guard rejects branch names containing `codex`, so this branch intentionally does not use the normal Codex prefix while keeping the required `KAN-80` traceability ID.
+- Active implementation ticket: GitHub issue `#318`, `KAN-89: Roadmap sync after break-glass approval routing`.
+- Active branch for KAN-89: `docs/KAN-89-roadmap-sync`.
+- KAN-89 is documentation/product-state synchronization only: it does not change runtime behavior,
+  database schema, provider configuration, or production deployment.
 - KAN-80 implements the first concrete Deployment Gates 0.1 slice, not a broad integration wizard: one Admin-managed first-repo setup per org, stable `run_id`, repo/branch selection, provider/module/preset selection, policy/workflow preview acknowledgement, backend-normalized baseline readiness, Action Center gaps, Desktop UI under `Governance > Adoption`, and CTA into advisory gate simulation.
 - KAN-80 backend route: `GET/PUT /enterprise/first-governed-repo-setup`. It is Admin-only, org-scoped like the enterprise adoption routes, rejects secret-looking baseline JSON, requires GitHub as selected provider, preserves `run_id` across upserts, and writes `upsert_first_governed_repo_setup` audit entries.
 - KAN-80 migration: `gitgov/gitgov-server/supabase/supabase_schema_v32.sql` creates `enterprise_first_governed_repo_setups`.
@@ -39,6 +41,7 @@ Read this file first when resuming work. It is the compact operational handoff f
 - KAN-88 implementation status: GitHub issue `#315` closed by PR `#316`, merged to `main` as `bd44db1` on 2026-06-14. It hardens KAN-87 by adding pre-approved break-glass routing for Deployment Gates. New routes: `POST /deployment-gates/break-glass-approvals` and `GET /deployment-gates/break-glass-approvals`. New table: `deployment_gate_break_glass_approvals`. `deployment_gate_authorizations` now stores `break_glass_approval_id` and `break_glass_approval_hash`. `POST /deployment-gates/authorize` only accepts `break_glass` when the evaluated policy is blocking and a valid unexpired approval matches the same release id, repository, branch, target SHA, environment, ticket id when supplied, and evidence packet hash. Desktop `Governance > Releases` now shows `pre-approved`, approval id, and approval hash for break-glass records.
 - KAN-88 migration: `gitgov/gitgov-server/supabase/supabase_schema_v37.sql`; postcheck: `gitgov/gitgov-server/supabase/checks/v37_postcheck.sql`.
 - KAN-88 validation on 2026-06-14: `cargo fmt --manifest-path gitgov/gitgov-server/Cargo.toml --check`, `cargo check --manifest-path gitgov/gitgov-server/Cargo.toml`, `cargo clippy --manifest-path gitgov/gitgov-server/Cargo.toml -- -D warnings`, focused deployment gate tests against temporary local Postgres on `127.0.0.1:55433` (`11` tests), full backend tests against the same temporary Postgres (`265` tests), temporary Postgres migration/postcheck applying `supabase_schema.sql`, `v28`, `v35`, `v36`, and `v37` with `v37_postcheck` all `PASS`, `cargo fmt/check/clippy/test` for `gitgov/src-tauri` (`49` tests), `npm --prefix gitgov run typecheck`, focused `DeploymentGateHistoryPanel` test, full frontend tests (`361` tests), `npm --prefix gitgov run lint`, `npm --prefix gitgov run build` with the existing Vite large chunk warning, `git diff --check`, and `.\scripts\security\publication_guard.ps1` passed. The temporary Postgres container `gitgov-kan88-pg` was removed after validation. PR checks and post-merge `main` checks passed for `bd44db1`: `CI`, `Release Readiness Gate`, `Secret Scan`, `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`. Production `v37` migration/postcheck passed. Render deploy `dep-d8n324u8bjmc73en5qgg` for `bd44db1` reached `live`; production smoke returned `/health=ok`, authenticated `/stats=200`, anonymous `GET /deployment-gates/break-glass-approvals?org_name=yohandry10&limit=1` returned `401`, authenticated `POST /deployment-gates/break-glass-approvals` created `dgbga_8be2e0b2a33741368ab211e7d4b5e77f` from existing release evidence, and authenticated `GET` by approval id returned `total=1`.
+- KAN-89 implementation status: active documentation sync ticket on branch `docs/KAN-89-roadmap-sync`. It updates `docs/design/enterprise-self-service-and-ai-copilot-roadmap.md` so KAN-88 is listed as an implemented Deployment Gates primitive, removes stale wording that treated break-glass approval routing as future work, clarifies the remaining Deployment Gates backlog as provider installation/coverage and advanced routing workflows, and marks `0.2 Agentic Governance Layer` as the next major roadmap block.
 - KAN historical planning records were migrated to GitHub Issues on 2026-06-12:
   - `KAN-4` through `KAN-77` were created as closed historical GitHub issues `#217` through `#290`.
   - Labels created/used: `migrated-from-jira`, `historical-record`, `gitgov-recovered`, and `reconstructed-from-github`.
@@ -814,7 +817,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Product Roadmap
 
-- Current major product feature: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`/`KAN-35`/`KAN-36`/`KAN-37`).
+- Current completed enterprise onboarding foundation: Enterprise Self-Service Adoption MVP (`KAN-29`/`KAN-30`/`KAN-31`/`KAN-32`/`KAN-33`/`KAN-34`/`KAN-35`/`KAN-36`/`KAN-37`).
   - KAN-29 packages the proven GitGov operating model into a reusable adoption pack generator.
   - KAN-30 adds the first dashboard profile builder with provider/module toggles, policy presets, validation, workflow/policy preview, and secret-safe JSON export.
   - KAN-31 persists adoption profiles per org with admin save/load.
@@ -824,11 +827,20 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-35 adds reviewed local workflow installation from CLI or dashboard workflow packs.
   - KAN-36 adds direct provider credential/reachability checks.
   - KAN-37 adds formal release approval persistence with evidence packet hash and risk expiration.
-- Current major AI feature: Vercel AI SDK Copilot.
+- Current completed Deployment Gates 0.1 slice: `KAN-80` plus `KAN-83` through `KAN-88`.
+  - KAN-80 adds first governed repo setup.
+  - KAN-83 adds the CI/CD-facing deployment authorization API.
+  - KAN-84 adds persisted authorization history in Desktop and generated workflow migration.
+  - KAN-85 adds GitHub Actions, Jenkins Pipeline, and GitLab CI examples.
+  - KAN-86 adds environment policy UX.
+  - KAN-87 adds audited break-glass deployment authorization.
+  - KAN-88 adds pre-approved break-glass approval routing bound to release evidence.
+- Current completed AI feature: Vercel AI SDK Copilot.
   - Explain readiness, findings, tickets, pipelines, evidence packets, accepted risks, and blockers in plain language with cited GitGov evidence.
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
   - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
+- Next major product block after KAN-89: `0.2 Agentic Governance Layer`, starting with a deterministic agent policy/API slice rather than an LLM-decided control.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
 ## Archived Ticket Notes

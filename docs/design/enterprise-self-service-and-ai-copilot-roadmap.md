@@ -1,8 +1,8 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-06-12
+Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88
 
 ## Decision
 
@@ -79,12 +79,21 @@ Current primitives:
 - `KAN-86` adds the Desktop/admin Environment Policy Matrix for release governance so stricter
   production policy can be reviewed without making the base policy blocking.
 - `KAN-87` adds audited break-glass deployment authorization for genuinely blocking policy results.
+- `KAN-88` adds pre-approved break-glass approval routing: Deployment Gate callers can use
+  break-glass only when a valid unexpired approval matches the same release, repository, branch,
+  target SHA, environment, optional ticket, and evidence packet hash.
 
 Future scope:
 
 - Additional deployer examples beyond GitHub Actions, Jenkins Pipeline, and GitLab CI.
-- Advanced environment policy workflows, such as environment-specific break-glass routing.
-- Break-glass approval routing beyond the initial Admin-authorized exception contract.
+- Advanced environment policy workflows, such as environment-specific approval routing,
+  notification/escalation rules, and multi-approver break-glass chains.
+- Customer-facing installation flows that wire Deployment Gates into provider repositories after
+  explicit operator review, instead of examples/manual copy-paste only.
+- Broader deployment target coverage and richer provider-specific evidence artifacts.
+
+Next major roadmap block after the KAN-80 through KAN-88 Deployment Gates slice:
+`0.2 Agentic Governance Layer`.
 
 ### 0.2 Agentic Governance Layer
 
