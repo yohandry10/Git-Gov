@@ -422,6 +422,94 @@ fn decide_agent_governance(
     )
 }
 
+async fn enforce_agent_governance_agent_permissions(
+    state: &Arc<AppState>,
+    auth_user: &AuthUser,
+    org_id: &str,
+    action: &str,
+) -> Option<axum::response::Response> {
+    if auth_user.principal_type != "agent" {
+        return None;
+    }
+
+    let allowed = auth_user
+        .scopes
+        .iter()
+        .any(|scope| scope == AGENT_GOVERNANCE_EVALUATE_SCOPE);
+    if !allowed {
+        write_agent_governance_audit(
+            state,
+            &auth_user.client_id,
+            "agent_key.invalid_scope",
+            "agent_governance_agent_key",
+            auth_user.agent_key_id.clone(),
+            json!({
+                "org_id": org_id,
+                "principal_type": "agent",
+                "agent_key_id": auth_user.agent_key_id,
+                "agent_display_name": auth_user.agent_display_name,
+                "action": action,
+                "reason": "missing_agent_governance_evaluate_scope"
+            }),
+        )
+        .await;
+        return Some(
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({
+                    "error": "Agent key scope does not allow this request",
+                    "code": "invalid_scope"
+                })),
+            )
+                .into_response(),
+        );
+    }
+
+    let allowed_actions = auth_user
+        .scopes
+        .iter()
+        .find_map(|scope| scope.strip_prefix("agent_actions:"))
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if !allowed_actions.is_empty() && !allowed_actions.contains(&action) {
+        write_agent_governance_audit(
+            state,
+            &auth_user.client_id,
+            "agent_key.denied",
+            "agent_governance_agent_key",
+            auth_user.agent_key_id.clone(),
+            json!({
+                "org_id": org_id,
+                "principal_type": "agent",
+                "agent_key_id": auth_user.agent_key_id,
+                "agent_display_name": auth_user.agent_display_name,
+                "action": action,
+                "allowed_actions": allowed_actions,
+                "reason": "action_not_allowed"
+            }),
+        )
+        .await;
+        return Some(
+            (
+                StatusCode::FORBIDDEN,
+                Json(json!({
+                    "error": "Agent key is not allowed to evaluate this action",
+                    "code": "action_not_allowed"
+                })),
+            )
+                .into_response(),
+        );
+    }
+
+    None
+}
+
 pub async fn evaluate_agent_governance(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -509,77 +597,15 @@ pub async fn evaluate_agent_governance(
             .into_response();
     }
 
-    if auth_user.principal_type == "agent" {
-        let allowed = auth_user
-            .scopes
-            .iter()
-            .any(|scope| scope == AGENT_GOVERNANCE_EVALUATE_SCOPE);
-        if !allowed {
-            write_agent_governance_audit(
-                &state,
-                &auth_user.client_id,
-                "agent_key.invalid_scope",
-                "agent_governance_agent_key",
-                auth_user.agent_key_id.clone(),
-                json!({
-                    "org_id": org_id,
-                    "principal_type": "agent",
-                    "agent_key_id": auth_user.agent_key_id,
-                    "agent_display_name": auth_user.agent_display_name,
-                    "action": payload.action,
-                    "reason": "missing_agent_governance_evaluate_scope"
-                }),
-            )
-            .await;
-            return (
-                StatusCode::FORBIDDEN,
-                Json(json!({
-                    "error": "Agent key scope does not allow this request",
-                    "code": "invalid_scope"
-                })),
-            )
-                .into_response();
-        }
-
-        let allowed_actions = auth_user
-            .scopes
-            .iter()
-            .find_map(|scope| scope.strip_prefix("agent_actions:"))
-            .map(|value| {
-                value
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        if !allowed_actions.is_empty() && !allowed_actions.contains(&payload.action.as_str()) {
-            write_agent_governance_audit(
-                &state,
-                &auth_user.client_id,
-                "agent_key.denied",
-                "agent_governance_agent_key",
-                auth_user.agent_key_id.clone(),
-                json!({
-                    "org_id": org_id,
-                    "principal_type": "agent",
-                    "agent_key_id": auth_user.agent_key_id,
-                    "agent_display_name": auth_user.agent_display_name,
-                    "action": payload.action,
-                    "allowed_actions": allowed_actions,
-                    "reason": "action_not_allowed"
-                }),
-            )
-            .await;
-            return (
-                StatusCode::FORBIDDEN,
-                Json(json!({
-                    "error": "Agent key is not allowed to evaluate this action",
-                    "code": "action_not_allowed"
-                })),
-            )
-                .into_response();
-        }
+    if let Some(response) = enforce_agent_governance_agent_permissions(
+        &state,
+        &auth_user,
+        &org_id,
+        payload.action.as_str(),
+    )
+    .await
+    {
+        return response;
     }
 
     let agent_type = payload

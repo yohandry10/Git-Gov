@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-14
-Ticket: `KAN-94` Agent-Scoped API Keys
+Ticket: `KAN-95` Agent Governance Dry-Run
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,6 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- Active implementation ticket: GitHub issue `#335`, `KAN-95: Agent Governance dry-run preview`, on branch `feature/KAN-95-agent-dry-run`.
+- KAN-95 product decision from GPT/product review: implement Agent Governance dry-run as the next small safe slice after KAN-94. Dry-run answers "what would GitGov decide?" without authorizing execution and without persisting an `agent_governance_evaluations` row. It remains tenant opt-in, optional, manual-first, and not required for Deployment Gates or regulated/manual-only customers.
+- KAN-95 implementation status on 2026-06-14: local branch adds `POST /agent-governance/dry-run`, reuses the deterministic Agent Governance policy evaluator, returns `dry_run=true`, `would_persist_evaluation=false`, and `would_authorize_execution=false`, allows KAN-94 agent-scoped keys to call dry-run through the existing `agent_governance:evaluate` scope, and shares agent-key `allowed_actions` enforcement with `POST /agent-governance/evaluate`. Local validation passed: backend check/clippy, v40 postcheck against temporary PostgreSQL 16 on `127.0.0.1:55438`, focused Agent Governance tests (`19` passed), full backend tests (`284` passed), `git diff --check`, and publication guard. Remaining: PR/merge, Render deploy, production smoke, and production-validation docs update.
 - Latest completed implementation ticket: GitHub issue `#332`, `KAN-94: Agent-scoped API keys for optional Agent Governance`, closed by PR `#333` and merged to `main` as `aa0a9c9` on 2026-06-14.
 - KAN-94 product decision from GPT/product review: implement agent-scoped credentials as an optional Agent Governance hardening slice, not a chatbot, MCP server, BYOM feature, IAM replacement, provider mutation path, Deployment Gate dependency, or default requirement. GitGov remains manual-first. Agent keys are limited to `POST /agent-governance/evaluate`, require tenant opt-in, store only token hashes plus prefix/last-four metadata, return plaintext token only once, audit create/use/deny/revoke/invalid-scope events, and must not create evaluation rows for disabled tenants, revoked/expired keys, invalid scopes, tenant mismatch, or disallowed actions.
 - KAN-94 implementation status on 2026-06-14: backend Agent Governance agent-key management routes added (`GET/POST /agent-governance/agent-keys`, `DELETE /agent-governance/agent-keys/{key_id}`), agent-key auth path added for `ggag_` bearer tokens, `agent_governance_agent_keys` table and `agent_governance_evaluations` principal identity columns added through migration `v40`, Agent Governance handlers split into runtime/admin/key modules, and docs added under `docs/design/agent-scoped-api-keys-mvp.md` plus `docs/reports/agent-scoped-api-keys-2026-06-14.md`. Local validation passed: backend fmt/check/clippy, v40 migration/postcheck against temporary PostgreSQL 16 on `127.0.0.1:55437`, focused Agent Governance tests (`15` passed), full backend tests (`280` passed), `git diff --check`, and publication guard. Post-merge checks passed. Production migration `v40` was applied and postcheck passed. Render deploy `dep-d8n6pv77f7vs73fgfta0` for `aa0a9c9` reached `live`. Production smoke passed: `/health=ok`, authenticated `/stats=200`, manual-only disabled evaluation returned `403 agent_governance_disabled`, temporary agent key `agk_fcbda5f73c324fba99d33b195400bbcc` created without exposing plaintext token in list responses, temporary opt-in allowed evaluation `agv_356ca31100864046b104e2184eaec0ba` with `principal_type=agent` and `llm_decision=false`, `change_policy` returned `403 action_not_allowed`, revoked token returned `401 revoked_key`, and settings were restored to `enabled=false/mode=manual_only`.
@@ -853,7 +856,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
   - KAN-38 implements the first server-side route with `POST /api/copilot/governance`.
   - KAN-39 adds the first admin dashboard surface for that route.
 - Completed hardening gate before those larger features: KAN-28 vulnerability trend enforcement.
-- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 added shared deterministic decision evidence across Deployment Gates and optional Agent Governance. KAN-94 added optional agent-scoped credentials; it remains customer-selected and is not required for manual Deployment Gates.
+- Active product block after KAN-90: `0.2 Agentic Governance Layer`. KAN-90 delivered the first deterministic, opt-in agent policy/API slice rather than an LLM-decided control. Manual GitGov workflows remain canonical for banks and regulated customers that prohibit autonomous agents. KAN-92 added the disabled-by-default control boundary. KAN-93 added shared deterministic decision evidence across Deployment Gates and optional Agent Governance. KAN-94 added optional agent-scoped credentials; it remains customer-selected and is not required for manual Deployment Gates. KAN-95 is active to add a dry-run preview that does not persist evaluation evidence or authorize execution.
 - Optional later hygiene: remove the residual `rsa` / inactive `sqlx-mysql` dependency finding when upstream resolution or safe dependency cleanup makes that practical.
 
 ## Archived Ticket Notes
@@ -872,7 +875,7 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-No active implementation blocker remains after KAN-94 merge and production smoke validation.
+KAN-95 is active local implementation work. No product blocker is known; remaining blockers are full validation, PR, merge, production deploy, smoke, and documentation of production evidence.
 
 Current work types are:
 
