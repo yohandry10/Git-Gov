@@ -241,6 +241,14 @@ pub struct ListComplianceFrameworkReviewReportsInput<'a> {
     pub limit: i64,
 }
 
+pub struct UpdateComplianceFrameworkReviewReportReviewInput<'a> {
+    pub org_id: &'a str,
+    pub report_id: &'a str,
+    pub review_status: &'a str,
+    pub reviewed_by_user_id: &'a str,
+    pub review_notes_safe: Option<&'a str>,
+}
+
 #[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,

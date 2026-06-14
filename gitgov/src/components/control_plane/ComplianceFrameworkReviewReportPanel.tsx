@@ -1,4 +1,5 @@
-import { Download, FileCheck2, History, RefreshCw, ShieldAlert } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle2, Download, FileCheck2, History, RefreshCw, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -25,7 +26,17 @@ function downloadJson(filename: string, data: unknown) {
   URL.revokeObjectURL(url)
 }
 
+function reviewBadgeVariant(status?: string | null): 'success' | 'warning' | 'danger' | 'neutral' | 'info' {
+  if (status === 'reviewed') return 'success'
+  if (status === 'needs_changes') return 'warning'
+  if (status === 'rejected') return 'danger'
+  if (status === 'needs_review') return 'info'
+  return 'neutral'
+}
+
 export function ComplianceFrameworkReviewReportPanel() {
+  const [reviewStatus, setReviewStatus] = useState('reviewed')
+  const [reviewNotesSafe, setReviewNotesSafe] = useState('')
   const mapping = useControlPlaneStore((state) => state.complianceEvidenceMapping?.mapping ?? null)
   const packageRecord = useControlPlaneStore((state) => state.complianceReviewPackage?.review_package ?? null)
   const report = useControlPlaneStore((state) => state.complianceFrameworkReviewReport?.report ?? null)
@@ -33,10 +44,12 @@ export function ComplianceFrameworkReviewReportPanel() {
   const reportArtifact = useControlPlaneStore((state) => state.complianceFrameworkReviewReportArtifact)
   const isCreating = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportCreating)
   const isHistoryLoading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportsLoading)
+  const isReviewing = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportReviewing)
   const isDownloading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportDownloading)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const createReport = useControlPlaneStore((state) => state.createComplianceFrameworkReviewReport)
   const loadReports = useControlPlaneStore((state) => state.loadComplianceFrameworkReviewReports)
+  const reviewReport = useControlPlaneStore((state) => state.reviewComplianceFrameworkReviewReport)
   const downloadReport = useControlPlaneStore((state) => state.downloadComplianceFrameworkReviewReport)
 
   const canGenerate = Boolean(mapping?.mapping_id && packageRecord?.review_package_id)
@@ -69,6 +82,11 @@ export function ComplianceFrameworkReviewReportPanel() {
     }
   }
 
+  const handleReview = async () => {
+    if (!report) return
+    await reviewReport(report.report_id, reviewStatus, reviewNotesSafe)
+  }
+
   return (
     <div className="mt-4 rounded-lg border border-white/8 bg-surface-900/60 p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -77,6 +95,7 @@ export function ComplianceFrameworkReviewReportPanel() {
             <FileCheck2 size={14} className="text-brand-300" />
             <span className="text-xs font-medium text-surface-200">Framework Review Report</span>
             <Badge variant={report ? 'success' : 'info'}>{report ? 'report ready' : 'JSON export'}</Badge>
+            {report && <Badge variant={reviewBadgeVariant(report.review_status)}>{report.review_status}</Badge>}
           </div>
           <p className="mt-1 text-[11px] leading-5 text-surface-500">
             Framework-specific evidence report with source hashes, review provenance, missing evidence, and no certification claim.
@@ -160,6 +179,53 @@ export function ComplianceFrameworkReviewReportPanel() {
           <span>Auditor review: <span className="font-mono text-surface-200">{String(report.requires_auditor_review)}</span></span>
           <span>Pack: <span className="font-mono text-surface-200">{shortHash(report.pack_hash)}</span></span>
           <span>Created: <span className="text-surface-200">{formatTs(report.created_at, displayTimezone)}</span></span>
+          <span>Review status: <span className="font-mono text-surface-200">{report.review_status}</span></span>
+          <span>Reviewer: <span className="font-mono text-surface-200">{report.reviewed_by_user_id ?? 'not reviewed'}</span></span>
+          <span>Reviewed: <span className="text-surface-200">{report.reviewed_at ? formatTs(report.reviewed_at, displayTimezone) : 'not yet'}</span></span>
+        </div>
+      )}
+
+      {report && (
+        <div className="mt-3 rounded border border-white/8 bg-white/[0.03] p-2">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-surface-200">
+            <CheckCircle2 size={13} className="text-brand-300" />
+            Manual report review
+            <Badge variant={reviewBadgeVariant(report.review_status)}>{report.review_status}</Badge>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[180px_minmax(0,1fr)_auto]">
+            <select
+              className="h-9 rounded border border-white/10 bg-surface-950 px-2 text-xs text-surface-100 outline-none focus:border-brand-400"
+              value={reviewStatus}
+              onChange={(event) => setReviewStatus(event.target.value)}
+              aria-label="Framework report review status"
+            >
+              <option value="reviewed">Reviewed</option>
+              <option value="needs_changes">Needs changes</option>
+              <option value="rejected">Rejected</option>
+              <option value="needs_review">Needs review</option>
+            </select>
+            <textarea
+              className="min-h-9 rounded border border-white/10 bg-surface-950 px-2 py-2 text-xs text-surface-100 outline-none placeholder:text-surface-600 focus:border-brand-400"
+              value={reviewNotesSafe}
+              onChange={(event) => setReviewNotesSafe(event.target.value)}
+              maxLength={1000}
+              placeholder="Safe review note"
+              aria-label="Framework report review notes"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isReviewing}
+              onClick={() => void handleReview()}
+              title="Save manual framework report review metadata"
+            >
+              <CheckCircle2 size={13} />
+              Review
+            </Button>
+          </div>
+          {report.review_notes_safe && (
+            <p className="mt-2 text-[11px] leading-5 text-surface-400">{report.review_notes_safe}</p>
+          )}
         </div>
       )}
 
@@ -190,6 +256,7 @@ export function ComplianceFrameworkReviewReportPanel() {
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-surface-500">
                         <span>Framework: <span className="text-surface-300">{item.framework_id}</span></span>
                         <span>Owner: <span className="text-surface-300">{item.framework_owner_type}</span></span>
+                        <span>Review: <span className="text-surface-300">{item.review_status}</span></span>
                         <span>Created: <span className="text-surface-300">{formatTs(item.created_at, displayTimezone)}</span></span>
                         <span>Downloaded: <span className="text-surface-300">{item.downloaded_at ? formatTs(item.downloaded_at, displayTimezone) : 'not yet'}</span></span>
                       </div>

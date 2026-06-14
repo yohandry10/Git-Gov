@@ -527,6 +527,12 @@ export interface ComplianceFrameworkReviewReportQuery {
   limit?: number | null
 }
 
+export interface ComplianceFrameworkReviewReportReviewRequest {
+  org_name?: string | null
+  review_status: 'needs_review' | 'reviewed' | 'needs_changes' | 'rejected' | string
+  review_notes_safe?: string | null
+}
+
 export interface ComplianceFrameworkReviewReportRecord {
   report_id: string
   org_id: string
@@ -548,6 +554,10 @@ export interface ComplianceFrameworkReviewReportRecord {
   regulatory_claim: boolean
   requires_auditor_review: boolean
   certification: boolean
+  review_status: string
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
   created_at: number
   downloaded_at?: number | null
   error_message_safe?: string | null
@@ -1001,6 +1011,7 @@ export interface ControlPlaneState {
   isComplianceReviewPackageDownloading: boolean
   isComplianceFrameworkReviewReportCreating: boolean
   isComplianceFrameworkReviewReportsLoading: boolean
+  isComplianceFrameworkReviewReportReviewing: boolean
   isComplianceFrameworkReviewReportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
@@ -1095,6 +1106,11 @@ export interface ControlPlaneActions {
   downloadComplianceReviewPackage: (reviewPackageId: string) => Promise<Record<string, unknown> | null>
   createComplianceFrameworkReviewReport: (mappingId: string, reviewPackageId: string) => Promise<ComplianceFrameworkReviewReportResponse | null>
   loadComplianceFrameworkReviewReports: (filters?: Omit<ComplianceFrameworkReviewReportQuery, 'org_name'>) => Promise<ComplianceFrameworkReviewReportListResponse | null>
+  reviewComplianceFrameworkReviewReport: (
+    reportId: string,
+    reviewStatus: ComplianceFrameworkReviewReportReviewRequest['review_status'],
+    reviewNotesSafe?: string | null,
+  ) => Promise<ComplianceFrameworkReviewReportResponse | null>
   downloadComplianceFrameworkReviewReport: (reportId: string) => Promise<Record<string, unknown> | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>

@@ -94,6 +94,7 @@ describe('useControlPlaneStore', () => {
       isComplianceReviewPackageDownloading: false,
       isComplianceFrameworkReviewReportCreating: false,
       isComplianceFrameworkReviewReportsLoading: false,
+      isComplianceFrameworkReviewReportReviewing: false,
       isComplianceFrameworkReviewReportDownloading: false,
       complianceEvidenceError: null,
       isDeploymentGateAuthorizationsLoading: false,
@@ -967,6 +968,10 @@ describe('useControlPlaneStore', () => {
             regulatory_claim: false,
             requires_auditor_review: true,
             certification: false,
+            review_status: 'needs_review',
+            reviewed_by_user_id: null,
+            reviewed_at: null,
+            review_notes_safe: null,
             created_at: 5,
           },
           download_url: '/compliance/framework-review-reports/frr_123/download',
@@ -993,12 +998,45 @@ describe('useControlPlaneStore', () => {
               regulatory_claim: false,
               requires_auditor_review: true,
               certification: false,
+              review_status: 'needs_review',
+              reviewed_by_user_id: null,
+              reviewed_at: null,
+              review_notes_safe: null,
               created_at: 5,
               downloaded_at: null,
             },
           ],
           count: 1,
           limit: 25,
+        })
+        .mockResolvedValueOnce({
+          report: {
+            report_id: 'frr_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            mapping_id: 'cem_123',
+            review_package_id: 'crp_123',
+            evidence_export_id: 'cee_123',
+            evidence_export_hash: 'a'.repeat(64),
+            mapping_hash: 'b'.repeat(64),
+            review_package_hash: 'c'.repeat(64),
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            framework_version: '1.0.0',
+            framework_owner_type: 'gitgov',
+            format: 'json',
+            artifact_hash: 'd'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            review_status: 'needs_changes',
+            reviewed_by_user_id: 'admin',
+            reviewed_at: 6,
+            review_notes_safe: 'Needs owner sign-off.',
+            created_at: 5,
+            downloaded_at: null,
+          },
+          download_url: '/compliance/framework-review-reports/frr_123/download',
         })
         .mockResolvedValueOnce({
           schema_version: 'gitgov_framework_review_report.v1',
@@ -1016,6 +1054,11 @@ describe('useControlPlaneStore', () => {
         review_package_id: ' crp_123 ',
         limit: 500,
       })
+      const reviewedReport = await useControlPlaneStore.getState().reviewComplianceFrameworkReviewReport(
+        ' frr_123 ',
+        ' needs_changes ',
+        ' Needs owner sign-off. ',
+      )
       const reportArtifact = await useControlPlaneStore.getState().downloadComplianceFrameworkReviewReport(' frr_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
@@ -1088,7 +1131,16 @@ describe('useControlPlaneStore', () => {
           limit: 500,
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(7, 'cmd_server_download_compliance_framework_review_report', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(7, 'cmd_server_review_compliance_framework_review_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        payload: {
+          org_name: 'yohandry10',
+          review_status: 'needs_changes',
+          review_notes_safe: 'Needs owner sign-off.',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(8, 'cmd_server_download_compliance_framework_review_report', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         reportId: 'frr_123',
         query: {
@@ -1104,8 +1156,10 @@ describe('useControlPlaneStore', () => {
       const historyItem = reportHistory?.items[0] as Record<string, unknown> | undefined
       expect(historyItem?.artifact).toBeUndefined()
       expect(historyItem?.payload_json_redacted).toBeUndefined()
+      expect(reviewedReport?.report.review_status).toBe('needs_changes')
       expect(reportArtifact?.schema_version).toBe('gitgov_framework_review_report.v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
+      expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 

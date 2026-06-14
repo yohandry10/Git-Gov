@@ -294,6 +294,15 @@ pub struct ComplianceFrameworkReviewReportQuery {
     pub limit: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportReviewRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub review_status: String,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplianceFrameworkReviewReportRecord {
     pub report_id: String,
@@ -318,6 +327,13 @@ pub struct ComplianceFrameworkReviewReportRecord {
     pub regulatory_claim: bool,
     pub requires_auditor_review: bool,
     pub certification: bool,
+    pub review_status: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
     pub created_at: i64,
     #[serde(default)]
     pub downloaded_at: Option<i64>,

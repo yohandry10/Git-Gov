@@ -74,6 +74,7 @@ export function createInitialControlPlaneState(): ControlPlaneState {
   isComplianceReviewPackageDownloading: false,
   isComplianceFrameworkReviewReportCreating: false,
   isComplianceFrameworkReviewReportsLoading: false,
+  isComplianceFrameworkReviewReportReviewing: false,
   isComplianceFrameworkReviewReportDownloading: false,
   isReleaseApprovalSubmitting: false,
   releaseApprovalError: null,

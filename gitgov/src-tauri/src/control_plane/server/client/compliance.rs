@@ -423,6 +423,35 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn review_compliance_framework_review_report(
+        &self,
+        report_id: &str,
+        payload: &ComplianceFrameworkReviewReportReviewRequest,
+    ) -> Result<ComplianceFrameworkReviewReportResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "review",
+        ])?;
+        let mut request = self.client.patch(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn download_compliance_framework_review_report(
         &self,
         report_id: &str,

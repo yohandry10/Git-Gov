@@ -266,6 +266,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::get_compliance_framework_review_report),
         )
         .route(
+            "/compliance/framework-review-reports/{report_id}/review",
+            patch(handlers::review_compliance_framework_review_report),
+        )
+        .route(
             "/compliance/framework-review-reports/{report_id}/download",
             get(handlers::download_compliance_framework_review_report),
         )

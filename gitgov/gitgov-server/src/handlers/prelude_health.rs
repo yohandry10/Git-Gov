@@ -8,7 +8,8 @@ use crate::db::{
     CreateDeploymentGateAuthorizationInput, CreatePolicyChangeRequestInput, Database, DbError, Job, JobMetrics,
     ListAgentGovernanceEvaluationsInput, ListComplianceFrameworkReviewReportsInput,
     ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, PipelineRunsForEvidencePacketQuery,
-    PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput, UpsertOrgUserInput,
+    PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput,
+    UpdateComplianceFrameworkReviewReportReviewInput, UpsertOrgUserInput,
 };
 use crate::models::*;
 use crate::notifications;

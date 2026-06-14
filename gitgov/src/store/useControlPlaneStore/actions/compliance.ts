@@ -27,6 +27,7 @@ type ComplianceActionKeys =
   | 'downloadComplianceReviewPackage'
   | 'createComplianceFrameworkReviewReport'
   | 'loadComplianceFrameworkReviewReports'
+  | 'reviewComplianceFrameworkReviewReport'
   | 'downloadComplianceFrameworkReviewReport'
   | 'resetComplianceEvidenceFlow'
 
@@ -433,6 +434,51 @@ export function createComplianceActions(
         set({
           complianceEvidenceError: message,
           isComplianceFrameworkReviewReportsLoading: false,
+        })
+        return null
+      }
+    },
+
+    reviewComplianceFrameworkReviewReport: async (reportId, reviewStatus, reviewNotesSafe = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      const normalizedReviewStatus = reviewStatus.trim().toLowerCase()
+      const normalizedNotes = reviewNotesSafe?.trim() || null
+      if (!serverConfig || !normalizedReportId || !normalizedReviewStatus) return null
+
+      set({
+        isComplianceFrameworkReviewReportReviewing: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportResponse>('cmd_server_review_compliance_framework_review_report', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+            review_status: normalizedReviewStatus,
+            review_notes_safe: normalizedNotes,
+          },
+        })
+        const currentReports = get().complianceFrameworkReviewReports
+        set({
+          complianceFrameworkReviewReport: response,
+          complianceFrameworkReviewReports: currentReports
+            ? {
+                ...currentReports,
+                items: currentReports.items.map((item) => (
+                  item.report_id === response.report.report_id ? response.report : item
+                )),
+              }
+            : currentReports,
+          isComplianceFrameworkReviewReportReviewing: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportReviewing: false,
         })
         return null
       }

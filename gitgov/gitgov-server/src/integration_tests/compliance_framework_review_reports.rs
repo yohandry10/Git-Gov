@@ -438,6 +438,8 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     let other_org_id = insert_test_org(&pool, "kan106-report-history-other").await;
     let gate_id = seed_framework_report_gate(&pool, &org_id, "baseline").await;
     let admin = insert_test_api_key_for_org(&pool, "kan105-report-admin", "Admin", &org_id).await;
+    let developer =
+        insert_test_api_key_for_org(&pool, "kan107-report-dev", "Developer", &org_id).await;
     let other_admin = insert_test_api_key_for_org(
         &pool,
         "kan106-report-history-other-admin",
@@ -475,6 +477,7 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(record["regulatory_claim"], false);
     assert_eq!(record["certification"], false);
     assert_eq!(record["requires_auditor_review"], true);
+    assert_eq!(record["review_status"], "needs_review");
 
     let artifact = &report["artifact"];
     assert_eq!(
@@ -513,6 +516,114 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     let metadata: serde_json::Value = serde_json::from_str(&metadata).expect("report metadata");
     assert!(metadata.get("artifact").is_none());
     assert_eq!(metadata["report"]["artifact_hash"], artifact_hash);
+    assert_eq!(metadata["report"]["review_status"], "needs_review");
+
+    let review_body = json!({
+        "review_status": " needs_changes ",
+        "review_notes_safe": "Auditor needs evidence owner sign-off before this can be accepted."
+    });
+    let (status, reviewed_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&review_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "review report failed: {reviewed_response}"
+    );
+    let reviewed_response: serde_json::Value =
+        serde_json::from_str(&reviewed_response).expect("review response JSON");
+    let reviewed = &reviewed_response["report"];
+    assert_eq!(reviewed["review_status"], "needs_changes");
+    assert_eq!(reviewed["reviewed_by_user_id"], "kan105-report-admin");
+    assert!(reviewed["reviewed_at"].as_i64().unwrap_or_default() > 0);
+    assert_eq!(
+        reviewed["review_notes_safe"],
+        "Auditor needs evidence owner sign-off before this can be accepted."
+    );
+    assert_eq!(reviewed["artifact_hash"], artifact_hash);
+    assert_eq!(reviewed["compliance_claim"], false);
+    assert_eq!(reviewed["regulatory_claim"], false);
+    assert_eq!(reviewed["certification"], false);
+    assert_eq!(reviewed["requires_auditor_review"], true);
+
+    let audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.reviewed'",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count review audit rows");
+    assert_eq!(audit_count, 1);
+
+    let invalid_status = json!({
+        "review_status": "approved",
+        "review_notes_safe": "valid plain text"
+    });
+    let (status, invalid_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&invalid_status.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(invalid_response.contains("review_status"));
+
+    let missing_notes = json!({ "review_status": "rejected" });
+    let (status, missing_notes_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&missing_notes.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(missing_notes_response.contains("review_notes_safe"));
+
+    let secret_notes = json!({
+        "review_status": "needs_changes",
+        "review_notes_safe": "bearer ghp_should_not_be_here"
+    });
+    let (status, secret_notes_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&secret_notes.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(secret_notes_response.contains("plain text"));
+
+    let reviewed_body = json!({ "review_status": "reviewed" });
+    let (status, developer_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&reviewed_body.to_string()),
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_response.contains("Admin access required"));
+
+    let (status, other_tenant_review) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&reviewed_body.to_string()),
+        Some(&other_admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_tenant_review.contains("not found"));
 
     let (status, list) = json_request(
         &app,
@@ -530,6 +641,7 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(list["limit"], 100);
     assert_eq!(list["items"][0]["report_id"], report_id);
     assert_eq!(list["items"][0]["framework_id"], BASELINE_FRAMEWORK_ID);
+    assert_eq!(list["items"][0]["review_status"], "needs_changes");
     assert!(list["items"][0].get("artifact").is_none());
     assert!(list["items"][0].get("payload_json_redacted").is_none());
 
