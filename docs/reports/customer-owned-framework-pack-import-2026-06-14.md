@@ -78,9 +78,25 @@ The import rejects:
 - Publication guard.
 - Vite smoke on `http://127.0.0.1:5174/governance/releases` loaded the bundle with no console/page errors and showed the expected `GitGov Desktop required` state for a Desktop-only surface.
 
-Remaining validation after merge:
+Post-merge validation:
 
 - PR checks.
 - Production migration `v46`.
 - Render deploy.
 - Production smoke for import -> export -> mapping -> review package using a temporary customer framework pack.
+
+## Production Validation
+
+- PR `#363` merged to `main` as `2e9d243`.
+- Production `v46` migration and postcheck passed.
+- Render deploy `dep-d8nga5km0tmc73basn0g` for `2e9d243` reached `live`.
+- `/health` returned `ok`; authenticated `/stats` returned `200`.
+- Production smoke used real Deployment Gate authorization `dga_6bbb0ce5200a4d36ae6dc9fac1146c7a`.
+- Imported JSON customer framework `customer_kan103_runtime_smoke_17814669449_9655a36246a2`.
+- Imported YAML customer framework `customer_kan103_runtime_yaml_178146694497_87ce14558b38`.
+- Created KAN-99 evidence export `cee_e04f107ee6e04d0891a40129373ce6ef`.
+- Created customer-framework mapping `cem_0277f6372a7a4792a1575130f4b80236`.
+- Created KAN-101 review package `crp_003ae13483485afd55a5cd696c605496`.
+- Downloaded review package hash matched stored `artifact_hash`.
+- Downloaded artifact preserved `owner_type=customer`, `pack_hash`, `compliance_claim=false`, `regulatory_claim=false`, and `requires_auditor_review=true`.
+- Agent Governance evaluations stayed unchanged at `7 -> 7`.
