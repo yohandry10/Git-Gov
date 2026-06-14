@@ -8,6 +8,10 @@ Issue: GitHub `#352`
 
 Branch: `feature/KAN-100-evidence-control-mapping`
 
+PR: `#353`
+
+Merge commit: `b3fdf2e`
+
 ## Product Decision
 
 GPT/product review and local repo analysis selected `KAN-100: Evidence-to-Control Mapping MVP`.
@@ -102,3 +106,38 @@ The main integration test creates a real KAN-99 evidence export through the API,
 - no new Agent Governance evaluations are created.
 
 The second integration test verifies Admin-only access, tenant isolation, framework allow-listing, and framework catalog APIs.
+
+## Production Validation
+
+Production database:
+
+- `supabase_schema_v44.sql` applied through the ignored local `DATABASE_URL`.
+- `supabase_schema_v44_postcheck.sql` returned:
+
+```text
+KAN-100 postcheck PASS: framework, controls, mapping tables, and indexes exist
+```
+
+Render:
+
+- Deploy `dep-d8nailfaqgkc73c221ug` for commit `b3fdf2e` reached `live`.
+
+Smoke results:
+
+```text
+/health = ok
+/stats = 200
+framework count = 1
+framework controls = 10
+source deployment gate = dga_6bbb0ce5200a4d36ae6dc9fac1146c7a
+export id = cee_3df4bb2f2a8a4aa2a5a7613885ad55bf
+mapping id = cem_30553ff8ecd74ad4a06ea5d6ddb0b610
+anonymous POST /compliance/evidence-mappings = 401
+authenticated POST /compliance/evidence-mappings = 201
+GET /compliance/evidence-mappings/{mapping_id} returned 10 items
+export hash verified = true
+compliance_claim = false
+regulatory_claim = false
+requires_auditor_review = true
+Agent Governance evaluations before/after = 7 / 7
+```
