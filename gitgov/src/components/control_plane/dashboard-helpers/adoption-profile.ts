@@ -69,6 +69,18 @@ export interface EnterpriseReleaseGovernancePolicy {
   environment_overrides?: EnterpriseReleaseGovernancePolicy[]
 }
 
+export type EnterpriseReleaseGovernanceEnvironmentSource = 'base' | 'override'
+
+export interface EnterpriseReleaseGovernanceEnvironmentRow {
+  source: EnterpriseReleaseGovernanceEnvironmentSource
+  environment: string
+  mode: AdoptionReleaseGovernanceMode
+  approval_required: boolean
+  enforcement: AdoptionReleaseGovernanceEnforcement
+  quorum_summary: string
+  override_index?: number
+}
+
 export interface EnterpriseAdoptionProfile {
   customer_name: string
   repository_full_name: string
@@ -519,6 +531,127 @@ export function releaseGovernanceQuorumSummary(policy: EnterpriseReleaseGovernan
   return policy.quorum.enabled
     ? policy.quorum.rules.map((rule) => `${rule.role}:${rule.required}`).join(', ')
     : 'disabled'
+}
+
+export function releaseGovernanceModeNeedsFormalApproval(mode: AdoptionReleaseGovernanceMode): boolean {
+  return mode !== 'record-only'
+}
+
+export function buildReleaseGovernanceEnvironmentRows(
+  policy?: EnterpriseReleaseGovernancePolicy | null,
+): EnterpriseReleaseGovernanceEnvironmentRow[] {
+  const normalized = normalizeReleaseGovernancePolicy(policy)
+  return [
+    {
+      source: 'base',
+      environment: normalized.environment,
+      mode: normalized.mode,
+      approval_required: normalized.approval_required,
+      enforcement: normalized.enforcement,
+      quorum_summary: releaseGovernanceQuorumSummary(normalized),
+    },
+    ...(normalized.environment_overrides ?? []).map((override, index) => ({
+      source: 'override' as const,
+      environment: override.environment,
+      mode: override.mode,
+      approval_required: override.approval_required,
+      enforcement: override.enforcement,
+      quorum_summary: releaseGovernanceQuorumSummary(override),
+      override_index: index,
+    })),
+  ]
+}
+
+export function nextReleaseGovernanceOverrideEnvironment(
+  policy?: EnterpriseReleaseGovernancePolicy | null,
+): string {
+  const normalized = normalizeReleaseGovernancePolicy(policy)
+  const usedEnvironments = new Set(
+    [normalized.environment, ...(normalized.environment_overrides ?? []).map((override) => override.environment)]
+      .map((environment) => environment.trim().toLowerCase())
+      .filter(Boolean),
+  )
+  return ['production', 'staging', 'development'].find((candidate) => !usedEnvironments.has(candidate))
+    ?? `environment-${(normalized.environment_overrides ?? []).length + 1}`
+}
+
+export function updateReleaseGovernanceBaseMode(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+  mode: AdoptionReleaseGovernanceMode,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  return {
+    ...buildReleaseGovernancePolicy(mode, current.environment),
+    environment_overrides: current.environment_overrides ?? [],
+  }
+}
+
+export function updateReleaseGovernanceBaseEnvironment(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+  environment: string,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  return {
+    ...current,
+    environment: environment.trim() || 'production',
+  }
+}
+
+export function addReleaseGovernanceEnvironmentOverride(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  const environment = nextReleaseGovernanceOverrideEnvironment(current)
+  return {
+    ...current,
+    environment_overrides: [
+      ...(current.environment_overrides ?? []),
+      buildReleaseGovernancePolicy('approval-required', environment),
+    ],
+  }
+}
+
+export function updateReleaseGovernanceEnvironmentOverrideEnvironment(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+  index: number,
+  environment: string,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  return {
+    ...current,
+    environment_overrides: (current.environment_overrides ?? []).map((override, overrideIndex) => (
+      overrideIndex === index
+        ? { ...override, environment: environment.trim() || 'production' }
+        : override
+    )),
+  }
+}
+
+export function updateReleaseGovernanceEnvironmentOverrideMode(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+  index: number,
+  mode: AdoptionReleaseGovernanceMode,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  return {
+    ...current,
+    environment_overrides: (current.environment_overrides ?? []).map((override, overrideIndex) => (
+      overrideIndex === index
+        ? buildReleaseGovernancePolicy(mode, override.environment || 'production')
+        : override
+    )),
+  }
+}
+
+export function removeReleaseGovernanceEnvironmentOverride(
+  policy: EnterpriseReleaseGovernancePolicy | undefined,
+  index: number,
+): EnterpriseReleaseGovernancePolicy {
+  const current = normalizeReleaseGovernancePolicy(policy)
+  return {
+    ...current,
+    environment_overrides: (current.environment_overrides ?? []).filter((_, overrideIndex) => overrideIndex !== index),
+  }
 }
 
 export function normalizeEnterpriseAdoptionProfile(profile: EnterpriseAdoptionProfile): EnterpriseAdoptionProfile {

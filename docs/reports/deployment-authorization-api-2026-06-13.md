@@ -154,4 +154,4 @@ Remaining follow-up:
 
 - provider-specific deploy examples for Jenkins, GitHub Actions, GitLab CI, and other deployers;
 - break-glass workflow design and authorization evidence;
-- environment policy UX that makes stricter production policy easy to review without making blocking the default.
+- advanced environment policy workflows beyond the Desktop/admin matrix.
