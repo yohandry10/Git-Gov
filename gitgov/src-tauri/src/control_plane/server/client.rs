@@ -2,6 +2,7 @@ use super::models::*;
 use std::{sync::OnceLock, time::Duration};
 
 mod cli;
+mod compliance;
 mod copilot;
 mod enterprise;
 mod evidence;

@@ -73,6 +73,16 @@ describe('useControlPlaneStore', () => {
       deploymentGateAuthorizationsTotal: 0,
       deploymentGateAuthorizationsFilters: { limit: 10, offset: 0 },
       deploymentGateAuthorizationsUpdatedAt: null,
+      complianceEvidenceSelectedDeploymentGateId: null,
+      complianceEvidenceExport: null,
+      complianceEvidenceMapping: null,
+      complianceReviewPackage: null,
+      complianceReviewPackageArtifact: null,
+      isComplianceEvidenceExportCreating: false,
+      isComplianceEvidenceMappingCreating: false,
+      isComplianceReviewPackageCreating: false,
+      isComplianceReviewPackageDownloading: false,
+      complianceEvidenceError: null,
       isDeploymentGateAuthorizationsLoading: false,
       isReleaseApprovalsLoading: false,
       isReleaseApprovalSubmitting: false,
@@ -842,6 +852,148 @@ describe('useControlPlaneStore', () => {
       expect(response?.total).toBe(1)
       expect(useControlPlaneStore.getState().deploymentGateAuthorizations[0].authorization_id).toBe('dga_123')
       expect(useControlPlaneStore.getState().deploymentGateAuthorizationsUpdatedAt).toBeGreaterThan(0)
+    })
+
+    it('creates the compliance evidence review chain with explicit manual-first payloads', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke
+        .mockResolvedValueOnce({
+          export: {
+            export_id: 'cee_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            scope: 'deployment_gate',
+            deployment_gate_id: 'dga_123',
+            release_id: 'KAN-102',
+            status: 'completed',
+            format: 'json',
+            artifact_hash: 'a'.repeat(64),
+            policy_checksum: 'f'.repeat(64),
+            gate_decision: 'approved',
+            created_at: 1,
+            completed_at: 2,
+          },
+          artifact: {
+            compliance_claim: false,
+            framework_mapping: false,
+            agent_governance_used: false,
+          },
+        })
+        .mockResolvedValueOnce({
+          mapping: {
+            mapping_id: 'cem_123',
+            org_id: 'org-1',
+            evidence_export_id: 'cee_123',
+            evidence_export_hash: 'a'.repeat(64),
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            framework_version: '1.0.0',
+            created_by_user_id: 'admin',
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            created_at: 3,
+          },
+          items: [{
+            control_id: 'GOV-REL-001',
+            control_title: 'Release authorization',
+            status: 'covered',
+            evidence_refs: ['deployment_gate:dga_123'],
+            missing_evidence: [],
+            notes_safe: 'Deployment Gate evidence exists.',
+          }],
+        })
+        .mockResolvedValueOnce({
+          review_package: {
+            review_package_id: 'crp_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            mapping_id: 'cem_123',
+            evidence_export_id: 'cee_123',
+            evidence_export_hash: 'a'.repeat(64),
+            mapping_hash: 'b'.repeat(64),
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            framework_version: '1.0.0',
+            format: 'json',
+            artifact_hash: 'c'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 4,
+          },
+          download_url: '/compliance/review-packages/crp_123/download',
+          artifact: { certification: false },
+        })
+        .mockResolvedValueOnce({
+          review_package_id: 'crp_123',
+          artifact_hash: 'c'.repeat(64),
+          compliance_claim: false,
+          regulatory_claim: false,
+          certification: false,
+        })
+
+      const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
+      const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
+      const packageResponse = await useControlPlaneStore.getState().createComplianceReviewPackage(' cem_123 ')
+      const artifact = await useControlPlaneStore.getState().downloadComplianceReviewPackage(' crp_123 ')
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          scope: 'deployment_gate',
+          deployment_gate_id: 'dga_123',
+          format: 'json',
+          include_sections: [
+            'gate_decision',
+            'policy',
+            'release',
+            'approvals',
+            'evidence',
+            'missing_evidence',
+            'audit',
+          ],
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_create_compliance_evidence_mapping', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          evidence_export_id: 'cee_123',
+          framework_id: 'gitgov_release_governance_baseline_v1',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_create_compliance_review_package', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          mapping_id: 'cem_123',
+          format: 'json',
+          include_sections: [
+            'source_export',
+            'control_matrix',
+            'missing_evidence',
+            'hashes',
+            'no_claims',
+            'audit_metadata',
+          ],
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_download_compliance_review_package', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reviewPackageId: 'crp_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(exportResponse?.export.export_id).toBe('cee_123')
+      expect(mappingResponse?.items).toHaveLength(1)
+      expect(packageResponse?.review_package.certification).toBe(false)
+      expect(artifact?.certification).toBe(false)
+      expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
   })
 })
