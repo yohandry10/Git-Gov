@@ -93,20 +93,39 @@ Coverage added:
 - Agent Governance missing deploy context is reflected in shared missing evidence.
 - Desktop history renders the shared decision and `agent not used` state.
 
-## Production Validation Plan
+## Production Validation
 
-After merge:
+PR `#330` merged to `main` as `8a462bd`.
 
-- wait for Render to deploy the merged backend commit.
-- verify `/health`.
-- verify authenticated `/stats`.
-- verify tenant Agent Governance remains disabled/manual-only.
-- create one real Deployment Gate authorization for `KAN-93`.
-- verify the response includes `governance_decision.consumer_type=deployment_gate`.
-- verify the response includes `governance_decision.agent_governance_used=false`.
-- verify Deployment Gate history returns the same shared decision.
-- verify no agent evaluation row is created for the Deployment Gate smoke actor.
+Post-merge `main` checks passed:
+
+- `CI`
+- `Release Readiness Gate`
+- `Secret Scan`
+- `Public Naming Guard`
+- `Quality Gate Policy Matrix`
+- `Governance Correlation Smoke`
+- `Desktop Updater Readiness`
+- `SonarQube Governance`
+
+Render deploy `dep-d8n66cn7f7vs73fg79sg` for `8a462bd` reached `live`.
+
+Production smoke passed:
+
+- `/health` returned `ok`.
+- authenticated `/stats` returned `200`.
+- tenant Agent Governance settings remained `enabled=false`, `mode=manual_only`.
+- `KAN-93` release-bound evidence packet generation returned `found=true`.
+- `POST /deployment-gates/authorize` created authorization
+  `dga_6bbb0ce5200a4d36ae6dc9fac1146c7a`.
+- authorization returned legacy `decision=advisory`, `approved=true`.
+- authorization returned `governance_decision.consumer_type=deployment_gate`.
+- authorization returned `governance_decision.decision=insufficient_evidence`.
+- authorization returned `governance_decision.agent_governance_used=false`.
+- authorization history returned the same `agent_governance_used=false` shared decision.
+- Agent Governance evaluation history for smoke agent `kan93-deployment-gate-smoke` returned
+  `total=0`, proving the Deployment Gate smoke did not create agent evaluation rows.
 
 ## Status
 
-Implemented and locally validated. Production validation is pending merge/deploy.
+Implemented and production-validated.
