@@ -71,12 +71,24 @@ new context query:
 - Enabled read context returned `500` because production `pipeline_events` uses `ingested_at`,
   while the first implementation ordered by the integration-test-only `created_at` helper column.
 
-Follow-up hotfix: KAN-98 now reads pipeline context from `pipeline_events.ingested_at`, which is the
-production migration column from `supabase_schema_v5.sql`. The integration test harness already has
-`ingested_at`, so the focused and full backend suites cover the corrected path.
+Follow-up hotfix PR `#347` merged to `main` as `e2b2e60`. KAN-98 now reads pipeline context from
+`pipeline_events.ingested_at`, which is the production migration column from
+`supabase_schema_v5.sql`. The integration test harness already has `ingested_at`, so the focused
+and full backend suites cover the corrected path.
 
-## Remaining Before Production Closure
+## Production Closure
 
-- Merge the KAN-98 production hotfix.
-- Verify Render deploy and rerun production smoke with a temporary read-scoped agent key.
-- Revoke the temporary production key and restore Agent Governance settings to disabled/manual-only.
+Render deploy `dep-d8n9dt19rddc739llrb0` for `e2b2e60` reached `live`.
+
+Final production smoke passed:
+
+- `/health` returned `ok`.
+- Authenticated `/stats` returned `200`.
+- Agent Governance started and ended as `enabled=false/mode=manual_only`.
+- Disabled/manual-only agent context returned `403 agent_governance_disabled`.
+- Temporary opt-in read context returned `200`.
+- The context response returned `read_only=true`, `will_authorize_execution=false`,
+  `mcp_surface=false`, and `principal_type=agent`.
+- A read-only key calling evaluate returned `403 invalid_scope`.
+- Evaluation history for the smoke agent stayed `total=0`.
+- Temporary production keys were revoked; final cleanup reported `activeTempCount=0`.
