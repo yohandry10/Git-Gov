@@ -838,13 +838,13 @@ impl Database {
                 status,
                 commit_sha,
                 duration_ms,
-                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+                ROUND(EXTRACT(EPOCH FROM ingested_at) * 1000)::BIGINT AS ingested_at_ms
             FROM pipeline_events
             WHERE org_id = $1::uuid
               AND repo_full_name = $2
               AND ($3::text IS NULL OR branch = $3)
               AND ($4::text IS NULL OR commit_sha = $4)
-            ORDER BY created_at DESC
+            ORDER BY ingested_at DESC
             LIMIT 1
             "#,
         )
@@ -958,10 +958,10 @@ impl Database {
         );
         let latest_pipeline_status = latest_pipeline
             .as_ref()
-            .map(|row| row.get::<String, _>("status"));
+            .and_then(|row| row.try_get::<Option<String>, _>("status").ok().flatten());
         let latest_gate_decision = latest_deployment_gate
             .as_ref()
-            .map(|row| row.get::<String, _>("decision"));
+            .and_then(|row| row.try_get::<Option<String>, _>("decision").ok().flatten());
         let policy_found = policy.is_some();
         let risk_score = if latest_gate_decision.as_deref() == Some("blocked") {
             85
@@ -995,19 +995,19 @@ impl Database {
             },
             "policy_compliance": {
                 "policy_found": policy_found,
-                "policy_checksum": policy.as_ref().map(|row| row.get::<String, _>("checksum")),
-                "source_metadata": policy.as_ref().map(|row| row.get::<serde_json::Value, _>("source_metadata")),
+                "policy_checksum": policy.as_ref().and_then(|row| row.try_get::<Option<String>, _>("checksum").ok().flatten()),
+                "source_metadata": policy.as_ref().and_then(|row| row.try_get::<Option<serde_json::Value>, _>("source_metadata").ok().flatten()),
                 "change_policy_requires_human": true,
                 "llm_decision": false
             },
             "pipeline_state": {
                 "latest": latest_pipeline.as_ref().map(|row| serde_json::json!({
-                    "pipeline_id": row.get::<String, _>("pipeline_id"),
-                    "job_name": row.get::<String, _>("job_name"),
-                    "status": row.get::<String, _>("status"),
+                    "pipeline_id": row.try_get::<Option<String>, _>("pipeline_id").ok().flatten(),
+                    "job_name": row.try_get::<Option<String>, _>("job_name").ok().flatten(),
+                    "status": row.try_get::<Option<String>, _>("status").ok().flatten(),
                     "commit_sha": row.try_get::<Option<String>, _>("commit_sha").ok().flatten(),
                     "duration_ms": row.try_get::<Option<i64>, _>("duration_ms").ok().flatten(),
-                    "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
+                    "created_at": row.try_get::<Option<i64>, _>("ingested_at_ms").ok().flatten()
                 })),
                 "source": "gitgov_evidence"
             },
@@ -1024,22 +1024,22 @@ impl Database {
             "recent_activity": {
                 "agent_evaluation_count": agent_evaluation_count,
                 "latest_agent_evaluation": latest_agent_evaluation.as_ref().map(|row| serde_json::json!({
-                    "evaluation_id": row.get::<String, _>("evaluation_id"),
-                    "action": row.get::<String, _>("action"),
-                    "decision": row.get::<String, _>("decision"),
-                    "agent_id": row.get::<String, _>("agent_id"),
+                    "evaluation_id": row.try_get::<Option<String>, _>("evaluation_id").ok().flatten(),
+                    "action": row.try_get::<Option<String>, _>("action").ok().flatten(),
+                    "decision": row.try_get::<Option<String>, _>("decision").ok().flatten(),
+                    "agent_id": row.try_get::<Option<String>, _>("agent_id").ok().flatten(),
                     "agent_key_id": row.try_get::<Option<String>, _>("agent_key_id").ok().flatten(),
                     "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
                 })),
                 "agent_key_audit_count": agent_key_audit_count,
                 "latest_deployment_gate": latest_deployment_gate.as_ref().map(|row| serde_json::json!({
-                    "authorization_id": row.get::<String, _>("authorization_id"),
-                    "decision": row.get::<String, _>("decision"),
-                    "approved": row.get::<bool, _>("approved"),
-                    "blocking": row.get::<bool, _>("blocking"),
-                    "would_block": row.get::<bool, _>("would_block"),
-                    "reason": row.get::<String, _>("reason"),
-                    "policy_checksum": row.get::<String, _>("policy_checksum"),
+                    "authorization_id": row.try_get::<Option<String>, _>("authorization_id").ok().flatten(),
+                    "decision": row.try_get::<Option<String>, _>("decision").ok().flatten(),
+                    "approved": row.try_get::<Option<bool>, _>("approved").ok().flatten(),
+                    "blocking": row.try_get::<Option<bool>, _>("blocking").ok().flatten(),
+                    "would_block": row.try_get::<Option<bool>, _>("would_block").ok().flatten(),
+                    "reason": row.try_get::<Option<String>, _>("reason").ok().flatten(),
+                    "policy_checksum": row.try_get::<Option<String>, _>("policy_checksum").ok().flatten(),
                     "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
                 }))
             }
