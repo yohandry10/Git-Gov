@@ -33,5 +33,16 @@ Initial focused validation completed during implementation:
 - `cargo check --manifest-path gitgov/gitgov-server/Cargo.toml`
 - `TEST_DATABASE_URL=<local ignored DATABASE_URL> cargo test --manifest-path gitgov/gitgov-server/Cargo.toml compliance_framework_review_reports -- --nocapture` (`2` passed)
 
-Final CI, migration, merge, and production smoke results are recorded in `docs/CURRENT_CONTEXT.md` after completion.
+Final validation:
 
+- PR `#372` checks passed.
+- Merged to `main` as `56ec538`.
+- Post-merge `main` checks passed: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8nisuv7f7vs73fnnnq0` reached `live`.
+- Production smoke passed:
+  - `/health=ok`
+  - authenticated `/stats=200`
+  - framework report list returned `200`, `count=2`, effective `limit=100`
+  - list metadata did not include payload/artifact fields
+  - historical download returned schema `gitgov_framework_review_report.v1` with `10` controls
+  - invalid `mapping_id=bad` returned `400`
