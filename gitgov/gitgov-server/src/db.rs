@@ -123,6 +123,22 @@ pub struct AgentGovernanceReadContextInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateComplianceEvidenceExportInput<'a> {
+    pub export_id: &'a str,
+    pub org_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub scope: &'a str,
+    pub deployment_gate_id: Option<&'a str>,
+    pub release_id: Option<&'a str>,
+    pub status: &'a str,
+    pub format: &'a str,
+    pub artifact_hash: &'a str,
+    pub policy_checksum: Option<&'a str>,
+    pub gate_decision: Option<&'a str>,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
     pub replaced: AgentGovernanceAgentKeyRecord,
@@ -580,6 +596,7 @@ mod chat_queries_core;
 mod chat_queries_quality;
 mod chat_queries_release;
 mod compliance;
+mod compliance_evidence_exports;
 mod core;
 mod deployment_gates;
 mod enterprise;
