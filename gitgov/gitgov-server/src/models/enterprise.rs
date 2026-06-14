@@ -569,6 +569,8 @@ pub struct CreateAgentGovernanceAgentKeyRequest {
     #[serde(default)]
     pub environment: Option<String>,
     #[serde(default)]
+    pub scopes: Vec<String>,
+    #[serde(default)]
     pub allowed_actions: Vec<String>,
     #[serde(default)]
     pub expires_at: Option<i64>,
@@ -650,6 +652,42 @@ pub struct AgentGovernanceEvaluationListResponse {
     pub total: i64,
     pub limit: i64,
     pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentGovernanceReadContextQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub repository_full_name: String,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub target_sha: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentGovernanceReadContextResponse {
+    pub context_id: String,
+    pub org_id: String,
+    pub repository_full_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_sha: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    pub read_only: bool,
+    pub will_authorize_execution: bool,
+    pub mcp_surface: bool,
+    pub generated_at: i64,
+    pub principal: serde_json::Value,
+    pub branch_status: serde_json::Value,
+    pub policy_compliance: serde_json::Value,
+    pub pipeline_state: serde_json::Value,
+    pub risk_score: serde_json::Value,
+    pub recent_activity: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

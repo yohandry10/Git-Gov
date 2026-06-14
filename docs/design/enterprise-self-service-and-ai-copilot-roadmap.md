@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context
 
 ## Decision
 
@@ -148,6 +148,11 @@ Current primitives:
   derived lifecycle status; `POST /agent-governance/agent-keys/{key_id}/rotate` creates a
   replacement token shown once, links old and new keys, gives the old key a bounded grace period,
   and audits rotate/expired/revoked outcomes without storing plaintext tokens.
+- `KAN-98` adds the first read-only agent context contract before any MCP surface. Admins can create
+  keys with `agent_governance:read`, and those keys can call `GET /agent-governance/context` to read
+  existing branch, policy, pipeline, deployment-gate, risk, and activity evidence. The endpoint is
+  read-only, returns `will_authorize_execution=false` and `mcp_surface=false`, creates no formal
+  evaluation rows, and is denied for agent principals while the tenant remains disabled/manual-only.
 
 Future scope:
 
@@ -159,7 +164,8 @@ Future scope:
   - `get_risk_score`
 - Broader agent attribution chain beyond the KAN-96 minimal envelope, if customers need full
   session/operation linking later.
-- Broader read-only agent scopes such as `read:audit`, `read:policy`, and `read:branch_status`.
+- Broader read-only agent scopes beyond KAN-98's single `agent_governance:read` scope, if customers
+  need more granular separation such as audit-only, policy-only, or branch-status-only keys.
 - Broader REST Policy API coverage beyond the KAN-90 MVP rules.
 - Human-in-the-loop approval for sensitive operations from agents.
 - Ephemeral agent session logs linked to existing audit trail.

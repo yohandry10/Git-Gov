@@ -9,6 +9,44 @@ fn default_agent_key_allowed_actions() -> Vec<String> {
         .collect()
 }
 
+fn default_agent_key_scopes() -> Vec<String> {
+    vec![AGENT_GOVERNANCE_EVALUATE_SCOPE.to_string()]
+}
+
+fn normalize_agent_key_scopes(scopes: Vec<String>) -> Result<Vec<String>, Vec<String>> {
+    let mut errors = Vec::new();
+    let mut normalized = if scopes.is_empty() {
+        default_agent_key_scopes()
+    } else {
+        scopes
+            .into_iter()
+            .map(|scope| scope.trim().to_ascii_lowercase())
+            .filter(|scope| !scope.is_empty())
+            .collect::<Vec<_>>()
+    };
+
+    normalized.sort();
+    normalized.dedup();
+
+    if normalized.is_empty() {
+        errors.push("scopes must include at least one scope.".to_string());
+    }
+    for scope in &normalized {
+        if !matches!(
+            scope.as_str(),
+            AGENT_GOVERNANCE_EVALUATE_SCOPE | AGENT_GOVERNANCE_READ_SCOPE
+        ) {
+            errors.push(format!("scope {scope} is not supported."));
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(normalized)
+    } else {
+        Err(errors)
+    }
+}
+
 fn normalize_agent_key_text(
     value: Option<String>,
     field_name: &str,
@@ -209,6 +247,13 @@ pub async fn create_agent_governance_agent_key(
             Vec::new()
         }
     };
+    let scopes = match normalize_agent_key_scopes(payload.scopes) {
+        Ok(scopes) => scopes,
+        Err(mut scope_errors) => {
+            errors.append(&mut scope_errors);
+            Vec::new()
+        }
+    };
     let expires_at = match parse_agent_key_expires_at(payload.expires_at, payload.no_expiry) {
         Ok(value) => value,
         Err(error) => {
@@ -237,8 +282,6 @@ pub async fn create_agent_governance_agent_key(
         .chars()
         .rev()
         .collect::<String>();
-    let scopes = vec![AGENT_GOVERNANCE_EVALUATE_SCOPE.to_string()];
-
     match state
         .db
         .create_agent_governance_agent_key(&CreateAgentGovernanceAgentKeyInput {

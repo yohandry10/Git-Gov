@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::sync::Arc;
 
+const AGENT_GOVERNANCE_EVALUATE_SCOPE: &str = "agent_governance:evaluate";
+const AGENT_GOVERNANCE_READ_SCOPE: &str = "agent_governance:read";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthUser {
     pub client_id: String,
@@ -158,19 +161,38 @@ pub async fn auth_middleware(
                     let has_evaluate_scope = agent_key
                         .scopes
                         .iter()
-                        .any(|scope| scope == "agent_governance:evaluate");
+                        .any(|scope| scope == AGENT_GOVERNANCE_EVALUATE_SCOPE);
+                    let has_read_scope = agent_key
+                        .scopes
+                        .iter()
+                        .any(|scope| scope == AGENT_GOVERNANCE_READ_SCOPE);
                     let is_agent_governance_decision_path = method == axum::http::Method::POST
                         && matches!(
                             path.as_str(),
                             "/agent-governance/evaluate" | "/agent-governance/dry-run"
                         );
-                    if !has_evaluate_scope || !is_agent_governance_decision_path {
+                    let is_agent_governance_read_path = method == axum::http::Method::GET
+                        && path.as_str() == "/agent-governance/context";
+                    let requested_scope = if is_agent_governance_read_path {
+                        AGENT_GOVERNANCE_READ_SCOPE
+                    } else {
+                        AGENT_GOVERNANCE_EVALUATE_SCOPE
+                    };
+                    let scope_allowed = (is_agent_governance_decision_path && has_evaluate_scope)
+                        || (is_agent_governance_read_path && has_read_scope);
+                    if !scope_allowed {
                         write_agent_key_auth_audit(
                             &db,
                             &agent_key,
                             "agent_key.invalid_scope",
                             serde_json::json!({
-                                "reason": if has_evaluate_scope { "path_not_allowed" } else { "missing_agent_governance_evaluate_scope" },
+                                "reason": if is_agent_governance_read_path && !has_read_scope {
+                                    "missing_agent_governance_read_scope"
+                                } else if is_agent_governance_decision_path && !has_evaluate_scope {
+                                    "missing_agent_governance_evaluate_scope"
+                                } else {
+                                    "path_not_allowed"
+                                },
                                 "path": path,
                                 "method": method.as_str(),
                                 "scopes": agent_key.scopes
@@ -201,7 +223,7 @@ pub async fn auth_middleware(
                         serde_json::json!({
                             "path": path,
                             "method": method.as_str(),
-                            "scope": "agent_governance:evaluate"
+                            "scope": requested_scope
                         }),
                     )
                     .await;

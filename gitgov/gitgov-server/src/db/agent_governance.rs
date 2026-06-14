@@ -805,4 +805,244 @@ impl Database {
             total,
         ))
     }
+
+    pub async fn get_agent_governance_read_context(
+        &self,
+        input: &AgentGovernanceReadContextInput<'_>,
+    ) -> Result<serde_json::Value, DbError> {
+        let commit_events_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM client_events ce
+            LEFT JOIN repos r ON ce.repo_id = r.id
+            WHERE ce.org_id = $1::uuid
+              AND ce.event_type = 'commit'
+              AND (r.full_name = $2 OR ce.metadata->>'repo_full_name' = $2)
+              AND ($3::text IS NULL OR ce.branch = $3)
+              AND ($4::text IS NULL OR ce.commit_sha = $4)
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .bind(input.branch)
+        .bind(input.target_sha)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let latest_pipeline = sqlx::query(
+            r#"
+            SELECT
+                pipeline_id,
+                job_name,
+                status,
+                commit_sha,
+                duration_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM pipeline_events
+            WHERE org_id = $1::uuid
+              AND repo_full_name = $2
+              AND ($3::text IS NULL OR branch = $3)
+              AND ($4::text IS NULL OR commit_sha = $4)
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .bind(input.branch)
+        .bind(input.target_sha)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let latest_deployment_gate = sqlx::query(
+            r#"
+            SELECT
+                authorization_id,
+                decision,
+                approved,
+                blocking,
+                would_block,
+                reason,
+                policy_checksum,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM deployment_gate_authorizations
+            WHERE org_id = $1::uuid
+              AND repository_full_name = $2
+              AND ($3::text IS NULL OR branch = $3)
+              AND ($4::text IS NULL OR target_sha = $4)
+              AND ($5::text IS NULL OR environment = $5)
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .bind(input.branch)
+        .bind(input.target_sha)
+        .bind(input.environment)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let policy = sqlx::query(
+            r#"
+            SELECT p.checksum, p.config, p.source_metadata
+            FROM policies p
+            LEFT JOIN repos r ON p.repo_id = r.id
+            WHERE p.org_id = $1::uuid
+              AND (r.full_name = $2 OR r.full_name IS NULL)
+            ORDER BY p.updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let agent_evaluation_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM agent_governance_evaluations
+            WHERE org_id = $1::uuid
+              AND repository_full_name = $2
+              AND ($3::text IS NULL OR branch = $3)
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .bind(input.branch)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let latest_agent_evaluation = sqlx::query(
+            r#"
+            SELECT evaluation_id, action, decision, agent_id, agent_key_id,
+                   ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM agent_governance_evaluations
+            WHERE org_id = $1::uuid
+              AND repository_full_name = $2
+              AND ($3::text IS NULL OR branch = $3)
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.repository_full_name)
+        .bind(input.branch)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let agent_key_audit_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)::bigint
+            FROM admin_audit_log
+            WHERE action LIKE 'agent_key.%'
+              AND metadata->>'org_id' = $1
+            "#,
+        )
+        .bind(input.org_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let branch = input.branch.unwrap_or_default().to_ascii_lowercase();
+        let protected_branch = matches!(
+            branch.as_str(),
+            "main" | "master" | "production" | "prod" | "release"
+        );
+        let latest_pipeline_status = latest_pipeline
+            .as_ref()
+            .map(|row| row.get::<String, _>("status"));
+        let latest_gate_decision = latest_deployment_gate
+            .as_ref()
+            .map(|row| row.get::<String, _>("decision"));
+        let policy_found = policy.is_some();
+        let risk_score = if latest_gate_decision.as_deref() == Some("blocked") {
+            85
+        } else if latest_pipeline_status
+            .as_deref()
+            .is_some_and(|status| !matches!(status, "success" | "passed" | "ok"))
+        {
+            70
+        } else if !policy_found {
+            60
+        } else if protected_branch && latest_deployment_gate.is_none() {
+            45
+        } else {
+            15
+        };
+        let risk_level = if risk_score >= 80 {
+            "high"
+        } else if risk_score >= 50 {
+            "medium"
+        } else {
+            "low"
+        };
+
+        Ok(serde_json::json!({
+            "branch_status": {
+                "protected_branch": protected_branch,
+                "commit_events_count": commit_events_count,
+                "latest_target_sha_observed": input.target_sha.is_some() && commit_events_count > 0,
+                "deployment_gate_evidence_present": latest_deployment_gate.is_some(),
+                "agent_governance_read_only": true
+            },
+            "policy_compliance": {
+                "policy_found": policy_found,
+                "policy_checksum": policy.as_ref().map(|row| row.get::<String, _>("checksum")),
+                "source_metadata": policy.as_ref().map(|row| row.get::<serde_json::Value, _>("source_metadata")),
+                "change_policy_requires_human": true,
+                "llm_decision": false
+            },
+            "pipeline_state": {
+                "latest": latest_pipeline.as_ref().map(|row| serde_json::json!({
+                    "pipeline_id": row.get::<String, _>("pipeline_id"),
+                    "job_name": row.get::<String, _>("job_name"),
+                    "status": row.get::<String, _>("status"),
+                    "commit_sha": row.try_get::<Option<String>, _>("commit_sha").ok().flatten(),
+                    "duration_ms": row.try_get::<Option<i64>, _>("duration_ms").ok().flatten(),
+                    "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
+                })),
+                "source": "gitgov_evidence"
+            },
+            "risk_score": {
+                "score": risk_score,
+                "level": risk_level,
+                "inputs": {
+                    "policy_found": policy_found,
+                    "protected_branch": protected_branch,
+                    "latest_pipeline_status": latest_pipeline_status,
+                    "latest_deployment_gate_decision": latest_gate_decision
+                }
+            },
+            "recent_activity": {
+                "agent_evaluation_count": agent_evaluation_count,
+                "latest_agent_evaluation": latest_agent_evaluation.as_ref().map(|row| serde_json::json!({
+                    "evaluation_id": row.get::<String, _>("evaluation_id"),
+                    "action": row.get::<String, _>("action"),
+                    "decision": row.get::<String, _>("decision"),
+                    "agent_id": row.get::<String, _>("agent_id"),
+                    "agent_key_id": row.try_get::<Option<String>, _>("agent_key_id").ok().flatten(),
+                    "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
+                })),
+                "agent_key_audit_count": agent_key_audit_count,
+                "latest_deployment_gate": latest_deployment_gate.as_ref().map(|row| serde_json::json!({
+                    "authorization_id": row.get::<String, _>("authorization_id"),
+                    "decision": row.get::<String, _>("decision"),
+                    "approved": row.get::<bool, _>("approved"),
+                    "blocking": row.get::<bool, _>("blocking"),
+                    "would_block": row.get::<bool, _>("would_block"),
+                    "reason": row.get::<String, _>("reason"),
+                    "policy_checksum": row.get::<String, _>("policy_checksum"),
+                    "created_at": row.try_get::<Option<i64>, _>("created_at_ms").ok().flatten()
+                }))
+            }
+        }))
+    }
 }
