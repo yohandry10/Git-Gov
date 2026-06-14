@@ -294,6 +294,37 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_agent_governance_settings_enabled
             ON agent_governance_settings(enabled, updated_at DESC);
 
+        CREATE TABLE IF NOT EXISTS agent_governance_agent_keys (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            key_id TEXT NOT NULL UNIQUE,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            token_hash TEXT NOT NULL UNIQUE,
+            token_prefix TEXT NOT NULL DEFAULT 'ggag_',
+            token_last4 TEXT NOT NULL,
+            token_preview TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            description TEXT,
+            environment TEXT,
+            scopes JSONB NOT NULL DEFAULT '["agent_governance:evaluate"]'::jsonb,
+            allowed_actions JSONB NOT NULL DEFAULT '["commit","push","open_pr","merge_pr","deploy"]'::jsonb,
+            expires_at TIMESTAMPTZ,
+            last_used_at TIMESTAMPTZ,
+            revoked_at TIMESTAMPTZ,
+            created_by TEXT NOT NULL,
+            revoked_by TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CHECK (key_id LIKE 'agk_%'),
+            CHECK (token_prefix = 'ggag_'),
+            CHECK (jsonb_typeof(scopes) = 'array'),
+            CHECK (jsonb_typeof(allowed_actions) = 'array')
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_org_created
+            ON agent_governance_agent_keys(org_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_agent_governance_agent_keys_active
+            ON agent_governance_agent_keys(org_id, revoked_at, expires_at);
+
         CREATE TABLE IF NOT EXISTS agent_governance_evaluations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             evaluation_id TEXT NOT NULL UNIQUE,
@@ -319,6 +350,9 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             evaluation JSONB NOT NULL DEFAULT '{}'::jsonb,
             request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
             metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            principal_type TEXT,
+            agent_key_id TEXT,
+            agent_display_name TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             CHECK (evaluation_id LIKE 'agv_%'),
             CHECK (
@@ -1187,6 +1221,15 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/agent-governance/evaluations",
             get(handlers::list_agent_governance_evaluations),
+        )
+        .route(
+            "/agent-governance/agent-keys",
+            get(handlers::list_agent_governance_agent_keys)
+                .post(handlers::create_agent_governance_agent_key),
+        )
+        .route(
+            "/agent-governance/agent-keys/{key_id}",
+            axum::routing::delete(handlers::revoke_agent_governance_agent_key),
         )
         .route("/policy/{repo_name}", get(handlers::get_policy))
         .route(

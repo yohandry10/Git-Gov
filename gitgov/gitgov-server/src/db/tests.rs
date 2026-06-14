@@ -133,6 +133,10 @@ async fn expired_fresh_cache_entry_remains_available_for_stale_lookup() {
             org_id: Some("org1".to_string()),
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }),
     );
 
@@ -162,6 +166,10 @@ async fn stale_cache_entry_older_than_max_age_is_evicted() {
             org_id: Some("org1".to_string()),
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         }),
     );
 

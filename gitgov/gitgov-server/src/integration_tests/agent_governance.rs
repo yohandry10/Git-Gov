@@ -58,6 +58,34 @@ async fn enable_agent_governance(pool: &sqlx::PgPool, org_id: &str) {
     .expect("enable agent governance");
 }
 
+async fn create_agent_key(
+    app: &axum::Router,
+    admin_key: &str,
+    display_name: &str,
+    allowed_actions: Vec<&str>,
+) -> serde_json::Value {
+    let body = json!({
+        "display_name": display_name,
+        "description": "Integration test agent key",
+        "environment": "staging",
+        "allowed_actions": allowed_actions
+    });
+    let (status, response) = json_request(
+        app,
+        "POST",
+        "/agent-governance/agent-keys",
+        Some(&body.to_string()),
+        Some(admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "unexpected agent key create response: {response}"
+    );
+    serde_json::from_str(&response).expect("agent key create JSON")
+}
+
 #[tokio::test]
 async fn agent_governance_is_disabled_by_default_and_does_not_persist_evaluation() {
     let (pool, schema, admin_pool) = setup_or_skip!();
@@ -468,6 +496,366 @@ async fn agent_governance_rejects_unknown_action_and_cross_org_scope() {
     .await
     .expect("evaluation count");
     assert_eq!(count, 0);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_governance_agent_keys_are_admin_only_and_token_is_one_time() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-governance-agent-keys").await;
+    let admin_key = insert_test_api_key_for_org(&pool, "agent-key-admin", "Admin", &org_id).await;
+    let developer_key =
+        insert_test_api_key_for_org(&pool, "agent-key-dev", "Developer", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/agent-keys",
+        Some(
+            &json!({
+                "display_name": "codex-agent-staging",
+                "allowed_actions": ["commit", "push"]
+            })
+            .to_string(),
+        ),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer should not create agent keys: {response}"
+    );
+
+    let created = create_agent_key(
+        &app,
+        &admin_key,
+        "codex-agent-staging",
+        vec!["commit", "push", "open_pr", "merge_pr", "deploy"],
+    )
+    .await;
+    let token = created["token"].as_str().expect("one-time token");
+    assert!(token.starts_with("ggag_"));
+    assert!(created["key_id"]
+        .as_str()
+        .expect("key id")
+        .starts_with("agk_"));
+    assert_eq!(created["scopes"], json!(["agent_governance:evaluate"]));
+    assert!(!created["allowed_actions"]
+        .as_array()
+        .expect("allowed actions")
+        .iter()
+        .any(|value| value == "change_policy"));
+
+    let stored: (String, String) =
+        sqlx::query_as("SELECT token_hash, token_preview FROM agent_governance_agent_keys")
+            .fetch_one(&pool)
+            .await
+            .expect("stored agent key");
+    assert_ne!(stored.0, token);
+    assert!(stored.1.starts_with("ggag_****"));
+    assert!(token.ends_with(&stored.1[10..]));
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/agent-governance/agent-keys",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "unexpected list: {response}");
+    let listed: serde_json::Value = serde_json::from_str(&response).expect("agent key list JSON");
+    assert_eq!(listed["total"], 1);
+    assert!(listed["items"][0].get("token").is_none());
+    assert_eq!(listed["items"][0]["token_preview"], stored.1);
+
+    let created_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.created'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("created audit count");
+    assert_eq!(created_audit_count, 1);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_evaluates_when_enabled_and_records_agent_identity() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-enabled").await;
+    enable_agent_governance(&pool, &org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-enabled-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(
+        &app,
+        &admin_key,
+        "codex-agent-enabled",
+        vec!["commit", "push", "open_pr", "merge_pr", "deploy"],
+    )
+    .await;
+    let token = created["token"].as_str().expect("agent token");
+    let key_id = created["key_id"].as_str().expect("agent key id");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "unexpected agent evaluation: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("evaluation JSON");
+    assert_eq!(parsed["decision"], "allowed");
+    assert_eq!(parsed["principal_type"], "agent");
+    assert_eq!(parsed["agent_key_id"], key_id);
+    assert_eq!(parsed["agent_display_name"], "codex-agent-enabled");
+    assert_eq!(parsed["evaluation"]["principal"]["principal_type"], "agent");
+    assert_eq!(
+        parsed["evaluation"]["principal"]["scope"],
+        "agent_governance:evaluate"
+    );
+    assert_eq!(parsed["evaluation"]["policy"]["llm_decision"], false);
+
+    let persisted: (String, String, String) = sqlx::query_as(
+        "SELECT principal_type, agent_key_id, agent_display_name FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("persisted agent identity");
+    assert_eq!(persisted.0, "agent");
+    assert_eq!(persisted.1, key_id);
+    assert_eq!(persisted.2, "codex-agent-enabled");
+
+    let used_audit_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.used'")
+            .fetch_one(&pool)
+            .await
+            .expect("used audit count");
+    assert_eq!(used_audit_count, 1);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_disabled_tenant_does_not_persist_evaluation() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-disabled").await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-disabled-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(
+        &app,
+        &admin_key,
+        "codex-agent-disabled",
+        vec!["commit", "push", "open_pr", "merge_pr", "deploy"],
+    )
+    .await;
+    let token = created["token"].as_str().expect("agent token");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "unexpected disabled response: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("disabled JSON");
+    assert_eq!(parsed["code"], "agent_governance_disabled");
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("evaluation count");
+    assert_eq!(count, 0);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_allowed_actions_revoke_and_tenant_scope_are_enforced() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-scope").await;
+    let other_org_id = insert_test_org(&pool, "agent-key-other").await;
+    enable_agent_governance(&pool, &org_id).await;
+    enable_agent_governance(&pool, &other_org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-scope-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(&app, &admin_key, "codex-agent-scope", vec!["commit"]).await;
+    let token = created["token"].as_str().expect("agent token");
+    let key_id = created["key_id"].as_str().expect("agent key id");
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/agent-governance/agent-keys",
+        None,
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key should not list agent keys: {response}"
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(&response).expect("invalid scope response JSON");
+    assert_eq!(parsed["code"], "invalid_scope");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("change_policy").to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "change_policy should be blocked by allowed_actions: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("action denied JSON");
+    assert_eq!(parsed["code"], "action_not_allowed");
+
+    let mut cross_org = agent_payload("commit");
+    cross_org["org_name"] = json!("agent-key-other");
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&cross_org.to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "cross-tenant agent key should be rejected: {response}"
+    );
+
+    let revoke_path = format!("/agent-governance/agent-keys/{key_id}");
+    let (status, response) =
+        json_request(&app, "DELETE", &revoke_path, None, Some(&admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "unexpected revoke: {response}");
+    let revoked: serde_json::Value = serde_json::from_str(&response).expect("revoked JSON");
+    assert_eq!(revoked["key_id"], key_id);
+    assert!(revoked["revoked_at"].as_i64().is_some());
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "revoked key should be unauthorized: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("revoked response JSON");
+    assert_eq!(parsed["code"], "revoked_key");
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id IN ($1::uuid, $2::uuid)",
+    )
+    .bind(&org_id)
+    .bind(&other_org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("evaluation count");
+    assert_eq!(count, 0);
+
+    let denied_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("denied audit count");
+    assert!(denied_count >= 1);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn agent_key_expiration_is_enforced_before_evaluation_persistence() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "agent-key-expired").await;
+    enable_agent_governance(&pool, &org_id).await;
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "agent-key-expired-admin", "Admin", &org_id).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+    let created = create_agent_key(&app, &admin_key, "codex-agent-expired", vec!["commit"]).await;
+    let token = created["token"].as_str().expect("agent token");
+    let key_id = created["key_id"].as_str().expect("agent key id");
+
+    sqlx::query(
+        "UPDATE agent_governance_agent_keys SET expires_at = NOW() - INTERVAL '1 minute' WHERE key_id = $1",
+    )
+    .bind(key_id)
+    .execute(&pool)
+    .await
+    .expect("expire agent key");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/evaluate",
+        Some(&agent_payload("commit").to_string()),
+        Some(token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "expired key should be unauthorized: {response}"
+    );
+    let parsed: serde_json::Value = serde_json::from_str(&response).expect("expired response JSON");
+    assert_eq!(parsed["code"], "expired_key");
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("evaluation count");
+    assert_eq!(count, 0);
+
+    let denied_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'agent_key.denied'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("denied audit count");
+    assert_eq!(denied_count, 1);
 
     teardown(&admin_pool, &schema).await;
 }

@@ -179,6 +179,14 @@ impl Database {
                     org_id: org_id.clone(),
                     platform_principal_id,
                     is_platform_founder,
+                    principal_type: if is_platform_founder {
+                        "platform_founder".to_string()
+                    } else {
+                        "human".to_string()
+                    },
+                    scopes: Vec::new(),
+                    agent_key_id: None,
+                    agent_display_name: None,
                 });
 
                 // Reduce write amplification on high-traffic endpoints.

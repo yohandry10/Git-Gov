@@ -280,6 +280,10 @@ mod tests {
             org_id: None,
             platform_principal_id: Some("principal-1".to_string()),
             is_platform_founder: true,
+            principal_type: "platform_founder".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         };
         assert!(is_founder_scope_exception(&founder));
 
@@ -289,6 +293,10 @@ mod tests {
             org_id: None,
             platform_principal_id: None,
             is_platform_founder: false,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         };
         assert!(!is_founder_scope_exception(&non_founder_global));
 
@@ -298,6 +306,10 @@ mod tests {
             org_id: Some("org-123".to_string()),
             platform_principal_id: Some("principal-1".to_string()),
             is_platform_founder: true,
+            principal_type: "human".to_string(),
+            scopes: Vec::new(),
+            agent_key_id: None,
+            agent_display_name: None,
         };
         assert!(!is_founder_scope_exception(&founder_scoped));
     }

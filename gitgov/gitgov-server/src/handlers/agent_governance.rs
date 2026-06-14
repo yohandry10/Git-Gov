@@ -12,6 +12,7 @@ const AGENT_GOVERNANCE_ACTIONS: &[&str] = &[
 ];
 const AGENT_GOVERNANCE_DECISIONS: &[&str] = &["allowed", "requires_approval", "blocked"];
 const AGENT_GOVERNANCE_POLICY_ID: &str = "agent-governance.v1";
+const AGENT_GOVERNANCE_EVALUATE_SCOPE: &str = "agent_governance:evaluate";
 const AGENT_GOVERNANCE_METADATA_MAX_BYTES: usize = 16 * 1024;
 const AGENT_GOVERNANCE_REASON_MAX_CHARS: usize = 500;
 const REDACTED_VALUE: &str = "[REDACTED]";
@@ -134,18 +135,6 @@ fn agent_governance_scope_error_message(error: OrgScopeError) -> &'static str {
         OrgScopeError::Forbidden => "Requested org is outside API key scope",
         OrgScopeError::Internal => "Internal database error",
     }
-}
-
-fn normalize_agent_governance_reason(reason: Option<String>) -> Option<String> {
-    reason
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .map(|value| {
-            value
-                .chars()
-                .take(AGENT_GOVERNANCE_REASON_MAX_CHARS)
-                .collect()
-        })
 }
 
 fn is_secret_like_metadata_key(key: &str) -> bool {
@@ -520,6 +509,79 @@ pub async fn evaluate_agent_governance(
             .into_response();
     }
 
+    if auth_user.principal_type == "agent" {
+        let allowed = auth_user
+            .scopes
+            .iter()
+            .any(|scope| scope == AGENT_GOVERNANCE_EVALUATE_SCOPE);
+        if !allowed {
+            write_agent_governance_audit(
+                &state,
+                &auth_user.client_id,
+                "agent_key.invalid_scope",
+                "agent_governance_agent_key",
+                auth_user.agent_key_id.clone(),
+                json!({
+                    "org_id": org_id,
+                    "principal_type": "agent",
+                    "agent_key_id": auth_user.agent_key_id,
+                    "agent_display_name": auth_user.agent_display_name,
+                    "action": payload.action,
+                    "reason": "missing_agent_governance_evaluate_scope"
+                }),
+            )
+            .await;
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({
+                    "error": "Agent key scope does not allow this request",
+                    "code": "invalid_scope"
+                })),
+            )
+                .into_response();
+        }
+
+        let allowed_actions = auth_user
+            .scopes
+            .iter()
+            .find_map(|scope| scope.strip_prefix("agent_actions:"))
+            .map(|value| {
+                value
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if !allowed_actions.is_empty() && !allowed_actions.contains(&payload.action.as_str()) {
+            write_agent_governance_audit(
+                &state,
+                &auth_user.client_id,
+                "agent_key.denied",
+                "agent_governance_agent_key",
+                auth_user.agent_key_id.clone(),
+                json!({
+                    "org_id": org_id,
+                    "principal_type": "agent",
+                    "agent_key_id": auth_user.agent_key_id,
+                    "agent_display_name": auth_user.agent_display_name,
+                    "action": payload.action,
+                    "allowed_actions": allowed_actions,
+                    "reason": "action_not_allowed"
+                }),
+            )
+            .await;
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({
+                    "error": "Agent key is not allowed to evaluate this action",
+                    "code": "action_not_allowed"
+                })),
+            )
+                .into_response();
+        }
+    }
+
     let agent_type = payload
         .agent_type
         .clone()
@@ -532,8 +594,23 @@ pub async fn evaluate_agent_governance(
         reason,
         reasons,
         required_evidence,
-        evaluation,
+        mut evaluation,
     ) = decide_agent_governance(&payload);
+    if let Some(object) = evaluation.as_object_mut() {
+        object.insert(
+            "principal".to_string(),
+            json!({
+                "principal_type": auth_user.principal_type,
+                "agent_key_id": auth_user.agent_key_id,
+                "agent_display_name": auth_user.agent_display_name,
+                "scope": if auth_user.principal_type == "agent" {
+                    Some(AGENT_GOVERNANCE_EVALUATE_SCOPE)
+                } else {
+                    None
+                }
+            }),
+        );
+    }
     let policy_checksum = agent_policy_checksum();
 
     let create_input = CreateAgentGovernanceEvaluationInput {
@@ -550,6 +627,9 @@ pub async fn evaluate_agent_governance(
         policy_checksum,
         evaluation,
         request_payload,
+        principal_type: Some(auth_user.principal_type.clone()),
+        agent_key_id: auth_user.agent_key_id.clone(),
+        agent_display_name: auth_user.agent_display_name.clone(),
     };
 
     match state
@@ -579,7 +659,15 @@ pub async fn evaluate_agent_governance(
                     "decision": &record.decision,
                     "allowed": record.allowed,
                     "requires_approval": record.requires_approval,
-                    "policy_checksum": &record.policy_checksum
+                    "policy_checksum": &record.policy_checksum,
+                    "principal_type": &record.principal_type,
+                    "agent_key_id": &record.agent_key_id,
+                    "agent_display_name": &record.agent_display_name,
+                    "scope": if record.principal_type.as_deref() == Some("agent") {
+                        Some(AGENT_GOVERNANCE_EVALUATE_SCOPE)
+                    } else {
+                        None
+                    }
                 }),
                 created_at: chrono::Utc::now().timestamp_millis(),
             };
@@ -591,200 +679,6 @@ pub async fn evaluate_agent_governance(
         }
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, "Failed to persist agent governance evaluation");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal database error" })),
-            )
-                .into_response()
-        }
-    }
-}
-
-pub async fn get_agent_governance_settings(
-    Extension(auth_user): Extension<AuthUser>,
-    State(state): State<Arc<AppState>>,
-    Query(query): Query<AgentGovernanceSettingsQuery>,
-) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
-        return resp.into_response();
-    }
-
-    let org_id = match resolve_and_check_org_scope(
-        &state,
-        auth_user.org_id.as_deref(),
-        query.org_name.as_deref(),
-        true,
-    )
-    .await
-    {
-        Ok(Some(org_id)) => org_id,
-        Ok(None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "org_name is required for global admin keys" })),
-            )
-                .into_response();
-        }
-        Err(err) => {
-            return (
-                org_scope_status(err),
-                Json(json!({ "error": agent_governance_scope_error_message(err) })),
-            )
-                .into_response();
-        }
-    };
-
-    match state.db.get_agent_governance_settings(&org_id).await {
-        Ok(settings) => (StatusCode::OK, Json(settings)).into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, org_id = %org_id, "Failed to load agent governance settings");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal database error" })),
-            )
-                .into_response()
-        }
-    }
-}
-
-pub async fn upsert_agent_governance_settings(
-    Extension(auth_user): Extension<AuthUser>,
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<UpsertAgentGovernanceSettingsRequest>,
-) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
-        return resp.into_response();
-    }
-
-    let org_id = match resolve_and_check_org_scope(
-        &state,
-        auth_user.org_id.as_deref(),
-        payload.org_name.as_deref(),
-        true,
-    )
-    .await
-    {
-        Ok(Some(org_id)) => org_id,
-        Ok(None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "org_name is required for global admin keys" })),
-            )
-                .into_response();
-        }
-        Err(err) => {
-            return (
-                org_scope_status(err),
-                Json(json!({ "error": agent_governance_scope_error_message(err) })),
-            )
-                .into_response();
-        }
-    };
-
-    let reason = normalize_agent_governance_reason(payload.reason);
-    match state
-        .db
-        .upsert_agent_governance_settings(
-            &org_id,
-            payload.enabled,
-            reason.as_deref(),
-            &auth_user.client_id,
-        )
-        .await
-    {
-        Ok(settings) => {
-            write_agent_governance_audit(
-                &state,
-                &auth_user.client_id,
-                if settings.enabled {
-                    "agent_governance.enabled"
-                } else {
-                    "agent_governance.disabled"
-                },
-                "agent_governance_settings",
-                Some(org_id.clone()),
-                json!({
-                    "org_id": org_id,
-                    "enabled": settings.enabled,
-                    "mode": settings.mode,
-                    "payload_mode": settings.payload_mode,
-                    "reason": settings.reason
-                }),
-            )
-            .await;
-            (StatusCode::OK, Json(settings)).into_response()
-        }
-        Err(e) => {
-            tracing::error!(error = %e, org_id = %org_id, "Failed to upsert agent governance settings");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal database error" })),
-            )
-                .into_response()
-        }
-    }
-}
-
-pub async fn list_agent_governance_evaluations(
-    Extension(auth_user): Extension<AuthUser>,
-    State(state): State<Arc<AppState>>,
-    Query(query): Query<AgentGovernanceEvaluationQuery>,
-) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
-        return resp.into_response();
-    }
-
-    let org_id = match resolve_and_check_org_scope(
-        &state,
-        auth_user.org_id.as_deref(),
-        query.org_name.as_deref(),
-        true,
-    )
-    .await
-    {
-        Ok(Some(org_id)) => org_id,
-        Ok(None) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "org_name is required for global admin keys" })),
-            )
-                .into_response();
-        }
-        Err(err) => {
-            return (
-                org_scope_status(err),
-                Json(json!({ "error": agent_governance_scope_error_message(err) })),
-            )
-                .into_response();
-        }
-    };
-
-    let limit = query.limit.unwrap_or(50).clamp(1, 100);
-    let offset = query.offset.unwrap_or(0).max(0);
-    let input = ListAgentGovernanceEvaluationsInput {
-        org_id: &org_id,
-        evaluation_id: query.evaluation_id.as_deref(),
-        repository_full_name: query.repository_full_name.as_deref(),
-        action: query.action.as_deref(),
-        decision: query.decision.as_deref(),
-        agent_id: query.agent_id.as_deref(),
-        limit,
-        offset,
-    };
-
-    match state.db.list_agent_governance_evaluations(&input).await {
-        Ok((items, total)) => (
-            StatusCode::OK,
-            Json(AgentGovernanceEvaluationListResponse {
-                items,
-                total,
-                limit,
-                offset,
-            }),
-        )
-            .into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, org_id = %org_id, "Failed to list agent governance evaluations");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),

@@ -171,6 +171,10 @@ fn rate_limit_key_prefers_authenticated_identity_scoped_by_org() {
         org_id: Some("org-123".to_string()),
         platform_principal_id: None,
         is_platform_founder: false,
+        principal_type: "human".to_string(),
+        scopes: Vec::new(),
+        agent_key_id: None,
+        agent_display_name: None,
     });
 
     let key = rate_limit_key_from_request(&req);
@@ -189,6 +193,10 @@ fn rate_limit_key_uses_client_identity_when_org_missing() {
         org_id: None,
         platform_principal_id: None,
         is_platform_founder: false,
+        principal_type: "human".to_string(),
+        scopes: Vec::new(),
+        agent_key_id: None,
+        agent_display_name: None,
     });
 
     let key = rate_limit_key_from_request(&req);
@@ -217,6 +225,10 @@ async fn inject_test_auth(mut req: Request<Body>, next: Next) -> Response {
         org_id: Some("test-org".to_string()),
         platform_principal_id: None,
         is_platform_founder: false,
+        principal_type: "human".to_string(),
+        scopes: Vec::new(),
+        agent_key_id: None,
+        agent_display_name: None,
     });
     next.run(req).await
 }
