@@ -10,6 +10,13 @@ describes pre-approved break-glass approval routing as future work.
 - Clarify the remaining Deployment Gates backlog after KAN-88.
 - Mark `0.2 Agentic Governance Layer` as the next major roadmap block.
 
+## Delivery
+
+- GitHub issue: `#318 - KAN-89: Roadmap sync after break-glass approval routing`.
+- PR: `#319 - docs(KAN-89): sync roadmap after break-glass routing`.
+- Merge commit: `cbe5f95`.
+- Runtime impact: none. This was documentation/product-state synchronization only.
+
 ## Product State
 
 Deployment Gates 0.1 now has the core customer-facing control path:
@@ -38,3 +45,14 @@ for agents to ask GitGov whether they may commit, push, merge, change policy, or
 - `docs/CURRENT_CONTEXT.md` must point at KAN-89 as the current documentation sync ticket while
   preserving the KAN-88 production validation evidence.
 - Publication guard must pass.
+
+Final post-merge validation for `cbe5f95` passed in GitHub:
+
+- `CI`
+- `Release Readiness Gate`
+- `Secret Scan`
+- `Public Naming Guard`
+- `Quality Gate Policy Matrix`
+- `Governance Correlation Smoke`
+- `Desktop Updater Readiness`
+- `SonarQube Governance`
