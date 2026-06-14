@@ -85,8 +85,7 @@ Production validation must leave the customer tenant manual-only after smoke:
 
 ## Status
 
-Local implementation validation passed on branch
-`feature/KAN-92-agent-governance-control-boundary`.
+Implemented and production-validated.
 
 Validated locally:
 
@@ -98,3 +97,28 @@ Validated locally:
 - `v39_postcheck.sql` with `PASS` for table, constraints, and index
 - focused `agent_governance` tests: `10` passed
 - full backend tests: `275` passed
+
+PR and production validation:
+
+- PR `#327` merged to `main` as `104131e`.
+- Post-merge `main` checks passed: `CI`, `Release Readiness Gate`, `Secret Scan`,
+  `Public Naming Guard`, `Quality Gate Policy Matrix`, `Governance Correlation Smoke`,
+  `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Production migration `supabase_schema_v39.sql` was applied manually through ignored
+  `DATABASE_URL`.
+- Production `v39_postcheck.sql` returned `PASS` for table, constraints, and index.
+- Render deploy `dep-d8n5nhu47okc73eqd510` for `104131e` reached `live`.
+- Production `/health` returned `200` with `ok`.
+- Authenticated `/stats` returned `200`.
+- Anonymous `GET /agent-governance/settings?org_name=yohandry10` returned `401`.
+- Authenticated default settings returned `enabled=false`, `mode=manual_only`,
+  `payload_mode=minimized`.
+- Disabled `POST /agent-governance/evaluate` returned `403` with
+  `code=agent_governance_disabled`.
+- Disabled-attempt history for `agent_id=kan92-smoke-disabled` returned `total=0`, proving no
+  evaluation row was created.
+- Temporary Admin opt-in returned `enabled=true`, `mode=opt_in_enabled`.
+- Enabled evaluation returned `201`, `decision=allowed`, and
+  `evaluation_id=agv_a8375adeebe640be8d6074883d5e1b71`.
+- The response and history both redacted secret-like metadata to `[REDACTED]`.
+- Final Admin opt-out restored the tenant to `enabled=false`, `mode=manual_only`.
