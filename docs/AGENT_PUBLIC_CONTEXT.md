@@ -35,7 +35,8 @@ The repo already contains substantial product surface:
 - Manual-first compliance evidence chain through customer framework packs, framework review reports,
   auditor assignments/comments, report review metadata, provenance manifests, PDF exports, period
   compliance reports, retention/custody history, period report provenance manifests, period report
-  review/sign-off metadata, and KAN-118 saved manual report profiles.
+  review/sign-off metadata, and KAN-118 saved manual report profiles, including the production
+  status-filter hotfix that keeps archived profiles out of active profile listings.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

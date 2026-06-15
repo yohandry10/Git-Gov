@@ -1,6 +1,6 @@
 # GitGov Implementation Status
 
-Updated: 2026-06-09
+Updated: 2026-06-15
 
 ## KAN-69 Desktop Runtime QA - 2026-06-08
 
@@ -546,7 +546,7 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 - Latest completed implementation: `KAN-118 - Saved Period Compliance Report Profiles`.
 - KAN-118 implementation status:
-  - Branch `product/KAN-118-period-report-profiles`, GitHub issue `#409`, PR `#410`, merged to `main` as `1ecb61b`.
+  - Branch `product/KAN-118-period-report-profiles`, GitHub issue `#409`, PR `#410`, merged to `main` as `1ecb61b`; production-validation docs PR `#411` merged as `a564089`; status-filter hotfix PR `#412` merged as `3c247c7`.
   - Adds Supabase `v60` migration/postcheck for `compliance_period_report_profiles`.
   - Adds backend profile routes: `GET/POST /compliance/period-report-profiles`,
     `GET/PATCH /compliance/period-report-profiles/{profile_id}`,
@@ -571,6 +571,12 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
     `cpr_66dd549b6c2a4ad9ade49a20721e979a` correctly created no PDF/manifest after toggles were
     disabled; archived run returned `409`; Auditor create returned `403`; temporary Auditor key was
     revoked; Agent Governance evaluations stayed unchanged at `7`.
+  - Hotfix validation: `fix/KAN-118-profile-status-filter` fixed `status=active|archived` query
+    normalization in profile listing. Local backend validation passed again with the focused profile
+    test and the full real Postgres suite (`311` passed). PR `#412` checks and post-merge `main`
+    checks passed. Render deploy `dep-d8o7lae8bjmc73bp9r30` reached `live`; production revalidation
+    returned `/health=ok`, `active_smoke_count=0`, `archived_smoke_count=1`, archived status
+    `archived`, and `run_count=2` for profile `cprprof_0f4c3ece4eb04856b4928b3eaeeed469`.
 
 - Previous completed implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
   - Product scope: manual Admin/Auditor review metadata for existing Period Compliance Reports.

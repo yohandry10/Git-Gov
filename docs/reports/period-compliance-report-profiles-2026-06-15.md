@@ -116,3 +116,23 @@ Results:
   HTTP `403`, and the temporary key was revoked.
 - Agent Governance evaluation count stayed unchanged at `7`, confirming KAN-118 did not create
   Agent Governance evidence.
+
+## Hotfix Validation
+
+After the first production smoke, a real product bug was found in the list endpoint: the backend
+normalized the `status` query parameter but did not assign the normalized value back to the query,
+so an archived smoke profile could still appear in `status=active` results.
+
+- Hotfix PR `#412` merged to `main` as `3c247c7`.
+- Render deploy `dep-d8o7lae8bjmc73bp9r30` reached `live`.
+- The focused real Postgres profile integration test now asserts that an archived profile is absent
+  from `status=active` and present in `status=archived`.
+- Full backend real Postgres suite passed again with `311` tests.
+- Production revalidation against `https://gitgov-api.onrender.com` returned:
+  - `/health=ok`.
+  - `active_smoke_count=0`.
+  - `archived_smoke_count=1`.
+  - archived smoke profile status `archived`.
+  - archived smoke profile `run_count=2`.
+
+This closes the profile-listing behavior for active versus archived saved report profiles.
