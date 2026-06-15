@@ -544,10 +544,11 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 ## Current Operating State
 
-- Current implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
+- Latest completed implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
   - Product scope: manual Admin/Auditor review metadata for existing Period Compliance Reports.
-  - Implemented locally: Supabase `v59` migration/postcheck, backend `GET/PATCH /compliance/period-reports/{period_report_id}/review`, safe review note/status validation, source-authorized Auditor access, Developer denial, archived-report conflict, custody log `review_updated`, admin audit log `compliance_period_report.reviewed`, provenance manifest review metadata, Tauri DTO/client/command, Control Plane store action/state, and `CompliancePeriodReportReviewPanel`.
+  - Completed through PR `#406` (`ade6302`) plus postcheck hotfix PR `#407` (`05e0706`): Supabase `v59` migration/postcheck, backend `GET/PATCH /compliance/period-reports/{period_report_id}/review`, safe review note/status validation, source-authorized Auditor access, Developer denial, archived-report conflict, custody log `review_updated`, admin audit log `compliance_period_report.reviewed`, provenance manifest review metadata, Tauri DTO/client/command, Control Plane store action/state, and `CompliancePeriodReportReviewPanel`.
   - Explicit non-scope: no certification, legal attestation, official regulatory approval, compliance score, DOCX/formal template, scheduler, KMS signature, AI summary, Agent Governance dependency, or artifact hash mutation.
+  - Production validation: Render `dep-d8nts6f7f7vs73ftqgdg` reached `live`, production `v59` postcheck passed, active report `cpr_132e9f0fdef841278be3e167ff22cf32` moved from `needs_review` to `reviewed` without artifact hash mutation, custody log contained `review_updated`, and archived report `cpr_d02adc7f1f3d4389bb612f0be1c9a7d1` rejected review update with `409 period_report_archived`.
   - Evidence report: `docs/reports/period-compliance-report-review-signoff-2026-06-15.md`.
 - Consolidating governance telemetry in Governance Evidence and executive reporting.
   - GitHub evidence now has an executive coverage summary in Governance Evidence, local evidence trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.

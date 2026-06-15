@@ -95,3 +95,25 @@ Local result:
 - Full frontend suite: `367` passed.
 - Focused store suite: `35` passed.
 - Build passed with the existing Vite large-chunk warning.
+
+## Production Validation
+
+- Implementation PR `#406` merged to `main` as `ade6302`.
+- Postcheck schema-scope fix PR `#407` merged to `main` as `05e0706`.
+- PR checks passed for both PRs.
+- Post-merge `main` checks passed for `05e0706`, including `CI`, `Release Readiness Gate`,
+  `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation
+  Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8ntnem47okc73f85pig` reached `live` for `ade6302`.
+- Final Render deploy `dep-d8nts6f7f7vs73ftqgdg` reached `live` for `05e0706`.
+- Production `v59` migration ran and `supabase_schema_v59_postcheck.sql` passed.
+- `/health` returned `ok`.
+- Active Period Compliance Report `cpr_132e9f0fdef841278be3e167ff22cf32` was reviewed in
+  production:
+  - before: `needs_review`
+  - after: `reviewed`
+  - reviewer: `bootstrap-admin`
+  - artifact hash unchanged: `true`
+  - custody log contains `review_updated`
+- Archived Period Compliance Report `cpr_d02adc7f1f3d4389bb612f0be1c9a7d1` rejected review update
+  with HTTP `409` and code `period_report_archived`.
