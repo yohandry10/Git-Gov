@@ -76,3 +76,17 @@ Local checks run during implementation:
 - Explicit legal hold workflow.
 - Physical deletion only after separate legal/security design and approval.
 - Formal DOCX/regulatory templates and official wording remain future work.
+
+## Production Validation
+
+- PR `#400` merged to `main` as `1217b35`.
+- Render deploy `dep-d8ns2ckm0tmc73bh7550` reached `live`.
+- Production `v57` migration and postcheck passed.
+- Production smoke created temporary Period Compliance Report
+  `cpr_d02adc7f1f3d4389bb612f0be1c9a7d1` with `report_count=1` and artifact hash
+  `sha256:6e1157b0ad756026b906923f85d192a56215525bf1b9becaa0c4c37b604b5d5b`.
+- JSON download returned schema `gitgov_period_compliance_report.v1`.
+- PDF export `cprpdf_c94c078cfb31d5069b529f404dc7082d` downloaded `2571` bytes.
+- Retention extension returned `active`; logical archive returned `archived`.
+- Access log contained `viewed`, `archived`, `retention_updated`, `downloaded_pdf`, and
+  `downloaded_json`.
