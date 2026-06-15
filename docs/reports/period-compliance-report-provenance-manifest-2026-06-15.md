@@ -75,3 +75,23 @@ The focused Period Compliance Report integration coverage now verifies:
 - Formal report/DOCX templates after customer validation of the JSON/PDF/manifest chain.
 - Scheduled period report generation.
 - Legal hold and physical deletion workflow after separate legal/security design.
+
+## Production Validation
+
+- PR `#403` merged to `main` as `81fe9aa`.
+- Render deploy `dep-d8nsqo8jo6nc73e7qjpg` for `81fe9aa` reached `live`.
+- Production `v58` migration and postcheck passed after removing the local-only `pgbouncer`
+  parameter from the `psql` connection string.
+- Production smoke used the KAN-115 temporary Period Compliance Report
+  `cpr_d02adc7f1f3d4389bb612f0be1c9a7d1`.
+- First manifest:
+  `cprm_271f881c821d21735981a38cdae84552`,
+  `sha256:02485b69a43db63e2afb644d7424afe802e508dcc2a51b05615c71c6f632abbd`.
+- Downloaded manifest returned schema
+  `gitgov_period_compliance_report_provenance_manifest.v1` and matching hash-chain manifest hash.
+- Second manifest:
+  `cprm_eb0888d6a47f7433c4395ca6c0634ba9`; its `previous_manifest_hash` matched the first
+  manifest hash.
+- Manifest artifact reported `pdf_export_count=1`.
+- Access log contained `manifest_created`, `manifest_downloaded`, `viewed`, `archived`,
+  `retention_updated`, `downloaded_pdf`, and `downloaded_json`.
