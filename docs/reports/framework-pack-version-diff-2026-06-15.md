@@ -45,5 +45,23 @@ customer_framework_pack_diff_compares_real_versions_without_claims
 - Focused frontend store test: `35` passed.
 - Full frontend Vitest run: `367` passed.
 - Frontend lint and build passed.
-- `git diff --check` and `scripts/security/publication_guard.ps1` are required before commit.
-- PR checks, post-merge Render deployment, and production smoke are required before closing KAN-112.
+- `git diff --check` passed.
+- `scripts/security/publication_guard.ps1` passed.
+- PR `#391` checks passed.
+- Post-merge `main` checks for `5499f78` passed:
+  - `CI`
+  - `Release Readiness Gate`
+  - `Quality Gate Policy Matrix`
+  - `Secret Scan`
+  - `Public Naming Guard`
+  - `Governance Correlation Smoke`
+  - `Desktop Updater Readiness`
+  - `SonarQube Governance`
+- Render deploy `dep-d8noflu8bjmc73f2u2rg` reached `live`.
+- Production smoke passed:
+  - `/health=ok`
+  - original framework: `bank_release_controls_kan112_20260615001152`
+  - base pack: `cfp_8181d41d2bb39ed54af8050056fbb7eb`
+  - target pack: `cfp_fdec1d243cad05936aee96a678ca35e1`
+  - summary: `added=1`, `removed=1`, `changed=1`, `unchanged=2`
+  - no-claim flags remained `false/false/false/false` with `requires_auditor_review=true`
