@@ -799,6 +799,174 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .expect("period hash after pdf");
     assert_eq!(period_hash_after_pdf, artifact_hash);
 
+    let (status, _unassigned_manifest_create) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/provenance-manifests"),
+        Some(&json!({}).to_string()),
+        Some(&unassigned_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, manifest_create) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/provenance-manifests"),
+        Some(&json!({}).to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "period manifest failed: {manifest_create}"
+    );
+    let manifest_create: serde_json::Value =
+        serde_json::from_str(&manifest_create).expect("period manifest JSON");
+    let manifest = &manifest_create["manifest"];
+    let manifest_artifact = &manifest_create["artifact"];
+    let manifest_id = manifest["manifest_id"].as_str().expect("manifest id");
+    let manifest_hash = manifest["manifest_hash"].as_str().expect("manifest hash");
+    assert!(manifest_id.starts_with("cprm_"));
+    assert!(manifest_hash.starts_with("sha256:"));
+    assert!(manifest["previous_manifest_hash"].is_null());
+    assert_eq!(
+        manifest["signature_algorithm"],
+        "sha256-period-report-provenance-manifest-v1"
+    );
+    assert_eq!(
+        manifest_artifact["schema_version"],
+        "gitgov_period_compliance_report_provenance_manifest.v1"
+    );
+    assert_eq!(
+        manifest_artifact["period_report"]["period_report_id"],
+        period_report_id
+    );
+    assert_eq!(
+        manifest_artifact["period_report"]["artifact_hash"],
+        artifact_hash
+    );
+    assert_eq!(
+        manifest_artifact["period_artifact_summary"]["source_hashes"],
+        artifact["source_hashes"]
+    );
+    assert_eq!(manifest_artifact["pdf_exports"]["count"], 1);
+    assert_eq!(
+        manifest_artifact["pdf_exports"]["items"][0]["pdf_artifact_hash"],
+        pdf_artifact_hash
+    );
+    assert_eq!(manifest_artifact["claims"]["compliance_claim"], false);
+    assert_eq!(manifest_artifact["claims"]["regulatory_claim"], false);
+    assert_eq!(manifest_artifact["claims"]["certification"], false);
+    assert_eq!(
+        manifest_artifact["audit_metadata"]["agent_governance_required"],
+        false
+    );
+    assert_eq!(
+        manifest_artifact["audit_metadata"]["source_period_report_artifact_mutated"],
+        false
+    );
+    let manifest_action_counts = manifest_artifact["access_log"]["action_counts"]
+        .as_array()
+        .expect("manifest access counts");
+    assert!(manifest_action_counts
+        .iter()
+        .any(|item| item["action"] == "downloaded_json" && item["count"] == 1));
+    assert!(manifest_action_counts
+        .iter()
+        .any(|item| item["action"] == "downloaded_pdf" && item["count"] == 1));
+    assert!(manifest_action_counts
+        .iter()
+        .any(|item| item["action"] == "viewed" && item["count"] == 1));
+
+    let (status, _other_manifest_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}"
+        ),
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, manifest_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "period manifest download failed: {manifest_download}"
+    );
+    let manifest_download: serde_json::Value =
+        serde_json::from_str(&manifest_download).expect("manifest download JSON");
+    assert_eq!(manifest_download["manifest_id"], manifest_id);
+    assert_eq!(
+        manifest_download["hash_chain"]["manifest_hash"],
+        manifest_hash
+    );
+    assert_eq!(
+        manifest_download["period_report"]["artifact_hash"],
+        artifact_hash
+    );
+
+    let (status, second_manifest_create) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/provenance-manifests"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "second period manifest failed: {second_manifest_create}"
+    );
+    let second_manifest_create: serde_json::Value =
+        serde_json::from_str(&second_manifest_create).expect("second manifest JSON");
+    let second_manifest = &second_manifest_create["manifest"];
+    assert_ne!(second_manifest["manifest_id"], manifest_id);
+    assert_eq!(second_manifest["previous_manifest_hash"], manifest_hash);
+    assert_eq!(
+        second_manifest_create["artifact"]["hash_chain"]["previous_manifest_hash"],
+        manifest_hash
+    );
+    assert!(
+        second_manifest_create["artifact"]["access_log"]["action_counts"]
+            .as_array()
+            .expect("second manifest access counts")
+            .iter()
+            .any(|item| item["action"] == "manifest_downloaded" && item["count"] == 1)
+    );
+
+    let manifest_row_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_manifests WHERE period_report_id = $1",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period manifest row count");
+    assert_eq!(manifest_row_count, 2);
+
+    let manifest_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action IN ('manifest_created', 'manifest_downloaded')",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period manifest access log count");
+    assert_eq!(manifest_log_count, 3);
+
     let downloaded_at: Option<i64> = sqlx::query_scalar(
         "SELECT ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT FROM compliance_period_reports WHERE period_report_id = $1",
     )
@@ -943,6 +1111,8 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert!(actions.contains(&"downloaded_pdf"));
     assert!(actions.contains(&"retention_updated"));
     assert!(actions.contains(&"archived"));
+    assert!(actions.contains(&"manifest_created"));
+    assert!(actions.contains(&"manifest_downloaded"));
     assert_eq!(
         access_log_response["items"][0]["artifact_hash"],
         artifact_hash
@@ -1017,6 +1187,15 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("count period PDF audit rows");
     assert_eq!(pdf_audit_count, 1);
+
+    let manifest_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.provenance_manifest_created'",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count period manifest audit rows");
+    assert_eq!(manifest_audit_count, 2);
 
     let retention_audit_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.retention_updated'",

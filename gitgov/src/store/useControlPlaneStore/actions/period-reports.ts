@@ -3,6 +3,7 @@ import type {
   CompliancePeriodReportAccessLogResponse,
   CompliancePeriodReportPdfDownloadResponse,
   CompliancePeriodReportPdfExportResponse,
+  CompliancePeriodReportProvenanceManifestResponse,
   CompliancePeriodReportListResponse,
   CompliancePeriodReportResponse,
   ControlPlaneActions,
@@ -17,6 +18,8 @@ type PeriodReportActionKeys =
   | 'loadCompliancePeriodReportAccessLog'
   | 'createCompliancePeriodReportPdfExport'
   | 'downloadCompliancePeriodReportPdfExport'
+  | 'createCompliancePeriodReportProvenanceManifest'
+  | 'downloadCompliancePeriodReportProvenanceManifest'
 
 export function createCompliancePeriodReportActions(
   set: ControlPlaneSet,
@@ -293,6 +296,77 @@ export function createCompliancePeriodReportActions(
         set({
           complianceEvidenceError: message,
           isCompliancePeriodReportPdfExportDownloading: false,
+        })
+        return null
+      }
+    },
+
+    createCompliancePeriodReportProvenanceManifest: async (periodReportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      if (!serverConfig || !normalizedPeriodReportId) return null
+
+      set({
+        isCompliancePeriodReportProvenanceManifestCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportProvenanceManifestResponse>(
+          'cmd_server_create_compliance_period_report_provenance_manifest',
+          {
+            config: serverConfig,
+            periodReportId: normalizedPeriodReportId,
+            payload: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        set({
+          compliancePeriodReportProvenanceManifest: response,
+          isCompliancePeriodReportProvenanceManifestCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProvenanceManifestCreating: false,
+        })
+        return null
+      }
+    },
+
+    downloadCompliancePeriodReportProvenanceManifest: async (periodReportId, manifestId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      const normalizedManifestId = manifestId.trim()
+      if (!serverConfig || !normalizedPeriodReportId || !normalizedManifestId) return null
+
+      set({
+        isCompliancePeriodReportProvenanceManifestDownloading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const artifact = await tauriInvoke<Record<string, unknown>>(
+          'cmd_server_download_compliance_period_report_provenance_manifest',
+          {
+            config: serverConfig,
+            periodReportId: normalizedPeriodReportId,
+            manifestId: normalizedManifestId,
+            query: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        set({
+          isCompliancePeriodReportProvenanceManifestDownloading: false,
+        })
+        return artifact
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProvenanceManifestDownloading: false,
         })
         return null
       }

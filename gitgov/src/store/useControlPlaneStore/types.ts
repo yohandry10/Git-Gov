@@ -847,6 +847,31 @@ export interface CompliancePeriodReportPdfDownloadResponse {
   pdf_base64: string
 }
 
+export interface CompliancePeriodReportProvenanceManifestRequest {
+  org_name?: string | null
+}
+
+export interface CompliancePeriodReportProvenanceManifestQuery {
+  org_name?: string | null
+}
+
+export interface CompliancePeriodReportProvenanceManifestRecord {
+  manifest_id: string
+  org_id: string
+  period_report_id: string
+  generated_by_user_id: string
+  manifest_hash: string
+  previous_manifest_hash?: string | null
+  signature_algorithm: string
+  created_at: number
+}
+
+export interface CompliancePeriodReportProvenanceManifestResponse {
+  manifest: CompliancePeriodReportProvenanceManifestRecord
+  download_url: string
+  artifact: Record<string, unknown>
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1281,6 +1306,7 @@ export interface ControlPlaneState {
   compliancePeriodReportArtifact: Record<string, unknown> | null
   compliancePeriodReportAccessLog: CompliancePeriodReportAccessLogResponse | null
   compliancePeriodReportPdfExport: CompliancePeriodReportPdfExportResponse | null
+  compliancePeriodReportProvenanceManifest: CompliancePeriodReportProvenanceManifestResponse | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1312,6 +1338,8 @@ export interface ControlPlaneState {
   isCompliancePeriodReportAccessLogLoading: boolean
   isCompliancePeriodReportPdfExportCreating: boolean
   isCompliancePeriodReportPdfExportDownloading: boolean
+  isCompliancePeriodReportProvenanceManifestCreating: boolean
+  isCompliancePeriodReportProvenanceManifestDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1448,6 +1476,8 @@ export interface ControlPlaneActions {
   ) => Promise<CompliancePeriodReportAccessLogResponse | null>
   createCompliancePeriodReportPdfExport: (periodReportId: string) => Promise<CompliancePeriodReportPdfExportResponse | null>
   downloadCompliancePeriodReportPdfExport: (periodReportId: string, pdfExportId?: string | null) => Promise<CompliancePeriodReportPdfDownloadResponse | null>
+  createCompliancePeriodReportProvenanceManifest: (periodReportId: string) => Promise<CompliancePeriodReportProvenanceManifestResponse | null>
+  downloadCompliancePeriodReportProvenanceManifest: (periodReportId: string, manifestId: string) => Promise<Record<string, unknown> | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

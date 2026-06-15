@@ -707,3 +707,35 @@ pub struct CompliancePeriodReportPdfDownloadResponse {
     pub pdf_export: CompliancePeriodReportPdfExportRecord,
     pub pdf_base64: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProvenanceManifestRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProvenanceManifestQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProvenanceManifestRecord {
+    pub manifest_id: String,
+    pub org_id: String,
+    pub period_report_id: String,
+    pub generated_by_user_id: String,
+    pub manifest_hash: String,
+    #[serde(default)]
+    pub previous_manifest_hash: Option<String>,
+    pub signature_algorithm: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProvenanceManifestResponse {
+    pub manifest: CompliancePeriodReportProvenanceManifestRecord,
+    pub download_url: String,
+    pub artifact: serde_json::Value,
+}

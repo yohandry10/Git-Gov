@@ -25,7 +25,9 @@ use crate::control_plane::{
     CompliancePeriodReportAccessLogQuery, CompliancePeriodReportAccessLogResponse,
     CompliancePeriodReportListResponse, CompliancePeriodReportPdfDownloadResponse,
     CompliancePeriodReportPdfExportQuery, CompliancePeriodReportPdfExportRequest,
-    CompliancePeriodReportPdfExportResponse, CompliancePeriodReportQuery,
+    CompliancePeriodReportPdfExportResponse, CompliancePeriodReportProvenanceManifestQuery,
+    CompliancePeriodReportProvenanceManifestRequest,
+    CompliancePeriodReportProvenanceManifestResponse, CompliancePeriodReportQuery,
     CompliancePeriodReportRequest, CompliancePeriodReportResponse,
     CompliancePeriodReportRetentionRequest, ComplianceReviewPackageQuery,
     ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
@@ -1546,6 +1548,53 @@ pub async fn cmd_server_download_compliance_period_report_pdf_export(
             .download_compliance_period_report_pdf_export(&period_report_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_period_report_provenance_manifest(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    payload: CompliancePeriodReportProvenanceManifestRequest,
+) -> Result<CompliancePeriodReportProvenanceManifestResponse, String> {
+    run_blocking_command(
+        "CREATE_COMPLIANCE_PERIOD_REPORT_PROVENANCE_MANIFEST",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .create_compliance_period_report_provenance_manifest(&period_report_id, &payload)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_period_report_provenance_manifest(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    manifest_id: String,
+    query: CompliancePeriodReportProvenanceManifestQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command(
+        "DOWNLOAD_COMPLIANCE_PERIOD_REPORT_PROVENANCE_MANIFEST",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .download_compliance_period_report_provenance_manifest(
+                    &period_report_id,
+                    &manifest_id,
+                    &query,
+                )
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
     .await
 }
 

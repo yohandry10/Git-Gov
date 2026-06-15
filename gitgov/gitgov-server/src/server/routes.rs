@@ -335,6 +335,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::download_compliance_period_report_pdf_export),
         )
         .route(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests",
+            post(handlers::create_compliance_period_report_provenance_manifest),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}",
+            get(handlers::download_compliance_period_report_provenance_manifest),
+        )
+        .route(
             "/compliance/period-reports/{period_report_id}/download",
             get(handlers::download_compliance_period_report),
         )
