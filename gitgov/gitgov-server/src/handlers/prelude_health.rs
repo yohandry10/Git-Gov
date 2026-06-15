@@ -1,6 +1,7 @@
 use crate::auth::{is_founder_global_admin, require_admin, require_compliance_reviewer, AuthUser};
 use crate::db::{
     AgentGovernanceReadContextInput, CreateAgentGovernanceAgentKeyInput,
+    CreateComplianceFrameworkReviewReportCommentInput,
     CreateAgentGovernanceEvaluationInput, CreateComplianceEvidenceExportInput,
     CreateComplianceEvidenceMappingInput, CreateComplianceEvidenceMappingItemInput,
     CreateComplianceFrameworkPackControlInput, CreateComplianceFrameworkPackInput,
@@ -10,6 +11,7 @@ use crate::db::{
     ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, PipelineRunsForEvidencePacketQuery,
     PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput,
     UpdateComplianceFrameworkReviewReportReviewInput, UpsertOrgUserInput,
+    UpsertComplianceFrameworkReviewReportAssignmentsInput,
 };
 use crate::models::*;
 use crate::notifications;

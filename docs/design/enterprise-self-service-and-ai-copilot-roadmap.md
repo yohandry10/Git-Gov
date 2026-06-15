@@ -1,8 +1,8 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-06-14
+Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments
 
 ## Decision
 
@@ -243,12 +243,18 @@ Current primitives:
   review metadata. They cannot create artifacts, import/review framework packs, mutate Deployment
   Gates, manage API keys/users, change policies, access Agent Governance admin surfaces, or create
   official regulatory/compliance/certification claims.
+- `KAN-109`: Framework Review Report Auditor assignments and comments. Admins can assign existing
+  Framework Review Reports to one or more active tenant Auditors, Auditors can list reports assigned
+  to themselves, and assigned reviewers can add safe comments with optional review-status
+  suggestions. When active assignments exist, unassigned same-tenant Auditors cannot read
+  assignment/comment collaboration or update review metadata for that report. This is collaboration
+  metadata only: report artifacts, source hashes, no-claim flags, Deployment Gates, policy, and
+  Agent Governance state are not mutated.
 
 Future scope:
 
-- Granular Auditor assignment workflow and multi-reviewer comments over existing Framework Review
-  Reports. This should still come before any
-  official regulatory claim.
+- Richer reviewer workflow on top of KAN-109, such as multi-step reviewer states, due dates,
+  notifications, and reviewer-specific task queues.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.

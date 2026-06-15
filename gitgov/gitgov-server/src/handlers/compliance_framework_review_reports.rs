@@ -602,6 +602,10 @@ pub async fn list_compliance_framework_review_reports(
             framework_id: query.framework_id.as_deref(),
             mapping_id: query.mapping_id.as_deref(),
             review_package_id: query.review_package_id.as_deref(),
+            assigned_auditor_client_id: query
+                .assigned_to_me
+                .unwrap_or(false)
+                .then_some(auth_user.client_id.as_str()),
             limit,
         })
         .await
@@ -710,6 +714,13 @@ pub async fn review_compliance_framework_review_report(
         Ok(org_id) => org_id,
         Err(resp) => return resp,
     };
+
+    if let Some(resp) =
+        require_framework_review_report_collaboration_access(&state, &auth_user, &org_id, &report_id)
+            .await
+    {
+        return resp;
+    }
 
     match state
         .db

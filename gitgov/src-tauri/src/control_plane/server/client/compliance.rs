@@ -22,6 +22,29 @@ fn framework_review_report_query_params(
         if let Some(limit) = query.limit {
             query_params.push(("limit".to_string(), limit.to_string()));
         }
+        if let Some(assigned_to_me) = query.assigned_to_me {
+            query_params.push(("assigned_to_me".to_string(), assigned_to_me.to_string()));
+        }
+    }
+    query_params
+}
+
+fn framework_review_report_assignment_query_params(
+    query: &ComplianceFrameworkReviewReportAssignmentQuery,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    query_params
+}
+
+fn framework_review_report_comments_query_params(
+    query: &ComplianceFrameworkReviewReportCommentsQuery,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
     }
     query_params
 }
@@ -406,6 +429,149 @@ impl ControlPlaneClient {
         let query_params = framework_review_report_query_params(query, false);
 
         let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_assigned_compliance_framework_review_reports(
+        &self,
+        query: &ComplianceFrameworkReviewReportQuery,
+    ) -> Result<ComplianceFrameworkReviewReportListResponse, ServerError> {
+        let url =
+            self.endpoint_url(&["compliance", "framework-review-reports", "assigned-to-me"])?;
+        let query_params = framework_review_report_query_params(query, true);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_compliance_framework_review_report_assignments(
+        &self,
+        report_id: &str,
+        query: &ComplianceFrameworkReviewReportAssignmentQuery,
+    ) -> Result<ComplianceFrameworkReviewReportAssignmentsResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "assignments",
+        ])?;
+        let query_params = framework_review_report_assignment_query_params(query);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn upsert_compliance_framework_review_report_assignments(
+        &self,
+        report_id: &str,
+        payload: &ComplianceFrameworkReviewReportAssignmentsRequest,
+    ) -> Result<ComplianceFrameworkReviewReportAssignmentsResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "assignments",
+        ])?;
+        let mut request = self.client.put(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_compliance_framework_review_report_comments(
+        &self,
+        report_id: &str,
+        query: &ComplianceFrameworkReviewReportCommentsQuery,
+    ) -> Result<ComplianceFrameworkReviewReportCommentsResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "comments",
+        ])?;
+        let query_params = framework_review_report_comments_query_params(query);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn create_compliance_framework_review_report_comment(
+        &self,
+        report_id: &str,
+        payload: &ComplianceFrameworkReviewReportCommentRequest,
+    ) -> Result<ComplianceFrameworkReviewReportCommentRecord, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "comments",
+        ])?;
+        let mut request = self.client.post(url).json(payload);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }

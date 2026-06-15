@@ -6,6 +6,9 @@ import type {
   ComplianceFrameworkPackRecord,
   ComplianceFrameworkPackReviewRequest,
   ComplianceFrameworkPackImportResponse,
+  ComplianceFrameworkReviewReportAssignmentsResponse,
+  ComplianceFrameworkReviewReportCommentRecord,
+  ComplianceFrameworkReviewReportCommentsResponse,
   ComplianceFrameworkPackListResponse,
   ComplianceFrameworkReviewReportListResponse,
   ComplianceFrameworkReviewReportResponse,
@@ -27,6 +30,11 @@ type ComplianceActionKeys =
   | 'downloadComplianceReviewPackage'
   | 'createComplianceFrameworkReviewReport'
   | 'loadComplianceFrameworkReviewReports'
+  | 'loadAssignedComplianceFrameworkReviewReports'
+  | 'loadComplianceFrameworkReviewReportAssignments'
+  | 'saveComplianceFrameworkReviewReportAssignments'
+  | 'loadComplianceFrameworkReviewReportComments'
+  | 'createComplianceFrameworkReviewReportComment'
   | 'reviewComplianceFrameworkReviewReport'
   | 'downloadComplianceFrameworkReviewReport'
   | 'resetComplianceEvidenceFlow'
@@ -422,6 +430,7 @@ export function createComplianceActions(
             mapping_id: filters.mapping_id?.trim() || null,
             review_package_id: filters.review_package_id?.trim() || null,
             limit: filters.limit ?? 25,
+            assigned_to_me: filters.assigned_to_me ?? null,
           },
         })
         set({
@@ -434,6 +443,186 @@ export function createComplianceActions(
         set({
           complianceEvidenceError: message,
           isComplianceFrameworkReviewReportsLoading: false,
+        })
+        return null
+      }
+    },
+
+    loadAssignedComplianceFrameworkReviewReports: async (filters = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      if (!serverConfig) return null
+
+      set({
+        isAssignedComplianceFrameworkReviewReportsLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportListResponse>('cmd_server_list_assigned_compliance_framework_review_reports', {
+          config: serverConfig,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+            framework_id: filters.framework_id?.trim() || null,
+            mapping_id: filters.mapping_id?.trim() || null,
+            review_package_id: filters.review_package_id?.trim() || null,
+            limit: filters.limit ?? 25,
+            assigned_to_me: true,
+          },
+        })
+        set({
+          assignedComplianceFrameworkReviewReports: response,
+          isAssignedComplianceFrameworkReviewReportsLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isAssignedComplianceFrameworkReviewReportsLoading: false,
+        })
+        return null
+      }
+    },
+
+    loadComplianceFrameworkReviewReportAssignments: async (reportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportAssignmentsLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportAssignmentsResponse>('cmd_server_list_compliance_framework_review_report_assignments', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportAssignments: response,
+          isComplianceFrameworkReviewReportAssignmentsLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportAssignmentsLoading: false,
+        })
+        return null
+      }
+    },
+
+    saveComplianceFrameworkReviewReportAssignments: async (reportId, auditorClientIds, assignmentNotesSafe = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      const normalizedAuditorClientIds = Array.from(new Set(
+        auditorClientIds.map((value) => value.trim()).filter(Boolean),
+      ))
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportAssignmentsSaving: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportAssignmentsResponse>('cmd_server_upsert_compliance_framework_review_report_assignments', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+            auditor_client_ids: normalizedAuditorClientIds,
+            assignment_notes_safe: assignmentNotesSafe?.trim() || null,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportAssignments: response,
+          isComplianceFrameworkReviewReportAssignmentsSaving: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportAssignmentsSaving: false,
+        })
+        return null
+      }
+    },
+
+    loadComplianceFrameworkReviewReportComments: async (reportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportCommentsLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportCommentsResponse>('cmd_server_list_compliance_framework_review_report_comments', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportComments: response,
+          isComplianceFrameworkReviewReportCommentsLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportCommentsLoading: false,
+        })
+        return null
+      }
+    },
+
+    createComplianceFrameworkReviewReportComment: async (reportId, commentBodySafe, reviewStatusSuggestion = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      const normalizedComment = commentBodySafe.trim()
+      if (!serverConfig || !normalizedReportId || !normalizedComment) return null
+
+      set({
+        isComplianceFrameworkReviewReportCommenting: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportCommentRecord>('cmd_server_create_compliance_framework_review_report_comment', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+            comment_body_safe: normalizedComment,
+            review_status_suggestion: reviewStatusSuggestion?.trim() || null,
+          },
+        })
+        const currentComments = get().complianceFrameworkReviewReportComments
+        set({
+          complianceFrameworkReviewReportComments: currentComments
+            ? {
+                comments: [...currentComments.comments, response],
+                count: currentComments.count + 1,
+              }
+            : {
+                comments: [response],
+                count: 1,
+              },
+          isComplianceFrameworkReviewReportCommenting: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportCommenting: false,
         })
         return null
       }
@@ -526,6 +715,9 @@ export function createComplianceActions(
       complianceReviewPackageArtifact: null,
       complianceFrameworkReviewReport: null,
       complianceFrameworkReviewReports: null,
+      assignedComplianceFrameworkReviewReports: null,
+      complianceFrameworkReviewReportAssignments: null,
+      complianceFrameworkReviewReportComments: null,
       complianceFrameworkReviewReportArtifact: null,
       complianceEvidenceError: null,
     }),

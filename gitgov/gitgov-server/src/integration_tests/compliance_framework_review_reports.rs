@@ -440,6 +440,13 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     let admin = insert_test_api_key_for_org(&pool, "kan105-report-admin", "Admin", &org_id).await;
     let auditor =
         insert_test_api_key_for_org(&pool, "kan108-report-auditor", "Auditor", &org_id).await;
+    let second_auditor = insert_test_api_key_for_org(
+        &pool,
+        "kan109-report-unassigned-auditor",
+        "Auditor",
+        &org_id,
+    )
+    .await;
     let developer =
         insert_test_api_key_for_org(&pool, "kan107-report-dev", "Developer", &org_id).await;
     let other_auditor = insert_test_api_key_for_org(
@@ -743,6 +750,262 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(metadata["report"]["artifact_hash"], artifact_hash);
     assert_eq!(metadata["report"]["review_status"], "needs_review");
 
+    let invalid_assignment_body = json!({
+        "auditor_client_ids": ["kan107-report-dev"],
+        "assignment_notes_safe": "Developer cannot be assigned as Auditor"
+    });
+    let (status, invalid_assignment_response) = json_request(
+        &app,
+        "PUT",
+        &format!("/compliance/framework-review-reports/{report_id}/assignments"),
+        Some(&invalid_assignment_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "invalid assignment response: {invalid_assignment_response}"
+    );
+    assert!(invalid_assignment_response.contains("active tenant Auditor"));
+
+    let secret_assignment_body = json!({
+        "auditor_client_ids": ["kan108-report-auditor"],
+        "assignment_notes_safe": "bearer ghp_should_not_be_here"
+    });
+    let (status, secret_assignment_response) = json_request(
+        &app,
+        "PUT",
+        &format!("/compliance/framework-review-reports/{report_id}/assignments"),
+        Some(&secret_assignment_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(secret_assignment_response.contains("plain text"));
+
+    let assignment_body = json!({
+        "auditor_client_ids": ["kan108-report-auditor"],
+        "assignment_notes_safe": "KAN-109 assigned to primary Auditor for manual review"
+    });
+    let (status, assignments_response) = json_request(
+        &app,
+        "PUT",
+        &format!("/compliance/framework-review-reports/{report_id}/assignments"),
+        Some(&assignment_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "assignment update failed: {assignments_response}"
+    );
+    let assignments_response: serde_json::Value =
+        serde_json::from_str(&assignments_response).expect("assignments JSON");
+    assert_eq!(assignments_response["count"], 1);
+    assert_eq!(
+        assignments_response["assignments"][0]["auditor_client_id"],
+        "kan108-report-auditor"
+    );
+    assert_eq!(
+        assignments_response["assignments"][0]["assignment_status"],
+        "active"
+    );
+    assert_eq!(
+        assignments_response["assignments"][0]["assignment_notes_safe"],
+        "KAN-109 assigned to primary Auditor for manual review"
+    );
+
+    let (status, auditor_assignments) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/framework-review-reports/{report_id}/assignments"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "assigned Auditor should read assignments: {auditor_assignments}"
+    );
+    let auditor_assignments: serde_json::Value =
+        serde_json::from_str(&auditor_assignments).expect("auditor assignments JSON");
+    assert_eq!(auditor_assignments["count"], 1);
+
+    let (status, unassigned_assignments) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/framework-review-reports/{report_id}/assignments"),
+        None,
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_assignments.contains("auditor_not_assigned"));
+
+    let (status, auditor_assigned_list) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/assigned-to-me?framework_id={BASELINE_FRAMEWORK_ID}&mapping_id={mapping_id}&review_package_id={package_id}&limit=500"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "assigned report list failed: {auditor_assigned_list}"
+    );
+    let auditor_assigned_list: serde_json::Value =
+        serde_json::from_str(&auditor_assigned_list).expect("assigned report list JSON");
+    assert_eq!(auditor_assigned_list["count"], 1);
+    assert_eq!(auditor_assigned_list["items"][0]["report_id"], report_id);
+    assert!(auditor_assigned_list["items"][0].get("artifact").is_none());
+    assert!(auditor_assigned_list["items"][0]
+        .get("payload_json_redacted")
+        .is_none());
+
+    let (status, second_assigned_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/framework-review-reports/assigned-to-me",
+        None,
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "unassigned Auditor list failed: {second_assigned_list}"
+    );
+    let second_assigned_list: serde_json::Value =
+        serde_json::from_str(&second_assigned_list).expect("second assigned report list JSON");
+    assert_eq!(second_assigned_list["count"], 0);
+
+    let (status, other_assigned_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/framework-review-reports/assigned-to-me",
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "other tenant assigned list failed: {other_assigned_list}"
+    );
+    let other_assigned_list: serde_json::Value =
+        serde_json::from_str(&other_assigned_list).expect("other assigned report list JSON");
+    assert_eq!(other_assigned_list["count"], 0);
+
+    let unassigned_comment_body = json!({
+        "comment_body_safe": "Unassigned same-tenant Auditor should not comment."
+    });
+    let (status, unassigned_comment) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/comments"),
+        Some(&unassigned_comment_body.to_string()),
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_comment.contains("auditor_not_assigned"));
+
+    let comment_body = json!({
+        "comment_body_safe": "Evidence owner sign-off is missing; deployment gate evidence is present.",
+        "review_status_suggestion": "needs_changes"
+    });
+    let (status, comment_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/comments"),
+        Some(&comment_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "assigned Auditor comment failed: {comment_response}"
+    );
+    let comment_response: serde_json::Value =
+        serde_json::from_str(&comment_response).expect("comment JSON");
+    assert_eq!(
+        comment_response["commenter_client_id"],
+        "kan108-report-auditor"
+    );
+    assert_eq!(
+        comment_response["review_status_suggestion"],
+        "needs_changes"
+    );
+
+    let secret_comment_body = json!({
+        "comment_body_safe": "please check bearer ghp_should_not_be_here"
+    });
+    let (status, secret_comment_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/comments"),
+        Some(&secret_comment_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(secret_comment_response.contains("plain text"));
+
+    let (status, comments_response) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/framework-review-reports/{report_id}/comments"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "assigned Auditor should list comments: {comments_response}"
+    );
+    let comments_response: serde_json::Value =
+        serde_json::from_str(&comments_response).expect("comments JSON");
+    assert_eq!(comments_response["count"], 1);
+    assert_eq!(
+        comments_response["comments"][0]["comment_body_safe"],
+        "Evidence owner sign-off is missing; deployment gate evidence is present."
+    );
+
+    let (status, unassigned_comments) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/framework-review-reports/{report_id}/comments"),
+        None,
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_comments.contains("auditor_not_assigned"));
+
+    let unassigned_review_body = json!({
+        "review_status": "reviewed",
+        "review_notes_safe": "Unassigned Auditor cannot review."
+    });
+    let (status, unassigned_review) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&unassigned_review_body.to_string()),
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_review.contains("auditor_not_assigned"));
+
     let review_body = json!({
         "review_status": " needs_changes ",
         "review_notes_safe": "Auditor needs evidence owner sign-off before this can be accepted."
@@ -784,6 +1047,24 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     .await
     .expect("count review audit rows");
     assert_eq!(audit_count, 1);
+
+    let assignment_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.assignments_updated'",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count assignment audit rows");
+    assert_eq!(assignment_audit_count, 1);
+
+    let comment_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.comment_created'",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count comment audit rows");
+    assert_eq!(comment_audit_count, 1);
 
     let invalid_status = json!({
         "review_status": "approved",
