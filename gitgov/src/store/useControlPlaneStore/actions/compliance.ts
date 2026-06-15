@@ -11,6 +11,8 @@ import type {
   ComplianceFrameworkReviewReportCommentsResponse,
   ComplianceFrameworkPackListResponse,
   ComplianceFrameworkReviewReportListResponse,
+  ComplianceFrameworkReviewReportPdfDownloadResponse,
+  ComplianceFrameworkReviewReportPdfExportResponse,
   ComplianceFrameworkReviewReportProvenanceManifestResponse,
   ComplianceFrameworkReviewReportResponse,
   ComplianceReviewPackageResponse,
@@ -39,6 +41,8 @@ type ComplianceActionKeys =
   | 'reviewComplianceFrameworkReviewReport'
   | 'downloadComplianceFrameworkReviewReport'
   | 'createComplianceFrameworkReviewReportProvenanceManifest'
+  | 'createComplianceFrameworkReviewReportPdfExport'
+  | 'downloadComplianceFrameworkReviewReportPdfExport'
   | 'resetComplianceEvidenceFlow'
 
 export function createComplianceActions(
@@ -739,6 +743,77 @@ export function createComplianceActions(
       }
     },
 
+    createComplianceFrameworkReviewReportPdfExport: async (reportId, manifestId = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      const normalizedManifestId = manifestId?.trim() || null
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportPdfExportCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportPdfExportResponse>('cmd_server_create_compliance_framework_review_report_pdf_export', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+            manifest_id: normalizedManifestId,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportPdfExport: response,
+          isComplianceFrameworkReviewReportPdfExportCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportPdfExportCreating: false,
+        })
+        return null
+      }
+    },
+
+    downloadComplianceFrameworkReviewReportPdfExport: async (reportId, pdfExportId = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      const normalizedPdfExportId = pdfExportId?.trim() || null
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportPdfExportDownloading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportPdfDownloadResponse>('cmd_server_download_compliance_framework_review_report_pdf_export', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+            pdf_export_id: normalizedPdfExportId,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportPdfExport: {
+            pdf_export: response.pdf_export,
+            download_url: `/compliance/framework-review-reports/${normalizedReportId}/pdf-export/download?pdf_export_id=${response.pdf_export.pdf_export_id}`,
+          },
+          isComplianceFrameworkReviewReportPdfExportDownloading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportPdfExportDownloading: false,
+        })
+        return null
+      }
+    },
+
     resetComplianceEvidenceFlow: () => set({
       complianceEvidenceSelectedDeploymentGateId: null,
       selectedComplianceFrameworkId: GITGOV_RELEASE_GOVERNANCE_BASELINE,
@@ -754,6 +829,7 @@ export function createComplianceActions(
       complianceFrameworkReviewReportComments: null,
       complianceFrameworkReviewReportArtifact: null,
       complianceFrameworkReviewReportProvenanceManifest: null,
+      complianceFrameworkReviewReportPdfExport: null,
       complianceEvidenceError: null,
     }),
   }

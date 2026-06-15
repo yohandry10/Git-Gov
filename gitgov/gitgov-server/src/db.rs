@@ -277,6 +277,20 @@ pub struct CreateComplianceFrameworkReviewReportProvenanceManifestInput<'a> {
     pub payload_json_redacted: &'a serde_json::Value,
 }
 
+pub struct CreateComplianceFrameworkReviewReportPdfExportInput<'a> {
+    pub pdf_export_id: &'a str,
+    pub org_id: &'a str,
+    pub report_id: &'a str,
+    pub manifest_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub source_report_hash: &'a str,
+    pub manifest_hash: &'a str,
+    pub pdf_artifact_hash: &'a str,
+    pub content_type: &'a str,
+    pub page_count: i32,
+    pub pdf_bytes: &'a [u8],
+}
+
 #[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
@@ -737,6 +751,7 @@ mod chat_queries_release;
 mod compliance;
 mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
+mod compliance_framework_review_report_pdf_exports;
 mod compliance_framework_review_reports;
 mod compliance_review_packages;
 mod core;

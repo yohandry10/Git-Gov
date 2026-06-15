@@ -649,6 +649,45 @@ export interface ComplianceFrameworkReviewReportProvenanceManifestResponse {
   artifact: Record<string, unknown>
 }
 
+export interface ComplianceFrameworkReviewReportPdfExportRequest {
+  org_name?: string | null
+  manifest_id?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportPdfExportQuery {
+  org_name?: string | null
+  pdf_export_id?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportPdfExportRecord {
+  pdf_export_id: string
+  org_id: string
+  report_id: string
+  manifest_id: string
+  created_by_user_id: string
+  source_report_hash: string
+  manifest_hash: string
+  pdf_artifact_hash: string
+  content_type: string
+  page_count: number
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  certification: boolean
+  created_at: number
+  downloaded_at?: number | null
+}
+
+export interface ComplianceFrameworkReviewReportPdfExportResponse {
+  pdf_export: ComplianceFrameworkReviewReportPdfExportRecord
+  download_url: string
+}
+
+export interface ComplianceFrameworkReviewReportPdfDownloadResponse {
+  pdf_export: ComplianceFrameworkReviewReportPdfExportRecord
+  pdf_base64: string
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1076,6 +1115,7 @@ export interface ControlPlaneState {
   complianceFrameworkReviewReportComments: ComplianceFrameworkReviewReportCommentsResponse | null
   complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
   complianceFrameworkReviewReportProvenanceManifest: ComplianceFrameworkReviewReportProvenanceManifestResponse | null
+  complianceFrameworkReviewReportPdfExport: ComplianceFrameworkReviewReportPdfExportResponse | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1097,6 +1137,8 @@ export interface ControlPlaneState {
   isComplianceFrameworkReviewReportReviewing: boolean
   isComplianceFrameworkReviewReportDownloading: boolean
   isComplianceFrameworkReviewReportProvenanceManifestCreating: boolean
+  isComplianceFrameworkReviewReportPdfExportCreating: boolean
+  isComplianceFrameworkReviewReportPdfExportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1210,6 +1252,8 @@ export interface ControlPlaneActions {
   ) => Promise<ComplianceFrameworkReviewReportResponse | null>
   downloadComplianceFrameworkReviewReport: (reportId: string) => Promise<Record<string, unknown> | null>
   createComplianceFrameworkReviewReportProvenanceManifest: (reportId: string) => Promise<ComplianceFrameworkReviewReportProvenanceManifestResponse | null>
+  createComplianceFrameworkReviewReportPdfExport: (reportId: string, manifestId?: string | null) => Promise<ComplianceFrameworkReviewReportPdfExportResponse | null>
+  downloadComplianceFrameworkReviewReportPdfExport: (reportId: string, pdfExportId?: string | null) => Promise<ComplianceFrameworkReviewReportPdfDownloadResponse | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

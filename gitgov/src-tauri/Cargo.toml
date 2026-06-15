@@ -40,6 +40,7 @@ tauri-plugin-updater = "2"
 tauri-plugin-notification = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
 portable-pty = "0.8"
+base64 = "0.22"
 
 [dev-dependencies]
 tempfile = "3"

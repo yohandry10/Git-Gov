@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export
 
 ## Decision
 
@@ -257,15 +257,20 @@ Current primitives:
   `sha256-provenance-manifest-v1` signature algorithm. It does not mutate the source report artifact,
   does not create official regulatory/compliance/certification claims, and does not require Agent
   Governance.
+- `KAN-111`: Framework Review Report PDF export. Admins and assigned Auditors can generate and
+  download an append-only `application/pdf` artifact only after a report is manually `reviewed` and
+  a provenance manifest exists. The PDF is bound to the source report hash and manifest hash, stores
+  a `pdf_artifact_hash`, preserves no-claim flags, and remains a customer/auditor review artifact,
+  not a certification, compliance score, or official regulatory report.
 
 Future scope:
 
-- Richer reviewer workflow on top of KAN-109/KAN-110, such as multi-step reviewer states, due dates,
+- Richer reviewer workflow on top of KAN-109/KAN-111, such as multi-step reviewer states, due dates,
   notifications, and reviewer-specific task queues.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.
-- PDF export suitable for quarterly or annual audits.
+- DOCX export, formal report templates, and official regulatory mapping packs remain future work.
 
 ### 0.4 Bring Your Own Model And AI Routing
 

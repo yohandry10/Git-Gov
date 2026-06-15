@@ -1,10 +1,15 @@
 use super::common::*;
 use crate::db::Database;
-use axum::http::StatusCode;
+use axum::{
+    body::Body,
+    http::{HeaderMap, Request, StatusCode},
+    Router,
+};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;
+use tower::ServiceExt;
 
 const REPO_FULL_NAME: &str = "yohandry10/Git-Gov";
 const BRANCH: &str = "main";
@@ -13,6 +18,26 @@ const RELEASE_ID: &str = "KAN-105";
 const ENVIRONMENT: &str = "production";
 const TICKET_ID: &str = "KAN-105";
 const BASELINE_FRAMEWORK_ID: &str = "gitgov_release_governance_baseline_v1";
+
+async fn binary_request(
+    app: &Router,
+    uri: &str,
+    api_key: Option<&str>,
+) -> (StatusCode, HeaderMap, Vec<u8>) {
+    let mut builder = Request::builder().method("GET").uri(uri);
+    if let Some(key) = api_key {
+        builder = builder.header("Authorization", format!("Bearer {}", key));
+    }
+    let request = builder.body(Body::empty()).expect("binary request");
+    let response = app.clone().oneshot(request).await.expect("binary response");
+    let status = response.status();
+    let headers = response.headers().clone();
+    let body = axum::body::to_bytes(response.into_body(), 5_000_000)
+        .await
+        .expect("binary body")
+        .to_vec();
+    (status, headers, body)
+}
 
 async fn insert_repo(pool: &sqlx::PgPool, org_id: &str) -> String {
     let row = sqlx::query(
@@ -1078,6 +1103,18 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(status, StatusCode::CONFLICT);
     assert!(manifest_before_review.contains("report_not_reviewed"));
 
+    let pdf_body = json!({});
+    let (status, pdf_before_review) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/pdf-export"),
+        Some(&pdf_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(pdf_before_review.contains("report_not_reviewed"));
+
     let invalid_status = json!({
         "review_status": "approved",
         "review_notes_safe": "valid plain text"
@@ -1305,6 +1342,12 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     );
     let second_manifest: serde_json::Value =
         serde_json::from_str(&second_manifest_response).expect("second manifest JSON");
+    let second_manifest_id = second_manifest["manifest"]["manifest_id"]
+        .as_str()
+        .expect("second manifest id");
+    let second_manifest_hash = second_manifest["manifest"]["manifest_hash"]
+        .as_str()
+        .expect("second manifest hash");
     assert_eq!(
         second_manifest["manifest"]["previous_manifest_hash"],
         first_manifest_hash
@@ -1318,6 +1361,204 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
         first_manifest["manifest"]["manifest_hash"]
     );
 
+    let pdf_export_body = json!({ "manifest_id": second_manifest_id });
+    let (status, unassigned_pdf) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/pdf-export"),
+        Some(&pdf_export_body.to_string()),
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_pdf.contains("auditor_not_assigned"));
+
+    let (status, other_tenant_pdf) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/pdf-export"),
+        Some(&pdf_export_body.to_string()),
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_tenant_pdf.contains("not found"));
+
+    let (status, developer_pdf) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/pdf-export"),
+        Some(&pdf_export_body.to_string()),
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_pdf.contains("Admin or Auditor compliance review access required"));
+
+    let (status, pdf_export_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/pdf-export"),
+        Some(&pdf_export_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "PDF export failed: {pdf_export_response}"
+    );
+    let pdf_export: serde_json::Value =
+        serde_json::from_str(&pdf_export_response).expect("PDF export JSON");
+    let pdf_export_id = pdf_export["pdf_export"]["pdf_export_id"]
+        .as_str()
+        .expect("pdf export id");
+    let pdf_artifact_hash = pdf_export["pdf_export"]["pdf_artifact_hash"]
+        .as_str()
+        .expect("pdf artifact hash");
+    assert!(pdf_export_id.starts_with("frrpdf_"));
+    assert_eq!(pdf_export["pdf_export"]["report_id"], report_id);
+    assert_eq!(pdf_export["pdf_export"]["manifest_id"], second_manifest_id);
+    assert_eq!(
+        pdf_export["pdf_export"]["source_report_hash"],
+        artifact_hash
+    );
+    assert_eq!(
+        pdf_export["pdf_export"]["manifest_hash"],
+        second_manifest_hash
+    );
+    assert_eq!(pdf_export["pdf_export"]["content_type"], "application/pdf");
+    assert_eq!(pdf_export["pdf_export"]["compliance_claim"], false);
+    assert_eq!(pdf_export["pdf_export"]["regulatory_claim"], false);
+    assert_eq!(pdf_export["pdf_export"]["certification"], false);
+    assert_eq!(pdf_export["pdf_export"]["requires_auditor_review"], true);
+    assert!(pdf_artifact_hash.starts_with("sha256:"));
+    assert!(!pdf_export_response.contains("must-not-report"));
+
+    let (status, pdf_metadata) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/pdf-export?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "PDF metadata failed: {pdf_metadata}"
+    );
+    let pdf_metadata: serde_json::Value =
+        serde_json::from_str(&pdf_metadata).expect("PDF metadata JSON");
+    assert_eq!(pdf_metadata["pdf_export"]["pdf_export_id"], pdf_export_id);
+    assert_eq!(
+        pdf_metadata["pdf_export"]["downloaded_at"],
+        serde_json::Value::Null
+    );
+
+    let (status, unassigned_pdf_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/pdf-export/download?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_pdf_download.contains("auditor_not_assigned"));
+
+    let (status, other_pdf_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/pdf-export/download?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_pdf_download.contains("not found"));
+
+    let (status, pdf_headers, pdf_bytes) = binary_request(
+        &app,
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/pdf-export/download?pdf_export_id={pdf_export_id}"
+        ),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "PDF download returned {status}");
+    assert_eq!(
+        pdf_headers
+            .get(axum::http::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok()),
+        Some("application/pdf")
+    );
+    assert_eq!(
+        pdf_headers
+            .get("x-gitgov-artifact-hash")
+            .and_then(|value| value.to_str().ok()),
+        Some(pdf_artifact_hash)
+    );
+    assert!(pdf_bytes.starts_with(b"%PDF-1.4"));
+    let downloaded_pdf_hash = format!("sha256:{:x}", Sha256::digest(&pdf_bytes));
+    assert_eq!(downloaded_pdf_hash, pdf_artifact_hash);
+    let pdf_text = String::from_utf8_lossy(&pdf_bytes);
+    assert!(pdf_text.contains("GitGov Framework Review Report"));
+    assert!(
+        pdf_text.contains("Not a certification, compliance score, or official regulatory claim.")
+    );
+    assert!(pdf_text.contains("compliance_claim=false"));
+    assert!(pdf_text.contains("regulatory_claim=false"));
+    assert!(pdf_text.contains("certification=false"));
+    assert!(pdf_text.contains("requires_auditor_review=true"));
+    assert!(pdf_text.contains(artifact_hash));
+    assert!(pdf_text.contains(second_manifest_hash));
+    assert!(pdf_text.contains("kan108-report-auditor"));
+    assert!(
+        !pdf_text.contains("must-not-report"),
+        "PDF export leaked secret-like fixture payload"
+    );
+
+    let (status, pdf_metadata_after_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/pdf-export?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "PDF metadata after download failed: {pdf_metadata_after_download}"
+    );
+    let pdf_metadata_after_download: serde_json::Value =
+        serde_json::from_str(&pdf_metadata_after_download)
+            .expect("PDF metadata after download JSON");
+    assert!(
+        pdf_metadata_after_download["pdf_export"]["downloaded_at"]
+            .as_i64()
+            .unwrap_or_default()
+            > 0
+    );
+
+    let report_hash_after_pdf: String = sqlx::query_scalar(
+        "SELECT artifact_hash FROM compliance_framework_review_reports WHERE report_id = $1",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("report hash after PDF export");
+    assert_eq!(report_hash_after_pdf, artifact_hash);
+
     let manifest_audit_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.provenance_manifest_created'",
     )
@@ -1326,6 +1567,15 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     .await
     .expect("count provenance manifest audit rows");
     assert_eq!(manifest_audit_count, 2);
+
+    let pdf_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.pdf_export_created'",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count PDF export audit rows");
+    assert_eq!(pdf_audit_count, 1);
 
     let (status, list) = json_request(
         &app,

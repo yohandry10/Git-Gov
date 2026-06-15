@@ -452,3 +452,52 @@ pub struct ComplianceFrameworkReviewReportProvenanceManifestResponse {
     pub download_url: String,
     pub artifact: serde_json::Value,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportPdfExportRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub manifest_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportPdfExportQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub pdf_export_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportPdfExportRecord {
+    pub pdf_export_id: String,
+    pub org_id: String,
+    pub report_id: String,
+    pub manifest_id: String,
+    pub created_by_user_id: String,
+    pub source_report_hash: String,
+    pub manifest_hash: String,
+    pub pdf_artifact_hash: String,
+    pub content_type: String,
+    pub page_count: i32,
+    pub compliance_claim: bool,
+    pub regulatory_claim: bool,
+    pub requires_auditor_review: bool,
+    pub certification: bool,
+    pub created_at: i64,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportPdfExportResponse {
+    pub pdf_export: ComplianceFrameworkReviewReportPdfExportRecord,
+    pub download_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportPdfDownloadResponse {
+    pub pdf_export: ComplianceFrameworkReviewReportPdfExportRecord,
+    pub pdf_base64: String,
+}

@@ -288,6 +288,15 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::download_compliance_framework_review_report),
         )
         .route(
+            "/compliance/framework-review-reports/{report_id}/pdf-export",
+            get(handlers::get_compliance_framework_review_report_pdf_export)
+                .post(handlers::create_compliance_framework_review_report_pdf_export),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/pdf-export/download",
+            get(handlers::download_compliance_framework_review_report_pdf_export),
+        )
+        .route(
             "/compliance/framework-review-reports/{report_id}/provenance-manifests",
             post(handlers::create_compliance_framework_review_report_provenance_manifest),
         )
