@@ -11,6 +11,7 @@ use crate::db::{
     CreateComplianceEvidenceMappingInput, CreateComplianceEvidenceMappingItemInput,
     CreateComplianceFrameworkPackControlInput, CreateComplianceFrameworkPackInput,
     CreateComplianceFrameworkReviewReportInput, CreateComplianceReviewPackageInput,
+    CreateCompliancePeriodReportProvenanceManifestInput,
     CreateDeploymentGateAuthorizationInput, CreatePolicyChangeRequestInput, Database, DbError, Job, JobMetrics,
     CompliancePeriodSourceReport, ListAgentGovernanceEvaluationsInput,
     ListComplianceFrameworkReviewReportsInput,

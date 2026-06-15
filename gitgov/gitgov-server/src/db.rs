@@ -334,6 +334,17 @@ pub struct CreateCompliancePeriodReportPdfExportInput<'a> {
     pub pdf_bytes: &'a [u8],
 }
 
+pub struct CreateCompliancePeriodReportProvenanceManifestInput<'a> {
+    pub manifest_id: &'a str,
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub generated_by_user_id: &'a str,
+    pub manifest_hash: &'a str,
+    pub previous_manifest_hash: Option<&'a str>,
+    pub signature_algorithm: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
 pub struct UpdateCompliancePeriodReportRetentionInput<'a> {
     pub org_id: &'a str,
     pub period_report_id: &'a str,

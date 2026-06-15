@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests
 
 ## Decision
 
@@ -290,6 +290,14 @@ Current primitives:
   cannot change retention. This is still manual-first and does not add a scheduler, destructive
   deletion workflow, legal retention policy engine, regulatory certification, official wording, AI
   summary, or Agent Governance dependency.
+- `KAN-116`: Period Compliance Report provenance manifests. Admins and Auditors who can access every
+  source Framework Review Report can materialize append-only JSON manifests for an existing Period
+  Compliance Report. Each manifest binds the period JSON artifact hash, source hashes/manifests,
+  PDF export hashes, retention state, custody/access-log summary, no-claim flags, and a
+  `previous_manifest_hash` chain using `sha256-period-report-provenance-manifest-v1`. Manifest
+  create/download actions are added to the custody log. This remains manual/on-demand and is not a
+  certification, compliance score, official regulatory report, legal attestation, AI summary,
+  scheduler, or Agent Governance dependency.
 
 Future scope:
 
@@ -453,6 +461,11 @@ Current primitives:
   `GET /compliance/period-reports/{period_report_id}/access-log` for Admin/Auditor export history.
   JSON and PDF downloads update counters and append action records; archive remains a logical state,
   not physical deletion.
+- `KAN-116` adds Period Compliance Report provenance manifests:
+  `POST /compliance/period-reports/{period_report_id}/provenance-manifests` and
+  `GET /compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}`. The
+  manifest is append-only, hash-chained, custody-aware, and binds period JSON/PDF/source hashes
+  without changing the source report or adding compliance/regulatory/certification claims.
 
 Future scope:
 
@@ -461,6 +474,8 @@ Future scope:
   validated with customers.
 - Automatic retention expiration jobs and physical deletion workflows only after explicit customer
   legal/security design; KAN-115 deliberately stops at logical status and append-only custody logs.
+- Cryptographic signing/KMS-backed signatures for Period Compliance Report manifests remain future
+  work; KAN-116 provides deterministic hash-chain provenance first.
 - Digitally signable evidence packet references.
 - Regulator/auditor wording that maps to the Regulatory Framework Mapper when enabled.
 - Official regulatory mappings, compliance scoring, and certification wording remain future work

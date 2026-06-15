@@ -650,9 +650,9 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
             actor_client_id TEXT NOT NULL,
             action TEXT NOT NULL CHECK (
-                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated')
+                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated', 'manifest_created', 'manifest_downloaded')
             ),
-            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention')),
+            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention', 'manifest')),
             artifact_id TEXT,
             artifact_hash TEXT CHECK (artifact_hash IS NULL OR artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
             metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -694,6 +694,39 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_compliance_period_report_pdf_exports_hash
             ON compliance_period_report_pdf_exports(org_id, pdf_artifact_hash);
+
+        CREATE TABLE IF NOT EXISTS compliance_period_report_manifests (
+            manifest_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
+            generated_by_user_id TEXT NOT NULL,
+            manifest_hash TEXT NOT NULL,
+            previous_manifest_hash TEXT,
+            signature_algorithm TEXT NOT NULL DEFAULT 'sha256-period-report-provenance-manifest-v1',
+            payload_json_redacted JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CHECK (manifest_id ~ '^cprm_[0-9a-f]{32}$'),
+            CHECK (manifest_hash ~ '^sha256:[0-9a-f]{64}$'),
+            CHECK (previous_manifest_hash IS NULL OR previous_manifest_hash ~ '^sha256:[0-9a-f]{64}$'),
+            CHECK (signature_algorithm = 'sha256-period-report-provenance-manifest-v1'),
+            CHECK (
+                payload_json_redacted ? 'schema_version'
+                AND payload_json_redacted ? 'hash_chain'
+                AND payload_json_redacted ? 'claims'
+                AND payload_json_redacted ? 'audit_metadata'
+                AND COALESCE((payload_json_redacted #>> '{claims,compliance_claim}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,regulatory_claim}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,certification}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{audit_metadata,agent_governance_required}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{audit_metadata,source_period_report_artifact_mutated}')::boolean, true) = false
+            )
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_report_manifests_report_created
+            ON compliance_period_report_manifests(org_id, period_report_id, created_at DESC);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_compliance_period_report_manifests_hash
+            ON compliance_period_report_manifests(org_id, manifest_hash);
 
         INSERT INTO compliance_control_frameworks (
             framework_id,
@@ -1862,6 +1895,14 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/period-reports/{period_report_id}/pdf-export/download",
             get(handlers::download_compliance_period_report_pdf_export),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests",
+            post(handlers::create_compliance_period_report_provenance_manifest),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}",
+            get(handlers::download_compliance_period_report_provenance_manifest),
         )
         .route(
             "/compliance/period-reports/{period_report_id}/download",

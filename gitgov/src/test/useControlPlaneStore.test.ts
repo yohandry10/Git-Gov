@@ -92,6 +92,7 @@ describe('useControlPlaneStore', () => {
       compliancePeriodReportArtifact: null,
       compliancePeriodReportAccessLog: null,
       compliancePeriodReportPdfExport: null,
+      compliancePeriodReportProvenanceManifest: null,
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
       isComplianceFrameworkPackReviewing: false,
@@ -111,6 +112,8 @@ describe('useControlPlaneStore', () => {
       isCompliancePeriodReportAccessLogLoading: false,
       isCompliancePeriodReportPdfExportCreating: false,
       isCompliancePeriodReportPdfExportDownloading: false,
+      isCompliancePeriodReportProvenanceManifestCreating: false,
+      isCompliancePeriodReportProvenanceManifestDownloading: false,
       complianceEvidenceError: null,
       isDeploymentGateAuthorizationsLoading: false,
       isReleaseApprovalsLoading: false,
@@ -1360,6 +1363,48 @@ describe('useControlPlaneStore', () => {
           },
           pdf_base64: 'JVBERi0xLjQK',
         })
+        .mockResolvedValueOnce({
+          manifest: {
+            manifest_id: 'cprm_123',
+            org_id: 'org-1',
+            period_report_id: 'cpr_123',
+            generated_by_user_id: 'auditor',
+            manifest_hash: 'sha256:' + '3'.repeat(64),
+            previous_manifest_hash: null,
+            signature_algorithm: 'sha256-period-report-provenance-manifest-v1',
+            created_at: 18,
+          },
+          download_url: '/compliance/period-reports/cpr_123/provenance-manifests/cprm_123',
+          artifact: {
+            schema_version: 'gitgov_period_compliance_report_provenance_manifest.v1',
+            hash_chain: {
+              subject_type: 'period_compliance_report',
+              subject_id: 'cpr_123',
+              previous_manifest_hash: null,
+              manifest_hash: 'sha256:' + '3'.repeat(64),
+            },
+            claims: {
+              compliance_claim: false,
+              regulatory_claim: false,
+              certification: false,
+              requires_auditor_review: true,
+            },
+            audit_metadata: {
+              agent_governance_required: false,
+              source_period_report_artifact_mutated: false,
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          schema_version: 'gitgov_period_compliance_report_provenance_manifest.v1',
+          manifest_id: 'cprm_123',
+          hash_chain: {
+            subject_type: 'period_compliance_report',
+            subject_id: 'cpr_123',
+            previous_manifest_hash: null,
+            manifest_hash: 'sha256:' + '3'.repeat(64),
+          },
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
@@ -1432,6 +1477,12 @@ describe('useControlPlaneStore', () => {
       const periodPdfDownload = await useControlPlaneStore
         .getState()
         .downloadCompliancePeriodReportPdfExport(' cpr_123 ', ' cprpdf_123 ')
+      const periodManifest = await useControlPlaneStore
+        .getState()
+        .createCompliancePeriodReportProvenanceManifest(' cpr_123 ')
+      const periodManifestArtifact = await useControlPlaneStore
+        .getState()
+        .downloadCompliancePeriodReportProvenanceManifest(' cpr_123 ', ' cprm_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1643,6 +1694,21 @@ describe('useControlPlaneStore', () => {
           pdf_export_id: 'cprpdf_123',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(24, 'cmd_server_create_compliance_period_report_provenance_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(25, 'cmd_server_download_compliance_period_report_provenance_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        manifestId: 'cprm_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
@@ -1669,6 +1735,8 @@ describe('useControlPlaneStore', () => {
       expect(periodAccessLog?.items[0]?.action).toBe('retention_updated')
       expect(periodPdfExport?.pdf_export.pdf_artifact_hash).toBe('sha256:' + '2'.repeat(64))
       expect(periodPdfDownload?.pdf_base64).toBe('JVBERi0xLjQK')
+      expect(periodManifest?.manifest.signature_algorithm).toBe('sha256-period-report-provenance-manifest-v1')
+      expect(periodManifestArtifact?.schema_version).toBe('gitgov_period_compliance_report_provenance_manifest.v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
@@ -1687,6 +1755,7 @@ describe('useControlPlaneStore', () => {
       })
       expect(useControlPlaneStore.getState().compliancePeriodReportAccessLog?.items[0]?.artifact_type).toBe('retention')
       expect(useControlPlaneStore.getState().compliancePeriodReportPdfExport?.pdf_export.downloaded_at).toBe(15)
+      expect(useControlPlaneStore.getState().compliancePeriodReportProvenanceManifest?.artifact.schema_version).toBe('gitgov_period_compliance_report_provenance_manifest.v1')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 

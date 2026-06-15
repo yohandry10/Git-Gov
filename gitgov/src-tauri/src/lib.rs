@@ -298,6 +298,8 @@ pub fn run() {
             commands::cmd_server_create_compliance_period_report_pdf_export,
             commands::cmd_server_get_compliance_period_report_pdf_export,
             commands::cmd_server_download_compliance_period_report_pdf_export,
+            commands::cmd_server_create_compliance_period_report_provenance_manifest,
+            commands::cmd_server_download_compliance_period_report_provenance_manifest,
             commands::cmd_server_create_enterprise_release_approval,
             commands::cmd_server_get_me,
             commands::cmd_server_create_org,

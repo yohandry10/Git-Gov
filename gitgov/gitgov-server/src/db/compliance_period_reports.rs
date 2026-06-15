@@ -118,6 +118,21 @@ fn compliance_period_report_pdf_export_from_row(
     }
 }
 
+fn compliance_period_report_provenance_manifest_from_row(
+    row: &PgRow,
+) -> CompliancePeriodReportProvenanceManifestRecord {
+    CompliancePeriodReportProvenanceManifestRecord {
+        manifest_id: row.get("manifest_id"),
+        org_id: row.get("org_id"),
+        period_report_id: row.get("period_report_id"),
+        generated_by_user_id: row.get("generated_by_user_id"),
+        manifest_hash: row.get("manifest_hash"),
+        previous_manifest_hash: row.get("previous_manifest_hash"),
+        signature_algorithm: row.get("signature_algorithm"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn list_reviewed_compliance_framework_review_reports_for_period(
         &self,
@@ -891,6 +906,142 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.map(|row| compliance_period_report_pdf_export_from_row(&row)))
+    }
+
+    pub async fn list_compliance_period_report_pdf_exports(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        limit: i64,
+    ) -> Result<Vec<CompliancePeriodReportPdfExportRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                pdf_export_id,
+                org_id::text,
+                period_report_id,
+                created_by_user_id,
+                source_period_report_hash,
+                pdf_artifact_hash,
+                content_type,
+                page_count,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms
+            FROM compliance_period_report_pdf_exports
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+            ORDER BY created_at DESC, pdf_export_id DESC
+            LIMIT $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_period_report_pdf_export_from_row(&row))
+            .collect())
+    }
+
+    pub async fn latest_compliance_period_report_manifest_hash(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+    ) -> Result<Option<String>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT manifest_hash
+            FROM compliance_period_report_manifests
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+            ORDER BY created_at DESC, manifest_id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("manifest_hash")))
+    }
+
+    pub async fn create_compliance_period_report_provenance_manifest(
+        &self,
+        input: &CreateCompliancePeriodReportProvenanceManifestInput<'_>,
+    ) -> Result<CompliancePeriodReportProvenanceManifestRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO compliance_period_report_manifests (
+                manifest_id,
+                org_id,
+                period_report_id,
+                generated_by_user_id,
+                manifest_hash,
+                previous_manifest_hash,
+                signature_algorithm,
+                payload_json_redacted
+            )
+            VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8::jsonb)
+            RETURNING
+                manifest_id,
+                org_id::text,
+                period_report_id,
+                generated_by_user_id,
+                manifest_hash,
+                previous_manifest_hash,
+                signature_algorithm,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.manifest_id)
+        .bind(input.org_id)
+        .bind(input.period_report_id)
+        .bind(input.generated_by_user_id)
+        .bind(input.manifest_hash)
+        .bind(input.previous_manifest_hash)
+        .bind(input.signature_algorithm)
+        .bind(input.payload_json_redacted)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_period_report_provenance_manifest_from_row(&row))
+    }
+
+    pub async fn get_compliance_period_report_manifest_payload(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        manifest_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT payload_json_redacted
+            FROM compliance_period_report_manifests
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+              AND manifest_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(manifest_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("payload_json_redacted")))
     }
 
     pub async fn download_compliance_period_report_pdf_export(

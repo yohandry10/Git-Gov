@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { CompliancePeriodReportProvenancePanel } from './CompliancePeriodReportProvenancePanel'
 
 function shortHash(value?: string | null): string {
   if (!value) return 'not available'
@@ -362,6 +363,13 @@ export function CompliancePeriodReportPanel() {
             PDF
           </Button>
         </div>
+      )}
+
+      {periodReport && (
+        <CompliancePeriodReportProvenancePanel
+          periodReport={periodReport}
+          displayTimezone={displayTimezone}
+        />
       )}
 
       {periodAccessLog && periodAccessLog.items.length > 0 && (

@@ -215,6 +215,8 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/period-reports/{period_report_id}/access-log` | Bearer (admin/auditor con acceso a todos los source reports) | Listar historial append-only de vistas, descargas JSON/PDF y cambios de retención del reporte |
 | `/compliance/period-reports/{period_report_id}/pdf-export` | Bearer (admin/auditor con acceso a todos los source reports) | Crear o consultar metadata de PDF append-only para un Period Compliance Report ya generado; no crea claims ni muta el JSON fuente |
 | `/compliance/period-reports/{period_report_id}/pdf-export/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
+| `/compliance/period-reports/{period_report_id}/provenance-manifests` | Bearer (admin/auditor con acceso a todos los source reports) | Crear manifest JSON append-only y hash-chained que vincula JSON, PDFs, retención, custody log y source hashes sin mutar artifacts ni claims |
+| `/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar un manifest de procedencia de Period Compliance Report ya materializado |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
