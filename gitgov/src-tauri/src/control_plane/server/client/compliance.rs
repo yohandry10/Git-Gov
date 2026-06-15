@@ -167,6 +167,36 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn diff_compliance_framework_packs(
+        &self,
+        query: &ComplianceFrameworkPackDiffQuery,
+    ) -> Result<ComplianceFrameworkPackDiffResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "framework-packs", "diff"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        query_params.push(("base_pack_id".to_string(), query.base_pack_id.clone()));
+        query_params.push(("target_pack_id".to_string(), query.target_pack_id.clone()));
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_compliance_evidence_export(
         &self,
         payload: &ComplianceEvidenceExportRequest,

@@ -217,6 +217,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             post(handlers::import_compliance_framework_pack),
         )
         .route(
+            "/compliance/framework-packs/diff",
+            get(handlers::diff_compliance_framework_packs),
+        )
+        .route(
             "/compliance/framework-packs/{framework_pack_id}",
             get(handlers::get_compliance_framework_pack),
         )

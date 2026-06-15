@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `97` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `113` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -184,6 +184,11 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/exports` | Bearer (admin) | Historial de exports generados |
 | `/compliance/control-frameworks` | Bearer (admin/auditor) | Lista frameworks de controles GitGov no regulatorios activos |
 | `/compliance/control-frameworks/{framework_id}` | Bearer (admin/auditor) | Detalle de framework y controles versionados |
+| `/compliance/framework-packs` | Bearer (admin) | Listar packs de framework customer-provided del tenant con metadata y flags no-claim |
+| `/compliance/framework-packs/import` | Bearer (admin) | Importar packs YAML/JSON customer-provided; rechaza secretos, IDs reservados y claims regulatorios |
+| `/compliance/framework-packs/diff` | Bearer (admin) | Comparar dos versiones customer-provided del mismo framework original; devuelve added/removed/changed/unchanged sin persistir ni crear claims |
+| `/compliance/framework-packs/{framework_pack_id}` | Bearer (admin) | Consultar metadata de un pack de framework del tenant |
+| `/compliance/framework-packs/{framework_pack_id}/review` | Bearer (admin) | Registrar revisión manual del pack antes de usarlo en mappings; no certifica ni crea claims |
 | `/compliance/evidence-exports` | Bearer (admin) | Crear export JSON read-only de evidencia manual-first para un Deployment Gate |
 | `/compliance/evidence-exports/{export_id}` | Bearer (admin/auditor) | Consultar metadata de un export de evidencia compliance |
 | `/compliance/evidence-exports/{export_id}/download` | Bearer (admin/auditor) | Descargar el artifact JSON redacted de un export de evidencia compliance |

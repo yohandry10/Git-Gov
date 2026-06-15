@@ -268,6 +268,7 @@ pub fn run() {
             commands::cmd_server_import_compliance_framework_pack,
             commands::cmd_server_list_compliance_framework_packs,
             commands::cmd_server_review_compliance_framework_pack,
+            commands::cmd_server_diff_compliance_framework_packs,
             commands::cmd_server_create_compliance_evidence_mapping,
             commands::cmd_server_get_compliance_evidence_mapping,
             commands::cmd_server_create_compliance_review_package,

@@ -5,6 +5,7 @@ import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type { ComplianceFrameworkPackRecord } from '@/store/useControlPlaneStore/types'
+import { ComplianceFrameworkPackDiffPanel } from './ComplianceFrameworkPackDiffPanel'
 
 function statusBadgeVariant(status: string) {
   if (status === 'reviewed') return 'success'
@@ -148,6 +149,7 @@ export function ComplianceFrameworkPackReviewPanel() {
               Archive
             </Button>
           </div>
+          <ComplianceFrameworkPackDiffPanel />
         </>
       )}
     </div>
