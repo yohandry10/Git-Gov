@@ -3,7 +3,8 @@
 Updated: 2026-06-15
 Ticket: `KAN-111`
 Branch: `product/KAN-111-framework-review-report-pdf-export`
-PR: pending
+PR: `#388`
+Merge commit: `97b1b94`
 
 ## Implemented
 
@@ -54,4 +55,26 @@ PR: pending
 
 Pending before completion:
 
-- PR checks, merge, Render deploy, production `v54`, and production smoke
+- None.
+
+## PR And Production Validation
+
+- PR `#388` required checks passed and merged to `main` as `97b1b94`.
+- Post-merge `main` checks passed for `97b1b94`: `CI`, `Release Readiness Gate`,
+  `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`,
+  `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8nnnvgjo6nc73e4u030` for `97b1b94` reached `live`.
+- Production `v54` migration and postcheck passed.
+- Production smoke passed against real report `frr_ac4ee214bc051caee783485d5755d34a`:
+  - `/health=ok`
+  - report status was `reviewed`
+  - created PDF export `frrpdf_f2bd8e2a866a9194889e05f59d0829b5`
+  - PDF used manifest `frrm_a3135e737c43d92fbc3f8b56d19d0a0c`
+  - source report hash was `sha256:7adb239ac4c00c67064ca39462f7bdce66898a818531b8f813b4cbb6cbee6a54`
+  - PDF artifact hash was `sha256:f2bd8e2a866a9194889e05f59d0829b595cc1761af0d12ed8b1c1d85ffaa7e87`
+  - downloaded PDF was `3930` bytes and started with `%PDF-1.4`
+  - download `Content-Type` was `application/pdf`
+  - `x-gitgov-artifact-hash` matched the stored PDF artifact hash
+  - downloaded bytes SHA-256 matched the stored PDF artifact hash
+  - PDF text contained no-claim language, report hash, manifest hash, and no-claim flags
+  - source report `artifact_hash` stayed unchanged
