@@ -776,6 +776,42 @@ export interface CompliancePeriodReportListResponse {
   limit: number
 }
 
+export interface CompliancePeriodReportPdfExportRequest {
+  org_name?: string | null
+}
+
+export interface CompliancePeriodReportPdfExportQuery {
+  org_name?: string | null
+  pdf_export_id?: string | null
+}
+
+export interface CompliancePeriodReportPdfExportRecord {
+  pdf_export_id: string
+  org_id: string
+  period_report_id: string
+  created_by_user_id: string
+  source_period_report_hash: string
+  pdf_artifact_hash: string
+  content_type: string
+  page_count: number
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  certification: boolean
+  created_at: number
+  downloaded_at?: number | null
+}
+
+export interface CompliancePeriodReportPdfExportResponse {
+  pdf_export: CompliancePeriodReportPdfExportRecord
+  download_url: string
+}
+
+export interface CompliancePeriodReportPdfDownloadResponse {
+  pdf_export: CompliancePeriodReportPdfExportRecord
+  pdf_base64: string
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1208,6 +1244,7 @@ export interface ControlPlaneState {
   compliancePeriodReport: CompliancePeriodReportResponse | null
   compliancePeriodReports: CompliancePeriodReportListResponse | null
   compliancePeriodReportArtifact: Record<string, unknown> | null
+  compliancePeriodReportPdfExport: CompliancePeriodReportPdfExportResponse | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1235,6 +1272,8 @@ export interface ControlPlaneState {
   isCompliancePeriodReportCreating: boolean
   isCompliancePeriodReportsLoading: boolean
   isCompliancePeriodReportDownloading: boolean
+  isCompliancePeriodReportPdfExportCreating: boolean
+  isCompliancePeriodReportPdfExportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1361,6 +1400,8 @@ export interface ControlPlaneActions {
   ) => Promise<CompliancePeriodReportResponse | null>
   loadCompliancePeriodReports: (filters?: Omit<CompliancePeriodReportQuery, 'org_name'>) => Promise<CompliancePeriodReportListResponse | null>
   downloadCompliancePeriodReport: (periodReportId: string) => Promise<Record<string, unknown> | null>
+  createCompliancePeriodReportPdfExport: (periodReportId: string) => Promise<CompliancePeriodReportPdfExportResponse | null>
+  downloadCompliancePeriodReportPdfExport: (periodReportId: string, pdfExportId?: string | null) => Promise<CompliancePeriodReportPdfDownloadResponse | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

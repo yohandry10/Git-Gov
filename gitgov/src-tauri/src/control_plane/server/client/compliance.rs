@@ -81,6 +81,19 @@ fn compliance_period_report_query_params(
     query_params
 }
 
+fn compliance_period_report_pdf_query_params(
+    query: &CompliancePeriodReportPdfExportQuery,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    if let Some(pdf_export_id) = &query.pdf_export_id {
+        query_params.push(("pdf_export_id".to_string(), pdf_export_id.clone()));
+    }
+    query_params
+}
+
 impl ControlPlaneClient {
     pub fn list_compliance_control_frameworks(
         &self,
@@ -966,5 +979,104 @@ impl ControlPlaneClient {
         response
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn create_compliance_period_report_pdf_export(
+        &self,
+        period_report_id: &str,
+        payload: &CompliancePeriodReportPdfExportRequest,
+    ) -> Result<CompliancePeriodReportPdfExportResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-reports",
+            period_report_id,
+            "pdf-export",
+        ])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_compliance_period_report_pdf_export(
+        &self,
+        period_report_id: &str,
+        query: &CompliancePeriodReportPdfExportQuery,
+    ) -> Result<CompliancePeriodReportPdfExportResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-reports",
+            period_report_id,
+            "pdf-export",
+        ])?;
+        let query_params = compliance_period_report_pdf_query_params(query);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_compliance_period_report_pdf_export(
+        &self,
+        period_report_id: &str,
+        query: &CompliancePeriodReportPdfExportQuery,
+    ) -> Result<CompliancePeriodReportPdfDownloadResponse, ServerError> {
+        let metadata = self.get_compliance_period_report_pdf_export(period_report_id, query)?;
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-reports",
+            period_report_id,
+            "pdf-export",
+            "download",
+        ])?;
+        let download_query = CompliancePeriodReportPdfExportQuery {
+            org_name: query.org_name.clone(),
+            pdf_export_id: Some(metadata.pdf_export.pdf_export_id.clone()),
+        };
+        let query_params = compliance_period_report_pdf_query_params(&download_query);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        let bytes = response
+            .bytes()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+        Ok(CompliancePeriodReportPdfDownloadResponse {
+            pdf_export: metadata.pdf_export,
+            pdf_base64: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
+        })
     }
 }

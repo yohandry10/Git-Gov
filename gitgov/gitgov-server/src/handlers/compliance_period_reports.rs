@@ -681,3 +681,5 @@ pub async fn download_compliance_period_report(
         }
     }
 }
+
+include!("compliance_period_reports/pdf_exports.rs");

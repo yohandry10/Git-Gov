@@ -1256,6 +1256,44 @@ describe('useControlPlaneStore', () => {
             requires_auditor_review: true,
           },
         })
+        .mockResolvedValueOnce({
+          pdf_export: {
+            pdf_export_id: 'cprpdf_123',
+            org_id: 'org-1',
+            period_report_id: 'cpr_123',
+            created_by_user_id: 'auditor',
+            source_period_report_hash: 'sha256:' + '1'.repeat(64),
+            pdf_artifact_hash: 'sha256:' + '2'.repeat(64),
+            content_type: 'application/pdf',
+            page_count: 2,
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 14,
+            downloaded_at: null,
+          },
+          download_url: '/compliance/period-reports/cpr_123/pdf-export/download?pdf_export_id=cprpdf_123',
+        })
+        .mockResolvedValueOnce({
+          pdf_export: {
+            pdf_export_id: 'cprpdf_123',
+            org_id: 'org-1',
+            period_report_id: 'cpr_123',
+            created_by_user_id: 'auditor',
+            source_period_report_hash: 'sha256:' + '1'.repeat(64),
+            pdf_artifact_hash: 'sha256:' + '2'.repeat(64),
+            content_type: 'application/pdf',
+            page_count: 2,
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 14,
+            downloaded_at: 15,
+          },
+          pdf_base64: 'JVBERi0xLjQK',
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
@@ -1313,6 +1351,12 @@ describe('useControlPlaneStore', () => {
         .getState()
         .loadCompliancePeriodReports({ framework_id: ' gitgov_release_governance_baseline_v1 ' })
       const periodArtifact = await useControlPlaneStore.getState().downloadCompliancePeriodReport(' cpr_123 ')
+      const periodPdfExport = await useControlPlaneStore
+        .getState()
+        .createCompliancePeriodReportPdfExport(' cpr_123 ')
+      const periodPdfDownload = await useControlPlaneStore
+        .getState()
+        .downloadCompliancePeriodReportPdfExport(' cpr_123 ', ' cprpdf_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1492,6 +1536,21 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(20, 'cmd_server_create_compliance_period_report_pdf_export', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(21, 'cmd_server_download_compliance_period_report_pdf_export', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        query: {
+          org_name: 'yohandry10',
+          pdf_export_id: 'cprpdf_123',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
@@ -1514,6 +1573,8 @@ describe('useControlPlaneStore', () => {
       expect(periodReport?.period_report.period_report_id).toBe('cpr_123')
       expect(periodReports?.items[0]?.source_report_ids).toEqual(['frr_123'])
       expect(periodArtifact?.schema_version).toBe('gitgov_period_compliance_report.v1')
+      expect(periodPdfExport?.pdf_export.pdf_artifact_hash).toBe('sha256:' + '2'.repeat(64))
+      expect(periodPdfDownload?.pdf_base64).toBe('JVBERi0xLjQK')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
@@ -1529,6 +1590,7 @@ describe('useControlPlaneStore', () => {
         certification: false,
         requires_auditor_review: true,
       })
+      expect(useControlPlaneStore.getState().compliancePeriodReportPdfExport?.pdf_export.downloaded_at).toBe(15)
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 
