@@ -544,6 +544,11 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 ## Current Operating State
 
+- Current implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
+  - Product scope: manual Admin/Auditor review metadata for existing Period Compliance Reports.
+  - Implemented locally: Supabase `v59` migration/postcheck, backend `GET/PATCH /compliance/period-reports/{period_report_id}/review`, safe review note/status validation, source-authorized Auditor access, Developer denial, archived-report conflict, custody log `review_updated`, admin audit log `compliance_period_report.reviewed`, provenance manifest review metadata, Tauri DTO/client/command, Control Plane store action/state, and `CompliancePeriodReportReviewPanel`.
+  - Explicit non-scope: no certification, legal attestation, official regulatory approval, compliance score, DOCX/formal template, scheduler, KMS signature, AI summary, Agent Governance dependency, or artifact hash mutation.
+  - Evidence report: `docs/reports/period-compliance-report-review-signoff-2026-06-15.md`.
 - Consolidating governance telemetry in Governance Evidence and executive reporting.
   - GitHub evidence now has an executive coverage summary in Governance Evidence, local evidence trend snapshots, exported audit JSON package, standalone Markdown report generator, optional GitHub Actions artifact workflow, artifact freshness monitor, and multi-run artifact trend report.
   - Operational adoption baseline completed on 2026-04-25: manual report, artifact monitor, and trend workflows passed; local monitor/trend scripts passed; evidence captured in `docs/reports/github-evidence-operational-adoption-2026-04-25.md`.

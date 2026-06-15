@@ -293,6 +293,7 @@ pub fn run() {
             commands::cmd_server_list_compliance_period_reports,
             commands::cmd_server_get_compliance_period_report,
             commands::cmd_server_download_compliance_period_report,
+            commands::cmd_server_review_compliance_period_report,
             commands::cmd_server_update_compliance_period_report_retention,
             commands::cmd_server_list_compliance_period_report_access_log,
             commands::cmd_server_create_compliance_period_report_pdf_export,

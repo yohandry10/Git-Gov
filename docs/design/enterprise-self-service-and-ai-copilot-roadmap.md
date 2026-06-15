@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off
 
 ## Decision
 
@@ -298,6 +298,14 @@ Current primitives:
   create/download actions are added to the custody log. This remains manual/on-demand and is not a
   certification, compliance score, official regulatory report, legal attestation, AI summary,
   scheduler, or Agent Governance dependency.
+- `KAN-117`: Period Compliance Report Review/Sign-off. Admins and Auditors who can access every
+  source Framework Review Report can set manual review metadata on an existing Period Compliance
+  Report using `needs_review`, `reviewed`, `needs_changes`, or `rejected`. The update writes
+  custody/audit evidence and reviewer/timestamp/notes metadata, but does not mutate the source JSON
+  payload, PDF exports, provenance manifests, artifact hashes, Deployment Gate evidence, policy, or
+  Agent Governance state. It is a human workflow marker, not a certification, compliance score,
+  legal attestation, official regulatory approval, AI summary, scheduler, DOCX template, or KMS
+  signature.
 
 Future scope:
 
@@ -466,6 +474,11 @@ Current primitives:
   `GET /compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}`. The
   manifest is append-only, hash-chained, custody-aware, and binds period JSON/PDF/source hashes
   without changing the source report or adding compliance/regulatory/certification claims.
+- `KAN-117` adds manual review/sign-off metadata:
+  `GET/PATCH /compliance/period-reports/{period_report_id}/review`. Admins and Auditors with access
+  to every source report can mark a period report as `needs_review`, `reviewed`, `needs_changes`, or
+  `rejected`. The update appends custody/audit records and keeps the source report artifact hash
+  immutable. Archived period reports are read-only and return conflict on review updates.
 
 Future scope:
 

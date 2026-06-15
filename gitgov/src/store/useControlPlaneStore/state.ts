@@ -100,6 +100,7 @@ export function createInitialControlPlaneState(): ControlPlaneState {
   isCompliancePeriodReportCreating: false,
   isCompliancePeriodReportsLoading: false,
   isCompliancePeriodReportDownloading: false,
+  isCompliancePeriodReportReviewing: false,
   isCompliancePeriodReportRetentionUpdating: false,
   isCompliancePeriodReportAccessLogLoading: false,
   isCompliancePeriodReportPdfExportCreating: false,

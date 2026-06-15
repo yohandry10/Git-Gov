@@ -6,6 +6,7 @@ import type {
   CompliancePeriodReportProvenanceManifestResponse,
   CompliancePeriodReportListResponse,
   CompliancePeriodReportResponse,
+  CompliancePeriodReportReviewRequest,
   ControlPlaneActions,
 } from '../types'
 import type { ControlPlaneGet, ControlPlaneSet } from '../store-types'
@@ -14,6 +15,7 @@ type PeriodReportActionKeys =
   | 'createCompliancePeriodReport'
   | 'loadCompliancePeriodReports'
   | 'downloadCompliancePeriodReport'
+  | 'reviewCompliancePeriodReport'
   | 'updateCompliancePeriodReportRetention'
   | 'loadCompliancePeriodReportAccessLog'
   | 'createCompliancePeriodReportPdfExport'
@@ -137,6 +139,57 @@ export function createCompliancePeriodReportActions(
         set({
           complianceEvidenceError: message,
           isCompliancePeriodReportDownloading: false,
+        })
+        return null
+      }
+    },
+
+    reviewCompliancePeriodReport: async (periodReportId, reviewStatus, reviewNotesSafe = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      const normalizedReviewStatus = reviewStatus.trim().toLowerCase()
+      const normalizedNotes = reviewNotesSafe?.trim() || null
+      if (!serverConfig || !normalizedPeriodReportId || !normalizedReviewStatus) return null
+
+      set({
+        isCompliancePeriodReportReviewing: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const payload: CompliancePeriodReportReviewRequest = {
+          org_name: selectedOrgName.trim() || null,
+          review_status: normalizedReviewStatus,
+          review_notes_safe: normalizedNotes,
+        }
+        const response = await tauriInvoke<CompliancePeriodReportResponse>(
+          'cmd_server_review_compliance_period_report',
+          {
+            config: serverConfig,
+            periodReportId: normalizedPeriodReportId,
+            payload,
+          },
+        )
+        const currentReports = get().compliancePeriodReports
+        set({
+          compliancePeriodReport: response,
+          compliancePeriodReports: currentReports
+            ? {
+              ...currentReports,
+              items: currentReports.items.map((item) =>
+                item.period_report_id === response.period_report.period_report_id
+                  ? response.period_report
+                  : item,
+              ),
+            }
+            : currentReports,
+          isCompliancePeriodReportReviewing: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportReviewing: false,
         })
         return null
       }

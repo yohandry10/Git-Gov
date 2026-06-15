@@ -47,6 +47,7 @@ type ComplianceActionKeys =
   | 'createCompliancePeriodReport'
   | 'loadCompliancePeriodReports'
   | 'downloadCompliancePeriodReport'
+  | 'reviewCompliancePeriodReport'
   | 'updateCompliancePeriodReportRetention'
   | 'loadCompliancePeriodReportAccessLog'
   | 'createCompliancePeriodReportPdfExport'

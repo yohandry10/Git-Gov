@@ -730,5 +730,6 @@ pub async fn download_compliance_period_report(
 }
 
 include!("compliance_period_reports/retention.rs");
+include!("compliance_period_reports/review.rs");
 include!("compliance_period_reports/pdf_exports.rs");
 include!("compliance_period_reports/provenance_manifests.rs");

@@ -383,6 +383,8 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     let admin = insert_test_api_key_for_org(&pool, "kan113-period-admin", "Admin", &org_id).await;
     let auditor =
         insert_test_api_key_for_org(&pool, "kan113-period-auditor", "Auditor", &org_id).await;
+    let developer =
+        insert_test_api_key_for_org(&pool, "kan117-period-developer", "Developer", &org_id).await;
     let unassigned_auditor = insert_test_api_key_for_org(
         &pool,
         "kan113-period-unassigned-auditor",
@@ -496,6 +498,10 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert_eq!(period_report["certification"], false);
     assert_eq!(period_report["requires_auditor_review"], true);
     assert_eq!(period_report["retention_status"], "active");
+    assert_eq!(period_report["review_status"], "needs_review");
+    assert!(period_report["reviewed_by_user_id"].is_null());
+    assert!(period_report["reviewed_at"].is_null());
+    assert!(period_report["review_notes_safe"].is_null());
     assert!(
         period_report["retention_until"]
             .as_i64()
@@ -634,6 +640,135 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
         auditor_get["period_report"]["period_report_id"],
         period_report_id
     );
+    assert_eq!(
+        auditor_get["period_report"]["review_status"],
+        "needs_review"
+    );
+
+    let (status, developer_review) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(&json!({ "review_status": "reviewed" }).to_string()),
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_review.contains("Admin or Auditor compliance review access required"));
+
+    let (status, unassigned_review) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(&json!({ "review_status": "reviewed" }).to_string()),
+        Some(&unassigned_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(unassigned_review.contains("not found"));
+
+    let (status, unsafe_review_note) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes_safe": "token ghp_thisMustNotPersist"
+            })
+            .to_string(),
+        ),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(unsafe_review_note.contains("cannot contain secrets"));
+
+    let (status, missing_note_review) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(&json!({ "review_status": "needs_changes" }).to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(missing_note_review.contains("review_notes_safe is required"));
+
+    let (status, review_get) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "review get failed: {review_get}");
+    let review_get: serde_json::Value = serde_json::from_str(&review_get).expect("review get JSON");
+    assert_eq!(review_get["period_report"]["review_status"], "needs_review");
+
+    let (status, review_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes_safe": "KAN-117 manual reviewer sign-off for sharing package"
+            })
+            .to_string(),
+        ),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "period review failed: {review_response}"
+    );
+    let review_response: serde_json::Value =
+        serde_json::from_str(&review_response).expect("period review JSON");
+    assert_eq!(
+        review_response["period_report"]["review_status"],
+        "reviewed"
+    );
+    assert_eq!(
+        review_response["period_report"]["reviewed_by_user_id"],
+        "kan113-period-auditor"
+    );
+    assert!(
+        review_response["period_report"]["reviewed_at"]
+            .as_i64()
+            .unwrap_or_default()
+            > 0
+    );
+    assert_eq!(
+        review_response["period_report"]["review_notes_safe"],
+        "KAN-117 manual reviewer sign-off for sharing package"
+    );
+    assert_eq!(
+        review_response["period_report"]["artifact_hash"],
+        artifact_hash
+    );
+
+    let period_hash_after_review: String = sqlx::query_scalar(
+        "SELECT artifact_hash FROM compliance_period_reports WHERE period_report_id = $1",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period hash after review");
+    assert_eq!(period_hash_after_review, artifact_hash);
+
+    let review_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action = 'review_updated' AND artifact_type = 'review' AND artifact_hash = $2",
+    )
+    .bind(period_report_id)
+    .bind(artifact_hash)
+    .fetch_one(&pool)
+    .await
+    .expect("period review access log count");
+    assert_eq!(review_log_count, 1);
 
     let (status, download) = json_request(
         &app,
@@ -848,6 +983,18 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
         artifact_hash
     );
     assert_eq!(
+        manifest_artifact["period_report"]["review_status"],
+        "reviewed"
+    );
+    assert_eq!(
+        manifest_artifact["period_report"]["reviewed_by_user_id"],
+        "kan113-period-auditor"
+    );
+    assert_eq!(
+        manifest_artifact["period_report"]["has_review_notes_safe"],
+        true
+    );
+    assert_eq!(
         manifest_artifact["period_artifact_summary"]["source_hashes"],
         artifact["source_hashes"]
     );
@@ -867,6 +1014,14 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
         manifest_artifact["audit_metadata"]["source_period_report_artifact_mutated"],
         false
     );
+    assert_eq!(
+        manifest_artifact["audit_metadata"]["source_period_report_review_mutated"],
+        false
+    );
+    assert_eq!(
+        manifest_artifact["audit_metadata"]["legal_attestation"],
+        false
+    );
     let manifest_action_counts = manifest_artifact["access_log"]["action_counts"]
         .as_array()
         .expect("manifest access counts");
@@ -879,6 +1034,9 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert!(manifest_action_counts
         .iter()
         .any(|item| item["action"] == "viewed" && item["count"] == 1));
+    assert!(manifest_action_counts
+        .iter()
+        .any(|item| item["action"] == "review_updated" && item["count"] == 1));
 
     let (status, _other_manifest_download) = json_request(
         &app,
@@ -1085,6 +1243,23 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
             > 0
     );
 
+    let (status, archived_review_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/review"),
+        Some(
+            &json!({
+                "review_status": "needs_changes",
+                "review_notes_safe": "Archived reports are immutable for new review decisions"
+            })
+            .to_string(),
+        ),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(archived_review_response.contains("period_report_archived"));
+
     let (status, access_log_response) = json_request(
         &app,
         "GET",
@@ -1113,6 +1288,7 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert!(actions.contains(&"archived"));
     assert!(actions.contains(&"manifest_created"));
     assert!(actions.contains(&"manifest_downloaded"));
+    assert!(actions.contains(&"review_updated"));
     assert_eq!(
         access_log_response["items"][0]["artifact_hash"],
         artifact_hash
@@ -1196,6 +1372,15 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("count period manifest audit rows");
     assert_eq!(manifest_audit_count, 2);
+
+    let review_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.reviewed'",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count period review audit rows");
+    assert_eq!(review_audit_count, 1);
 
     let retention_audit_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.retention_updated'",

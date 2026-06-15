@@ -322,6 +322,11 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             patch(handlers::update_compliance_period_report_retention),
         )
         .route(
+            "/compliance/period-reports/{period_report_id}/review",
+            get(handlers::get_compliance_period_report_review)
+                .patch(handlers::review_compliance_period_report),
+        )
+        .route(
             "/compliance/period-reports/{period_report_id}/access-log",
             get(handlers::list_compliance_period_report_access_log),
         )

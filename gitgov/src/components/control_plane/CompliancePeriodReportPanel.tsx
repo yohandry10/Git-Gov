@@ -5,6 +5,7 @@ import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { CompliancePeriodReportProvenancePanel } from './CompliancePeriodReportProvenancePanel'
+import { CompliancePeriodReportReviewPanel } from './CompliancePeriodReportReviewPanel'
 
 function shortHash(value?: string | null): string {
   if (!value) return 'not available'
@@ -78,6 +79,14 @@ function retentionBadgeVariant(status: string): 'success' | 'warning' | 'danger'
   if (status === 'retention_expired') return 'warning'
   if (status === 'archived') return 'neutral'
   return 'danger'
+}
+
+function reviewBadgeVariant(status?: string | null): 'success' | 'warning' | 'danger' | 'neutral' | 'info' {
+  if (status === 'reviewed') return 'success'
+  if (status === 'needs_changes') return 'warning'
+  if (status === 'rejected') return 'danger'
+  if (status === 'needs_review') return 'info'
+  return 'neutral'
 }
 
 function formatOptionalTs(timestamp: number | null | undefined, timezone: string): string {
@@ -176,6 +185,11 @@ export function CompliancePeriodReportPanel() {
           {periodReport && (
             <Badge variant={retentionBadgeVariant(periodReport.retention_status)}>
               {periodReport.retention_status.replace(/_/g, ' ')}
+            </Badge>
+          )}
+          {periodReport && (
+            <Badge variant={reviewBadgeVariant(periodReport.review_status)}>
+              {periodReport.review_status.replace(/_/g, ' ')}
             </Badge>
           )}
         </div>
@@ -366,6 +380,13 @@ export function CompliancePeriodReportPanel() {
       )}
 
       {periodReport && (
+        <CompliancePeriodReportReviewPanel
+          periodReport={periodReport}
+          displayTimezone={displayTimezone}
+        />
+      )}
+
+      {periodReport && (
         <CompliancePeriodReportProvenancePanel
           periodReport={periodReport}
           displayTimezone={displayTimezone}
@@ -406,6 +427,7 @@ export function CompliancePeriodReportPanel() {
                   <span>{shortHash(item.artifact_hash)}</span>
                   <span>{item.download_count} downloads</span>
                   <span>{item.retention_status.replace(/_/g, ' ')}</span>
+                  <span>{item.review_status.replace(/_/g, ' ')}</span>
                   <span>{formatTs(item.created_at, displayTimezone)}</span>
                   <span>{item.framework_id ?? 'all frameworks'}</span>
                 </div>

@@ -108,6 +108,7 @@ describe('useControlPlaneStore', () => {
       isCompliancePeriodReportCreating: false,
       isCompliancePeriodReportsLoading: false,
       isCompliancePeriodReportDownloading: false,
+      isCompliancePeriodReportReviewing: false,
       isCompliancePeriodReportRetentionUpdating: false,
       isCompliancePeriodReportAccessLogLoading: false,
       isCompliancePeriodReportPdfExportCreating: false,
@@ -1217,6 +1218,10 @@ describe('useControlPlaneStore', () => {
             regulatory_claim: false,
             requires_auditor_review: true,
             certification: false,
+            review_status: 'needs_review',
+            reviewed_by_user_id: null,
+            reviewed_at: null,
+            review_notes_safe: null,
             created_at: 13,
             downloaded_at: null,
             retention_status: 'active',
@@ -1257,6 +1262,10 @@ describe('useControlPlaneStore', () => {
             regulatory_claim: false,
             requires_auditor_review: true,
             certification: false,
+            review_status: 'needs_review',
+            reviewed_by_user_id: null,
+            reviewed_at: null,
+            review_notes_safe: null,
             created_at: 13,
             downloaded_at: null,
             retention_status: 'active',
@@ -1298,6 +1307,42 @@ describe('useControlPlaneStore', () => {
             regulatory_claim: false,
             requires_auditor_review: true,
             certification: false,
+            review_status: 'reviewed',
+            reviewed_by_user_id: 'auditor',
+            reviewed_at: 17,
+            review_notes_safe: 'Monthly approval',
+            created_at: 13,
+            downloaded_at: null,
+            retention_status: 'active',
+            retention_until: 1800000000000,
+            download_count: 0,
+            last_downloaded_at: null,
+            archived_at: null,
+          },
+          download_url: '/compliance/period-reports/cpr_123/download',
+          artifact: null,
+        })
+        .mockResolvedValueOnce({
+          period_report: {
+            period_report_id: 'cpr_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            date_range_start: 1000,
+            date_range_end: 2000,
+            report_count: 1,
+            source_report_ids: ['frr_123'],
+            format: 'json',
+            status: 'generated',
+            artifact_hash: 'sha256:' + '1'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            review_status: 'reviewed',
+            reviewed_by_user_id: 'auditor',
+            reviewed_at: 17,
+            review_notes_safe: 'Monthly approval',
             created_at: 13,
             downloaded_at: 16,
             retention_status: 'active',
@@ -1462,6 +1507,9 @@ describe('useControlPlaneStore', () => {
         .getState()
         .loadCompliancePeriodReports({ framework_id: ' gitgov_release_governance_baseline_v1 ' })
       const periodArtifact = await useControlPlaneStore.getState().downloadCompliancePeriodReport(' cpr_123 ')
+      const reviewedPeriodReport = await useControlPlaneStore
+        .getState()
+        .reviewCompliancePeriodReport(' cpr_123 ', ' reviewed ', ' Monthly approval ')
       const updatedPeriodRetention = await useControlPlaneStore
         .getState()
         .updateCompliancePeriodReportRetention(' cpr_123 ', {
@@ -1662,7 +1710,16 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(20, 'cmd_server_update_compliance_period_report_retention', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(20, 'cmd_server_review_compliance_period_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        payload: {
+          org_name: 'yohandry10',
+          review_status: 'reviewed',
+          review_notes_safe: 'Monthly approval',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(21, 'cmd_server_update_compliance_period_report_retention', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         payload: {
@@ -1671,7 +1728,7 @@ describe('useControlPlaneStore', () => {
           archive: false,
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(21, 'cmd_server_list_compliance_period_report_access_log', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(22, 'cmd_server_list_compliance_period_report_access_log', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         query: {
@@ -1679,14 +1736,14 @@ describe('useControlPlaneStore', () => {
           limit: 50,
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(22, 'cmd_server_create_compliance_period_report_pdf_export', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(23, 'cmd_server_create_compliance_period_report_pdf_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         payload: {
           org_name: 'yohandry10',
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(23, 'cmd_server_download_compliance_period_report_pdf_export', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(24, 'cmd_server_download_compliance_period_report_pdf_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         query: {
@@ -1694,14 +1751,14 @@ describe('useControlPlaneStore', () => {
           pdf_export_id: 'cprpdf_123',
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(24, 'cmd_server_create_compliance_period_report_provenance_manifest', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(25, 'cmd_server_create_compliance_period_report_provenance_manifest', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         payload: {
           org_name: 'yohandry10',
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(25, 'cmd_server_download_compliance_period_report_provenance_manifest', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(26, 'cmd_server_download_compliance_period_report_provenance_manifest', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         periodReportId: 'cpr_123',
         manifestId: 'cprm_123',
@@ -1731,6 +1788,8 @@ describe('useControlPlaneStore', () => {
       expect(periodReport?.period_report.period_report_id).toBe('cpr_123')
       expect(periodReports?.items[0]?.source_report_ids).toEqual(['frr_123'])
       expect(periodArtifact?.schema_version).toBe('gitgov_period_compliance_report.v1')
+      expect(reviewedPeriodReport?.period_report.review_status).toBe('reviewed')
+      expect(reviewedPeriodReport?.period_report.review_notes_safe).toBe('Monthly approval')
       expect(updatedPeriodRetention?.period_report.retention_until).toBe(1900000000000)
       expect(periodAccessLog?.items[0]?.action).toBe('retention_updated')
       expect(periodPdfExport?.pdf_export.pdf_artifact_hash).toBe('sha256:' + '2'.repeat(64))
@@ -1746,6 +1805,7 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportPdfExport?.pdf_export.downloaded_at).toBe(12)
       expect(useControlPlaneStore.getState().compliancePeriodReport?.period_report.artifact_hash).toBe('sha256:' + '1'.repeat(64))
       expect(useControlPlaneStore.getState().compliancePeriodReport?.period_report.retention_status).toBe('active')
+      expect(useControlPlaneStore.getState().compliancePeriodReport?.period_report.review_status).toBe('reviewed')
       expect(useControlPlaneStore.getState().compliancePeriodReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().compliancePeriodReportArtifact?.claims).toEqual({
         compliance_claim: false,

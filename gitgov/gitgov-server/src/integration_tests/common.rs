@@ -607,6 +607,17 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             regulatory_claim BOOLEAN NOT NULL DEFAULT FALSE CHECK (regulatory_claim = FALSE),
             requires_auditor_review BOOLEAN NOT NULL DEFAULT TRUE CHECK (requires_auditor_review = TRUE),
             certification BOOLEAN NOT NULL DEFAULT FALSE CHECK (certification = FALSE),
+            review_status TEXT NOT NULL DEFAULT 'needs_review'
+                CHECK (review_status IN ('needs_review', 'reviewed', 'needs_changes', 'rejected')),
+            reviewed_by_user_id TEXT,
+            reviewed_at TIMESTAMPTZ,
+            review_notes_safe TEXT CHECK (
+                review_notes_safe IS NULL
+                OR (
+                    char_length(review_notes_safe) <= 1000
+                    AND review_notes_safe !~* '(<script|</|<iframe|bearer |ghp_|glpat-|sk-)'
+                )
+            ),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             retention_status TEXT NOT NULL DEFAULT 'active'
                 CHECK (retention_status IN ('active', 'archived', 'retention_expired')),
@@ -619,6 +630,10 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             CHECK (
                 (retention_status = 'archived' AND archived_at IS NOT NULL)
                 OR retention_status <> 'archived'
+            ),
+            CHECK (
+                review_status NOT IN ('needs_changes', 'rejected')
+                OR review_notes_safe IS NOT NULL
             ),
             CHECK (period_report_id LIKE 'cpr_%'),
             CHECK (date_range_end > date_range_start),
@@ -644,15 +659,18 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_compliance_period_reports_retention
             ON compliance_period_reports(org_id, retention_status, retention_until);
 
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_reports_org_review_status
+            ON compliance_period_reports(org_id, review_status, created_at DESC);
+
         CREATE TABLE IF NOT EXISTS compliance_period_report_access_log (
             access_log_id TEXT PRIMARY KEY,
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
             period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
             actor_client_id TEXT NOT NULL,
             action TEXT NOT NULL CHECK (
-                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated', 'manifest_created', 'manifest_downloaded')
+                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated', 'manifest_created', 'manifest_downloaded', 'review_updated')
             ),
-            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention', 'manifest')),
+            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention', 'manifest', 'review')),
             artifact_id TEXT,
             artifact_hash TEXT CHECK (artifact_hash IS NULL OR artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
             metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -1882,6 +1900,11 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/period-reports/{period_report_id}/retention",
             patch(handlers::update_compliance_period_report_retention),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/review",
+            get(handlers::get_compliance_period_report_review)
+                .patch(handlers::review_compliance_period_report),
         )
         .route(
             "/compliance/period-reports/{period_report_id}/access-log",
