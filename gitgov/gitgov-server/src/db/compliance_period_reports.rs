@@ -30,6 +30,10 @@ fn compliance_period_report_from_row(row: &PgRow) -> CompliancePeriodReportRecor
         regulatory_claim: row.get("regulatory_claim"),
         requires_auditor_review: row.get("requires_auditor_review"),
         certification: row.get("certification"),
+        review_status: row.get("review_status"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        review_notes_safe: row.get("review_notes_safe"),
         created_at: row.get("created_at_ms"),
         retention_status: row.get("retention_status"),
         retention_until: row.get("retention_until_ms"),
@@ -279,6 +283,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 CASE
                     WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
@@ -333,6 +341,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 CASE
                     WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
@@ -411,6 +423,10 @@ impl Database {
                 regulatory_claim,
                 requires_auditor_review,
                 certification,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 CASE
                     WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
@@ -523,6 +539,10 @@ impl Database {
                 p.regulatory_claim,
                 p.requires_auditor_review,
                 p.certification,
+                p.review_status,
+                p.reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM p.reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                p.review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
                 p.retention_status,
                 ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
@@ -572,6 +592,10 @@ impl Database {
                 p.regulatory_claim,
                 p.requires_auditor_review,
                 p.certification,
+                p.review_status,
+                p.reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM p.reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                p.review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
                 CASE
                     WHEN p.retention_status = 'active' AND p.retention_until < NOW() THEN 'retention_expired'
@@ -662,6 +686,10 @@ impl Database {
                 p.regulatory_claim,
                 p.requires_auditor_review,
                 p.certification,
+                p.review_status,
+                p.reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM p.reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                p.review_notes_safe,
                 ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
                 p.retention_status,
                 ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
@@ -676,6 +704,66 @@ impl Database {
         .bind(input.period_report_id)
         .bind(input.retention_until)
         .bind(input.archive)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_from_row(&row)))
+    }
+
+    pub async fn update_compliance_period_report_review(
+        &self,
+        input: &UpdateCompliancePeriodReportReviewInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_period_reports p
+            SET review_status = $3,
+                reviewed_by_user_id = $4,
+                reviewed_at = NOW(),
+                review_notes_safe = $5,
+                error_message_safe = NULL
+            WHERE p.org_id = $1::uuid
+              AND p.period_report_id = $2
+              AND p.retention_status <> 'archived'
+            RETURNING
+                p.period_report_id,
+                p.org_id::text,
+                p.created_by_user_id,
+                p.framework_id,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_start) * 1000)::BIGINT AS date_range_start_ms,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_end) * 1000)::BIGINT AS date_range_end_ms,
+                p.report_count,
+                p.source_report_ids,
+                p.format,
+                p.status,
+                p.artifact_hash,
+                p.compliance_claim,
+                p.regulatory_claim,
+                p.requires_auditor_review,
+                p.certification,
+                p.review_status,
+                p.reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM p.reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                p.review_notes_safe,
+                ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
+                CASE
+                    WHEN p.retention_status = 'active' AND p.retention_until < NOW() THEN 'retention_expired'
+                    ELSE p.retention_status
+                END AS retention_status,
+                ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
+                p.download_count,
+                ROUND(EXTRACT(EPOCH FROM p.last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                p.error_message_safe
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.period_report_id)
+        .bind(input.review_status)
+        .bind(input.reviewed_by_user_id)
+        .bind(input.review_notes_safe)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;

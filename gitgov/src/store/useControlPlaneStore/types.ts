@@ -743,6 +743,12 @@ export interface CompliancePeriodReportQuery {
   limit?: number | null
 }
 
+export interface CompliancePeriodReportReviewRequest {
+  org_name?: string | null
+  review_status: string
+  review_notes_safe?: string | null
+}
+
 export interface CompliancePeriodReportRecord {
   period_report_id: string
   org_id: string
@@ -759,6 +765,10 @@ export interface CompliancePeriodReportRecord {
   regulatory_claim: boolean
   requires_auditor_review: boolean
   certification: boolean
+  review_status: 'needs_review' | 'reviewed' | 'needs_changes' | 'rejected' | string
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
   created_at: number
   downloaded_at?: number | null
   retention_status: 'active' | 'archived' | 'retention_expired' | string
@@ -1334,6 +1344,7 @@ export interface ControlPlaneState {
   isCompliancePeriodReportCreating: boolean
   isCompliancePeriodReportsLoading: boolean
   isCompliancePeriodReportDownloading: boolean
+  isCompliancePeriodReportReviewing: boolean
   isCompliancePeriodReportRetentionUpdating: boolean
   isCompliancePeriodReportAccessLogLoading: boolean
   isCompliancePeriodReportPdfExportCreating: boolean
@@ -1466,6 +1477,11 @@ export interface ControlPlaneActions {
   ) => Promise<CompliancePeriodReportResponse | null>
   loadCompliancePeriodReports: (filters?: Omit<CompliancePeriodReportQuery, 'org_name'>) => Promise<CompliancePeriodReportListResponse | null>
   downloadCompliancePeriodReport: (periodReportId: string) => Promise<Record<string, unknown> | null>
+  reviewCompliancePeriodReport: (
+    periodReportId: string,
+    reviewStatus: string,
+    reviewNotesSafe?: string | null,
+  ) => Promise<CompliancePeriodReportResponse | null>
   updateCompliancePeriodReportRetention: (
     periodReportId: string,
     payload: Omit<CompliancePeriodReportRetentionRequest, 'org_name'>,

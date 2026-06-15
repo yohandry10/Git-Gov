@@ -248,6 +248,15 @@ pub struct CompliancePeriodReportQuery {
     pub limit: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportReviewRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub review_status: String,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompliancePeriodReportRecord {
     pub period_report_id: String,
@@ -266,6 +275,13 @@ pub struct CompliancePeriodReportRecord {
     pub regulatory_claim: bool,
     pub requires_auditor_review: bool,
     pub certification: bool,
+    pub review_status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_notes_safe: Option<String>,
     pub created_at: i64,
     pub retention_status: String,
     pub retention_until: i64,

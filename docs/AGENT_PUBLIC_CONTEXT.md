@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-12
-Ticket: `KAN-78` planning migration
+Updated: 2026-06-15
+Ticket: `KAN-117` Period Compliance Report Review/Sign-off
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -11,14 +11,19 @@ It exists because some older forensic or strategy notes remain intentionally ign
 
 GitGov is past the phase of adding standalone hardening workflows, monitor chains, and isolated feature fragments by default.
 
-The current direction is product/UX consolidation:
+The current direction is product/UX consolidation plus auditor-ready compliance evidence packaging:
 
 - make GitGov easier to use.
 - package existing capabilities into a guided experience.
 - tell the operator what to do next instead of showing another disconnected report.
 - use the completed `KAN-69 - Enterprise Action Center guided UX` as the first product consolidation surface.
+- continue the manual-first compliance report chain from evidence export through reviewed period
+  reports before adding scheduler, official regulatory wording, certification claims, or AI-driven
+  decisions.
 
-The product should not become an "AWS 2.0" style maze of separate surfaces. The next valuable work is a guided Action Center that reuses what already exists.
+The product should not become an "AWS 2.0" style maze of separate surfaces. The valuable work is to
+turn existing primitives into coherent operator and auditor workflows without creating unreviewed
+claims.
 
 ## What Is Already Implemented
 
@@ -27,6 +32,10 @@ The repo already contains substantial product surface:
 - Tauri desktop app with React/TypeScript control-plane UI.
 - Rust/Axum backend with authenticated routes, webhook ingestion, compliance signals, policy checks, jobs, exports, SSE, metrics, and admin endpoints.
 - GitHub webhook evidence, Jira integration, Jenkins integration, local SonarQube governance, release readiness, evidence packets, release approvals, adoption profiles, workflow templates, provider validation, onboarding readiness, remediation exports, guided checklist tracking, and governance copilot surfaces.
+- Manual-first compliance evidence chain through customer framework packs, framework review reports,
+  auditor assignments/comments, report review metadata, provenance manifests, PDF exports, period
+  compliance reports, retention/custody history, period report provenance manifests, and KAN-117
+  period report review/sign-off metadata.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

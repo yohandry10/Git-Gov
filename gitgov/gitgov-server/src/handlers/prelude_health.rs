@@ -18,7 +18,8 @@ use crate::db::{
     ListCompliancePeriodReportsInput,
     ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, PipelineRunsForEvidencePacketQuery,
     PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput,
-    UpdateComplianceFrameworkReviewReportReviewInput, UpsertOrgUserInput,
+    UpdateComplianceFrameworkReviewReportReviewInput, UpdateCompliancePeriodReportReviewInput,
+    UpsertOrgUserInput,
     UpdateCompliancePeriodReportRetentionInput,
     UpsertComplianceFrameworkReviewReportAssignmentsInput,
 };

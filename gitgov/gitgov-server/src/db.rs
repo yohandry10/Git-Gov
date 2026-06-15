@@ -352,6 +352,14 @@ pub struct UpdateCompliancePeriodReportRetentionInput<'a> {
     pub archive: bool,
 }
 
+pub struct UpdateCompliancePeriodReportReviewInput<'a> {
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub review_status: &'a str,
+    pub reviewed_by_user_id: &'a str,
+    pub review_notes_safe: Option<&'a str>,
+}
+
 pub struct CreateCompliancePeriodReportAccessLogInput<'a> {
     pub access_log_id: &'a str,
     pub org_id: &'a str,

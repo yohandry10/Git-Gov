@@ -213,6 +213,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/period-reports/{period_report_id}/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar JSON redacted del reporte de periodo con hashes fuente, manifests, faltantes agregados y flags no-claim |
 | `/compliance/period-reports/{period_report_id}/retention` | Bearer (admin) | Actualizar retención lógica o archivar un Period Compliance Report sin borrado físico; escribe auditoría y custody log |
 | `/compliance/period-reports/{period_report_id}/access-log` | Bearer (admin/auditor con acceso a todos los source reports) | Listar historial append-only de vistas, descargas JSON/PDF y cambios de retención del reporte |
+| `/compliance/period-reports/{period_report_id}/review` | Bearer (admin/auditor con acceso a todos los source reports) | Leer o guardar metadata de review/sign-off manual del Period Compliance Report; no cambia artifact hash ni crea certificación, claim regulatorio o legal attestation |
 | `/compliance/period-reports/{period_report_id}/pdf-export` | Bearer (admin/auditor con acceso a todos los source reports) | Crear o consultar metadata de PDF append-only para un Period Compliance Report ya generado; no crea claims ni muta el JSON fuente |
 | `/compliance/period-reports/{period_report_id}/pdf-export/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
 | `/compliance/period-reports/{period_report_id}/provenance-manifests` | Bearer (admin/auditor con acceso a todos los source reports) | Crear manifest JSON append-only y hash-chained que vincula JSON, PDFs, retención, custody log y source hashes sin mutar artifacts ni claims |
@@ -697,6 +698,11 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v52.sql` | Asignaciones granulares de Auditors y comentarios seguros KAN-109 sobre Framework Review Reports |
 | `supabase_schema_v53.sql` | Manifiestos append-only KAN-110 para Framework Review Reports revisados, con hash chain y no-claim constraints |
 | `supabase_schema_v54.sql` | PDF exports append-only KAN-111 para Framework Review Reports revisados y ligados a manifiestos |
+| `supabase_schema_v55.sql` | Period Compliance Reports KAN-113 generados manualmente desde Framework Review Reports ya revisados |
+| `supabase_schema_v56.sql` | PDF exports append-only KAN-114 para Period Compliance Reports |
+| `supabase_schema_v57.sql` | Retención lógica y custody/access log KAN-115 para Period Compliance Reports |
+| `supabase_schema_v58.sql` | Manifiestos append-only KAN-116 para Period Compliance Reports, con hash chain y no-claim constraints |
+| `supabase_schema_v59.sql` | Review/sign-off manual KAN-117 para Period Compliance Reports; metadata auditable sin mutar artifacts ni crear claims |
 
 ### Relaciones entre Entidades
 
