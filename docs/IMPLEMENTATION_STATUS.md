@@ -544,9 +544,9 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 ## Current Operating State
 
-- Latest in-progress implementation: `KAN-118 - Saved Period Compliance Report Profiles`.
-- KAN-118 local implementation status:
-  - Branch `product/KAN-118-period-report-profiles`, GitHub issue `#409`.
+- Latest completed implementation: `KAN-118 - Saved Period Compliance Report Profiles`.
+- KAN-118 implementation status:
+  - Branch `product/KAN-118-period-report-profiles`, GitHub issue `#409`, PR `#410`, merged to `main` as `1ecb61b`.
   - Adds Supabase `v60` migration/postcheck for `compliance_period_report_profiles`.
   - Adds backend profile routes: `GET/POST /compliance/period-report-profiles`,
     `GET/PATCH /compliance/period-report-profiles/{profile_id}`,
@@ -562,8 +562,15 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
   - Local validation passed on 2026-06-15: backend real Postgres full suite (`311` passed),
     focused profile integration test, Tauri suite (`49` passed), focused store suite (`36` passed),
     full frontend suite (`368` passed), frontend build, backend/Tauri fmt/check/clippy, and
-    migration `v60`/postcheck against a real temporary Postgres instance. Final PR/deploy/prod
-    smoke are still pending until this branch is merged.
+    migration `v60`/postcheck against a real temporary Postgres instance.
+  - Production validation: post-merge `main` checks passed, Render deploy
+    `dep-d8o29ccvikkc73evb8cg` reached `live`, production `v60` migration/postcheck passed, and
+    production smoke created profile `cprprof_0f4c3ece4eb04856b4928b3eaeeed469`, period report
+    `cpr_9389010c74a34484a8e080942b56956e`, PDF `cprpdf_0d2e6aad239125a198e64c1a307b158d`,
+    and manifest `cprm_fdf8d9344b81fcd2111300511e139c00`; second run
+    `cpr_66dd549b6c2a4ad9ade49a20721e979a` correctly created no PDF/manifest after toggles were
+    disabled; archived run returned `409`; Auditor create returned `403`; temporary Auditor key was
+    revoked; Agent Governance evaluations stayed unchanged at `7`.
 
 - Previous completed implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
   - Product scope: manual Admin/Auditor review metadata for existing Period Compliance Reports.
