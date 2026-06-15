@@ -345,6 +345,39 @@ pub struct CreateCompliancePeriodReportProvenanceManifestInput<'a> {
     pub payload_json_redacted: &'a serde_json::Value,
 }
 
+pub struct CreateCompliancePeriodReportSharePackageInput<'a> {
+    pub share_package_id: &'a str,
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub package_format: &'a str,
+    pub artifact_hash: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+    pub period_report_artifact_hash: &'a str,
+    pub pdf_export_id: &'a str,
+    pub pdf_artifact_hash: &'a str,
+    pub manifest_id: &'a str,
+    pub manifest_hash: &'a str,
+    pub no_claims_snapshot: &'a serde_json::Value,
+    pub source_hashes: &'a serde_json::Value,
+    pub review_snapshot: &'a serde_json::Value,
+    pub retention_snapshot: &'a serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListCompliancePeriodReportSharePackagesInput<'a> {
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub status: Option<&'a str>,
+    pub limit: i64,
+}
+
+pub struct RevokeCompliancePeriodReportSharePackageInput<'a> {
+    pub org_id: &'a str,
+    pub share_package_id: &'a str,
+    pub revoked_by_user_id: &'a str,
+}
+
 pub struct CreateCompliancePeriodReportProfileInput<'a> {
     pub profile_id: &'a str,
     pub org_id: &'a str,

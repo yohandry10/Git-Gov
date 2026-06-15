@@ -881,3 +881,68 @@ pub struct CompliancePeriodReportProvenanceManifestResponse {
     pub download_url: String,
     pub artifact: serde_json::Value,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportSharePackageRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportSharePackageQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportSharePackageRecord {
+    pub share_package_id: String,
+    pub org_id: String,
+    pub period_report_id: String,
+    pub created_by_user_id: String,
+    pub package_format: String,
+    pub status: String,
+    pub artifact_hash: String,
+    pub period_report_artifact_hash: String,
+    pub pdf_export_id: String,
+    pub pdf_artifact_hash: String,
+    pub manifest_id: String,
+    pub manifest_hash: String,
+    pub no_claims_snapshot: serde_json::Value,
+    pub source_hashes: serde_json::Value,
+    pub review_snapshot: serde_json::Value,
+    pub retention_snapshot: serde_json::Value,
+    pub download_count: i32,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+    #[serde(default)]
+    pub last_downloaded_at: Option<i64>,
+    #[serde(default)]
+    pub revoked_at: Option<i64>,
+    #[serde(default)]
+    pub revoked_by_user_id: Option<String>,
+    pub created_at: i64,
+    #[serde(default)]
+    pub error_message_safe: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportSharePackageResponse {
+    pub share_package: CompliancePeriodReportSharePackageRecord,
+    pub download_url: String,
+    #[serde(default)]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportSharePackageListResponse {
+    pub items: Vec<CompliancePeriodReportSharePackageRecord>,
+    pub count: usize,
+    pub limit: i64,
+}

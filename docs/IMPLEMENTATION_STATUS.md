@@ -2,6 +2,74 @@
 
 Updated: 2026-06-15
 
+## KAN-119 Period Compliance Report Share Packages - 2026-06-15
+
+`KAN-119 - Period Compliance Report Share Packages` is implemented locally on branch
+`product/KAN-119-period-report-share-package` and tracked by GitHub issue `#415`.
+
+Product decision:
+
+- Keep this manual and auditor/customer-review oriented.
+- Package already existing Period Compliance Report evidence; do not create a new compliance claim.
+- Require the source period report to be `reviewed`.
+- Require existing JSON report, PDF export, and provenance manifest before package creation.
+- Allow Admins to create/revoke packages.
+- Allow Admins and source-authorized Auditors to list/download packages.
+- Deny Developers, unrelated tenants, and Agent Governance keys.
+- Record custody through append-only access-log actions.
+
+Implemented surface:
+
+- Supabase migration/postcheck `v61`.
+- Backend routes:
+  - `GET/POST /compliance/period-reports/{period_report_id}/share-packages`.
+  - `GET /compliance/period-report-share-packages/{share_package_id}`.
+  - `GET /compliance/period-report-share-packages/{share_package_id}/download`.
+  - `PATCH /compliance/period-report-share-packages/{share_package_id}/revoke`.
+- Artifact schema `gitgov_period_compliance_report_share_package.v1`.
+- Package hash over the redacted package payload with period JSON hash, PDF hash, manifest hash,
+  review snapshot, retention snapshot, no-claim flags, and manual verification instructions.
+- Desktop/Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions and `CompliancePeriodReportSharePackagePanel`.
+
+Explicitly not included:
+
+- No public links.
+- No email delivery.
+- No scheduler.
+- No DOCX/formal regulatory template.
+- No compliance score.
+- No certification, official regulatory claim, or legal attestation.
+- No official regulatory mapping.
+- No AI summary, BYOM/MCP/chatbot behavior, or Agent Governance dependency.
+
+Local validation completed:
+
+- Backend `cargo fmt --check`, `cargo check`, and `cargo clippy -- -D warnings`.
+- Focused real Postgres period-report integration test covering create preconditions, real
+  JSON/PDF/manifest/review chain, package hash recomputation, download custody, revoke behavior,
+  role denial, tenant isolation, Agent Governance key denial, and no Agent Governance evaluation
+  mutation.
+- Affected backend module suites in serial:
+  `compliance_period_reports`, `compliance_framework_review_reports`,
+  `compliance_review_packages`, and `compliance_evidence_exports`.
+- Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and full Tauri tests
+  (`49` passed).
+- Frontend typecheck, lint, focused store/component tests, full Vitest suite (`371` passed), and
+  production build.
+- `v61` migration/postcheck passed in a real rollback transaction against the configured Postgres
+  connection.
+
+Known local validation limit:
+
+- A full parallel backend suite hit local Supabase/Postgres session exhaustion
+  (`EMAXCONNSESSION max clients reached`).
+- A full serial backend retry timed out after 15 minutes.
+- The affected real KAN-119 integration chain and adjacent backend modules passed; CI remains the
+  final full-suite authority for the branch.
+
+Report: `docs/reports/period-compliance-report-share-package-2026-06-15.md`.
+
 ## KAN-69 Desktop Runtime QA - 2026-06-08
 
 `KAN-69 - Enterprise Action Center guided UX` remains implemented and merged. The Desktop runtime QA and information-architecture pass that followed is also merged to `main` through PR `#209` (`fix/KAN-69-desktop-runtime-qa-maintainability`) and PR `#211` (`fix/KAN-69-control-plane-workspace-auth`); latest main commit `e0c769d`. It was a QA pass, not a new feature wave.

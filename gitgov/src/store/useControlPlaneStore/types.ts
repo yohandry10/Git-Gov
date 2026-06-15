@@ -961,6 +961,52 @@ export interface CompliancePeriodReportProvenanceManifestResponse {
   artifact: Record<string, unknown>
 }
 
+export interface CompliancePeriodReportSharePackageRequest {
+  org_name?: string | null
+}
+
+export interface CompliancePeriodReportSharePackageQuery {
+  org_name?: string | null
+  status?: 'active' | 'revoked' | string | null
+  limit?: number | null
+}
+
+export interface CompliancePeriodReportSharePackageRecord {
+  share_package_id: string
+  org_id: string
+  period_report_id: string
+  created_by_user_id: string
+  period_report_artifact_hash: string
+  pdf_export_id: string
+  pdf_artifact_hash: string
+  manifest_id: string
+  manifest_hash: string
+  artifact_hash: string
+  package_format: string
+  status: 'active' | 'revoked' | string
+  no_claims_snapshot: Record<string, unknown>
+  source_hashes: Record<string, unknown>
+  download_count: number
+  downloaded_at?: number | null
+  last_downloaded_at?: number | null
+  revoked_by_user_id?: string | null
+  revoked_at?: number | null
+  created_at: number
+  error_message_safe?: string | null
+}
+
+export interface CompliancePeriodReportSharePackageResponse {
+  share_package: CompliancePeriodReportSharePackageRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
+export interface CompliancePeriodReportSharePackageListResponse {
+  items: CompliancePeriodReportSharePackageRecord[]
+  count: number
+  limit: number
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1399,6 +1445,9 @@ export interface ControlPlaneState {
   compliancePeriodReportAccessLog: CompliancePeriodReportAccessLogResponse | null
   compliancePeriodReportPdfExport: CompliancePeriodReportPdfExportResponse | null
   compliancePeriodReportProvenanceManifest: CompliancePeriodReportProvenanceManifestResponse | null
+  compliancePeriodReportSharePackages: CompliancePeriodReportSharePackageListResponse | null
+  compliancePeriodReportSharePackage: CompliancePeriodReportSharePackageResponse | null
+  compliancePeriodReportSharePackageArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1438,6 +1487,10 @@ export interface ControlPlaneState {
   isCompliancePeriodReportPdfExportDownloading: boolean
   isCompliancePeriodReportProvenanceManifestCreating: boolean
   isCompliancePeriodReportProvenanceManifestDownloading: boolean
+  isCompliancePeriodReportSharePackageCreating: boolean
+  isCompliancePeriodReportSharePackagesLoading: boolean
+  isCompliancePeriodReportSharePackageDownloading: boolean
+  isCompliancePeriodReportSharePackageRevoking: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1596,6 +1649,13 @@ export interface ControlPlaneActions {
   downloadCompliancePeriodReportPdfExport: (periodReportId: string, pdfExportId?: string | null) => Promise<CompliancePeriodReportPdfDownloadResponse | null>
   createCompliancePeriodReportProvenanceManifest: (periodReportId: string) => Promise<CompliancePeriodReportProvenanceManifestResponse | null>
   downloadCompliancePeriodReportProvenanceManifest: (periodReportId: string, manifestId: string) => Promise<Record<string, unknown> | null>
+  createCompliancePeriodReportSharePackage: (periodReportId: string) => Promise<CompliancePeriodReportSharePackageResponse | null>
+  loadCompliancePeriodReportSharePackages: (
+    periodReportId: string,
+    query?: Omit<CompliancePeriodReportSharePackageQuery, 'org_name'>,
+  ) => Promise<CompliancePeriodReportSharePackageListResponse | null>
+  downloadCompliancePeriodReportSharePackage: (sharePackageId: string) => Promise<Record<string, unknown> | null>
+  revokeCompliancePeriodReportSharePackage: (sharePackageId: string) => Promise<CompliancePeriodReportSharePackageResponse | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

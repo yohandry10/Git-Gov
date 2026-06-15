@@ -96,6 +96,9 @@ describe('useControlPlaneStore', () => {
       compliancePeriodReportAccessLog: null,
       compliancePeriodReportPdfExport: null,
       compliancePeriodReportProvenanceManifest: null,
+      compliancePeriodReportSharePackages: null,
+      compliancePeriodReportSharePackage: null,
+      compliancePeriodReportSharePackageArtifact: null,
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
       isComplianceFrameworkPackReviewing: false,
@@ -123,6 +126,10 @@ describe('useControlPlaneStore', () => {
       isCompliancePeriodReportPdfExportDownloading: false,
       isCompliancePeriodReportProvenanceManifestCreating: false,
       isCompliancePeriodReportProvenanceManifestDownloading: false,
+      isCompliancePeriodReportSharePackageCreating: false,
+      isCompliancePeriodReportSharePackagesLoading: false,
+      isCompliancePeriodReportSharePackageDownloading: false,
+      isCompliancePeriodReportSharePackageRevoking: false,
       complianceEvidenceError: null,
       isDeploymentGateAuthorizationsLoading: false,
       isReleaseApprovalsLoading: false,
@@ -2021,6 +2028,121 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().compliancePeriodReportPdfExport?.pdf_export.pdf_export_id).toBe('cprpdf_kan118')
       expect(useControlPlaneStore.getState().compliancePeriodReportProvenanceManifest?.manifest.manifest_id).toBe('cprm_kan118')
       expect(useControlPlaneStore.getState().compliancePeriodReportProfiles?.count).toBe(0)
+    })
+
+    it('manages period report share package create list download and revoke flow', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+
+      const sharePackage = {
+        share_package_id: 'cprsp_kan119',
+        org_id: 'org-1',
+        period_report_id: 'cpr_kan119',
+        created_by_user_id: 'admin',
+        period_report_artifact_hash: 'sha256:' + '1'.repeat(64),
+        pdf_export_id: 'cprpdf_kan119',
+        pdf_artifact_hash: 'sha256:' + '2'.repeat(64),
+        manifest_id: 'cprm_kan119',
+        manifest_hash: 'sha256:' + '3'.repeat(64),
+        artifact_hash: 'sha256:' + '4'.repeat(64),
+        package_format: 'json_bundle',
+        status: 'active',
+        no_claims_snapshot: {
+          compliance_claim: false,
+          regulatory_claim: false,
+          certification: false,
+          compliance_score: false,
+          requires_auditor_review: true,
+        },
+        source_hashes: {
+          period_report_artifact_hash: 'sha256:' + '1'.repeat(64),
+          pdf_artifact_hash: 'sha256:' + '2'.repeat(64),
+          manifest_hash: 'sha256:' + '3'.repeat(64),
+        },
+        download_count: 0,
+        downloaded_at: null,
+        last_downloaded_at: null,
+        revoked_by_user_id: null,
+        revoked_at: null,
+        created_at: 100,
+        error_message_safe: null,
+      }
+
+      mockInvoke
+        .mockResolvedValueOnce({
+          share_package: sharePackage,
+          download_url: '/compliance/period-report-share-packages/cprsp_kan119/download',
+          artifact: {
+            schema_version: 'gitgov_period_compliance_report_share_package.v1',
+            claims: sharePackage.no_claims_snapshot,
+            verification: { package_hash: sharePackage.artifact_hash },
+          },
+        })
+        .mockResolvedValueOnce({ items: [sharePackage], count: 1, limit: 25 })
+        .mockResolvedValueOnce({
+          schema_version: 'gitgov_period_compliance_report_share_package.v1',
+          claims: sharePackage.no_claims_snapshot,
+          verification: { package_hash: sharePackage.artifact_hash },
+        })
+        .mockResolvedValueOnce({
+          share_package: {
+            ...sharePackage,
+            status: 'revoked',
+            revoked_by_user_id: 'admin',
+            revoked_at: 200,
+          },
+          download_url: '/compliance/period-report-share-packages/cprsp_kan119/download',
+          artifact: null,
+        })
+
+      const created = await useControlPlaneStore.getState().createCompliancePeriodReportSharePackage(' cpr_kan119 ')
+      const loaded = await useControlPlaneStore.getState().loadCompliancePeriodReportSharePackages(' cpr_kan119 ', {
+        status: 'active',
+      })
+      const downloaded = await useControlPlaneStore.getState().downloadCompliancePeriodReportSharePackage(' cprsp_kan119 ')
+      const revoked = await useControlPlaneStore.getState().revokeCompliancePeriodReportSharePackage(' cprsp_kan119 ')
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_period_report_share_package', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_kan119',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_list_compliance_period_report_share_packages', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_kan119',
+        query: {
+          org_name: 'yohandry10',
+          status: 'active',
+          limit: 25,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_download_compliance_period_report_share_package', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        sharePackageId: 'cprsp_kan119',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_revoke_compliance_period_report_share_package', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        sharePackageId: 'cprsp_kan119',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
+
+      expect(created?.share_package.artifact_hash).toBe('sha256:' + '4'.repeat(64))
+      expect(loaded?.items[0]?.status).toBe('active')
+      expect(downloaded?.schema_version).toBe('gitgov_period_compliance_report_share_package.v1')
+      expect(revoked?.share_package.status).toBe('revoked')
+      expect(useControlPlaneStore.getState().compliancePeriodReportSharePackageArtifact?.verification).toEqual({
+        package_hash: 'sha256:' + '4'.repeat(64),
+      })
+      expect(useControlPlaneStore.getState().compliancePeriodReportSharePackages?.items[0]?.status).toBe('revoked')
     })
 
     it('imports customer-owned compliance framework packs and selects the imported framework', async () => {

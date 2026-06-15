@@ -218,6 +218,10 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/period-reports/{period_report_id}/pdf-export/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
 | `/compliance/period-reports/{period_report_id}/provenance-manifests` | Bearer (admin/auditor con acceso a todos los source reports) | Crear manifest JSON append-only y hash-chained que vincula JSON, PDFs, retención, custody log y source hashes sin mutar artifacts ni claims |
 | `/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar un manifest de procedencia de Period Compliance Report ya materializado |
+| `/compliance/period-reports/{period_report_id}/share-packages` | Bearer (GET admin/auditor con acceso a todos los source reports, POST admin) | Listar o crear paquetes manuales/offline para reportes de periodo ya `reviewed` con JSON, PDF y manifest existentes; no crea public links, email, score, certificación ni Agent Governance |
+| `/compliance/period-report-share-packages/{share_package_id}` | Bearer (admin/auditor con acceso al reporte fuente) | Consultar metadata y payload redacted de un share package |
+| `/compliance/period-report-share-packages/{share_package_id}/download` | Bearer (admin/auditor con acceso al reporte fuente) | Descargar el JSON bundle offline y registrar custody `share_package_downloaded`; bloquea paquetes revocados |
+| `/compliance/period-report-share-packages/{share_package_id}/revoke` | Bearer (admin) | Revocar futuras descargas de un share package sin borrar el artifact ni mutar el reporte fuente |
 | `/compliance/period-report-profiles` | Bearer (GET admin/auditor, POST admin) | Crear o listar perfiles guardados para ejecutar manualmente Period Compliance Reports con periodo, framework, PDF, manifest y retención por defecto |
 | `/compliance/period-report-profiles/{profile_id}` | Bearer (admin/auditor para GET, admin para PATCH) | Consultar o actualizar un perfil guardado; perfiles archivados quedan read-only |
 | `/compliance/period-report-profiles/{profile_id}/archive` | Bearer (admin) | Archivar lógicamente un perfil guardado y bloquear ejecuciones futuras sin borrar reportes ya creados |
@@ -708,6 +712,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v58.sql` | Manifiestos append-only KAN-116 para Period Compliance Reports, con hash chain y no-claim constraints |
 | `supabase_schema_v59.sql` | Review/sign-off manual KAN-117 para Period Compliance Reports; metadata auditable sin mutar artifacts ni crear claims |
 | `supabase_schema_v60.sql` | Perfiles guardados KAN-118 para ejecutar manualmente Period Compliance Reports con PDF/manifest/retención opcionales, sin scheduler ni claims |
+| `supabase_schema_v61.sql` | Share packages KAN-119 para empaquetar manualmente JSON/PDF/manifest de Period Compliance Reports revisados, con revocación, custody log y no-claim constraints |
 
 ### Relaciones entre Entidades
 
