@@ -211,6 +211,8 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/period-reports` | Bearer (GET admin/auditor, POST admin) | Crear o listar reportes JSON de periodo desde Framework Review Reports ya `reviewed`; creation es manual/on-demand y no crea claims |
 | `/compliance/period-reports/{period_report_id}` | Bearer (admin/auditor con acceso a todos los source reports) | Consultar metadata del Period Compliance Report sin payload pesado |
 | `/compliance/period-reports/{period_report_id}/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar JSON redacted del reporte de periodo con hashes fuente, manifests, faltantes agregados y flags no-claim |
+| `/compliance/period-reports/{period_report_id}/pdf-export` | Bearer (admin/auditor con acceso a todos los source reports) | Crear o consultar metadata de PDF append-only para un Period Compliance Report ya generado; no crea claims ni muta el JSON fuente |
+| `/compliance/period-reports/{period_report_id}/pdf-export/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |

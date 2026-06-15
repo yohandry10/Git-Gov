@@ -619,6 +619,98 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert_eq!(downloaded["source_hashes"], artifact["source_hashes"]);
     assert_eq!(downloaded["claims"]["requires_auditor_review"], true);
 
+    let (status, _unassigned_pdf_create) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/pdf-export"),
+        Some(&json!({}).to_string()),
+        Some(&unassigned_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, pdf_create) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/pdf-export"),
+        Some(&json!({}).to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "period PDF export failed: {pdf_create}"
+    );
+    let pdf_create: serde_json::Value = serde_json::from_str(&pdf_create).expect("period PDF JSON");
+    let pdf_export = &pdf_create["pdf_export"];
+    let pdf_export_id = pdf_export["pdf_export_id"].as_str().expect("pdf id");
+    let pdf_artifact_hash = pdf_export["pdf_artifact_hash"].as_str().expect("pdf hash");
+    assert!(pdf_export_id.starts_with("cprpdf_"));
+    assert!(pdf_artifact_hash.starts_with("sha256:"));
+    assert_eq!(pdf_export["period_report_id"], period_report_id);
+    assert_eq!(pdf_export["source_period_report_hash"], artifact_hash);
+    assert_eq!(pdf_export["content_type"], "application/pdf");
+    assert_eq!(pdf_export["compliance_claim"], false);
+    assert_eq!(pdf_export["regulatory_claim"], false);
+    assert_eq!(pdf_export["certification"], false);
+    assert_eq!(pdf_export["requires_auditor_review"], true);
+    assert!(pdf_export["page_count"].as_i64().unwrap_or_default() >= 1);
+
+    let (status, _other_pdf_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/period-reports/{period_report_id}/pdf-export/download?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, pdf_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/period-reports/{period_report_id}/pdf-export/download?pdf_export_id={pdf_export_id}"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "period PDF download failed: {pdf_download}"
+    );
+    assert!(pdf_download.starts_with("%PDF-1.4"));
+    assert!(pdf_download.contains("GitGov Period Compliance Report"));
+    assert!(pdf_download.contains("Not a certification"));
+    assert!(pdf_download.contains(period_report_id));
+    assert!(pdf_download.contains(&artifact_hash[..24]));
+    assert!(!pdf_download.contains("must-not-report"));
+    let recomputed_pdf_hash = format!("sha256:{:x}", Sha256::digest(pdf_download.as_bytes()));
+    assert_eq!(recomputed_pdf_hash, pdf_artifact_hash);
+
+    let pdf_downloaded_at: Option<i64> = sqlx::query_scalar(
+        "SELECT ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT FROM compliance_period_report_pdf_exports WHERE pdf_export_id = $1",
+    )
+    .bind(pdf_export_id)
+    .fetch_one(&pool)
+    .await
+    .expect("pdf downloaded_at");
+    assert!(pdf_downloaded_at.unwrap_or_default() > 0);
+
+    let period_hash_after_pdf: String = sqlx::query_scalar(
+        "SELECT artifact_hash FROM compliance_period_reports WHERE period_report_id = $1",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period hash after pdf");
+    assert_eq!(period_hash_after_pdf, artifact_hash);
+
     let downloaded_at: Option<i64> = sqlx::query_scalar(
         "SELECT ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT FROM compliance_period_reports WHERE period_report_id = $1",
     )
@@ -659,6 +751,15 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("count period audit rows");
     assert_eq!(audit_count, 1);
+
+    let pdf_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.pdf_export_created'",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count period PDF audit rows");
+    assert_eq!(pdf_audit_count, 1);
 
     teardown(&admin_pool, &schema).await;
 }

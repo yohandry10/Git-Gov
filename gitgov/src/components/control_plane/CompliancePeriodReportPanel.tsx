@@ -1,4 +1,4 @@
-import { CalendarDays, Download, FileJson, RefreshCw } from 'lucide-react'
+import { CalendarDays, Download, FileJson, FileText, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
@@ -16,6 +16,23 @@ function safeDownloadName(value: string): string {
 
 function downloadJson(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function downloadPdf(filename: string, base64: string) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  const blob = new Blob([bytes], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -62,13 +79,18 @@ export function CompliancePeriodReportPanel() {
   const periodReport = useControlPlaneStore((state) => state.compliancePeriodReport?.period_report ?? null)
   const periodReports = useControlPlaneStore((state) => state.compliancePeriodReports)
   const periodArtifact = useControlPlaneStore((state) => state.compliancePeriodReportArtifact)
+  const periodPdfExport = useControlPlaneStore((state) => state.compliancePeriodReportPdfExport?.pdf_export ?? null)
   const isCreating = useControlPlaneStore((state) => state.isCompliancePeriodReportCreating)
   const isLoading = useControlPlaneStore((state) => state.isCompliancePeriodReportsLoading)
   const isDownloading = useControlPlaneStore((state) => state.isCompliancePeriodReportDownloading)
+  const isCreatingPdf = useControlPlaneStore((state) => state.isCompliancePeriodReportPdfExportCreating)
+  const isDownloadingPdf = useControlPlaneStore((state) => state.isCompliancePeriodReportPdfExportDownloading)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const createPeriodReport = useControlPlaneStore((state) => state.createCompliancePeriodReport)
   const loadPeriodReports = useControlPlaneStore((state) => state.loadCompliancePeriodReports)
   const downloadPeriodReport = useControlPlaneStore((state) => state.downloadCompliancePeriodReport)
+  const createPeriodReportPdf = useControlPlaneStore((state) => state.createCompliancePeriodReportPdfExport)
+  const downloadPeriodReportPdf = useControlPlaneStore((state) => state.downloadCompliancePeriodReportPdfExport)
 
   const canGenerate = dateRangeStart > 0 && dateRangeEnd > dateRangeStart
   const reportCount = summaryNumber(periodArtifact, 'report_count') ?? periodReport?.report_count ?? 0
@@ -92,13 +114,24 @@ export function CompliancePeriodReportPanel() {
     }
   }
 
+  const handleCreatePdf = async (periodReportId: string) => {
+    await createPeriodReportPdf(periodReportId)
+  }
+
+  const handleDownloadPdf = async (periodReportId: string, pdfExportId?: string | null) => {
+    const response = await downloadPeriodReportPdf(periodReportId, pdfExportId)
+    if (response) {
+      downloadPdf(`gitgov-period-compliance-${safeDownloadName(response.pdf_export.pdf_export_id)}.pdf`, response.pdf_base64)
+    }
+  }
+
   return (
     <div className="mt-3 rounded border border-white/8 bg-white/[0.03] p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs font-medium text-surface-200">
           <FileJson size={13} className="text-brand-300" />
           Period compliance report
-          <Badge variant="info">manual JSON</Badge>
+          <Badge variant="info">manual JSON/PDF</Badge>
           {periodReport && <Badge variant="success">{periodReport.report_count} reports</Badge>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -178,15 +211,52 @@ export function CompliancePeriodReportPanel() {
             Sources: <span className="font-mono text-surface-300">{periodReport.source_report_ids.slice(0, 4).join(', ')}</span>
             {periodReport.source_report_ids.length > 4 ? ` +${periodReport.source_report_ids.length - 4}` : ''}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isCreatingPdf}
+              onClick={() => void handleCreatePdf(periodReport.period_report_id)}
+              title="Generate a manual PDF export from this period compliance report"
+            >
+              <FileText size={13} />
+              PDF
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isDownloading}
+              onClick={() => void handleDownload(periodReport.period_report_id)}
+              title="Download this period compliance report JSON"
+            >
+              <Download size={13} />
+              JSON
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {periodPdfExport && periodPdfExport.period_report_id === periodReport?.period_report_id && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded border border-brand-400/20 bg-brand-400/5 p-2 text-[11px]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-surface-300">
+              <FileText size={13} className="text-brand-300" />
+              Period PDF export
+              <Badge variant="success">{periodPdfExport.page_count} page{periodPdfExport.page_count === 1 ? '' : 's'}</Badge>
+            </div>
+            <div className="mt-1 truncate font-mono text-surface-500" title={periodPdfExport.pdf_artifact_hash}>
+              {shortHash(periodPdfExport.pdf_artifact_hash)}
+            </div>
+          </div>
           <Button
             size="sm"
             variant="outline"
-            loading={isDownloading}
-            onClick={() => void handleDownload(periodReport.period_report_id)}
-            title="Download this period compliance report JSON"
+            loading={isDownloadingPdf}
+            onClick={() => void handleDownloadPdf(periodPdfExport.period_report_id, periodPdfExport.pdf_export_id)}
+            title="Download the generated period compliance PDF"
           >
             <Download size={13} />
-            Download
+            PDF
           </Button>
         </div>
       )}
@@ -204,16 +274,28 @@ export function CompliancePeriodReportPanel() {
                   <span>{item.framework_id ?? 'all frameworks'}</span>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                loading={isDownloading}
-                onClick={() => void handleDownload(item.period_report_id)}
-                title="Download historical period compliance report JSON"
-              >
-                <Download size={13} />
-                JSON
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={isDownloadingPdf}
+                  onClick={() => void handleDownloadPdf(item.period_report_id)}
+                  title="Download the latest PDF export for this historical period report"
+                >
+                  <FileText size={13} />
+                  PDF
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={isDownloading}
+                  onClick={() => void handleDownload(item.period_report_id)}
+                  title="Download historical period compliance report JSON"
+                >
+                  <Download size={13} />
+                  JSON
+                </Button>
+              </div>
             </div>
           ))}
         </div>

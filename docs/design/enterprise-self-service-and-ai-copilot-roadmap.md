@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export
 
 ## Decision
 
@@ -275,6 +275,13 @@ Current primitives:
   tenant-scoped, readable by Admins and Auditors who can access every source report, does not mutate
   source artifacts, does not create Agent Governance evaluations, and is not a certification,
   compliance score, official regulatory report, or legal attestation.
+- `KAN-114`: Period Compliance Report PDF export. Admins and Auditors who can access every source
+  Framework Review Report can materialize and download an append-only PDF projection of an already
+  generated Period Compliance Report. The PDF is bound to the source period report artifact hash,
+  has its own PDF artifact hash, preserves no-claim flags, and remains a customer/auditor review
+  artifact. It is not a DOCX/formal regulatory template, scheduler, compliance score,
+  certification, legal attestation, official regulatory wording, AI summary, or Agent Governance
+  dependency.
 
 Future scope:
 
@@ -427,11 +434,17 @@ Current primitives:
   The first output format is JSON only. It requires at least one reviewed source report in the
   period and enforces `compliance_claim=false`, `regulatory_claim=false`, `certification=false`,
   and `requires_auditor_review=true`.
+- `KAN-114` adds the first manual PDF projection of that period report:
+  `POST/GET /compliance/period-reports/{period_report_id}/pdf-export` and
+  `GET /compliance/period-reports/{period_report_id}/pdf-export/download`. The PDF stays bound to
+  the source JSON artifact hash and is readable only by Admins or Auditors who can access every
+  source Framework Review Report.
 
 Future scope:
 
 - Organization/repository report templates.
-- PDF/DOCX formal templates and scheduling after the JSON artifact is validated with customers.
+- DOCX formal templates, richer PDF templates, and scheduling after the JSON/PDF artifacts are
+  validated with customers.
 - Digitally signable evidence packet references.
 - Regulator/auditor wording that maps to the Regulatory Framework Mapper when enabled.
 - Official regulatory mappings, compliance scoring, and certification wording remain future work

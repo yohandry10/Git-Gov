@@ -287,3 +287,42 @@ pub struct CompliancePeriodReportListResponse {
     pub count: usize,
     pub limit: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportPdfExportRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportPdfExportQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub pdf_export_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportPdfExportRecord {
+    pub pdf_export_id: String,
+    pub org_id: String,
+    pub period_report_id: String,
+    pub created_by_user_id: String,
+    pub source_period_report_hash: String,
+    pub pdf_artifact_hash: String,
+    pub content_type: String,
+    pub page_count: i32,
+    pub compliance_claim: bool,
+    pub regulatory_claim: bool,
+    pub requires_auditor_review: bool,
+    pub certification: bool,
+    pub created_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub downloaded_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportPdfExportResponse {
+    pub pdf_export: CompliancePeriodReportPdfExportRecord,
+    pub download_url: String,
+}

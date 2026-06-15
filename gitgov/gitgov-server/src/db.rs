@@ -322,6 +322,18 @@ pub struct CreateCompliancePeriodReportInput<'a> {
     pub payload_json_redacted: &'a serde_json::Value,
 }
 
+pub struct CreateCompliancePeriodReportPdfExportInput<'a> {
+    pub pdf_export_id: &'a str,
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub source_period_report_hash: &'a str,
+    pub pdf_artifact_hash: &'a str,
+    pub content_type: &'a str,
+    pub page_count: i32,
+    pub pdf_bytes: &'a [u8],
+}
+
 #[derive(Debug, Clone)]
 pub struct ListCompliancePeriodReportsInput<'a> {
     pub org_id: &'a str,

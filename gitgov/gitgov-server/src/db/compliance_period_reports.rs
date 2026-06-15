@@ -75,6 +75,27 @@ fn compliance_period_source_report_from_row(row: &PgRow) -> CompliancePeriodSour
     }
 }
 
+fn compliance_period_report_pdf_export_from_row(
+    row: &PgRow,
+) -> CompliancePeriodReportPdfExportRecord {
+    CompliancePeriodReportPdfExportRecord {
+        pdf_export_id: row.get("pdf_export_id"),
+        org_id: row.get("org_id"),
+        period_report_id: row.get("period_report_id"),
+        created_by_user_id: row.get("created_by_user_id"),
+        source_period_report_hash: row.get("source_period_report_hash"),
+        pdf_artifact_hash: row.get("pdf_artifact_hash"),
+        content_type: row.get("content_type"),
+        page_count: row.get("page_count"),
+        compliance_claim: row.get("compliance_claim"),
+        regulatory_claim: row.get("regulatory_claim"),
+        requires_auditor_review: row.get("requires_auditor_review"),
+        certification: row.get("certification"),
+        created_at: row.get("created_at_ms"),
+        downloaded_at: row.get("downloaded_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn list_reviewed_compliance_framework_review_reports_for_period(
         &self,
@@ -452,6 +473,268 @@ impl Database {
             let record = compliance_period_report_from_row(&row);
             let artifact: serde_json::Value = row.get("payload_json_redacted");
             (record, artifact)
+        }))
+    }
+
+    pub async fn get_compliance_period_report_with_payload(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        auditor_client_id: Option<&str>,
+    ) -> Result<Option<(CompliancePeriodReportRecord, serde_json::Value)>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                p.period_report_id,
+                p.org_id::text,
+                p.created_by_user_id,
+                p.framework_id,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_start) * 1000)::BIGINT AS date_range_start_ms,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_end) * 1000)::BIGINT AS date_range_end_ms,
+                p.report_count,
+                p.source_report_ids,
+                p.format,
+                p.status,
+                p.artifact_hash,
+                p.compliance_claim,
+                p.regulatory_claim,
+                p.requires_auditor_review,
+                p.certification,
+                ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                p.error_message_safe,
+                p.payload_json_redacted
+            FROM compliance_period_reports p
+            WHERE p.org_id = $1::uuid
+              AND p.period_report_id = $2
+              AND (
+                $3::text IS NULL
+                OR NOT EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(p.source_report_ids) AS source_report(report_id)
+                    WHERE EXISTS (
+                        SELECT 1
+                        FROM compliance_framework_review_report_assignments a
+                        WHERE a.org_id = p.org_id
+                          AND a.report_id = source_report.report_id
+                          AND a.assignment_status = 'active'
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM compliance_framework_review_report_assignments a
+                        WHERE a.org_id = p.org_id
+                          AND a.report_id = source_report.report_id
+                          AND a.auditor_client_id = $3
+                          AND a.assignment_status = 'active'
+                    )
+                )
+              )
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(auditor_client_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let record = compliance_period_report_from_row(&row);
+            let artifact: serde_json::Value = row.get("payload_json_redacted");
+            (record, artifact)
+        }))
+    }
+
+    pub async fn create_compliance_period_report_pdf_export(
+        &self,
+        input: &CreateCompliancePeriodReportPdfExportInput<'_>,
+    ) -> Result<CompliancePeriodReportPdfExportRecord, DbError> {
+        sqlx::query(
+            r#"
+            INSERT INTO compliance_period_report_pdf_exports (
+                pdf_export_id,
+                org_id,
+                period_report_id,
+                created_by_user_id,
+                source_period_report_hash,
+                pdf_artifact_hash,
+                content_type,
+                page_count,
+                pdf_bytes,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                FALSE,
+                FALSE,
+                TRUE,
+                FALSE
+            )
+            ON CONFLICT (pdf_export_id) DO NOTHING
+            "#,
+        )
+        .bind(input.pdf_export_id)
+        .bind(input.org_id)
+        .bind(input.period_report_id)
+        .bind(input.created_by_user_id)
+        .bind(input.source_period_report_hash)
+        .bind(input.pdf_artifact_hash)
+        .bind(input.content_type)
+        .bind(input.page_count)
+        .bind(input.pdf_bytes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        self.get_compliance_period_report_pdf_export(
+            input.org_id,
+            input.period_report_id,
+            input.pdf_export_id,
+        )
+        .await?
+        .ok_or_else(|| DbError::NotFound("period compliance report PDF export".to_string()))
+    }
+
+    pub async fn get_latest_compliance_period_report_pdf_export(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+    ) -> Result<Option<CompliancePeriodReportPdfExportRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                pdf_export_id,
+                org_id::text,
+                period_report_id,
+                created_by_user_id,
+                source_period_report_hash,
+                pdf_artifact_hash,
+                content_type,
+                page_count,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms
+            FROM compliance_period_report_pdf_exports
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+            ORDER BY created_at DESC, pdf_export_id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_pdf_export_from_row(&row)))
+    }
+
+    pub async fn get_compliance_period_report_pdf_export(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        pdf_export_id: &str,
+    ) -> Result<Option<CompliancePeriodReportPdfExportRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                pdf_export_id,
+                org_id::text,
+                period_report_id,
+                created_by_user_id,
+                source_period_report_hash,
+                pdf_artifact_hash,
+                content_type,
+                page_count,
+                compliance_claim,
+                regulatory_claim,
+                requires_auditor_review,
+                certification,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms
+            FROM compliance_period_report_pdf_exports
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+              AND pdf_export_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(pdf_export_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_pdf_export_from_row(&row)))
+    }
+
+    pub async fn download_compliance_period_report_pdf_export(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        pdf_export_id: Option<&str>,
+    ) -> Result<Option<(CompliancePeriodReportPdfExportRecord, Vec<u8>)>, DbError> {
+        let row = sqlx::query(
+            r#"
+            WITH selected AS (
+                SELECT pdf_export_id
+                FROM compliance_period_report_pdf_exports
+                WHERE org_id = $1::uuid
+                  AND period_report_id = $2
+                  AND ($3::text IS NULL OR pdf_export_id = $3)
+                ORDER BY created_at DESC, pdf_export_id DESC
+                LIMIT 1
+            )
+            UPDATE compliance_period_report_pdf_exports e
+            SET downloaded_at = NOW()
+            FROM selected
+            WHERE e.pdf_export_id = selected.pdf_export_id
+            RETURNING
+                e.pdf_export_id,
+                e.org_id::text,
+                e.period_report_id,
+                e.created_by_user_id,
+                e.source_period_report_hash,
+                e.pdf_artifact_hash,
+                e.content_type,
+                e.page_count,
+                e.compliance_claim,
+                e.regulatory_claim,
+                e.requires_auditor_review,
+                e.certification,
+                ROUND(EXTRACT(EPOCH FROM e.created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM e.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                e.pdf_bytes
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(pdf_export_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let record = compliance_period_report_pdf_export_from_row(&row);
+            let bytes: Vec<u8> = row.get("pdf_bytes");
+            (record, bytes)
         }))
     }
 }
