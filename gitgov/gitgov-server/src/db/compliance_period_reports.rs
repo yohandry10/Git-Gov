@@ -137,6 +137,32 @@ fn compliance_period_report_provenance_manifest_from_row(
     }
 }
 
+fn compliance_period_report_profile_from_row(row: &PgRow) -> CompliancePeriodReportProfileRecord {
+    CompliancePeriodReportProfileRecord {
+        profile_id: row.get("profile_id"),
+        org_id: row.get("org_id"),
+        created_by_user_id: row.get("created_by_user_id"),
+        updated_by_user_id: row.get("updated_by_user_id"),
+        name: row.get("name"),
+        period_type: row.get("period_type"),
+        framework_id: row.get("framework_id"),
+        framework_owner_type: row.get("framework_owner_type"),
+        include_pdf: row.get("include_pdf"),
+        include_manifest: row.get("include_manifest"),
+        retention_days: row.get("retention_days"),
+        filters: row.get("filters"),
+        status: row.get("status"),
+        run_count: row.get("run_count"),
+        last_run_at: row.get("last_run_at_ms"),
+        last_period_report_id: row.get("last_period_report_id"),
+        last_pdf_export_id: row.get("last_pdf_export_id"),
+        last_manifest_id: row.get("last_manifest_id"),
+        archived_at: row.get("archived_at_ms"),
+        created_at: row.get("created_at_ms"),
+        updated_at: row.get("updated_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn list_reviewed_compliance_framework_review_reports_for_period(
         &self,
@@ -1061,6 +1087,341 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.map(|row| row.get("manifest_hash")))
+    }
+
+    pub async fn create_compliance_period_report_profile(
+        &self,
+        input: &CreateCompliancePeriodReportProfileInput<'_>,
+    ) -> Result<CompliancePeriodReportProfileRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO compliance_period_report_profiles (
+                profile_id,
+                org_id,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11::jsonb,
+                'active'
+            )
+            RETURNING
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(input.profile_id)
+        .bind(input.org_id)
+        .bind(input.created_by_user_id)
+        .bind(input.name)
+        .bind(input.period_type)
+        .bind(input.framework_id)
+        .bind(input.framework_owner_type)
+        .bind(input.include_pdf)
+        .bind(input.include_manifest)
+        .bind(input.retention_days)
+        .bind(input.filters)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_period_report_profile_from_row(&row))
+    }
+
+    pub async fn list_compliance_period_report_profiles(
+        &self,
+        input: &ListCompliancePeriodReportProfilesInput<'_>,
+    ) -> Result<Vec<CompliancePeriodReportProfileRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            FROM compliance_period_report_profiles
+            WHERE org_id = $1::uuid
+              AND ($2::text IS NULL OR framework_id = $2)
+              AND ($3::text IS NULL OR status = $3)
+            ORDER BY updated_at DESC, profile_id DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.framework_id)
+        .bind(input.status)
+        .bind(input.limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_period_report_profile_from_row(&row))
+            .collect())
+    }
+
+    pub async fn get_compliance_period_report_profile(
+        &self,
+        org_id: &str,
+        profile_id: &str,
+    ) -> Result<Option<CompliancePeriodReportProfileRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            FROM compliance_period_report_profiles
+            WHERE org_id = $1::uuid
+              AND profile_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(profile_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_profile_from_row(&row)))
+    }
+
+    pub async fn update_compliance_period_report_profile(
+        &self,
+        input: &UpdateCompliancePeriodReportProfileInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportProfileRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_period_report_profiles
+            SET updated_by_user_id = $3,
+                name = $4,
+                period_type = $5,
+                framework_id = $6,
+                framework_owner_type = $7,
+                include_pdf = $8,
+                include_manifest = $9,
+                retention_days = $10,
+                filters = $11::jsonb,
+                updated_at = NOW()
+            WHERE org_id = $1::uuid
+              AND profile_id = $2
+              AND status = 'active'
+            RETURNING
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.profile_id)
+        .bind(input.updated_by_user_id)
+        .bind(input.name)
+        .bind(input.period_type)
+        .bind(input.framework_id)
+        .bind(input.framework_owner_type)
+        .bind(input.include_pdf)
+        .bind(input.include_manifest)
+        .bind(input.retention_days)
+        .bind(input.filters)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_profile_from_row(&row)))
+    }
+
+    pub async fn archive_compliance_period_report_profile(
+        &self,
+        input: &ArchiveCompliancePeriodReportProfileInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportProfileRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_period_report_profiles
+            SET status = 'archived',
+                archived_at = COALESCE(archived_at, NOW()),
+                updated_at = NOW(),
+                updated_by_user_id = $3
+            WHERE org_id = $1::uuid
+              AND profile_id = $2
+            RETURNING
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.profile_id)
+        .bind(input.updated_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_profile_from_row(&row)))
+    }
+
+    pub async fn record_compliance_period_report_profile_run(
+        &self,
+        input: &RecordCompliancePeriodReportProfileRunInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportProfileRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_period_report_profiles
+            SET run_count = run_count + 1,
+                last_run_at = NOW(),
+                last_period_report_id = $3,
+                last_pdf_export_id = $4,
+                last_manifest_id = $5,
+                updated_by_user_id = $6,
+                updated_at = NOW()
+            WHERE org_id = $1::uuid
+              AND profile_id = $2
+              AND status = 'active'
+            RETURNING
+                profile_id,
+                org_id::text,
+                created_by_user_id,
+                updated_by_user_id,
+                name,
+                period_type,
+                framework_id,
+                framework_owner_type,
+                include_pdf,
+                include_manifest,
+                retention_days,
+                filters,
+                status,
+                run_count,
+                ROUND(EXTRACT(EPOCH FROM last_run_at) * 1000)::BIGINT AS last_run_at_ms,
+                last_period_report_id,
+                last_pdf_export_id,
+                last_manifest_id,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.profile_id)
+        .bind(input.period_report_id)
+        .bind(input.pdf_export_id)
+        .bind(input.manifest_id)
+        .bind(input.updated_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_profile_from_row(&row)))
     }
 
     pub async fn create_compliance_period_report_provenance_manifest(

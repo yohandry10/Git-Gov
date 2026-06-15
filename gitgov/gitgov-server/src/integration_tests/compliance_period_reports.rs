@@ -1402,3 +1402,394 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
 
     teardown(&admin_pool, &schema).await;
 }
+
+#[tokio::test]
+async fn period_report_profiles_run_real_artifacts_and_enforce_manual_boundaries() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "kan118-period-report-profiles").await;
+    let other_org_id = insert_test_org(&pool, "kan118-period-report-profiles-other").await;
+    let admin = insert_test_api_key_for_org(&pool, "kan118-profile-admin", "Admin", &org_id).await;
+    let auditor =
+        insert_test_api_key_for_org(&pool, "kan118-profile-auditor", "Auditor", &org_id).await;
+    let developer =
+        insert_test_api_key_for_org(&pool, "kan118-profile-developer", "Developer", &org_id).await;
+    let other_admin =
+        insert_test_api_key_for_org(&pool, "kan118-profile-other-admin", "Admin", &other_org_id)
+            .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let before_evaluations: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count evaluations before profile runs");
+
+    let report_a = create_reviewed_report_chain(&app, &pool, &org_id, &admin, "kan118-a").await;
+    let report_b = create_reviewed_report_chain(&app, &pool, &org_id, &admin, "kan118-b").await;
+    let other_report =
+        create_reviewed_report_chain(&app, &pool, &other_org_id, &other_admin, "kan118-other")
+            .await;
+
+    let profile_body = json!({
+        "name": "Monthly SOX-style evidence pack",
+        "period_type": "monthly",
+        "framework_id": BASELINE_FRAMEWORK_ID,
+        "framework_owner_type": "gitgov_managed",
+        "include_pdf": true,
+        "include_manifest": true,
+        "retention_days": 45,
+        "filters": {
+            "environment": "production",
+            "manual_run_template": true
+        }
+    });
+    let (status, auditor_create) = json_request(
+        &app,
+        "POST",
+        "/compliance/period-report-profiles",
+        Some(&profile_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_create.contains("Admin access required"));
+
+    let (status, create_response) = json_request(
+        &app,
+        "POST",
+        "/compliance/period-report-profiles",
+        Some(&profile_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "profile create failed: {create_response}"
+    );
+    assert!(!create_response.contains("token"));
+    assert!(!create_response.contains("secret"));
+    let create_json: serde_json::Value =
+        serde_json::from_str(&create_response).expect("profile create JSON");
+    let profile_id = create_json["profile"]["profile_id"]
+        .as_str()
+        .expect("profile id")
+        .to_string();
+    assert!(profile_id.starts_with("cprprof_"));
+    assert_eq!(create_json["profile"]["status"], "active");
+    assert_eq!(create_json["profile"]["run_count"], 0);
+    assert_eq!(create_json["profile"]["include_pdf"], true);
+    assert_eq!(create_json["profile"]["include_manifest"], true);
+
+    let (status, auditor_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/period-report-profiles?status=active",
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor list failed: {auditor_list}"
+    );
+    let auditor_list: serde_json::Value =
+        serde_json::from_str(&auditor_list).expect("auditor profile list JSON");
+    assert_eq!(auditor_list["count"], 1);
+    assert_eq!(auditor_list["items"][0]["profile_id"], profile_id);
+
+    let (status, developer_list) = json_request(
+        &app,
+        "GET",
+        "/compliance/period-report-profiles",
+        None,
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_list.contains("Admin or Auditor compliance review access required"));
+
+    let (status, other_get) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-report-profiles/{profile_id}"),
+        None,
+        Some(&other_admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_get.contains("profile not found"));
+
+    let start = chrono::Utc::now().timestamp_millis() - 60 * 60 * 1000;
+    let end = chrono::Utc::now().timestamp_millis() + 60 * 60 * 1000;
+    let run_body = json!({
+        "date_range_start": start,
+        "date_range_end": end
+    });
+    let (status, auditor_run) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-report-profiles/{profile_id}/run"),
+        Some(&run_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_run.contains("Admin access required"));
+
+    let (status, run_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-report-profiles/{profile_id}/run"),
+        Some(&run_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "profile run failed: {run_response}"
+    );
+    assert!(!run_response.contains("must-not-report"));
+    let run_json: serde_json::Value =
+        serde_json::from_str(&run_response).expect("profile run JSON");
+    let period_report_id = run_json["period_report"]["period_report_id"]
+        .as_str()
+        .expect("run period report id")
+        .to_string();
+    let pdf_export_id = run_json["pdf_export"]["pdf_export_id"]
+        .as_str()
+        .expect("run pdf export id")
+        .to_string();
+    let manifest_id = run_json["manifest"]["manifest_id"]
+        .as_str()
+        .expect("run manifest id")
+        .to_string();
+    assert_eq!(run_json["profile"]["run_count"], 1);
+    assert_eq!(
+        run_json["profile"]["last_period_report_id"],
+        period_report_id
+    );
+    assert_eq!(run_json["profile"]["last_pdf_export_id"], pdf_export_id);
+    assert_eq!(run_json["profile"]["last_manifest_id"], manifest_id);
+    assert_eq!(run_json["period_report"]["report_count"], 2);
+    assert_eq!(run_json["period_report"]["review_status"], "needs_review");
+    assert_eq!(run_json["period_report"]["retention_status"], "active");
+    assert_eq!(run_json["period_report"]["compliance_claim"], false);
+    assert_eq!(run_json["period_report"]["regulatory_claim"], false);
+    assert_eq!(run_json["period_report"]["certification"], false);
+    assert_eq!(run_json["pdf_export"]["content_type"], "application/pdf");
+    assert_eq!(
+        run_json["manifest"]["signature_algorithm"],
+        "sha256-period-report-provenance-manifest-v1"
+    );
+    assert_eq!(
+        run_json["download_url"],
+        format!("/compliance/period-reports/{period_report_id}/download")
+    );
+
+    let generated_source_ids: Vec<String> = sqlx::query_scalar(
+        "SELECT jsonb_array_elements_text(source_report_ids) FROM compliance_period_reports WHERE period_report_id = $1",
+    )
+    .bind(&period_report_id)
+    .fetch_all(&pool)
+    .await
+    .expect("load profile run source ids");
+    assert!(generated_source_ids.contains(&report_a));
+    assert!(generated_source_ids.contains(&report_b));
+    assert!(!generated_source_ids.contains(&other_report));
+
+    let retention_delta_days: f64 = sqlx::query_scalar(
+        r#"
+        SELECT (EXTRACT(EPOCH FROM (retention_until - created_at)) / 86400.0)::float8
+        FROM compliance_period_reports
+        WHERE period_report_id = $1
+        "#,
+    )
+    .bind(&period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("profile run retention delta");
+    assert!(
+        (44.0..=46.0).contains(&retention_delta_days),
+        "retention delta should inherit 45 days, got {retention_delta_days}"
+    );
+
+    let pdf_row: (String, i32, Vec<u8>) = sqlx::query_as(
+        r#"
+        SELECT content_type, page_count, pdf_bytes
+        FROM compliance_period_report_pdf_exports
+        WHERE pdf_export_id = $1
+        "#,
+    )
+    .bind(&pdf_export_id)
+    .fetch_one(&pool)
+    .await
+    .expect("load profile PDF export");
+    assert_eq!(pdf_row.0, "application/pdf");
+    assert!(pdf_row.1 >= 1);
+    assert!(pdf_row.2.starts_with(b"%PDF-1.4"));
+
+    let manifest_payload: serde_json::Value = sqlx::query_scalar(
+        "SELECT payload_json_redacted FROM compliance_period_report_manifests WHERE manifest_id = $1",
+    )
+    .bind(&manifest_id)
+    .fetch_one(&pool)
+    .await
+    .expect("load profile manifest payload");
+    assert_eq!(
+        manifest_payload["schema_version"],
+        "gitgov_period_compliance_report_provenance_manifest.v1"
+    );
+    assert_eq!(manifest_payload["claims"]["compliance_claim"], false);
+    assert_eq!(
+        manifest_payload["audit_metadata"]["agent_governance_required"],
+        false
+    );
+    assert_eq!(manifest_payload["pdf_exports"]["count"], 1);
+    assert_eq!(
+        manifest_payload["period_report"]["review_status"],
+        "needs_review"
+    );
+
+    let retention_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action = 'retention_updated'",
+    )
+    .bind(&period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count profile retention log");
+    assert_eq!(retention_log_count, 1);
+
+    let patch_body = json!({
+        "name": "Monthly evidence pack without secondary artifacts",
+        "include_pdf": false,
+        "include_manifest": false,
+        "retention_days": 31,
+        "filters": {
+            "environment": "production",
+            "manual_run_template": true,
+            "secondary_artifacts": false
+        }
+    });
+    let (status, patch_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-report-profiles/{profile_id}"),
+        Some(&patch_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "profile patch failed: {patch_response}"
+    );
+    let patch_json: serde_json::Value =
+        serde_json::from_str(&patch_response).expect("profile patch JSON");
+    assert_eq!(patch_json["profile"]["include_pdf"], false);
+    assert_eq!(patch_json["profile"]["include_manifest"], false);
+    assert_eq!(patch_json["profile"]["retention_days"], 31);
+
+    let (status, second_run_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-report-profiles/{profile_id}/run"),
+        Some(&run_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "second profile run failed: {second_run_response}"
+    );
+    let second_run_json: serde_json::Value =
+        serde_json::from_str(&second_run_response).expect("second profile run JSON");
+    let second_period_report_id = second_run_json["period_report"]["period_report_id"]
+        .as_str()
+        .expect("second period report id");
+    assert_eq!(second_run_json["profile"]["run_count"], 2);
+    assert!(second_run_json["pdf_export"].is_null());
+    assert!(second_run_json["manifest"].is_null());
+    let second_pdf_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_pdf_exports WHERE period_report_id = $1",
+    )
+    .bind(second_period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("second run pdf count");
+    assert_eq!(second_pdf_count, 0);
+    let second_manifest_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_manifests WHERE period_report_id = $1",
+    )
+    .bind(second_period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("second run manifest count");
+    assert_eq!(second_manifest_count, 0);
+
+    let (status, auditor_patch) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-report-profiles/{profile_id}"),
+        Some(&patch_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_patch.contains("Admin access required"));
+
+    let (status, archive_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-report-profiles/{profile_id}/archive"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "profile archive failed: {archive_response}"
+    );
+    let archive_json: serde_json::Value =
+        serde_json::from_str(&archive_response).expect("profile archive JSON");
+    assert_eq!(archive_json["profile"]["status"], "archived");
+    assert!(archive_json["profile"]["archived_at"].as_i64().is_some());
+
+    let (status, archived_run) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-report-profiles/{profile_id}/run"),
+        Some(&run_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(archived_run.contains("period_report_profile_archived"));
+
+    let profile_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action IN ('compliance_period_report_profile.created', 'compliance_period_report_profile.updated', 'compliance_period_report_profile.run', 'compliance_period_report_profile.archived')",
+    )
+    .bind(&profile_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count profile audit rows");
+    assert_eq!(profile_audit_count, 5);
+
+    let after_evaluations: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count evaluations after profile runs");
+    assert_eq!(after_evaluations, before_evaluations);
+
+    teardown(&admin_pool, &schema).await;
+}

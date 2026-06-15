@@ -4,6 +4,11 @@ import type {
   CompliancePeriodReportPdfDownloadResponse,
   CompliancePeriodReportPdfExportResponse,
   CompliancePeriodReportProvenanceManifestResponse,
+  CompliancePeriodReportProfileListResponse,
+  CompliancePeriodReportProfilePatchRequest,
+  CompliancePeriodReportProfileRequest,
+  CompliancePeriodReportProfileResponse,
+  CompliancePeriodReportProfileRunResponse,
   CompliancePeriodReportListResponse,
   CompliancePeriodReportResponse,
   CompliancePeriodReportReviewRequest,
@@ -14,6 +19,11 @@ import type { ControlPlaneGet, ControlPlaneSet } from '../store-types'
 type PeriodReportActionKeys =
   | 'createCompliancePeriodReport'
   | 'loadCompliancePeriodReports'
+  | 'createCompliancePeriodReportProfile'
+  | 'loadCompliancePeriodReportProfiles'
+  | 'updateCompliancePeriodReportProfile'
+  | 'archiveCompliancePeriodReportProfile'
+  | 'runCompliancePeriodReportProfile'
   | 'downloadCompliancePeriodReport'
   | 'reviewCompliancePeriodReport'
   | 'updateCompliancePeriodReportRetention'
@@ -107,6 +117,280 @@ export function createCompliancePeriodReportActions(
         set({
           complianceEvidenceError: message,
           isCompliancePeriodReportsLoading: false,
+        })
+        return null
+      }
+    },
+
+    createCompliancePeriodReportProfile: async (payload) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedName = payload.name.trim()
+      const normalizedPeriodType = payload.period_type.trim().toLowerCase()
+      const normalizedFrameworkId = payload.framework_id?.trim() || null
+      if (!serverConfig || !normalizedName || !normalizedPeriodType) return null
+
+      set({
+        isCompliancePeriodReportProfileCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const request: CompliancePeriodReportProfileRequest = {
+          org_name: selectedOrgName.trim() || null,
+          name: normalizedName,
+          period_type: normalizedPeriodType,
+          framework_id: normalizedFrameworkId,
+          framework_owner_type: payload.framework_owner_type ?? null,
+          include_pdf: payload.include_pdf ?? true,
+          include_manifest: payload.include_manifest ?? true,
+          retention_days: payload.retention_days ?? 2555,
+          filters: payload.filters ?? {},
+        }
+        const response = await tauriInvoke<CompliancePeriodReportProfileResponse>(
+          'cmd_server_create_compliance_period_report_profile',
+          {
+            config: serverConfig,
+            payload: request,
+          },
+        )
+        const currentProfiles = get().compliancePeriodReportProfiles
+        set({
+          compliancePeriodReportProfile: response,
+          compliancePeriodReportProfiles: currentProfiles
+            ? {
+              ...currentProfiles,
+              items: [
+                response.profile,
+                ...currentProfiles.items.filter((item) => item.profile_id !== response.profile.profile_id),
+              ].slice(0, currentProfiles.limit),
+              count: Math.min(currentProfiles.limit, currentProfiles.count + 1),
+            }
+            : {
+              items: [response.profile],
+              count: 1,
+              limit: 25,
+            },
+          isCompliancePeriodReportProfileCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProfileCreating: false,
+        })
+        return null
+      }
+    },
+
+    loadCompliancePeriodReportProfiles: async (filters = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      if (!serverConfig) return null
+
+      set({
+        isCompliancePeriodReportProfilesLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportProfileListResponse>(
+          'cmd_server_list_compliance_period_report_profiles',
+          {
+            config: serverConfig,
+            query: {
+              org_name: selectedOrgName.trim() || null,
+              framework_id: filters.framework_id?.trim() || null,
+              status: filters.status ?? 'active',
+              limit: filters.limit ?? 25,
+            },
+          },
+        )
+        set({
+          compliancePeriodReportProfiles: response,
+          isCompliancePeriodReportProfilesLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProfilesLoading: false,
+        })
+        return null
+      }
+    },
+
+    updateCompliancePeriodReportProfile: async (profileId, payload) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedProfileId = profileId.trim()
+      if (!serverConfig || !normalizedProfileId) return null
+
+      set({
+        isCompliancePeriodReportProfileUpdating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const request: CompliancePeriodReportProfilePatchRequest = {
+          org_name: selectedOrgName.trim() || null,
+          name: payload.name?.trim() || null,
+          period_type: payload.period_type?.trim().toLowerCase() || null,
+          framework_id: payload.framework_id?.trim() || null,
+          framework_owner_type: payload.framework_owner_type ?? null,
+          include_pdf: payload.include_pdf ?? null,
+          include_manifest: payload.include_manifest ?? null,
+          retention_days: payload.retention_days ?? null,
+          filters: payload.filters ?? null,
+        }
+        const response = await tauriInvoke<CompliancePeriodReportProfileResponse>(
+          'cmd_server_update_compliance_period_report_profile',
+          {
+            config: serverConfig,
+            profileId: normalizedProfileId,
+            payload: request,
+          },
+        )
+        const currentProfiles = get().compliancePeriodReportProfiles
+        set({
+          compliancePeriodReportProfile: response,
+          compliancePeriodReportProfiles: currentProfiles
+            ? {
+              ...currentProfiles,
+              items: currentProfiles.items.map((item) =>
+                item.profile_id === response.profile.profile_id ? response.profile : item,
+              ),
+            }
+            : currentProfiles,
+          isCompliancePeriodReportProfileUpdating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProfileUpdating: false,
+        })
+        return null
+      }
+    },
+
+    archiveCompliancePeriodReportProfile: async (profileId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedProfileId = profileId.trim()
+      if (!serverConfig || !normalizedProfileId) return null
+
+      set({
+        isCompliancePeriodReportProfileArchiving: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportProfileResponse>(
+          'cmd_server_archive_compliance_period_report_profile',
+          {
+            config: serverConfig,
+            profileId: normalizedProfileId,
+            payload: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        const currentProfiles = get().compliancePeriodReportProfiles
+        set({
+          compliancePeriodReportProfile: response,
+          compliancePeriodReportProfiles: currentProfiles
+            ? {
+              ...currentProfiles,
+              items: currentProfiles.items.filter((item) => item.profile_id !== response.profile.profile_id),
+              count: Math.max(0, currentProfiles.count - 1),
+            }
+            : currentProfiles,
+          isCompliancePeriodReportProfileArchiving: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProfileArchiving: false,
+        })
+        return null
+      }
+    },
+
+    runCompliancePeriodReportProfile: async (profileId, payload = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedProfileId = profileId.trim()
+      if (!serverConfig || !normalizedProfileId) return null
+
+      set({
+        isCompliancePeriodReportProfileRunning: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportProfileRunResponse>(
+          'cmd_server_run_compliance_period_report_profile',
+          {
+            config: serverConfig,
+            profileId: normalizedProfileId,
+            payload: {
+              org_name: selectedOrgName.trim() || null,
+              date_range_start: payload.date_range_start ?? null,
+              date_range_end: payload.date_range_end ?? null,
+            },
+          },
+        )
+        const currentProfiles = get().compliancePeriodReportProfiles
+        const currentReports = get().compliancePeriodReports
+        set({
+          compliancePeriodReportProfileRun: response,
+          compliancePeriodReportProfile: { profile: response.profile },
+          compliancePeriodReport: {
+            period_report: response.period_report,
+            download_url: response.download_url,
+            artifact: null,
+          },
+          compliancePeriodReportPdfExport: response.pdf_export
+            ? {
+              pdf_export: response.pdf_export,
+              download_url: `/compliance/period-reports/${response.period_report.period_report_id}/pdf-export/download?pdf_export_id=${response.pdf_export.pdf_export_id}`,
+            }
+            : null,
+          compliancePeriodReportProvenanceManifest: response.manifest
+            ? {
+              manifest: response.manifest,
+              download_url: `/compliance/period-reports/${response.period_report.period_report_id}/provenance-manifests/${response.manifest.manifest_id}`,
+              artifact: {},
+            }
+            : null,
+          compliancePeriodReportProfiles: currentProfiles
+            ? {
+              ...currentProfiles,
+              items: currentProfiles.items.map((item) =>
+                item.profile_id === response.profile.profile_id ? response.profile : item,
+              ),
+            }
+            : currentProfiles,
+          compliancePeriodReports: currentReports
+            ? {
+              ...currentReports,
+              items: [
+                response.period_report,
+                ...currentReports.items.filter(
+                  (item) => item.period_report_id !== response.period_report.period_report_id,
+                ),
+              ].slice(0, currentReports.limit),
+              count: Math.min(currentReports.limit, currentReports.count + 1),
+            }
+            : {
+              items: [response.period_report],
+              count: 1,
+              limit: 25,
+            },
+          isCompliancePeriodReportProfileRunning: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportProfileRunning: false,
         })
         return null
       }

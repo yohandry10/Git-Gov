@@ -314,6 +314,24 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
                 .post(handlers::create_compliance_period_report),
         )
         .route(
+            "/compliance/period-report-profiles",
+            get(handlers::list_compliance_period_report_profiles)
+                .post(handlers::create_compliance_period_report_profile),
+        )
+        .route(
+            "/compliance/period-report-profiles/{profile_id}",
+            get(handlers::get_compliance_period_report_profile)
+                .patch(handlers::update_compliance_period_report_profile),
+        )
+        .route(
+            "/compliance/period-report-profiles/{profile_id}/archive",
+            patch(handlers::archive_compliance_period_report_profile),
+        )
+        .route(
+            "/compliance/period-report-profiles/{profile_id}/run",
+            post(handlers::run_compliance_period_report_profile),
+        )
+        .route(
             "/compliance/period-reports/{period_report_id}",
             get(handlers::get_compliance_period_report),
         )

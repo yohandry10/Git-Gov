@@ -46,6 +46,11 @@ type ComplianceActionKeys =
   | 'downloadComplianceFrameworkReviewReportPdfExport'
   | 'createCompliancePeriodReport'
   | 'loadCompliancePeriodReports'
+  | 'createCompliancePeriodReportProfile'
+  | 'loadCompliancePeriodReportProfiles'
+  | 'updateCompliancePeriodReportProfile'
+  | 'archiveCompliancePeriodReportProfile'
+  | 'runCompliancePeriodReportProfile'
   | 'downloadCompliancePeriodReport'
   | 'reviewCompliancePeriodReport'
   | 'updateCompliancePeriodReportRetention'
@@ -779,6 +784,9 @@ export function createComplianceActions(
       complianceFrameworkReviewReportPdfExport: null,
       compliancePeriodReport: null,
       compliancePeriodReports: null,
+      compliancePeriodReportProfiles: null,
+      compliancePeriodReportProfile: null,
+      compliancePeriodReportProfileRun: null,
       compliancePeriodReportArtifact: null,
       compliancePeriodReportAccessLog: null,
       compliancePeriodReportPdfExport: null,
