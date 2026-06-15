@@ -1441,7 +1441,7 @@ async fn create_api_key_rejects_invalid_role_instead_of_silent_fallback() {
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(
         parsed["error"],
-        "role must be one of: Admin, Architect, Developer, PM"
+        "role must be one of: Admin, Auditor, Architect, Developer, PM"
     );
 
     let valid_payload = serde_json::json!({

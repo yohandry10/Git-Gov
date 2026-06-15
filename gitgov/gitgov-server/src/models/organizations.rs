@@ -55,6 +55,7 @@ pub struct Member {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum UserRole {
     Admin,
+    Auditor,
     Architect,
     Developer,
     PM,
@@ -64,6 +65,7 @@ impl UserRole {
     pub fn as_str(&self) -> &'static str {
         match self {
             UserRole::Admin => "Admin",
+            UserRole::Auditor => "Auditor",
             UserRole::Architect => "Architect",
             UserRole::Developer => "Developer",
             UserRole::PM => "PM",
@@ -73,6 +75,7 @@ impl UserRole {
     pub fn from_str(s: &str) -> Self {
         match s {
             "Admin" => UserRole::Admin,
+            "Auditor" => UserRole::Auditor,
             "Architect" => UserRole::Architect,
             "PM" => UserRole::PM,
             _ => UserRole::Developer,

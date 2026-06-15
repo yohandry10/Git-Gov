@@ -2,7 +2,7 @@
 
 Updated: 2026-06-14
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC
 
 ## Decision
 
@@ -237,11 +237,17 @@ Current primitives:
   `reviewed`, `needs_changes`, `rejected`, or back to `needs_review`, store safe notes, reviewer,
   and timestamp, and preserve the original artifact hash and no-claim flags. This is not auditor
   certification and does not create official regulatory claims.
+- `KAN-108`: Tenant Auditor RBAC for compliance evidence review. Admins can provision `Auditor`
+  users/API keys. Auditors can read/download existing KAN-99/KAN-101/KAN-105 evidence artifacts,
+  read KAN-100 mappings/control frameworks, list KAN-106 report history, and submit KAN-107 report
+  review metadata. They cannot create artifacts, import/review framework packs, mutate Deployment
+  Gates, manage API keys/users, change policies, access Agent Governance admin surfaces, or create
+  official regulatory/compliance/certification claims.
 
 Future scope:
 
-- Dedicated Auditor tenant role and assignment workflow over existing Framework Review Reports.
-- Multi-reviewer comments and final audit evidence packages. This should still come before any
+- Granular Auditor assignment workflow and multi-reviewer comments over existing Framework Review
+  Reports. This should still come before any
   official regulatory claim.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Configurable framework packs so new regulatory mappings can be added without changing core product

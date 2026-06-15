@@ -4,6 +4,7 @@ use super::*;
 fn user_role_roundtrip() {
     let roles = [
         UserRole::Admin,
+        UserRole::Auditor,
         UserRole::Architect,
         UserRole::Developer,
         UserRole::PM,

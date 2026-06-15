@@ -879,7 +879,7 @@ pub async fn list_compliance_control_frameworks(
     State(state): State<Arc<AppState>>,
     Query(mut query): Query<ComplianceFrameworkPackQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);
@@ -919,7 +919,7 @@ pub async fn get_compliance_control_framework(
     Path(framework_id): Path<String>,
     Query(mut query): Query<ComplianceFrameworkPackQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);

@@ -130,10 +130,11 @@ pub async fn create_org(
 fn parse_user_role_strict(raw: Option<&str>) -> Result<UserRole, &'static str> {
     match raw.unwrap_or("Developer").trim() {
         "Admin" => Ok(UserRole::Admin),
+        "Auditor" => Ok(UserRole::Auditor),
         "Architect" => Ok(UserRole::Architect),
         "Developer" => Ok(UserRole::Developer),
         "PM" => Ok(UserRole::PM),
-        _ => Err("role must be one of: Admin, Architect, Developer, PM"),
+        _ => Err("role must be one of: Admin, Auditor, Architect, Developer, PM"),
     }
 }
 

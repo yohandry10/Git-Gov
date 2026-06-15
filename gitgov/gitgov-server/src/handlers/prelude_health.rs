@@ -1,4 +1,4 @@
-use crate::auth::{is_founder_global_admin, require_admin, AuthUser};
+use crate::auth::{is_founder_global_admin, require_admin, require_compliance_reviewer, AuthUser};
 use crate::db::{
     AgentGovernanceReadContextInput, CreateAgentGovernanceAgentKeyInput,
     CreateAgentGovernanceEvaluationInput, CreateComplianceEvidenceExportInput,

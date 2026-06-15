@@ -632,7 +632,7 @@ pub async fn get_compliance_evidence_mapping(
     Path(mapping_id): Path<String>,
     Query(mut query): Query<ComplianceEvidenceMappingQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);
