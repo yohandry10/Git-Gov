@@ -1141,6 +1141,48 @@ describe('useControlPlaneStore', () => {
             },
           },
         })
+        .mockResolvedValueOnce({
+          pdf_export: {
+            pdf_export_id: 'frrpdf_123',
+            org_id: 'org-1',
+            report_id: 'frr_123',
+            manifest_id: 'frrm_123',
+            created_by_user_id: 'admin',
+            source_report_hash: 'sha256:' + 'd'.repeat(64),
+            manifest_hash: 'sha256:' + 'e'.repeat(64),
+            pdf_artifact_hash: 'sha256:' + 'f'.repeat(64),
+            content_type: 'application/pdf',
+            page_count: 1,
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 11,
+            downloaded_at: null,
+          },
+          download_url: '/compliance/framework-review-reports/frr_123/pdf-export/download?pdf_export_id=frrpdf_123',
+        })
+        .mockResolvedValueOnce({
+          pdf_export: {
+            pdf_export_id: 'frrpdf_123',
+            org_id: 'org-1',
+            report_id: 'frr_123',
+            manifest_id: 'frrm_123',
+            created_by_user_id: 'admin',
+            source_report_hash: 'sha256:' + 'd'.repeat(64),
+            manifest_hash: 'sha256:' + 'e'.repeat(64),
+            pdf_artifact_hash: 'sha256:' + 'f'.repeat(64),
+            content_type: 'application/pdf',
+            page_count: 1,
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 11,
+            downloaded_at: 12,
+          },
+          pdf_base64: 'JVBERi0xLjQK',
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
@@ -1185,6 +1227,12 @@ describe('useControlPlaneStore', () => {
       const manifest = await useControlPlaneStore
         .getState()
         .createComplianceFrameworkReviewReportProvenanceManifest(' frr_123 ')
+      const pdfExport = await useControlPlaneStore
+        .getState()
+        .createComplianceFrameworkReviewReportPdfExport(' frr_123 ', ' frrm_123 ')
+      const pdfDownload = await useControlPlaneStore
+        .getState()
+        .downloadComplianceFrameworkReviewReportPdfExport(' frr_123 ', ' frrpdf_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1323,6 +1371,22 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(15, 'cmd_server_create_compliance_framework_review_report_pdf_export', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        payload: {
+          org_name: 'yohandry10',
+          manifest_id: 'frrm_123',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(16, 'cmd_server_download_compliance_framework_review_report_pdf_export', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        query: {
+          org_name: 'yohandry10',
+          pdf_export_id: 'frrpdf_123',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
@@ -1340,12 +1404,15 @@ describe('useControlPlaneStore', () => {
       expect(reviewedReport?.report.review_status).toBe('needs_changes')
       expect(reportArtifact?.schema_version).toBe('gitgov_framework_review_report.v1')
       expect(manifest?.manifest.signature_algorithm).toBe('sha256-provenance-manifest-v1')
+      expect(pdfExport?.pdf_export.pdf_artifact_hash).toBe('sha256:' + 'f'.repeat(64))
+      expect(pdfDownload?.pdf_base64).toBe('JVBERi0xLjQK')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportAssignments?.assignments[0]?.assignment_status).toBe('active')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportComments?.comments[0]?.comment_body_safe).toBe('Needs owner sign-off.')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportProvenanceManifest?.artifact.schema_version).toBe('gitgov_framework_review_report_provenance_manifest.v1')
+      expect(useControlPlaneStore.getState().complianceFrameworkReviewReportPdfExport?.pdf_export.downloaded_at).toBe(12)
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 

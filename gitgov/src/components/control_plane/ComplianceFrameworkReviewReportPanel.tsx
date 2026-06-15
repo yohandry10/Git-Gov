@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { ComplianceFrameworkReviewReportPdfExportPanel } from './ComplianceFrameworkReviewReportPdfExportPanel'
 import { ComplianceFrameworkReviewReportProvenancePanel } from './ComplianceFrameworkReviewReportProvenancePanel'
 
 function shortHash(value?: string | null): string {
@@ -285,6 +286,7 @@ export function ComplianceFrameworkReviewReportPanel() {
       )}
 
       <ComplianceFrameworkReviewReportProvenancePanel />
+      <ComplianceFrameworkReviewReportPdfExportPanel />
 
       {report && (
         <div className="mt-3 rounded border border-white/8 bg-white/[0.03] p-2">

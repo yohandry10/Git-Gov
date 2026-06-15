@@ -201,6 +201,8 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/framework-review-reports/{report_id}/download` | Bearer (admin/auditor) | Descargar reporte JSON redacted con controles, evidencias, faltantes, hashes y provenance |
 | `/compliance/framework-review-reports/{report_id}/provenance-manifests` | Bearer (admin/auditor asignado) | Crear manifiesto JSON append-only para reportes `reviewed`; encadena hashes y no cambia artifact ni claims |
 | `/compliance/framework-review-reports/{report_id}/provenance-manifests/{manifest_id}` | Bearer (admin/auditor asignado) | Descargar un manifiesto JSON de procedencia ya materializado |
+| `/compliance/framework-review-reports/{report_id}/pdf-export` | Bearer (admin/auditor asignado) | Crear o consultar metadata de PDF append-only para reportes `reviewed` con manifiesto; no crea claims ni muta el artifact |
+| `/compliance/framework-review-reports/{report_id}/pdf-export/download` | Bearer (admin/auditor asignado) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
@@ -680,6 +682,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v51.sql` | Rol tenant `Auditor` para revisión/lectura de evidencia compliance sin permisos de configuración |
 | `supabase_schema_v52.sql` | Asignaciones granulares de Auditors y comentarios seguros KAN-109 sobre Framework Review Reports |
 | `supabase_schema_v53.sql` | Manifiestos append-only KAN-110 para Framework Review Reports revisados, con hash chain y no-claim constraints |
+| `supabase_schema_v54.sql` | PDF exports append-only KAN-111 para Framework Review Reports revisados y ligados a manifiestos |
 
 ### Relaciones entre Entidades
 

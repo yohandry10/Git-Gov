@@ -49,6 +49,19 @@ fn framework_review_report_comments_query_params(
     query_params
 }
 
+fn framework_review_report_pdf_query_params(
+    query: &ComplianceFrameworkReviewReportPdfExportQuery,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    if let Some(pdf_export_id) = &query.pdf_export_id {
+        query_params.push(("pdf_export_id".to_string(), pdf_export_id.clone()));
+    }
+    query_params
+}
+
 impl ControlPlaneClient {
     pub fn list_compliance_control_frameworks(
         &self,
@@ -709,5 +722,102 @@ impl ControlPlaneClient {
         response
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn create_compliance_framework_review_report_pdf_export(
+        &self,
+        report_id: &str,
+        payload: &ComplianceFrameworkReviewReportPdfExportRequest,
+    ) -> Result<ComplianceFrameworkReviewReportPdfExportResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "pdf-export",
+        ])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_compliance_framework_review_report_pdf_export(
+        &self,
+        report_id: &str,
+        query: &ComplianceFrameworkReviewReportPdfExportQuery,
+    ) -> Result<ComplianceFrameworkReviewReportPdfExportResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "pdf-export",
+        ])?;
+        let query_params = framework_review_report_pdf_query_params(query);
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_compliance_framework_review_report_pdf_export(
+        &self,
+        report_id: &str,
+        query: &ComplianceFrameworkReviewReportPdfExportQuery,
+    ) -> Result<ComplianceFrameworkReviewReportPdfDownloadResponse, ServerError> {
+        let metadata = self.get_compliance_framework_review_report_pdf_export(report_id, query)?;
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "pdf-export",
+            "download",
+        ])?;
+        let query_params = framework_review_report_pdf_query_params(query);
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        let bytes = response
+            .bytes()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+        Ok(ComplianceFrameworkReviewReportPdfDownloadResponse {
+            pdf_export: metadata.pdf_export,
+            pdf_base64: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
+        })
     }
 }

@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-15
-Ticket: `KAN-110` Reviewed Framework Review Report provenance manifests
+Ticket: `KAN-111` Framework Review Report PDF export
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,8 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation branch: `main`.
-- Current implementation ticket: GitHub issue `#383`, `KAN-110: Reviewed report provenance manifest`.
+- Current implementation branch: `product/KAN-111-framework-review-report-pdf-export`.
+- Current implementation ticket: GitHub issue `#387`, `KAN-111: Framework Review Report PDF export`.
+- KAN-111 product decision from GPT consultation and local roadmap/repo analysis: after KAN-110, implement PDF export for reviewed Framework Review Reports before DOCX, formal regulatory templates, official regulatory mappings, BYOM, MCP, chatbot behavior, or broader Agent Governance. The PDF must be manual-first, bound to the existing source report hash and provenance manifest hash, readable by Admins and assigned Auditors, and explicitly not a certification, compliance score, legal attestation, or official regulatory claim.
+- KAN-111 implementation status on 2026-06-15: in progress on branch `product/KAN-111-framework-review-report-pdf-export`. Implemented so far: Supabase migration/postcheck `v54` for `compliance_framework_review_report_pdf_exports`; backend routes `POST/GET /compliance/framework-review-reports/{report_id}/pdf-export` and `GET /compliance/framework-review-reports/{report_id}/pdf-export/download`; server-side PDF rendering with `application/pdf` bytes and `x-gitgov-artifact-hash`; Tauri models/client/commands; Desktop Governance Evidence Review PDF panel; roadmap/architecture/design/report docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, focused real Postgres Framework Review Report integration test covering full evidence chain, blocked pre-reviewed PDF, assigned Auditor success, unassigned/Developer/other-tenant denial, real PDF bytes/hash/header/content, unchanged source report hash, no-claim flags, and no Agent Governance evaluations, and full backend Postgres suite (`308` passed); Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed); frontend `pnpm --dir gitgov typecheck`, focused store test (`34` passed), full tests (`366` passed), lint, and build; local `v54` migration/postcheck through ignored `DATABASE_URL`; `git diff --check`; publication guard. Remaining before completion: PR, merge, Render deploy, production `v54`, production smoke, issue evidence/close.
 - Latest completed implementation ticket: GitHub issue `#383`, `KAN-110: Reviewed report provenance manifest`.
 - KAN-110 product decision from GPT consultation attempt and local roadmap/repo analysis: after KAN-109, ChatGPT received the current state but returned an empty assistant message despite the UI showing reasoning completed. The decision was made from the repo state and roadmap: implement reviewed Framework Review Report provenance manifests before PDF/DOCX export, official regulatory mapping seeds, Integration Wizard, Change Risk Score, Multi-Repo Executive View, or compliance report generation. This strengthens auditor/customer sharing with hash-chain evidence while preserving manual-first behavior and no official regulatory/compliance/certification claims.
 - KAN-110 implementation status on 2026-06-15: completed by PR `#384`, merged to `main` as `a7ab2e5`. It adds Supabase migration/postcheck `v53` for append-only `compliance_framework_review_report_manifests`; backend routes `POST /compliance/framework-review-reports/{report_id}/provenance-manifests` and `GET /compliance/framework-review-reports/{report_id}/provenance-manifests/{manifest_id}`; manifest schema `gitgov_framework_review_report_provenance_manifest.v1`; deterministic `sha256-provenance-manifest-v1` hash signature, `manifest_hash`, and `previous_manifest_hash`; assignment-aware authorization; `409 report_not_reviewed` until manual review status is `reviewed`; Tauri models/client/command; Desktop Governance Evidence Review manifest generation/download subcomponent; docs under `docs/design/framework-review-report-provenance-manifest-mvp.md` and `docs/reports/framework-review-report-provenance-manifest-2026-06-15.md`. Local validation passed: backend `cargo check`; backend `cargo fmt --check`; backend `cargo clippy -- -D warnings`; real Postgres focused Framework Review Report integration test covering full KAN-99/KAN-105/KAN-109 chain, blocked pre-reviewed manifest, assigned Auditor success, unassigned Auditor/Developer denial, first/second hash-chain manifests, manifest download, no artifact mutation, no-claim flags, and no Agent Governance evaluation creation; full backend Postgres suite (`308` passed); Tauri `cargo check`; Tauri `cargo fmt --check`; Tauri `cargo clippy -- -D warnings`; Tauri tests (`49` passed); frontend `pnpm --dir gitgov typecheck`; focused store test (`34` passed); full frontend tests (`366` passed); frontend lint/build; local `v53` migration/postcheck through ignored `DATABASE_URL`; `git diff --check`; publication guard. PR checks passed. Post-merge `main` checks passed for `a7ab2e5`: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`. Render deploy `dep-d8nmoluq1p3s738cqdl0` for `a7ab2e5` reached `live`. Production `v53` migration/postcheck passed. Production smoke passed: `/health=200`, report `frr_ac4ee214bc051caee783485d5755d34a` was `reviewed`, two append-only manifests were created (`frrm_ed5a356ad89f406b90e236756655183c` then `frrm_a3135e737c43d92fbc3f8b56d19d0a0c`), the second manifest `previous_manifest_hash` matched the first manifest hash, downloaded manifest hash-chain matched storage, schema was `gitgov_framework_review_report_provenance_manifest.v1`, signature algorithm was `sha256-provenance-manifest-v1`, report `artifact_hash` stayed unchanged, no-claim flags stayed valid, `agent_governance_required=false`, and `source_report_artifact_mutated=false`.
@@ -919,12 +921,12 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-110 is the active implementation slice. KAN-109 and KAN-108 are complete and production-smoked.
+KAN-111 is the active implementation slice. KAN-110, KAN-109, and KAN-108 are complete and production-smoked.
 
 Current work types are:
 
-- Complete KAN-110 validation, PR, merge, Render deploy, production migration/postcheck, and smoke.
-- Future roadmap selection only after KAN-110 is merged and production-smoked.
+- Complete KAN-111 full validation, PR, merge, Render deploy, production `v54` migration/postcheck, and smoke.
+- Future roadmap selection only after KAN-111 is merged and production-smoked.
 
 ## Practical Next Steps
 
