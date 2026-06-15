@@ -3,6 +3,7 @@ import type {
   ComplianceControlFrameworkListResponse,
   ComplianceEvidenceExportResponse,
   ComplianceEvidenceMappingResponse,
+  ComplianceFrameworkPackDiffResponse,
   ComplianceFrameworkPackRecord,
   ComplianceFrameworkPackReviewRequest,
   ComplianceFrameworkPackImportResponse,
@@ -26,6 +27,7 @@ type ComplianceActionKeys =
   | 'loadComplianceFrameworks'
   | 'importComplianceFrameworkPack'
   | 'reviewComplianceFrameworkPack'
+  | 'loadComplianceFrameworkPackDiff'
   | 'selectComplianceFramework'
   | 'createComplianceEvidenceExport'
   | 'createComplianceEvidenceMapping'
@@ -186,6 +188,40 @@ export function createComplianceActions(
         set({
           complianceEvidenceError: message,
           isComplianceFrameworkPackReviewing: false,
+        })
+        return null
+      }
+    },
+
+    loadComplianceFrameworkPackDiff: async (basePackId, targetPackId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedBasePackId = basePackId.trim()
+      const normalizedTargetPackId = targetPackId.trim()
+      if (!serverConfig || !normalizedBasePackId || !normalizedTargetPackId) return null
+
+      set({
+        isComplianceFrameworkPackDiffLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkPackDiffResponse>('cmd_server_diff_compliance_framework_packs', {
+          config: serverConfig,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+            base_pack_id: normalizedBasePackId,
+            target_pack_id: normalizedTargetPackId,
+          },
+        })
+        set({
+          complianceFrameworkPackDiff: response,
+          isComplianceFrameworkPackDiffLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkPackDiffLoading: false,
         })
         return null
       }
@@ -818,6 +854,7 @@ export function createComplianceActions(
       complianceEvidenceSelectedDeploymentGateId: null,
       selectedComplianceFrameworkId: GITGOV_RELEASE_GOVERNANCE_BASELINE,
       complianceFrameworkImportResponse: null,
+      complianceFrameworkPackDiff: null,
       complianceEvidenceExport: null,
       complianceEvidenceMapping: null,
       complianceReviewPackage: null,

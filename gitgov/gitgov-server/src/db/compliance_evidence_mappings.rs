@@ -279,6 +279,59 @@ impl Database {
         Ok(row.map(|row| framework_pack_from_row(&row)))
     }
 
+    pub async fn get_compliance_framework_pack_diff_source(
+        &self,
+        org_id: &str,
+        framework_pack_id: &str,
+    ) -> Result<Option<ComplianceFrameworkPackDiffSource>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id AS framework_pack_id,
+                org_id::text,
+                framework_id,
+                framework_name,
+                framework_version,
+                description,
+                owner_type,
+                owner_name,
+                source,
+                review_status,
+                schema_version,
+                pack_hash,
+                raw_pack_redacted,
+                control_count,
+                compliance_claim,
+                regulatory_claim,
+                gitgov_certifies,
+                requires_auditor_review,
+                official_regulatory_mapping,
+                created_by_user_id,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                rejected_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms
+            FROM compliance_framework_packs
+            WHERE org_id = $1::uuid
+              AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(framework_pack_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| ComplianceFrameworkPackDiffSource {
+            record: framework_pack_from_row(&row),
+            raw_pack_redacted: row.get("raw_pack_redacted"),
+        }))
+    }
+
     pub async fn review_compliance_framework_pack(
         &self,
         input: ReviewComplianceFrameworkPackInput,

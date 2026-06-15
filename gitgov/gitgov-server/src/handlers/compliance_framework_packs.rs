@@ -169,6 +169,234 @@ fn validate_framework_pack_can_be_marked_reviewed(
     }
 }
 
+fn normalize_framework_pack_id(value: &str, field: &str) -> Result<String, String> {
+    let normalized = value.trim().to_string();
+    if normalized.starts_with("cfp_") && normalized.len() <= 80 {
+        Ok(normalized)
+    } else {
+        Err(format!("{field} must be a valid cfp_ identifier"))
+    }
+}
+
+fn normalize_framework_pack_diff_query(
+    query: &mut ComplianceFrameworkPackDiffQuery,
+) -> Result<(String, String), Vec<String>> {
+    let mut errors = Vec::new();
+    normalize_release_approval_optional_text(&mut query.org_name);
+    let base_pack_id = match normalize_framework_pack_id(&query.base_pack_id, "base_pack_id") {
+        Ok(value) => value,
+        Err(error) => {
+            errors.push(error);
+            String::new()
+        }
+    };
+    let target_pack_id = match normalize_framework_pack_id(&query.target_pack_id, "target_pack_id") {
+        Ok(value) => value,
+        Err(error) => {
+            errors.push(error);
+            String::new()
+        }
+    };
+    if base_pack_id == target_pack_id && !base_pack_id.is_empty() {
+        errors.push("base_pack_id and target_pack_id must be different framework pack versions.".to_string());
+    }
+
+    if errors.is_empty() {
+        Ok((base_pack_id, target_pack_id))
+    } else {
+        Err(errors)
+    }
+}
+
+fn original_customer_framework_id(pack: &serde_json::Value) -> String {
+    json_str_field(pack, "/framework/id")
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase()
+}
+
+fn framework_pack_control_side(
+    control: &serde_json::Value,
+) -> Option<(String, ComplianceFrameworkPackDiffControlSide)> {
+    let control_id =
+        normalize_customer_control_id(json_str_field(control, "/control_id").unwrap_or_default());
+    if control_id.is_empty() {
+        return None;
+    }
+    let title = json_str_field(control, "/title")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let description = json_str_field(control, "/description")
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let mut required_evidence_types = control
+        .pointer("/required_evidence_types")
+        .and_then(|value| value.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(|value| value.trim().to_string()))
+                .filter(|value| !value.is_empty())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    required_evidence_types.sort();
+    required_evidence_types.dedup();
+
+    Some((
+        control_id,
+        ComplianceFrameworkPackDiffControlSide {
+            title,
+            description,
+            required_evidence_types,
+        },
+    ))
+}
+
+fn framework_pack_controls_by_id(
+    pack: &serde_json::Value,
+) -> HashMap<String, ComplianceFrameworkPackDiffControlSide> {
+    pack.pointer("/controls")
+        .and_then(|value| value.as_array())
+        .map(|controls| {
+            controls
+                .iter()
+                .filter_map(framework_pack_control_side)
+                .collect::<HashMap<_, _>>()
+        })
+        .unwrap_or_default()
+}
+
+fn framework_pack_changed_fields(
+    base: &ComplianceFrameworkPackDiffControlSide,
+    target: &ComplianceFrameworkPackDiffControlSide,
+) -> Vec<String> {
+    let mut fields = Vec::new();
+    if base.title != target.title {
+        fields.push("title".to_string());
+    }
+    if base.description != target.description {
+        fields.push("description".to_string());
+    }
+    if base.required_evidence_types != target.required_evidence_types {
+        fields.push("required_evidence_types".to_string());
+    }
+    fields
+}
+
+fn framework_pack_claims_are_safe(pack: &ComplianceFrameworkPackRecord) -> bool {
+    pack.owner_type == "customer"
+        && pack.source == "customer_provided"
+        && !pack.compliance_claim
+        && !pack.regulatory_claim
+        && !pack.gitgov_certifies
+        && !pack.official_regulatory_mapping
+        && pack.requires_auditor_review
+}
+
+fn build_framework_pack_diff_response(
+    base_source: crate::db::ComplianceFrameworkPackDiffSource,
+    target_source: crate::db::ComplianceFrameworkPackDiffSource,
+) -> Result<ComplianceFrameworkPackDiffResponse, (StatusCode, serde_json::Value)> {
+    if !framework_pack_claims_are_safe(&base_source.record)
+        || !framework_pack_claims_are_safe(&target_source.record)
+    {
+        return Err((
+            StatusCode::CONFLICT,
+            json!({
+                "error": "Framework pack diff requires customer-owned no-claim packs",
+                "code": "framework_pack_diff_invariant_failed"
+            }),
+        ));
+    }
+
+    let base_original_framework_id = original_customer_framework_id(&base_source.raw_pack_redacted);
+    let target_original_framework_id =
+        original_customer_framework_id(&target_source.raw_pack_redacted);
+    if base_original_framework_id.is_empty()
+        || base_original_framework_id != target_original_framework_id
+    {
+        return Err((
+            StatusCode::CONFLICT,
+            json!({
+                "error": "Framework pack diff requires two versions of the same customer framework id",
+                "code": "framework_pack_framework_mismatch",
+                "base_original_framework_id": base_original_framework_id,
+                "target_original_framework_id": target_original_framework_id
+            }),
+        ));
+    }
+
+    let base_controls = framework_pack_controls_by_id(&base_source.raw_pack_redacted);
+    let target_controls = framework_pack_controls_by_id(&target_source.raw_pack_redacted);
+    let mut control_ids = base_controls
+        .keys()
+        .chain(target_controls.keys())
+        .cloned()
+        .collect::<Vec<_>>();
+    control_ids.sort();
+    control_ids.dedup();
+
+    let mut added = 0usize;
+    let mut removed = 0usize;
+    let mut changed = 0usize;
+    let mut unchanged = 0usize;
+    let mut controls = Vec::with_capacity(control_ids.len());
+    for control_id in control_ids {
+        let base = base_controls.get(&control_id).cloned();
+        let target = target_controls.get(&control_id).cloned();
+        let (change_type, changed_fields) = match (base.as_ref(), target.as_ref()) {
+            (None, Some(_)) => {
+                added += 1;
+                ("added".to_string(), Vec::new())
+            }
+            (Some(_), None) => {
+                removed += 1;
+                ("removed".to_string(), Vec::new())
+            }
+            (Some(base), Some(target)) => {
+                let changed_fields = framework_pack_changed_fields(base, target);
+                if changed_fields.is_empty() {
+                    unchanged += 1;
+                    ("unchanged".to_string(), changed_fields)
+                } else {
+                    changed += 1;
+                    ("changed".to_string(), changed_fields)
+                }
+            }
+            (None, None) => continue,
+        };
+        controls.push(ComplianceFrameworkPackDiffControl {
+            control_id,
+            change_type,
+            base,
+            target,
+            changed_fields,
+        });
+    }
+
+    Ok(ComplianceFrameworkPackDiffResponse {
+        base_pack: base_source.record,
+        target_pack: target_source.record,
+        original_framework_id: base_original_framework_id,
+        same_original_framework: true,
+        summary: ComplianceFrameworkPackDiffSummary {
+            added,
+            removed,
+            changed,
+            unchanged,
+        },
+        controls,
+        compliance_claim: false,
+        regulatory_claim: false,
+        gitgov_certifies: false,
+        official_regulatory_mapping: false,
+        requires_auditor_review: true,
+    })
+}
+
 fn customer_framework_review_block(
     framework: &ComplianceControlFramework,
 ) -> Option<(&'static str, &'static str)> {
@@ -701,6 +929,89 @@ pub async fn list_compliance_framework_packs(
             )
                 .into_response()
         }
+    }
+}
+
+pub async fn diff_compliance_framework_packs(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Query(mut query): Query<ComplianceFrameworkPackDiffQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_admin(&auth_user) {
+        return resp.into_response();
+    }
+    let (base_pack_id, target_pack_id) = match normalize_framework_pack_diff_query(&mut query) {
+        Ok(value) => value,
+        Err(errors) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "Invalid framework pack diff query",
+                    "details": errors
+                })),
+            )
+                .into_response();
+        }
+    };
+    let org_id = match resolve_required_compliance_framework_org(
+        &state,
+        &auth_user,
+        query.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    let base_source = match state
+        .db
+        .get_compliance_framework_pack_diff_source(&org_id, &base_pack_id)
+        .await
+    {
+        Ok(Some(source)) => source,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Base compliance framework pack not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, framework_pack_id = %base_pack_id, "Failed to load base framework pack for diff");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+    let target_source = match state
+        .db
+        .get_compliance_framework_pack_diff_source(&org_id, &target_pack_id)
+        .await
+    {
+        Ok(Some(source)) => source,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Target compliance framework pack not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, framework_pack_id = %target_pack_id, "Failed to load target framework pack for diff");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    match build_framework_pack_diff_response(base_source, target_source) {
+        Ok(response) => (StatusCode::OK, Json(response)).into_response(),
+        Err((status, body)) => (status, Json(body)).into_response(),
     }
 }
 

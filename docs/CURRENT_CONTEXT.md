@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-15
-Ticket: `KAN-111` Framework Review Report PDF export
+Ticket: `KAN-112` Framework pack versioning and diff
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,8 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation branch: `main`.
-- Current implementation ticket: none selected after KAN-111 completion.
+- Current implementation branch: `product/KAN-112-framework-pack-version-diff`.
+- Current implementation ticket: GitHub issue `#390`, `KAN-112: Framework pack versioning and diff`.
+- KAN-112 product decision from GPT consultation attempt and local roadmap/repo analysis: after KAN-111, implement read-only customer framework pack diff before official regulatory mapping, compliance scoring, DOCX export, BYOM, MCP, chatbot behavior, or broader Agent Governance. The diff compares two customer-provided versions of the same original framework id, remains Admin-only and tenant-scoped, preserves no-claim flags, does not persist a new artifact in this MVP, and does not create Agent Governance evaluations.
+- KAN-112 implementation status on 2026-06-15: local implementation and validation complete on branch `product/KAN-112-framework-pack-version-diff`; PR/merge/deploy/smoke still pending. It adds backend `GET /compliance/framework-packs/diff`, raw redacted pack diff source loading, deterministic added/removed/changed/unchanged control comparison, same-original-framework enforcement, no-claim invariant checks, Tauri models/client/command, Desktop Governance Evidence Review diff UI, focused store test coverage, roadmap/architecture/design/report docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, focused real Postgres test `customer_framework_pack_diff_compares_real_versions_without_claims`, full backend Postgres suite (`309` passed), Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, Tauri tests (`49` passed), frontend `pnpm --dir gitgov typecheck`, focused store test (`35` passed), full Vitest run (`367` passed), frontend lint/build, `git diff --check`, and publication guard. Required before completion: PR checks, merge, post-merge checks, Render deploy, production smoke, and issue comment/closure.
 - KAN-111 product decision from GPT consultation and local roadmap/repo analysis: after KAN-110, implement PDF export for reviewed Framework Review Reports before DOCX, formal regulatory templates, official regulatory mappings, BYOM, MCP, chatbot behavior, or broader Agent Governance. The PDF must be manual-first, bound to the existing source report hash and provenance manifest hash, readable by Admins and assigned Auditors, and explicitly not a certification, compliance score, legal attestation, or official regulatory claim.
 - KAN-111 implementation status on 2026-06-15: completed by PR `#388`, merged to `main` as `97b1b94`. It adds Supabase migration/postcheck `v54` for `compliance_framework_review_report_pdf_exports`; backend routes `POST/GET /compliance/framework-review-reports/{report_id}/pdf-export` and `GET /compliance/framework-review-reports/{report_id}/pdf-export/download`; server-side PDF rendering with `application/pdf` bytes and `x-gitgov-artifact-hash`; Tauri models/client/commands; Desktop Governance Evidence Review PDF panel; roadmap/architecture/design/report docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, focused real Postgres Framework Review Report integration test covering full evidence chain, blocked pre-reviewed PDF, assigned Auditor success, unassigned/Developer/other-tenant denial, real PDF bytes/hash/header/content, unchanged source report hash, no-claim flags, and no Agent Governance evaluations, and full backend Postgres suite (`308` passed); Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed); frontend `pnpm --dir gitgov typecheck`, focused store test (`34` passed), full tests (`366` passed), lint, and build; local `v54` migration/postcheck through ignored `DATABASE_URL`; `git diff --check`; publication guard. PR checks passed. Post-merge `main` checks passed for `97b1b94`: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`. Render deploy `dep-d8nnnvgjo6nc73e4u030` for `97b1b94` reached `live`. Production `v54` migration/postcheck passed. Production smoke passed: `/health=ok`, report `frr_ac4ee214bc051caee783485d5755d34a` was `reviewed`, created PDF export `frrpdf_f2bd8e2a866a9194889e05f59d0829b5` from manifest `frrm_a3135e737c43d92fbc3f8b56d19d0a0c`, downloaded PDF was `3930` bytes and `%PDF-1.4`, `Content-Type=application/pdf`, `x-gitgov-artifact-hash` and downloaded bytes SHA-256 matched `sha256:f2bd8e2a866a9194889e05f59d0829b595cc1761af0d12ed8b1c1d85ffaa7e87`, PDF text contained no-claim language/source hash/manifest hash/no-claim flags, and source report `artifact_hash` stayed unchanged.
 - Latest completed implementation ticket: GitHub issue `#387`, `KAN-111: Framework Review Report PDF export`.
@@ -922,11 +924,11 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-No active implementation slice is selected after KAN-111. KAN-111, KAN-110, KAN-109, and KAN-108 are complete and production-smoked.
+KAN-112 is the active implementation slice after KAN-111. KAN-111, KAN-110, KAN-109, and KAN-108 are complete and production-smoked.
 
 Current work types are:
 
-- Select the next roadmap slice only after a fresh product decision.
+- Finish KAN-112 validation, PR, merge, deployment, and production smoke.
 - Keep future compliance/reporting work manual-first unless a customer explicitly opts into agentic features.
 
 ## Practical Next Steps

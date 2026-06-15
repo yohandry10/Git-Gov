@@ -175,6 +175,56 @@ pub struct ComplianceFrameworkPackQuery {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkPackDiffQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub base_pack_id: String,
+    pub target_pack_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkPackDiffControlSide {
+    pub title: String,
+    pub description: String,
+    pub required_evidence_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkPackDiffControl {
+    pub control_id: String,
+    pub change_type: String,
+    #[serde(default)]
+    pub base: Option<ComplianceFrameworkPackDiffControlSide>,
+    #[serde(default)]
+    pub target: Option<ComplianceFrameworkPackDiffControlSide>,
+    #[serde(default)]
+    pub changed_fields: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkPackDiffSummary {
+    pub added: usize,
+    pub removed: usize,
+    pub changed: usize,
+    pub unchanged: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkPackDiffResponse {
+    pub base_pack: ComplianceFrameworkPackRecord,
+    pub target_pack: ComplianceFrameworkPackRecord,
+    pub original_framework_id: String,
+    pub same_original_framework: bool,
+    pub summary: ComplianceFrameworkPackDiffSummary,
+    pub controls: Vec<ComplianceFrameworkPackDiffControl>,
+    pub compliance_claim: bool,
+    pub regulatory_claim: bool,
+    pub gitgov_certifies: bool,
+    pub official_regulatory_mapping: bool,
+    pub requires_auditor_review: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ComplianceEvidenceMappingRequest {
     #[serde(default)]
     pub org_name: Option<String>,

@@ -287,6 +287,74 @@ fn customer_pack() -> serde_json::Value {
     })
 }
 
+fn customer_pack_v2() -> serde_json::Value {
+    json!({
+        "schema_version": "gitgov_customer_framework_pack.v1",
+        "framework": {
+            "id": "bank_internal_release_controls",
+            "name": "Bank Internal Release Controls",
+            "version": "2026.07",
+            "description": "Customer-owned internal controls for release evidence review.",
+            "owner_name": "Customer Security Office",
+            "compliance_claim": false,
+            "regulatory_claim": false,
+            "gitgov_certifies": false,
+            "official_regulatory_mapping": false
+        },
+        "controls": [
+            {
+                "control_id": "BRC-DEPLOY-01",
+                "title": "Deployment decision captured",
+                "description": "Deployment authorization evidence must include the gate decision.",
+                "required_evidence_types": ["deployment_gate.decision"]
+            },
+            {
+                "control_id": "BRC-CI-02",
+                "title": "Build and policy evidence captured",
+                "description": "Release review must include CI execution evidence and the policy checksum.",
+                "required_evidence_types": ["ci_build_evidence", "policy.checksum"]
+            },
+            {
+                "control_id": "BRC-QUALITY-03",
+                "title": "Quality gate evidence captured",
+                "description": "Release review must call out quality gate evidence or gaps.",
+                "required_evidence_types": ["quality_gate_result"]
+            },
+            {
+                "control_id": "BRC-APPROVAL-05",
+                "title": "Release approval evidence captured",
+                "description": "Release review must include the final human approval evidence.",
+                "required_evidence_types": ["release_approval"]
+            }
+        ]
+    })
+}
+
+fn other_customer_pack() -> serde_json::Value {
+    json!({
+        "schema_version": "gitgov_customer_framework_pack.v1",
+        "framework": {
+            "id": "bank_change_risk_controls",
+            "name": "Bank Change Risk Controls",
+            "version": "2026.07",
+            "description": "Customer-owned internal controls for change risk review.",
+            "owner_name": "Customer Security Office",
+            "compliance_claim": false,
+            "regulatory_claim": false,
+            "gitgov_certifies": false,
+            "official_regulatory_mapping": false
+        },
+        "controls": [
+            {
+                "control_id": "BRC-RISK-01",
+                "title": "Risk review captured",
+                "description": "Release review must include a customer risk review.",
+                "required_evidence_types": ["audit_trail"]
+            }
+        ]
+    })
+}
+
 async fn create_customer_framework_agent_key(app: &axum::Router, admin_key: &str) -> String {
     let body = json!({
         "display_name": "kan103-framework-import-agent",
@@ -384,6 +452,196 @@ fn item_by_control<'a>(items: &'a [serde_json::Value], control_id: &str) -> &'a 
         .iter()
         .find(|item| item["control_id"] == control_id)
         .unwrap_or_else(|| panic!("missing control {control_id}"))
+}
+
+fn diff_control<'a>(controls: &'a [serde_json::Value], control_id: &str) -> &'a serde_json::Value {
+    controls
+        .iter()
+        .find(|item| item["control_id"] == control_id)
+        .unwrap_or_else(|| panic!("missing diff control {control_id}"))
+}
+
+#[tokio::test]
+async fn customer_framework_pack_diff_compares_real_versions_without_claims() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_a = insert_test_org(&pool, "kan112-tenant-a").await;
+    let org_b = insert_test_org(&pool, "kan112-tenant-b").await;
+    let admin_a = insert_test_api_key_for_org(&pool, "kan112-admin-a", "Admin", &org_a).await;
+    let admin_b = insert_test_api_key_for_org(&pool, "kan112-admin-b", "Admin", &org_b).await;
+    let developer_a =
+        insert_test_api_key_for_org(&pool, "kan112-developer-a", "Developer", &org_a).await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let before_evaluations: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_a)
+    .fetch_one(&pool)
+    .await
+    .expect("count evaluations before");
+
+    let import_v1_body = json!({ "format": "json", "pack": customer_pack() });
+    let (status, import_v1_response) = json_request(
+        &app,
+        "POST",
+        "/compliance/framework-packs/import",
+        Some(&import_v1_body.to_string()),
+        Some(&admin_a),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "v1 import failed: {import_v1_response}"
+    );
+    let import_v1: serde_json::Value =
+        serde_json::from_str(&import_v1_response).expect("v1 import JSON");
+    let base_pack_id = import_v1["framework_pack"]["framework_pack_id"]
+        .as_str()
+        .expect("base pack id");
+    assert_eq!(import_v1["framework_pack"]["framework_version"], "2026.06");
+    assert_eq!(import_v1["framework_pack"]["compliance_claim"], false);
+
+    let import_v2_body = json!({ "format": "json", "pack": customer_pack_v2() });
+    let (status, import_v2_response) = json_request(
+        &app,
+        "POST",
+        "/compliance/framework-packs/import",
+        Some(&import_v2_body.to_string()),
+        Some(&admin_a),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "v2 import failed: {import_v2_response}"
+    );
+    let import_v2: serde_json::Value =
+        serde_json::from_str(&import_v2_response).expect("v2 import JSON");
+    let target_pack_id = import_v2["framework_pack"]["framework_pack_id"]
+        .as_str()
+        .expect("target pack id");
+    assert_ne!(base_pack_id, target_pack_id);
+    assert_eq!(import_v2["framework_pack"]["framework_version"], "2026.07");
+    assert_eq!(
+        import_v2["framework_pack"]["official_regulatory_mapping"],
+        false
+    );
+
+    review_framework_pack(&app, &admin_a, base_pack_id, "reviewed").await;
+    review_framework_pack(&app, &admin_a, target_pack_id, "reviewed").await;
+
+    let diff_path = format!(
+        "/compliance/framework-packs/diff?base_pack_id={base_pack_id}&target_pack_id={target_pack_id}"
+    );
+
+    let (status, developer_diff) =
+        json_request(&app, "GET", &diff_path, None, Some(&developer_a)).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_diff.contains("Admin access required"));
+
+    let (status, other_tenant_diff) =
+        json_request(&app, "GET", &diff_path, None, Some(&admin_b)).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_tenant_diff.contains("Base compliance framework pack not found"));
+
+    let (status, diff_response) = json_request(&app, "GET", &diff_path, None, Some(&admin_a)).await;
+    assert_eq!(status, StatusCode::OK, "diff failed: {diff_response}");
+    assert!(
+        !diff_response.contains("must-not-import"),
+        "diff leaked secret-like fixture evidence"
+    );
+    let diff: serde_json::Value = serde_json::from_str(&diff_response).expect("diff JSON");
+    assert_eq!(
+        diff["original_framework_id"],
+        "bank_internal_release_controls"
+    );
+    assert_eq!(diff["same_original_framework"], true);
+    assert_eq!(diff["base_pack"]["framework_pack_id"], base_pack_id);
+    assert_eq!(diff["target_pack"]["framework_pack_id"], target_pack_id);
+    assert_eq!(diff["summary"]["added"], 1);
+    assert_eq!(diff["summary"]["removed"], 1);
+    assert_eq!(diff["summary"]["changed"], 1);
+    assert_eq!(diff["summary"]["unchanged"], 2);
+    assert_eq!(diff["compliance_claim"], false);
+    assert_eq!(diff["regulatory_claim"], false);
+    assert_eq!(diff["gitgov_certifies"], false);
+    assert_eq!(diff["official_regulatory_mapping"], false);
+    assert_eq!(diff["requires_auditor_review"], true);
+
+    let controls = diff["controls"].as_array().expect("diff controls array");
+    assert_eq!(
+        diff_control(controls, "BRC-DEPLOY-01")["change_type"],
+        "unchanged"
+    );
+    assert_eq!(
+        diff_control(controls, "BRC-QUALITY-03")["change_type"],
+        "unchanged"
+    );
+    let changed = diff_control(controls, "BRC-CI-02");
+    assert_eq!(changed["change_type"], "changed");
+    assert_eq!(
+        changed["changed_fields"],
+        json!(["title", "description", "required_evidence_types"])
+    );
+    assert_eq!(
+        diff_control(controls, "BRC-NOAGENT-04")["change_type"],
+        "removed"
+    );
+    assert_eq!(
+        diff_control(controls, "BRC-APPROVAL-05")["change_type"],
+        "added"
+    );
+
+    let same_pack_path = format!(
+        "/compliance/framework-packs/diff?base_pack_id={base_pack_id}&target_pack_id={base_pack_id}"
+    );
+    let (status, same_pack_response) =
+        json_request(&app, "GET", &same_pack_path, None, Some(&admin_a)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(same_pack_response.contains("must be different"));
+
+    let import_other_body = json!({ "format": "json", "pack": other_customer_pack() });
+    let (status, import_other_response) = json_request(
+        &app,
+        "POST",
+        "/compliance/framework-packs/import",
+        Some(&import_other_body.to_string()),
+        Some(&admin_a),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "other pack import failed: {import_other_response}"
+    );
+    let import_other: serde_json::Value =
+        serde_json::from_str(&import_other_response).expect("other import JSON");
+    let other_pack_id = import_other["framework_pack"]["framework_pack_id"]
+        .as_str()
+        .expect("other pack id");
+    let mismatch_path = format!(
+        "/compliance/framework-packs/diff?base_pack_id={base_pack_id}&target_pack_id={other_pack_id}"
+    );
+    let (status, mismatch_response) =
+        json_request(&app, "GET", &mismatch_path, None, Some(&admin_a)).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(mismatch_response.contains("framework_pack_framework_mismatch"));
+
+    let after_evaluations: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_a)
+    .fetch_one(&pool)
+    .await
+    .expect("count evaluations after");
+    assert_eq!(
+        after_evaluations, before_evaluations,
+        "framework pack diff must not create Agent Governance evaluations"
+    );
+
+    teardown(&admin_pool, &schema).await;
 }
 
 #[tokio::test]

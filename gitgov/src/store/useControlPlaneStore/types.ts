@@ -435,6 +435,47 @@ export interface ComplianceFrameworkPackQuery {
   org_name?: string | null
 }
 
+export interface ComplianceFrameworkPackDiffQuery {
+  org_name?: string | null
+  base_pack_id: string
+  target_pack_id: string
+}
+
+export interface ComplianceFrameworkPackDiffControlSide {
+  title: string
+  description: string
+  required_evidence_types: string[]
+}
+
+export interface ComplianceFrameworkPackDiffControl {
+  control_id: string
+  change_type: 'added' | 'removed' | 'changed' | 'unchanged' | string
+  base?: ComplianceFrameworkPackDiffControlSide | null
+  target?: ComplianceFrameworkPackDiffControlSide | null
+  changed_fields: string[]
+}
+
+export interface ComplianceFrameworkPackDiffSummary {
+  added: number
+  removed: number
+  changed: number
+  unchanged: number
+}
+
+export interface ComplianceFrameworkPackDiffResponse {
+  base_pack: ComplianceFrameworkPackRecord
+  target_pack: ComplianceFrameworkPackRecord
+  original_framework_id: string
+  same_original_framework: boolean
+  summary: ComplianceFrameworkPackDiffSummary
+  controls: ComplianceFrameworkPackDiffControl[]
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  gitgov_certifies: boolean
+  official_regulatory_mapping: boolean
+  requires_auditor_review: boolean
+}
+
 export interface ComplianceEvidenceMappingRequest {
   org_name?: string | null
   evidence_export_id: string
@@ -1104,6 +1145,7 @@ export interface ControlPlaneState {
   complianceFrameworkPacks: ComplianceFrameworkPackRecord[]
   selectedComplianceFrameworkId: string
   complianceFrameworkImportResponse: ComplianceFrameworkPackImportResponse | null
+  complianceFrameworkPackDiff: ComplianceFrameworkPackDiffResponse | null
   complianceEvidenceExport: ComplianceEvidenceExportResponse | null
   complianceEvidenceMapping: ComplianceEvidenceMappingResponse | null
   complianceReviewPackage: ComplianceReviewPackageResponse | null
@@ -1123,6 +1165,7 @@ export interface ControlPlaneState {
   isComplianceFrameworksLoading: boolean
   isComplianceFrameworkPackImporting: boolean
   isComplianceFrameworkPackReviewing: boolean
+  isComplianceFrameworkPackDiffLoading: boolean
   isComplianceEvidenceExportCreating: boolean
   isComplianceEvidenceMappingCreating: boolean
   isComplianceReviewPackageCreating: boolean
@@ -1225,6 +1268,10 @@ export interface ControlPlaneActions {
     reviewStatus: ComplianceFrameworkPackReviewRequest['review_status'],
     notes?: { review_notes_safe?: string | null; rejected_reason_safe?: string | null },
   ) => Promise<ComplianceFrameworkPackRecord | null>
+  loadComplianceFrameworkPackDiff: (
+    basePackId: string,
+    targetPackId: string,
+  ) => Promise<ComplianceFrameworkPackDiffResponse | null>
   selectComplianceFramework: (frameworkId: string) => void
   createComplianceEvidenceExport: (deploymentGateId: string) => Promise<ComplianceEvidenceExportResponse | null>
   createComplianceEvidenceMapping: (exportId: string, frameworkId?: string) => Promise<ComplianceEvidenceMappingResponse | null>

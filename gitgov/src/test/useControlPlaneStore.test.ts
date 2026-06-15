@@ -78,6 +78,7 @@ describe('useControlPlaneStore', () => {
       complianceFrameworkPacks: [],
       selectedComplianceFrameworkId: 'gitgov_release_governance_baseline_v1',
       complianceFrameworkImportResponse: null,
+      complianceFrameworkPackDiff: null,
       complianceEvidenceExport: null,
       complianceEvidenceMapping: null,
       complianceReviewPackage: null,
@@ -89,6 +90,7 @@ describe('useControlPlaneStore', () => {
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
       isComplianceFrameworkPackReviewing: false,
+      isComplianceFrameworkPackDiffLoading: false,
       isComplianceEvidenceExportCreating: false,
       isComplianceEvidenceMappingCreating: false,
       isComplianceReviewPackageCreating: false,
@@ -1528,6 +1530,129 @@ describe('useControlPlaneStore', () => {
       expect(response?.framework.framework_id).toBe('customer_bank_controls_123')
       expect(useControlPlaneStore.getState().selectedComplianceFrameworkId).toBe('gitgov_release_governance_baseline_v1')
       expect(useControlPlaneStore.getState().complianceFrameworkPacks).toHaveLength(1)
+    })
+
+    it('loads customer framework pack diffs without creating compliance claims', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+        complianceFrameworkPackDiff: null,
+      })
+      mockInvoke.mockResolvedValueOnce({
+        base_pack: {
+          framework_pack_id: 'cfp_base',
+          org_id: 'org-1',
+          framework_id: 'customer_bank_controls_base',
+          framework_name: 'Bank Controls',
+          framework_version: '2026.06',
+          description: 'Customer controls v1',
+          owner_type: 'customer',
+          owner_name: 'Customer Security Office',
+          source: 'customer_provided',
+          review_status: 'reviewed',
+          schema_version: 'gitgov_customer_framework_pack.v1',
+          pack_hash: 'sha256:' + '1'.repeat(64),
+          control_count: 2,
+          compliance_claim: false,
+          regulatory_claim: false,
+          gitgov_certifies: false,
+          requires_auditor_review: true,
+          official_regulatory_mapping: false,
+          created_by_user_id: 'admin',
+          created_at: 1,
+        },
+        target_pack: {
+          framework_pack_id: 'cfp_target',
+          org_id: 'org-1',
+          framework_id: 'customer_bank_controls_target',
+          framework_name: 'Bank Controls',
+          framework_version: '2026.07',
+          description: 'Customer controls v2',
+          owner_type: 'customer',
+          owner_name: 'Customer Security Office',
+          source: 'customer_provided',
+          review_status: 'reviewed',
+          schema_version: 'gitgov_customer_framework_pack.v1',
+          pack_hash: 'sha256:' + '2'.repeat(64),
+          control_count: 3,
+          compliance_claim: false,
+          regulatory_claim: false,
+          gitgov_certifies: false,
+          requires_auditor_review: true,
+          official_regulatory_mapping: false,
+          created_by_user_id: 'admin',
+          created_at: 2,
+        },
+        original_framework_id: 'bank_internal_release_controls',
+        same_original_framework: true,
+        summary: {
+          added: 1,
+          removed: 0,
+          changed: 1,
+          unchanged: 1,
+        },
+        controls: [
+          {
+            control_id: 'BRC-CI-02',
+            change_type: 'changed',
+            base: {
+              title: 'CI evidence',
+              description: 'Collect CI evidence.',
+              required_evidence_types: ['pipeline_run'],
+            },
+            target: {
+              title: 'CI evidence and approval',
+              description: 'Collect CI evidence and approval.',
+              required_evidence_types: ['deployment_gate_authorization', 'pipeline_run'],
+            },
+            changed_fields: ['title', 'description', 'required_evidence_types'],
+          },
+          {
+            control_id: 'BRC-APPROVAL-05',
+            change_type: 'added',
+            base: null,
+            target: {
+              title: 'Manual approval',
+              description: 'Require human approval.',
+              required_evidence_types: ['release_approval'],
+            },
+            changed_fields: [],
+          },
+        ],
+        compliance_claim: false,
+        regulatory_claim: false,
+        gitgov_certifies: false,
+        official_regulatory_mapping: false,
+        requires_auditor_review: true,
+      })
+
+      const response = await useControlPlaneStore
+        .getState()
+        .loadComplianceFrameworkPackDiff(' cfp_base ', ' cfp_target ')
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_diff_compliance_framework_packs', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          base_pack_id: 'cfp_base',
+          target_pack_id: 'cfp_target',
+        },
+      })
+      expect(response?.summary).toEqual({
+        added: 1,
+        removed: 0,
+        changed: 1,
+        unchanged: 1,
+      })
+      expect(response?.controls[0].changed_fields).toEqual(['title', 'description', 'required_evidence_types'])
+      expect(response?.compliance_claim).toBe(false)
+      expect(response?.regulatory_claim).toBe(false)
+      expect(response?.gitgov_certifies).toBe(false)
+      expect(response?.official_regulatory_mapping).toBe(false)
+      expect(response?.requires_auditor_review).toBe(true)
+      expect(useControlPlaneStore.getState().complianceFrameworkPackDiff?.original_framework_id).toBe(
+        'bank_internal_release_controls',
+      )
     })
   })
 })

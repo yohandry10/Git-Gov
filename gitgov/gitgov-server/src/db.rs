@@ -187,6 +187,12 @@ pub struct ReviewComplianceFrameworkPackInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct ComplianceFrameworkPackDiffSource {
+    pub record: ComplianceFrameworkPackRecord,
+    pub raw_pack_redacted: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateComplianceEvidenceMappingItemInput {
     pub item_id: String,
     pub control_id: String,

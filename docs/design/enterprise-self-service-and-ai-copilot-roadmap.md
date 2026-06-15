@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff
 
 ## Decision
 
@@ -262,12 +262,19 @@ Current primitives:
   a provenance manifest exists. The PDF is bound to the source report hash and manifest hash, stores
   a `pdf_artifact_hash`, preserves no-claim flags, and remains a customer/auditor review artifact,
   not a certification, compliance score, or official regulatory report.
+- `KAN-112`: Framework pack versioning and diff. Admins can compare two customer-provided versions
+  of the same original framework pack and see added, removed, changed, and unchanged controls before
+  using the pack in audit evidence workflows. The diff is read-only, tenant-scoped, does not persist
+  a new artifact, does not create Agent Governance evaluations, and repeats the same no-claim flags:
+  `compliance_claim=false`, `regulatory_claim=false`, `gitgov_certifies=false`,
+  `official_regulatory_mapping=false`, and `requires_auditor_review=true`.
 
 Future scope:
 
 - Richer reviewer workflow on top of KAN-109/KAN-111, such as multi-step reviewer states, due dates,
   notifications, and reviewer-specific task queues.
-- Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
+- Future official regulatory mapping only after customer-provided/reviewed framework packs can be
+  compared version-to-version and the customer/auditor can understand what changed.
 - Configurable framework packs so new regulatory mappings can be added without changing core product
   logic.
 - DOCX export, formal report templates, and official regulatory mapping packs remain future work.

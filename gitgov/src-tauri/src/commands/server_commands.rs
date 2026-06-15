@@ -5,7 +5,8 @@ use crate::control_plane::{
     ComplianceControlFrameworkListResponse, ComplianceEvidenceExportQuery,
     ComplianceEvidenceExportRequest, ComplianceEvidenceExportResponse,
     ComplianceEvidenceMappingQuery, ComplianceEvidenceMappingRequest,
-    ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
+    ComplianceEvidenceMappingResponse, ComplianceFrameworkPackDiffQuery,
+    ComplianceFrameworkPackDiffResponse, ComplianceFrameworkPackImportRequest,
     ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
     ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
     ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportAssignmentQuery,
@@ -970,6 +971,23 @@ pub async fn cmd_server_review_compliance_framework_pack(
         });
         client
             .review_compliance_framework_pack(&framework_pack_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_diff_compliance_framework_packs(
+    config: ServerConnectionConfig,
+    query: ComplianceFrameworkPackDiffQuery,
+) -> Result<ComplianceFrameworkPackDiffResponse, String> {
+    run_blocking_command("DIFF_COMPLIANCE_FRAMEWORK_PACKS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .diff_compliance_framework_packs(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
