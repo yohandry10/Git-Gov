@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests
 
 ## Decision
 
@@ -250,10 +250,17 @@ Current primitives:
   assignment/comment collaboration or update review metadata for that report. This is collaboration
   metadata only: report artifacts, source hashes, no-claim flags, Deployment Gates, policy, and
   Agent Governance state are not mutated.
+- `KAN-110`: Reviewed Framework Review Report provenance manifests. Admins and assigned Auditors
+  can materialize an append-only JSON manifest for reports that already reached `reviewed`. The
+  manifest records report/source hashes, review provenance, assignment/comment summary,
+  `manifest_hash`, `previous_manifest_hash`, and the deterministic
+  `sha256-provenance-manifest-v1` signature algorithm. It does not mutate the source report artifact,
+  does not create official regulatory/compliance/certification claims, and does not require Agent
+  Governance.
 
 Future scope:
 
-- Richer reviewer workflow on top of KAN-109, such as multi-step reviewer states, due dates,
+- Richer reviewer workflow on top of KAN-109/KAN-110, such as multi-step reviewer states, due dates,
   notifications, and reviewer-specific task queues.
 - Future official regulatory mapping only when customer-provided or reviewed framework packs exist.
 - Configurable framework packs so new regulatory mappings can be added without changing core product

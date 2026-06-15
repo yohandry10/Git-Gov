@@ -85,6 +85,7 @@ describe('useControlPlaneStore', () => {
       complianceFrameworkReviewReport: null,
       complianceFrameworkReviewReports: null,
       complianceFrameworkReviewReportArtifact: null,
+      complianceFrameworkReviewReportProvenanceManifest: null,
       isComplianceFrameworksLoading: false,
       isComplianceFrameworkPackImporting: false,
       isComplianceFrameworkPackReviewing: false,
@@ -1115,6 +1116,31 @@ describe('useControlPlaneStore', () => {
           schema_version: 'gitgov_framework_review_report.v1',
           certification: false,
         })
+        .mockResolvedValueOnce({
+          manifest: {
+            manifest_id: 'frrm_123',
+            org_id: 'org-1',
+            report_id: 'frr_123',
+            generated_by_user_id: 'admin',
+            manifest_hash: 'sha256:' + 'e'.repeat(64),
+            previous_manifest_hash: null,
+            signature_algorithm: 'sha256-provenance-manifest-v1',
+            created_at: 10,
+          },
+          download_url: '/compliance/framework-review-reports/frr_123/provenance-manifests/frrm_123',
+          artifact: {
+            schema_version: 'gitgov_framework_review_report_provenance_manifest.v1',
+            hash_chain: {
+              manifest_hash: 'sha256:' + 'e'.repeat(64),
+              previous_manifest_hash: null,
+            },
+            claims: {
+              compliance_claim: false,
+              regulatory_claim: false,
+              certification: false,
+            },
+          },
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
@@ -1156,6 +1182,9 @@ describe('useControlPlaneStore', () => {
         ' Needs owner sign-off. ',
       )
       const reportArtifact = await useControlPlaneStore.getState().downloadComplianceFrameworkReviewReport(' frr_123 ')
+      const manifest = await useControlPlaneStore
+        .getState()
+        .createComplianceFrameworkReviewReportProvenanceManifest(' frr_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1287,6 +1316,13 @@ describe('useControlPlaneStore', () => {
           org_name: 'yohandry10',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(14, 'cmd_server_create_compliance_framework_review_report_provenance_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
@@ -1303,11 +1339,13 @@ describe('useControlPlaneStore', () => {
       expect(createdComment?.review_status_suggestion).toBe('needs_changes')
       expect(reviewedReport?.report.review_status).toBe('needs_changes')
       expect(reportArtifact?.schema_version).toBe('gitgov_framework_review_report.v1')
+      expect(manifest?.manifest.signature_algorithm).toBe('sha256-provenance-manifest-v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportAssignments?.assignments[0]?.assignment_status).toBe('active')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportComments?.comments[0]?.comment_body_safe).toBe('Needs owner sign-off.')
+      expect(useControlPlaneStore.getState().complianceFrameworkReviewReportProvenanceManifest?.artifact.schema_version).toBe('gitgov_framework_review_report_provenance_manifest.v1')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 

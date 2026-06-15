@@ -287,6 +287,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             "/compliance/framework-review-reports/{report_id}/download",
             get(handlers::download_compliance_framework_review_report),
         )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/provenance-manifests",
+            post(handlers::create_compliance_framework_review_report_provenance_manifest),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/provenance-manifests/{manifest_id}",
+            get(handlers::download_compliance_framework_review_report_provenance_manifest),
+        )
         .route("/me", get(handlers::get_me))
         .route("/orgs", get(handlers::list_orgs).post(handlers::create_org))
         .route("/orgs/{login}", get(handlers::get_org))

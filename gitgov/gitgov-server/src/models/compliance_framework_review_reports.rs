@@ -156,3 +156,29 @@ pub struct ComplianceFrameworkReviewReportCommentsResponse {
     pub comments: Vec<ComplianceFrameworkReviewReportCommentRecord>,
     pub count: usize,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportProvenanceManifestRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportProvenanceManifestRecord {
+    pub manifest_id: String,
+    pub org_id: String,
+    pub report_id: String,
+    pub generated_by_user_id: String,
+    pub manifest_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_manifest_hash: Option<String>,
+    pub signature_algorithm: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportProvenanceManifestResponse {
+    pub manifest: ComplianceFrameworkReviewReportProvenanceManifestRecord,
+    pub download_url: String,
+    pub artifact: serde_json::Value,
+}

@@ -64,6 +64,21 @@ fn compliance_framework_review_report_comment_from_row(
     }
 }
 
+fn compliance_framework_review_report_manifest_from_row(
+    row: &PgRow,
+) -> ComplianceFrameworkReviewReportProvenanceManifestRecord {
+    ComplianceFrameworkReviewReportProvenanceManifestRecord {
+        manifest_id: row.get("manifest_id"),
+        org_id: row.get("org_id"),
+        report_id: row.get("report_id"),
+        generated_by_user_id: row.get("generated_by_user_id"),
+        manifest_hash: row.get("manifest_hash"),
+        previous_manifest_hash: row.get("previous_manifest_hash"),
+        signature_algorithm: row.get("signature_algorithm"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn list_compliance_framework_review_reports(
         &self,
@@ -631,5 +646,98 @@ impl Database {
             .into_iter()
             .map(|row| compliance_framework_review_report_comment_from_row(&row))
             .collect())
+    }
+
+    pub async fn latest_compliance_framework_review_report_manifest_hash(
+        &self,
+        org_id: &str,
+        report_id: &str,
+    ) -> Result<Option<String>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT manifest_hash
+            FROM compliance_framework_review_report_manifests
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+            ORDER BY created_at DESC, manifest_id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("manifest_hash")))
+    }
+
+    pub async fn create_compliance_framework_review_report_provenance_manifest(
+        &self,
+        input: &CreateComplianceFrameworkReviewReportProvenanceManifestInput<'_>,
+    ) -> Result<ComplianceFrameworkReviewReportProvenanceManifestRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO compliance_framework_review_report_manifests (
+                manifest_id,
+                org_id,
+                report_id,
+                generated_by_user_id,
+                manifest_hash,
+                previous_manifest_hash,
+                signature_algorithm,
+                payload_json_redacted
+            )
+            VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8::jsonb)
+            RETURNING
+                manifest_id,
+                org_id::text,
+                report_id,
+                generated_by_user_id,
+                manifest_hash,
+                previous_manifest_hash,
+                signature_algorithm,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.manifest_id)
+        .bind(input.org_id)
+        .bind(input.report_id)
+        .bind(input.generated_by_user_id)
+        .bind(input.manifest_hash)
+        .bind(input.previous_manifest_hash)
+        .bind(input.signature_algorithm)
+        .bind(input.payload_json_redacted)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_framework_review_report_manifest_from_row(&row))
+    }
+
+    pub async fn get_compliance_framework_review_report_manifest_payload(
+        &self,
+        org_id: &str,
+        report_id: &str,
+        manifest_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT payload_json_redacted
+            FROM compliance_framework_review_report_manifests
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+              AND manifest_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .bind(manifest_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("payload_json_redacted")))
     }
 }
