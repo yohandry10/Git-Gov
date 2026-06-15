@@ -31,8 +31,30 @@ fn compliance_period_report_from_row(row: &PgRow) -> CompliancePeriodReportRecor
         requires_auditor_review: row.get("requires_auditor_review"),
         certification: row.get("certification"),
         created_at: row.get("created_at_ms"),
+        retention_status: row.get("retention_status"),
+        retention_until: row.get("retention_until_ms"),
+        download_count: row.get("download_count"),
+        last_downloaded_at: row.get("last_downloaded_at_ms"),
+        archived_at: row.get("archived_at_ms"),
         downloaded_at: row.get("downloaded_at_ms"),
         error_message_safe: row.get("error_message_safe"),
+    }
+}
+
+fn compliance_period_report_access_log_from_row(
+    row: &PgRow,
+) -> CompliancePeriodReportAccessLogRecord {
+    CompliancePeriodReportAccessLogRecord {
+        access_log_id: row.get("access_log_id"),
+        org_id: row.get("org_id"),
+        period_report_id: row.get("period_report_id"),
+        actor_client_id: row.get("actor_client_id"),
+        action: row.get("action"),
+        artifact_type: row.get("artifact_type"),
+        artifact_id: row.get("artifact_id"),
+        artifact_hash: row.get("artifact_hash"),
+        metadata: row.get("metadata"),
+        created_at: row.get("created_at_ms"),
     }
 }
 
@@ -243,6 +265,14 @@ impl Database {
                 requires_auditor_review,
                 certification,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                CASE
+                    WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
+                    ELSE retention_status
+                END AS retention_status,
+                ROUND(EXTRACT(EPOCH FROM retention_until) * 1000)::BIGINT AS retention_until_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
             "#,
@@ -289,6 +319,14 @@ impl Database {
                 requires_auditor_review,
                 certification,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                CASE
+                    WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
+                    ELSE retention_status
+                END AS retention_status,
+                ROUND(EXTRACT(EPOCH FROM retention_until) * 1000)::BIGINT AS retention_until_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
             FROM compliance_period_reports p
@@ -359,6 +397,14 @@ impl Database {
                 requires_auditor_review,
                 certification,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                CASE
+                    WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
+                    ELSE retention_status
+                END AS retention_status,
+                ROUND(EXTRACT(EPOCH FROM retention_until) * 1000)::BIGINT AS retention_until_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 error_message_safe
             FROM compliance_period_reports p
@@ -437,7 +483,13 @@ impl Database {
                 LIMIT 1
             )
             UPDATE compliance_period_reports p
-            SET downloaded_at = NOW()
+            SET downloaded_at = NOW(),
+                last_downloaded_at = NOW(),
+                download_count = p.download_count + 1,
+                retention_status = CASE
+                    WHEN p.retention_status = 'active' AND p.retention_until < NOW() THEN 'retention_expired'
+                    ELSE p.retention_status
+                END
             FROM selected
             WHERE p.period_report_id = selected.period_report_id
             RETURNING
@@ -457,6 +509,11 @@ impl Database {
                 p.requires_auditor_review,
                 p.certification,
                 ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
+                p.retention_status,
+                ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
+                p.download_count,
+                ROUND(EXTRACT(EPOCH FROM p.last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.archived_at) * 1000)::BIGINT AS archived_at_ms,
                 ROUND(EXTRACT(EPOCH FROM p.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 p.error_message_safe,
                 p.payload_json_redacted
@@ -501,6 +558,14 @@ impl Database {
                 p.requires_auditor_review,
                 p.certification,
                 ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
+                CASE
+                    WHEN p.retention_status = 'active' AND p.retention_until < NOW() THEN 'retention_expired'
+                    ELSE p.retention_status
+                END AS retention_status,
+                ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
+                p.download_count,
+                ROUND(EXTRACT(EPOCH FROM p.last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.archived_at) * 1000)::BIGINT AS archived_at_ms,
                 ROUND(EXTRACT(EPOCH FROM p.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 p.error_message_safe,
                 p.payload_json_redacted
@@ -544,6 +609,149 @@ impl Database {
             let artifact: serde_json::Value = row.get("payload_json_redacted");
             (record, artifact)
         }))
+    }
+
+    pub async fn update_compliance_period_report_retention(
+        &self,
+        input: &UpdateCompliancePeriodReportRetentionInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE compliance_period_reports p
+            SET retention_until = COALESCE($3, p.retention_until),
+                retention_status = CASE
+                    WHEN $4 THEN 'archived'
+                    WHEN p.retention_status = 'archived' THEN 'archived'
+                    WHEN COALESCE($3, p.retention_until) < NOW() THEN 'retention_expired'
+                    ELSE 'active'
+                END,
+                archived_at = CASE
+                    WHEN $4 THEN COALESCE(p.archived_at, NOW())
+                    ELSE p.archived_at
+                END
+            WHERE p.org_id = $1::uuid
+              AND p.period_report_id = $2
+            RETURNING
+                p.period_report_id,
+                p.org_id::text,
+                p.created_by_user_id,
+                p.framework_id,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_start) * 1000)::BIGINT AS date_range_start_ms,
+                ROUND(EXTRACT(EPOCH FROM p.date_range_end) * 1000)::BIGINT AS date_range_end_ms,
+                p.report_count,
+                p.source_report_ids,
+                p.format,
+                p.status,
+                p.artifact_hash,
+                p.compliance_claim,
+                p.regulatory_claim,
+                p.requires_auditor_review,
+                p.certification,
+                ROUND(EXTRACT(EPOCH FROM p.created_at) * 1000)::BIGINT AS created_at_ms,
+                p.retention_status,
+                ROUND(EXTRACT(EPOCH FROM p.retention_until) * 1000)::BIGINT AS retention_until_ms,
+                p.download_count,
+                ROUND(EXTRACT(EPOCH FROM p.last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.archived_at) * 1000)::BIGINT AS archived_at_ms,
+                ROUND(EXTRACT(EPOCH FROM p.downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                p.error_message_safe
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.period_report_id)
+        .bind(input.retention_until)
+        .bind(input.archive)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_from_row(&row)))
+    }
+
+    pub async fn create_compliance_period_report_access_log(
+        &self,
+        input: &CreateCompliancePeriodReportAccessLogInput<'_>,
+    ) -> Result<CompliancePeriodReportAccessLogRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO compliance_period_report_access_log (
+                access_log_id,
+                org_id,
+                period_report_id,
+                actor_client_id,
+                action,
+                artifact_type,
+                artifact_id,
+                artifact_hash,
+                metadata
+            )
+            VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9::jsonb)
+            RETURNING
+                access_log_id,
+                org_id::text,
+                period_report_id,
+                actor_client_id,
+                action,
+                artifact_type,
+                artifact_id,
+                artifact_hash,
+                metadata,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.access_log_id)
+        .bind(input.org_id)
+        .bind(input.period_report_id)
+        .bind(input.actor_client_id)
+        .bind(input.action)
+        .bind(input.artifact_type)
+        .bind(input.artifact_id)
+        .bind(input.artifact_hash)
+        .bind(input.metadata)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_period_report_access_log_from_row(&row))
+    }
+
+    pub async fn list_compliance_period_report_access_logs(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+        limit: i64,
+    ) -> Result<Vec<CompliancePeriodReportAccessLogRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                access_log_id,
+                org_id::text,
+                period_report_id,
+                actor_client_id,
+                action,
+                artifact_type,
+                artifact_id,
+                artifact_hash,
+                metadata,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM compliance_period_report_access_log
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+            ORDER BY created_at DESC, access_log_id DESC
+            LIMIT $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_period_report_access_log_from_row(&row))
+            .collect())
     }
 
     pub async fn create_compliance_period_report_pdf_export(
@@ -730,6 +938,28 @@ impl Database {
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        if row.is_some() {
+            sqlx::query(
+                r#"
+                UPDATE compliance_period_reports
+                SET downloaded_at = NOW(),
+                    last_downloaded_at = NOW(),
+                    download_count = download_count + 1,
+                    retention_status = CASE
+                        WHEN retention_status = 'active' AND retention_until < NOW() THEN 'retention_expired'
+                        ELSE retention_status
+                    END
+                WHERE org_id = $1::uuid
+                  AND period_report_id = $2
+                "#,
+            )
+            .bind(org_id)
+            .bind(period_report_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+        }
 
         Ok(row.map(|row| {
             let record = compliance_period_report_pdf_export_from_row(&row);

@@ -47,6 +47,8 @@ type ComplianceActionKeys =
   | 'createCompliancePeriodReport'
   | 'loadCompliancePeriodReports'
   | 'downloadCompliancePeriodReport'
+  | 'updateCompliancePeriodReportRetention'
+  | 'loadCompliancePeriodReportAccessLog'
   | 'createCompliancePeriodReportPdfExport'
   | 'downloadCompliancePeriodReportPdfExport'
   | 'resetComplianceEvidenceFlow'
@@ -775,6 +777,7 @@ export function createComplianceActions(
       compliancePeriodReport: null,
       compliancePeriodReports: null,
       compliancePeriodReportArtifact: null,
+      compliancePeriodReportAccessLog: null,
       compliancePeriodReportPdfExport: null,
       complianceEvidenceError: null,
     }),

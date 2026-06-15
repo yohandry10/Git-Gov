@@ -267,6 +267,13 @@ pub struct CompliancePeriodReportRecord {
     pub requires_auditor_review: bool,
     pub certification: bool,
     pub created_at: i64,
+    pub retention_status: String,
+    pub retention_until: i64,
+    pub download_count: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_downloaded_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub downloaded_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -284,6 +291,47 @@ pub struct CompliancePeriodReportResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompliancePeriodReportListResponse {
     pub items: Vec<CompliancePeriodReportRecord>,
+    pub count: usize,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportRetentionRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub retention_until: Option<i64>,
+    #[serde(default)]
+    pub archive: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportAccessLogQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportAccessLogRecord {
+    pub access_log_id: String,
+    pub org_id: String,
+    pub period_report_id: String,
+    pub actor_client_id: String,
+    pub action: String,
+    pub artifact_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_hash: Option<String>,
+    pub metadata: serde_json::Value,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportAccessLogResponse {
+    pub items: Vec<CompliancePeriodReportAccessLogRecord>,
     pub count: usize,
     pub limit: i64,
 }

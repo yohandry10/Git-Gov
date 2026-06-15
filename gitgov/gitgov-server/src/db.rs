@@ -334,6 +334,25 @@ pub struct CreateCompliancePeriodReportPdfExportInput<'a> {
     pub pdf_bytes: &'a [u8],
 }
 
+pub struct UpdateCompliancePeriodReportRetentionInput<'a> {
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub retention_until: Option<chrono::DateTime<chrono::Utc>>,
+    pub archive: bool,
+}
+
+pub struct CreateCompliancePeriodReportAccessLogInput<'a> {
+    pub access_log_id: &'a str,
+    pub org_id: &'a str,
+    pub period_report_id: &'a str,
+    pub actor_client_id: &'a str,
+    pub action: &'a str,
+    pub artifact_type: &'a str,
+    pub artifact_id: Option<&'a str>,
+    pub artifact_hash: Option<&'a str>,
+    pub metadata: &'a serde_json::Value,
+}
+
 #[derive(Debug, Clone)]
 pub struct ListCompliancePeriodReportsInput<'a> {
     pub org_id: &'a str,

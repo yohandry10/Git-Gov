@@ -501,6 +501,28 @@ pub async fn download_compliance_period_report_pdf_export(
         .await
     {
         Ok(Some((pdf_export, bytes))) => {
+            append_period_report_access_log(
+                &state,
+                PeriodReportAccessLogInput {
+                    org_id: &org_id,
+                    period_report_id: &period_report_id,
+                    actor_client_id: &auth_user.client_id,
+                    action: "downloaded_pdf",
+                    artifact_type: "pdf",
+                    artifact_id: Some(&pdf_export.pdf_export_id),
+                    artifact_hash: Some(&pdf_export.pdf_artifact_hash),
+                    metadata: json!({
+                    "source_period_report_hash": pdf_export.source_period_report_hash.clone(),
+                    "content_type": pdf_export.content_type.clone(),
+                    "page_count": pdf_export.page_count,
+                    "compliance_claim": false,
+                    "regulatory_claim": false,
+                    "certification": false,
+                    "agent_governance_required": false
+                    }),
+                },
+            )
+            .await;
             let mut headers = HeaderMap::new();
             headers.insert(
                 axum::http::header::CONTENT_TYPE,
