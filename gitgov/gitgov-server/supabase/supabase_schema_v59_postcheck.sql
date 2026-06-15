@@ -28,7 +28,9 @@ BEGIN
     INTO review_constraint_count
     FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE t.relname = 'compliance_period_reports'
+      AND n.nspname = 'public'
       AND c.conname IN (
           'compliance_period_reports_review_status_check',
           'compliance_period_reports_review_notes_safe_check',
@@ -54,7 +56,9 @@ BEGIN
     INTO action_constraint_count
     FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE t.relname = 'compliance_period_report_access_log'
+      AND n.nspname = 'public'
       AND c.conname = 'compliance_period_report_access_log_action_check'
       AND pg_get_constraintdef(c.oid) LIKE '%review_updated%';
 
@@ -66,7 +70,9 @@ BEGIN
     INTO artifact_type_constraint_count
     FROM pg_constraint c
     JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE t.relname = 'compliance_period_report_access_log'
+      AND n.nspname = 'public'
       AND c.conname = 'compliance_period_report_access_log_artifact_type_check'
       AND pg_get_constraintdef(c.oid) LIKE '%review%';
 
