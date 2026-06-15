@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { CompliancePeriodReportProfilePanel } from './CompliancePeriodReportProfilePanel'
 import { CompliancePeriodReportProvenancePanel } from './CompliancePeriodReportProvenancePanel'
 import { CompliancePeriodReportReviewPanel } from './CompliancePeriodReportReviewPanel'
 
@@ -238,6 +239,13 @@ export function CompliancePeriodReportPanel() {
       <p className="mt-2 text-[11px] leading-5 text-surface-500">
         Summarizes reviewed Framework Review Reports inside the selected date range. The artifact includes source hashes, manifest hashes when present, missing evidence, and no certification or regulatory claim.
       </p>
+
+      <CompliancePeriodReportProfilePanel
+        selectedFrameworkId={selectedFrameworkId}
+        dateRangeStart={dateRangeStart}
+        dateRangeEnd={dateRangeEnd}
+        displayTimezone={displayTimezone}
+      />
 
       {periodReport && (
         <div className="mt-2 grid grid-cols-1 gap-2 text-[11px] md:grid-cols-4">

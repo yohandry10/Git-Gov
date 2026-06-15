@@ -89,6 +89,9 @@ describe('useControlPlaneStore', () => {
       complianceFrameworkReviewReportProvenanceManifest: null,
       compliancePeriodReport: null,
       compliancePeriodReports: null,
+      compliancePeriodReportProfiles: null,
+      compliancePeriodReportProfile: null,
+      compliancePeriodReportProfileRun: null,
       compliancePeriodReportArtifact: null,
       compliancePeriodReportAccessLog: null,
       compliancePeriodReportPdfExport: null,
@@ -107,6 +110,11 @@ describe('useControlPlaneStore', () => {
       isComplianceFrameworkReviewReportDownloading: false,
       isCompliancePeriodReportCreating: false,
       isCompliancePeriodReportsLoading: false,
+      isCompliancePeriodReportProfileCreating: false,
+      isCompliancePeriodReportProfilesLoading: false,
+      isCompliancePeriodReportProfileUpdating: false,
+      isCompliancePeriodReportProfileArchiving: false,
+      isCompliancePeriodReportProfileRunning: false,
       isCompliancePeriodReportDownloading: false,
       isCompliancePeriodReportReviewing: false,
       isCompliancePeriodReportRetentionUpdating: false,
@@ -1817,6 +1825,202 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().compliancePeriodReportPdfExport?.pdf_export.downloaded_at).toBe(15)
       expect(useControlPlaneStore.getState().compliancePeriodReportProvenanceManifest?.artifact.schema_version).toBe('gitgov_period_compliance_report_provenance_manifest.v1')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
+    })
+
+    it('manages saved period report profiles and run artifacts', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+
+      const profile = {
+        profile_id: 'cprprof_123',
+        org_id: 'org-1',
+        created_by_user_id: 'admin',
+        updated_by_user_id: 'admin',
+        name: 'Monthly evidence profile',
+        period_type: 'monthly',
+        framework_id: 'gitgov_release_governance_baseline_v1',
+        framework_owner_type: 'gitgov_managed',
+        include_pdf: true,
+        include_manifest: true,
+        retention_days: 45,
+        filters: { manual_run_template: true },
+        status: 'active',
+        run_count: 0,
+        last_run_at: null,
+        last_period_report_id: null,
+        last_pdf_export_id: null,
+        last_manifest_id: null,
+        archived_at: null,
+        created_at: 10,
+        updated_at: 10,
+      }
+      const periodReport = {
+        period_report_id: 'cpr_kan118',
+        org_id: 'org-1',
+        created_by_user_id: 'admin',
+        framework_id: 'gitgov_release_governance_baseline_v1',
+        date_range_start: 1000,
+        date_range_end: 2000,
+        report_count: 2,
+        source_report_ids: ['frr_a', 'frr_b'],
+        format: 'json',
+        status: 'generated',
+        artifact_hash: 'sha256:' + '1'.repeat(64),
+        compliance_claim: false,
+        regulatory_claim: false,
+        requires_auditor_review: true,
+        certification: false,
+        review_status: 'needs_review',
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        review_notes_safe: null,
+        created_at: 20,
+        downloaded_at: null,
+        retention_status: 'active',
+        retention_until: 1900000000000,
+        download_count: 0,
+        last_downloaded_at: null,
+        archived_at: null,
+      }
+      const runProfile = {
+        ...profile,
+        run_count: 1,
+        last_run_at: 30,
+        last_period_report_id: 'cpr_kan118',
+        last_pdf_export_id: 'cprpdf_kan118',
+        last_manifest_id: 'cprm_kan118',
+        updated_at: 30,
+      }
+
+      mockInvoke
+        .mockResolvedValueOnce({ profile })
+        .mockResolvedValueOnce({ items: [profile], count: 1, limit: 25 })
+        .mockResolvedValueOnce({ profile: { ...profile, retention_days: 90, updated_at: 15 } })
+        .mockResolvedValueOnce({
+          profile: runProfile,
+          period_report: periodReport,
+          pdf_export: {
+            pdf_export_id: 'cprpdf_kan118',
+            org_id: 'org-1',
+            period_report_id: 'cpr_kan118',
+            created_by_user_id: 'admin',
+            source_period_report_hash: periodReport.artifact_hash,
+            pdf_artifact_hash: 'sha256:' + '2'.repeat(64),
+            content_type: 'application/pdf',
+            page_count: 1,
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 31,
+            downloaded_at: null,
+          },
+          manifest: {
+            manifest_id: 'cprm_kan118',
+            org_id: 'org-1',
+            period_report_id: 'cpr_kan118',
+            generated_by_user_id: 'admin',
+            manifest_hash: 'sha256:' + '3'.repeat(64),
+            previous_manifest_hash: null,
+            signature_algorithm: 'sha256-period-report-provenance-manifest-v1',
+            created_at: 32,
+          },
+          download_url: '/compliance/period-reports/cpr_kan118/download',
+        })
+        .mockResolvedValueOnce({ profile: { ...runProfile, status: 'archived', archived_at: 40 } })
+
+      const created = await useControlPlaneStore.getState().createCompliancePeriodReportProfile({
+        name: ' Monthly evidence profile ',
+        period_type: ' monthly ',
+        framework_id: ' gitgov_release_governance_baseline_v1 ',
+        framework_owner_type: 'gitgov_managed',
+        include_pdf: true,
+        include_manifest: true,
+        retention_days: 45,
+        filters: { manual_run_template: true },
+      })
+      const loaded = await useControlPlaneStore.getState().loadCompliancePeriodReportProfiles({
+        framework_id: ' gitgov_release_governance_baseline_v1 ',
+        status: 'active',
+      })
+      const updated = await useControlPlaneStore.getState().updateCompliancePeriodReportProfile(' cprprof_123 ', {
+        retention_days: 90,
+      })
+      const run = await useControlPlaneStore.getState().runCompliancePeriodReportProfile(' cprprof_123 ', {
+        date_range_start: 1000,
+        date_range_end: 2000,
+      })
+      const archived = await useControlPlaneStore.getState().archiveCompliancePeriodReportProfile(' cprprof_123 ')
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_period_report_profile', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          name: 'Monthly evidence profile',
+          period_type: 'monthly',
+          framework_id: 'gitgov_release_governance_baseline_v1',
+          framework_owner_type: 'gitgov_managed',
+          include_pdf: true,
+          include_manifest: true,
+          retention_days: 45,
+          filters: { manual_run_template: true },
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_list_compliance_period_report_profiles', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          framework_id: 'gitgov_release_governance_baseline_v1',
+          status: 'active',
+          limit: 25,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_update_compliance_period_report_profile', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        profileId: 'cprprof_123',
+        payload: {
+          org_name: 'yohandry10',
+          name: null,
+          period_type: null,
+          framework_id: null,
+          framework_owner_type: null,
+          include_pdf: null,
+          include_manifest: null,
+          retention_days: 90,
+          filters: null,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_run_compliance_period_report_profile', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        profileId: 'cprprof_123',
+        payload: {
+          org_name: 'yohandry10',
+          date_range_start: 1000,
+          date_range_end: 2000,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(5, 'cmd_server_archive_compliance_period_report_profile', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        profileId: 'cprprof_123',
+        payload: {
+          org_name: 'yohandry10',
+        },
+      })
+
+      expect(created?.profile.profile_id).toBe('cprprof_123')
+      expect(loaded?.items[0]?.period_type).toBe('monthly')
+      expect(updated?.profile.retention_days).toBe(90)
+      expect(run?.period_report.review_status).toBe('needs_review')
+      expect(run?.pdf_export?.content_type).toBe('application/pdf')
+      expect(run?.manifest?.signature_algorithm).toBe('sha256-period-report-provenance-manifest-v1')
+      expect(archived?.profile.status).toBe('archived')
+      expect(useControlPlaneStore.getState().compliancePeriodReportProfileRun?.profile.run_count).toBe(1)
+      expect(useControlPlaneStore.getState().compliancePeriodReport?.period_report.period_report_id).toBe('cpr_kan118')
+      expect(useControlPlaneStore.getState().compliancePeriodReportPdfExport?.pdf_export.pdf_export_id).toBe('cprpdf_kan118')
+      expect(useControlPlaneStore.getState().compliancePeriodReportProvenanceManifest?.manifest.manifest_id).toBe('cprm_kan118')
+      expect(useControlPlaneStore.getState().compliancePeriodReportProfiles?.count).toBe(0)
     })
 
     it('imports customer-owned compliance framework packs and selects the imported framework', async () => {

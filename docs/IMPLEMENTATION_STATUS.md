@@ -544,7 +544,28 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
 
 ## Current Operating State
 
-- Latest completed implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
+- Latest in-progress implementation: `KAN-118 - Saved Period Compliance Report Profiles`.
+- KAN-118 local implementation status:
+  - Branch `product/KAN-118-period-report-profiles`, GitHub issue `#409`.
+  - Adds Supabase `v60` migration/postcheck for `compliance_period_report_profiles`.
+  - Adds backend profile routes: `GET/POST /compliance/period-report-profiles`,
+    `GET/PATCH /compliance/period-report-profiles/{profile_id}`,
+    `PATCH /compliance/period-report-profiles/{profile_id}/archive`, and
+    `POST /compliance/period-report-profiles/{profile_id}/run`.
+  - Saved profiles remain manual/on-demand: Admins define period type, optional framework, PDF and
+    manifest toggles, retention days, and safe filters; running creates normal Period Compliance
+    Reports and optional PDF/provenance manifest artifacts. Auditors can list/read but cannot mutate
+    or run profiles; archived profiles cannot run.
+  - Explicitly not included: scheduler, email delivery, DOCX/formal templates, compliance score,
+    certification/legal/regulatory claim, official mapping, BYOM/MCP/chatbot work, or Agent
+    Governance dependency.
+  - Local validation passed on 2026-06-15: backend real Postgres full suite (`311` passed),
+    focused profile integration test, Tauri suite (`49` passed), focused store suite (`36` passed),
+    full frontend suite (`368` passed), frontend build, backend/Tauri fmt/check/clippy, and
+    migration `v60`/postcheck against a real temporary Postgres instance. Final PR/deploy/prod
+    smoke are still pending until this branch is merged.
+
+- Previous completed implementation: `KAN-117 - Period Compliance Report Review/Sign-off`.
   - Product scope: manual Admin/Auditor review metadata for existing Period Compliance Reports.
   - Completed through PR `#406` (`ade6302`) plus postcheck hotfix PR `#407` (`05e0706`): Supabase `v59` migration/postcheck, backend `GET/PATCH /compliance/period-reports/{period_report_id}/review`, safe review note/status validation, source-authorized Auditor access, Developer denial, archived-report conflict, custody log `review_updated`, admin audit log `compliance_period_report.reviewed`, provenance manifest review metadata, Tauri DTO/client/command, Control Plane store action/state, and `CompliancePeriodReportReviewPanel`.
   - Explicit non-scope: no certification, legal attestation, official regulatory approval, compliance score, DOCX/formal template, scheduler, KMS signature, AI summary, Agent Governance dependency, or artifact hash mutation.

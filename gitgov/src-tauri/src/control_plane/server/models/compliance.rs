@@ -590,6 +590,125 @@ pub struct CompliancePeriodReportReviewRequest {
     pub review_notes_safe: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProfileRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub name: String,
+    pub period_type: String,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub framework_owner_type: Option<String>,
+    #[serde(default)]
+    pub include_pdf: Option<bool>,
+    #[serde(default)]
+    pub include_manifest: Option<bool>,
+    #[serde(default)]
+    pub retention_days: Option<i32>,
+    #[serde(default)]
+    pub filters: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProfilePatchRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub period_type: Option<String>,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub framework_owner_type: Option<String>,
+    #[serde(default)]
+    pub include_pdf: Option<bool>,
+    #[serde(default)]
+    pub include_manifest: Option<bool>,
+    #[serde(default)]
+    pub retention_days: Option<i32>,
+    #[serde(default)]
+    pub filters: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProfileQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportProfileRunRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub date_range_start: Option<i64>,
+    #[serde(default)]
+    pub date_range_end: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProfileRecord {
+    pub profile_id: String,
+    pub org_id: String,
+    pub created_by_user_id: String,
+    pub updated_by_user_id: String,
+    pub name: String,
+    pub period_type: String,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub framework_owner_type: Option<String>,
+    pub include_pdf: bool,
+    pub include_manifest: bool,
+    pub retention_days: i32,
+    pub filters: serde_json::Value,
+    pub status: String,
+    pub run_count: i32,
+    #[serde(default)]
+    pub last_run_at: Option<i64>,
+    #[serde(default)]
+    pub last_period_report_id: Option<String>,
+    #[serde(default)]
+    pub last_pdf_export_id: Option<String>,
+    #[serde(default)]
+    pub last_manifest_id: Option<String>,
+    #[serde(default)]
+    pub archived_at: Option<i64>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProfileListResponse {
+    pub items: Vec<CompliancePeriodReportProfileRecord>,
+    pub count: usize,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProfileResponse {
+    pub profile: CompliancePeriodReportProfileRecord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportProfileRunResponse {
+    pub profile: CompliancePeriodReportProfileRecord,
+    pub period_report: CompliancePeriodReportRecord,
+    #[serde(default)]
+    pub pdf_export: Option<CompliancePeriodReportPdfExportRecord>,
+    #[serde(default)]
+    pub manifest: Option<CompliancePeriodReportProvenanceManifestRecord>,
+    pub download_url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompliancePeriodReportRecord {
     pub period_report_id: String,

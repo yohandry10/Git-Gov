@@ -749,6 +749,85 @@ export interface CompliancePeriodReportReviewRequest {
   review_notes_safe?: string | null
 }
 
+export interface CompliancePeriodReportProfileRequest {
+  org_name?: string | null
+  name: string
+  period_type: 'monthly' | 'quarterly' | 'annual' | 'custom' | string
+  framework_id?: string | null
+  framework_owner_type?: 'gitgov_managed' | 'customer_provided' | string | null
+  include_pdf?: boolean | null
+  include_manifest?: boolean | null
+  retention_days?: number | null
+  filters?: Record<string, unknown> | null
+}
+
+export interface CompliancePeriodReportProfilePatchRequest {
+  org_name?: string | null
+  name?: string | null
+  period_type?: 'monthly' | 'quarterly' | 'annual' | 'custom' | string | null
+  framework_id?: string | null
+  framework_owner_type?: 'gitgov_managed' | 'customer_provided' | string | null
+  include_pdf?: boolean | null
+  include_manifest?: boolean | null
+  retention_days?: number | null
+  filters?: Record<string, unknown> | null
+}
+
+export interface CompliancePeriodReportProfileQuery {
+  org_name?: string | null
+  framework_id?: string | null
+  status?: 'active' | 'archived' | string | null
+  limit?: number | null
+}
+
+export interface CompliancePeriodReportProfileRunRequest {
+  org_name?: string | null
+  date_range_start?: number | null
+  date_range_end?: number | null
+}
+
+export interface CompliancePeriodReportProfileRecord {
+  profile_id: string
+  org_id: string
+  created_by_user_id: string
+  updated_by_user_id: string
+  name: string
+  period_type: string
+  framework_id?: string | null
+  framework_owner_type?: string | null
+  include_pdf: boolean
+  include_manifest: boolean
+  retention_days: number
+  filters: Record<string, unknown>
+  status: string
+  run_count: number
+  last_run_at?: number | null
+  last_period_report_id?: string | null
+  last_pdf_export_id?: string | null
+  last_manifest_id?: string | null
+  archived_at?: number | null
+  created_at: number
+  updated_at: number
+}
+
+export interface CompliancePeriodReportProfileListResponse {
+  items: CompliancePeriodReportProfileRecord[]
+  count: number
+  limit: number
+}
+
+export interface CompliancePeriodReportProfileResponse {
+  profile: CompliancePeriodReportProfileRecord
+}
+
+export interface CompliancePeriodReportProfileRunResponse {
+  profile: CompliancePeriodReportProfileRecord
+  period_report: CompliancePeriodReportRecord
+  pdf_export?: CompliancePeriodReportPdfExportRecord | null
+  manifest?: CompliancePeriodReportProvenanceManifestRecord | null
+  download_url: string
+}
+
 export interface CompliancePeriodReportRecord {
   period_report_id: string
   org_id: string
@@ -1313,6 +1392,9 @@ export interface ControlPlaneState {
   complianceFrameworkReviewReportPdfExport: ComplianceFrameworkReviewReportPdfExportResponse | null
   compliancePeriodReport: CompliancePeriodReportResponse | null
   compliancePeriodReports: CompliancePeriodReportListResponse | null
+  compliancePeriodReportProfiles: CompliancePeriodReportProfileListResponse | null
+  compliancePeriodReportProfile: CompliancePeriodReportProfileResponse | null
+  compliancePeriodReportProfileRun: CompliancePeriodReportProfileRunResponse | null
   compliancePeriodReportArtifact: Record<string, unknown> | null
   compliancePeriodReportAccessLog: CompliancePeriodReportAccessLogResponse | null
   compliancePeriodReportPdfExport: CompliancePeriodReportPdfExportResponse | null
@@ -1343,6 +1425,11 @@ export interface ControlPlaneState {
   isComplianceFrameworkReviewReportPdfExportDownloading: boolean
   isCompliancePeriodReportCreating: boolean
   isCompliancePeriodReportsLoading: boolean
+  isCompliancePeriodReportProfileCreating: boolean
+  isCompliancePeriodReportProfilesLoading: boolean
+  isCompliancePeriodReportProfileUpdating: boolean
+  isCompliancePeriodReportProfileArchiving: boolean
+  isCompliancePeriodReportProfileRunning: boolean
   isCompliancePeriodReportDownloading: boolean
   isCompliancePeriodReportReviewing: boolean
   isCompliancePeriodReportRetentionUpdating: boolean
@@ -1476,6 +1563,21 @@ export interface ControlPlaneActions {
     frameworkId?: string | null,
   ) => Promise<CompliancePeriodReportResponse | null>
   loadCompliancePeriodReports: (filters?: Omit<CompliancePeriodReportQuery, 'org_name'>) => Promise<CompliancePeriodReportListResponse | null>
+  createCompliancePeriodReportProfile: (
+    payload: Omit<CompliancePeriodReportProfileRequest, 'org_name'>,
+  ) => Promise<CompliancePeriodReportProfileResponse | null>
+  loadCompliancePeriodReportProfiles: (
+    filters?: Omit<CompliancePeriodReportProfileQuery, 'org_name'>,
+  ) => Promise<CompliancePeriodReportProfileListResponse | null>
+  updateCompliancePeriodReportProfile: (
+    profileId: string,
+    payload: Omit<CompliancePeriodReportProfilePatchRequest, 'org_name'>,
+  ) => Promise<CompliancePeriodReportProfileResponse | null>
+  archiveCompliancePeriodReportProfile: (profileId: string) => Promise<CompliancePeriodReportProfileResponse | null>
+  runCompliancePeriodReportProfile: (
+    profileId: string,
+    payload?: Omit<CompliancePeriodReportProfileRunRequest, 'org_name'>,
+  ) => Promise<CompliancePeriodReportProfileRunResponse | null>
   downloadCompliancePeriodReport: (periodReportId: string) => Promise<Record<string, unknown> | null>
   reviewCompliancePeriodReport: (
     periodReportId: string,

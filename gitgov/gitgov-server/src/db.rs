@@ -345,6 +345,57 @@ pub struct CreateCompliancePeriodReportProvenanceManifestInput<'a> {
     pub payload_json_redacted: &'a serde_json::Value,
 }
 
+pub struct CreateCompliancePeriodReportProfileInput<'a> {
+    pub profile_id: &'a str,
+    pub org_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub name: &'a str,
+    pub period_type: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub framework_owner_type: Option<&'a str>,
+    pub include_pdf: bool,
+    pub include_manifest: bool,
+    pub retention_days: i32,
+    pub filters: &'a serde_json::Value,
+}
+
+pub struct UpdateCompliancePeriodReportProfileInput<'a> {
+    pub org_id: &'a str,
+    pub profile_id: &'a str,
+    pub updated_by_user_id: &'a str,
+    pub name: &'a str,
+    pub period_type: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub framework_owner_type: Option<&'a str>,
+    pub include_pdf: bool,
+    pub include_manifest: bool,
+    pub retention_days: i32,
+    pub filters: &'a serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListCompliancePeriodReportProfilesInput<'a> {
+    pub org_id: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub status: Option<&'a str>,
+    pub limit: i64,
+}
+
+pub struct ArchiveCompliancePeriodReportProfileInput<'a> {
+    pub org_id: &'a str,
+    pub profile_id: &'a str,
+    pub updated_by_user_id: &'a str,
+}
+
+pub struct RecordCompliancePeriodReportProfileRunInput<'a> {
+    pub org_id: &'a str,
+    pub profile_id: &'a str,
+    pub period_report_id: &'a str,
+    pub pdf_export_id: Option<&'a str>,
+    pub manifest_id: Option<&'a str>,
+    pub updated_by_user_id: &'a str,
+}
+
 pub struct UpdateCompliancePeriodReportRetentionInput<'a> {
     pub org_id: &'a str,
     pub period_report_id: &'a str,

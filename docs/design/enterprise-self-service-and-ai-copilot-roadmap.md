@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles
 
 ## Decision
 
@@ -306,6 +306,14 @@ Current primitives:
   Agent Governance state. It is a human workflow marker, not a certification, compliance score,
   legal attestation, official regulatory approval, AI summary, scheduler, DOCX template, or KMS
   signature.
+- `KAN-118`: Saved Period Compliance Report Profiles. Admins can save reusable manual report
+  profiles with period type, optional framework, PDF/manifest toggles, retention defaults, and safe
+  filters. Running a profile creates a normal Period Compliance Report plus optional PDF and
+  provenance manifest, updates the profile's last-run metadata, and keeps the new report in
+  `needs_review`. Auditors can list/read profiles, but cannot create, update, archive, or run them.
+  Archived profiles are read-only and cannot run. This is deliberately not a scheduler, email
+  workflow, official regulatory mapping, certification, compliance score, AI summary, BYOM/MCP
+  feature, or Agent Governance dependency.
 
 Future scope:
 
@@ -479,10 +487,18 @@ Current primitives:
   to every source report can mark a period report as `needs_review`, `reviewed`, `needs_changes`, or
   `rejected`. The update appends custody/audit records and keeps the source report artifact hash
   immutable. Archived period reports are read-only and return conflict on review updates.
+- `KAN-118` adds saved manual Period Compliance Report profiles:
+  `GET/POST /compliance/period-report-profiles`,
+  `GET/PATCH /compliance/period-report-profiles/{profile_id}`,
+  `PATCH /compliance/period-report-profiles/{profile_id}/archive`, and
+  `POST /compliance/period-report-profiles/{profile_id}/run`. Admins can save and run reusable
+  monthly/quarterly/annual/custom report settings; runs create normal period JSON reports and
+  optionally PDF/provenance manifests. Auditors can read profiles but mutations and runs stay
+  Admin-only. The feature remains manual/on-demand and does not add a scheduler.
 
 Future scope:
 
-- Organization/repository report templates.
+- Organization/repository report templates beyond the KAN-118 manual saved-profile MVP.
 - DOCX formal templates, richer PDF templates, and scheduling after the JSON/PDF artifacts are
   validated with customers.
 - Automatic retention expiration jobs and physical deletion workflows only after explicit customer

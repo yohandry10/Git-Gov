@@ -218,6 +218,10 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/period-reports/{period_report_id}/pdf-export/download` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar el PDF materializado con hash verificable en `x-gitgov-artifact-hash` |
 | `/compliance/period-reports/{period_report_id}/provenance-manifests` | Bearer (admin/auditor con acceso a todos los source reports) | Crear manifest JSON append-only y hash-chained que vincula JSON, PDFs, retención, custody log y source hashes sin mutar artifacts ni claims |
 | `/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}` | Bearer (admin/auditor con acceso a todos los source reports) | Descargar un manifest de procedencia de Period Compliance Report ya materializado |
+| `/compliance/period-report-profiles` | Bearer (GET admin/auditor, POST admin) | Crear o listar perfiles guardados para ejecutar manualmente Period Compliance Reports con periodo, framework, PDF, manifest y retención por defecto |
+| `/compliance/period-report-profiles/{profile_id}` | Bearer (admin/auditor para GET, admin para PATCH) | Consultar o actualizar un perfil guardado; perfiles archivados quedan read-only |
+| `/compliance/period-report-profiles/{profile_id}/archive` | Bearer (admin) | Archivar lógicamente un perfil guardado y bloquear ejecuciones futuras sin borrar reportes ya creados |
+| `/compliance/period-report-profiles/{profile_id}/run` | Bearer (admin) | Ejecutar ahora un perfil guardado, creando JSON y opcionalmente PDF/manifest; es manual/on-demand, no scheduler ni claim regulatorio |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
@@ -703,6 +707,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v57.sql` | Retención lógica y custody/access log KAN-115 para Period Compliance Reports |
 | `supabase_schema_v58.sql` | Manifiestos append-only KAN-116 para Period Compliance Reports, con hash chain y no-claim constraints |
 | `supabase_schema_v59.sql` | Review/sign-off manual KAN-117 para Period Compliance Reports; metadata auditable sin mutar artifacts ni crear claims |
+| `supabase_schema_v60.sql` | Perfiles guardados KAN-118 para ejecutar manualmente Period Compliance Reports con PDF/manifest/retención opcionales, sin scheduler ni claims |
 
 ### Relaciones entre Entidades
 
