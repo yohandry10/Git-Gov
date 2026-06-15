@@ -74,3 +74,19 @@ Compliance Report generation, then verifies PDF creation/download with assigned 
 unassigned/other-tenant denial, `%PDF-1.4` bytes, recomputed PDF SHA-256 hash, no secret-like fixture
 leakage, unchanged source Period Compliance Report hash, no-claim flags, audit log creation, and no
 Agent Governance evaluation creation.
+
+## Production Validation
+
+- PR `#397` merged to `main` as `04bc6f5`.
+- Render deploy `dep-d8nr1n7aqgkc73cbmi50` for `04bc6f5` reached `live`.
+- Production `v56` migration and postcheck passed.
+- Production smoke:
+  - `/health=ok`.
+  - Source Period Compliance Report: `cpr_132e9f0fdef841278be3e167ff22cf32`.
+  - Source artifact hash stayed bound to KAN-113 hash
+    `sha256:24ae1cb58186e2185dbccf931531225b4b861c6805bc6b9249a3f723a3df0d32`.
+  - PDF export: `cprpdf_609b267d32c178f420a72a9c0f9256b5`.
+  - `content_type=application/pdf`, `page_count=1`, downloaded byte prefix `%PDF-1.4`,
+    byte length `2571`.
+  - Stored hash, `x-gitgov-artifact-hash`, and recomputed downloaded-file hash all matched
+    `sha256:609b267d32c178f420a72a9c0f9256b57519df6e72e8a6248a7380e60f0cbf34`.
