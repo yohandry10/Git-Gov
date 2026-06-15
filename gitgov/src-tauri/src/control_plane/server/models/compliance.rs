@@ -292,6 +292,8 @@ pub struct ComplianceFrameworkReviewReportQuery {
     pub review_package_id: Option<String>,
     #[serde(default)]
     pub limit: Option<i64>,
+    #[serde(default)]
+    pub assigned_to_me: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -354,4 +356,73 @@ pub struct ComplianceFrameworkReviewReportListResponse {
     pub items: Vec<ComplianceFrameworkReviewReportRecord>,
     pub count: usize,
     pub limit: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportAssignmentsRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub auditor_client_ids: Vec<String>,
+    #[serde(default)]
+    pub assignment_notes_safe: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportAssignmentQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportAssignmentRecord {
+    pub id: String,
+    pub org_id: String,
+    pub report_id: String,
+    pub auditor_client_id: String,
+    pub assignment_status: String,
+    pub assigned_by_user_id: String,
+    #[serde(default)]
+    pub assignment_notes_safe: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportAssignmentsResponse {
+    pub assignments: Vec<ComplianceFrameworkReviewReportAssignmentRecord>,
+    pub count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportCommentRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub comment_body_safe: String,
+    #[serde(default)]
+    pub review_status_suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComplianceFrameworkReviewReportCommentsQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportCommentRecord {
+    pub id: String,
+    pub org_id: String,
+    pub report_id: String,
+    pub commenter_client_id: String,
+    pub comment_body_safe: String,
+    #[serde(default)]
+    pub review_status_suggestion: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComplianceFrameworkReviewReportCommentsResponse {
+    pub comments: Vec<ComplianceFrameworkReviewReportCommentRecord>,
+    pub count: usize,
 }

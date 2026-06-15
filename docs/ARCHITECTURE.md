@@ -193,7 +193,10 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/review-packages/{review_package_id}` | Bearer (admin/auditor) | Consultar metadata de un Control Mapping Review Package |
 | `/compliance/review-packages/{review_package_id}/download` | Bearer (admin/auditor) | Descargar el JSON redacted del review package; no es certificación ni claim regulatorio |
 | `/compliance/framework-review-reports` | Bearer (GET admin/auditor, POST admin) | Crear o listar reportes JSON framework-specific; el listado devuelve metadata filtrable sin payload pesado |
+| `/compliance/framework-review-reports/assigned-to-me` | Bearer (admin/auditor) | Listar Framework Review Reports asignados al principal autenticado sin payload pesado |
 | `/compliance/framework-review-reports/{report_id}` | Bearer (admin/auditor) | Consultar metadata del Framework Review Report |
+| `/compliance/framework-review-reports/{report_id}/assignments` | Bearer (GET admin/auditor asignado, PUT admin) | Gestionar asignaciones de Auditors a un Framework Review Report; no cambia el artifact |
+| `/compliance/framework-review-reports/{report_id}/comments` | Bearer (admin/auditor asignado) | Listar o crear comentarios seguros de revision; no cambia artifact hash ni claims |
 | `/compliance/framework-review-reports/{report_id}/review` | Bearer (admin/auditor) | Guardar metadata de revisión manual del reporte; no cambia artifact hash ni crea claims |
 | `/compliance/framework-review-reports/{report_id}/download` | Bearer (admin/auditor) | Descargar reporte JSON redacted con controles, evidencias, faltantes, hashes y provenance |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
@@ -673,6 +676,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v49.sql` | Índices de inventario KAN-106 para listar Framework Review Reports por tenant/framework/mapping/package |
 | `supabase_schema_v50.sql` | Metadata de revisión manual KAN-107 para Framework Review Reports (`review_status`, reviewer, timestamp, notas seguras) |
 | `supabase_schema_v51.sql` | Rol tenant `Auditor` para revisión/lectura de evidencia compliance sin permisos de configuración |
+| `supabase_schema_v52.sql` | Asignaciones granulares de Auditors y comentarios seguros KAN-109 sobre Framework Review Reports |
 
 ### Relaciones entre Entidades
 

@@ -262,8 +262,22 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
                 .post(handlers::create_compliance_framework_review_report),
         )
         .route(
+            "/compliance/framework-review-reports/assigned-to-me",
+            get(handlers::list_assigned_compliance_framework_review_reports),
+        )
+        .route(
             "/compliance/framework-review-reports/{report_id}",
             get(handlers::get_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/assignments",
+            get(handlers::list_compliance_framework_review_report_assignments)
+                .put(handlers::upsert_compliance_framework_review_report_assignments),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/comments",
+            get(handlers::list_compliance_framework_review_report_comments)
+                .post(handlers::create_compliance_framework_review_report_comment),
         )
         .route(
             "/compliance/framework-review-reports/{report_id}/review",

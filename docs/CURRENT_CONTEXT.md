@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
-Updated: 2026-06-14
-Ticket: `KAN-108` Tenant Auditor RBAC
+Updated: 2026-06-15
+Ticket: `KAN-109` Framework Review Report Auditor assignments and comments
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,6 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
+- Current implementation branch: `product/KAN-109-auditor-assignments-comments`.
+- Current implementation ticket: GitHub issue `#380`, `KAN-109: Framework review report Auditor assignments and comments`.
+- KAN-109 product decision from GPT consultation and local roadmap/repo analysis: after KAN-108, do not jump to signed provenance manifests, PDF/DOCX export, official regulatory mappings, BYOM, MCP, chatbot behavior, or broader Agent Governance. First close the collaboration gap over existing Framework Review Reports: Admins assign reports to active tenant Auditors; assigned Auditors can list assigned reports, comment, and update manual review metadata; unassigned same-tenant Auditors are blocked once active assignments exist.
+- KAN-109 implementation status on 2026-06-15: in progress on branch `product/KAN-109-auditor-assignments-comments`. Implemented Supabase migration/postcheck `v52` for `compliance_framework_review_report_assignments` and `compliance_framework_review_report_comments`; backend routes `GET /compliance/framework-review-reports/assigned-to-me`, `GET/PUT /compliance/framework-review-reports/{report_id}/assignments`, and `GET/POST /compliance/framework-review-reports/{report_id}/comments`; assignment-aware review authorization; Tauri models/client/commands; Desktop Governance Evidence Review assignment/comment controls; store state/actions/tests; docs under `docs/design/framework-review-report-auditor-collaboration-mvp.md` and `docs/reports/framework-review-report-auditor-collaboration-2026-06-15.md`. Local validation passed: backend `cargo check`; backend `cargo fmt --check`; backend `cargo clippy -- -D warnings`; real Postgres focused Framework Review Report integration test creating the full KAN-99/KAN-105 evidence chain, assigning one Auditor, blocking an unassigned same-tenant Auditor, creating comments, rejecting secret-like text, preserving artifact hash/no-claim flags, and confirming no Agent Governance evaluation changes; full backend Postgres suite (`308` passed); Tauri `cargo check`; Tauri `cargo fmt --check`; Tauri `cargo clippy -- -D warnings`; Tauri tests (`49` passed); frontend `pnpm --dir gitgov typecheck`; focused store test (`34` passed); full frontend tests (`366` passed); frontend lint/build; local `v52` migration/postcheck through ignored `DATABASE_URL`; `git diff --check`; publication guard. PR checks, merge, production migration, Render deploy, and production smoke remain pending.
 - Latest completed implementation ticket: GitHub issue `#377`, `KAN-108: Tenant Auditor role for compliance evidence review`.
 - KAN-108 product decision from GPT consultation and local roadmap/repo analysis: after KAN-107, do not jump to signed manifests, PDF/DOCX, official regulatory mappings, BYOM, MCP, chatbot, or Agent Governance. First add separation of duties with a tenant-scoped `Auditor` role. Auditors can read/download existing compliance evidence and submit Framework Review Report review metadata, but cannot configure tenants, providers, policies, Deployment Gates, Agent Governance, framework packs, users, invitations, or API keys.
 - KAN-108 implementation status on 2026-06-14: completed by PR `#378`, merged to `main` as `98cf543`. It adds `Auditor` to tenant `UserRole`, Supabase migration/postcheck `v51` for `api_keys`, `org_users`, and `org_invitations` role constraints, `require_compliance_reviewer` for Admin/Auditor evidence-review surfaces, Auditor access to KAN-99 export get/download, KAN-100 mapping get/control framework read, KAN-101 package get/download, KAN-105/KAN-106 report list/get/download, and KAN-107 report review. Creation/configuration surfaces remain Admin-only. Desktop Admin onboarding can provision/invite Auditor users and API key badges recognize Auditor. Local validation passed: backend `cargo check`; backend `cargo fmt --check`; backend `cargo clippy -- -D warnings`; focused Framework Review Report Postgres tests (`2` passed) covering real Admin-generated evidence chain, Auditor read/download/review, Auditor mutation denials, other-tenant Auditor isolation, Developer denial, no-claim flags, unchanged artifact hash, and no Agent Governance evaluations; full backend Postgres tests with `--test-threads=2` (`308` passed); Tauri `cargo check`; Tauri `cargo fmt --check`; Tauri `cargo clippy -- -D warnings`; Tauri tests (`49` passed); frontend `pnpm --dir gitgov typecheck`; focused store test (`34` passed); full frontend tests (`366` passed); frontend lint/build; `v51` migration and postcheck through ignored local `DATABASE_URL`; `git diff --check`; publication guard. PR checks passed. Post-merge `main` checks passed for `98cf543`: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`. Render deploy `dep-d8nk7hm8bjmc73f0sfng` for `98cf543` reached `live`. Production `v51` migration/postcheck passed. Production smoke passed: `/health=ok`, authenticated `/stats=200`, temporary Auditor key `kan108-prod-auditor-20260614194845` listed as role `Auditor`, Auditor `GET`/download succeeded for report `frr_ac4ee214bc051caee783485d5755d34a`, evidence export `cee_cdbddd6037b8483a80ce8127ca7d0a07`, mapping `cem_962e49057e89497aa480b4dc0bb55139`, review package `crp_8c121f821fc98f759db5750329c3338e`, and baseline framework `gitgov_release_governance_baseline_v1`; Auditor `PATCH /compliance/framework-review-reports/{report_id}/review` set `review_status=reviewed` with reviewer provenance, preserved `artifact_hash`, and kept no-claim flags intact; Auditor `POST /compliance/framework-review-reports`, `POST /api-keys`, and `GET /agent-governance/settings` returned `403`; the temporary Auditor key was revoked and all `kan108-prod-auditor-*` keys were inactive after smoke.
@@ -912,12 +916,13 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-108 is complete and production-smoked. There is no active implementation branch after the validation-context docs refresh. The next roadmap slice should be selected deliberately after consulting GPT/product review again.
+KAN-109 is the active implementation branch after GPT/product consultation. KAN-108 is complete and production-smoked. The active slice is granular Auditor assignment plus comments over existing Framework Review Reports.
 
 Current work types are:
 
-- Operational validation cadence after KAN-105 is live.
-- Future roadmap selection only after consulting GPT/product review again.
+- Product collaboration workflow over already-generated compliance evidence.
+- Backend/API/Tauri/Desktop/store implementation and real Postgres validation.
+- PR, merge, production migration, Render deploy, and production smoke still pending.
 
 ## Practical Next Steps
 
@@ -925,11 +930,9 @@ When resuming, do this first:
 
 1. Run `git status --short --branch`.
 2. Read `AGENTS.md` and this file.
-3. If work changes code or docs, create/use a Jira ticket first.
-4. Use a Jira-traceable branch, commit message, PR title, and Jira comment.
-5. Run `.\scripts\security\publication_guard.ps1` before commit.
-6. Push, open PR, wait for required checks, merge only when green.
-7. After merge, pull `main`, wait for post-merge checks, and comment the Jira ticket with evidence.
+3. Continue `KAN-109` on `product/KAN-109-auditor-assignments-comments`.
+4. Push, open PR with `KAN-109` in title, wait for required checks, merge only when green.
+5. After merge, pull `main`, apply production `v52`, wait for Render deploy, run production smoke with temporary Auditor keys, revoke temp keys, and close issue `#380` with evidence.
 
 ## Do Not Reopen Without New Product Decision
 

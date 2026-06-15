@@ -238,6 +238,7 @@ pub struct ListComplianceFrameworkReviewReportsInput<'a> {
     pub framework_id: Option<&'a str>,
     pub mapping_id: Option<&'a str>,
     pub review_package_id: Option<&'a str>,
+    pub assigned_auditor_client_id: Option<&'a str>,
     pub limit: i64,
 }
 
@@ -247,6 +248,22 @@ pub struct UpdateComplianceFrameworkReviewReportReviewInput<'a> {
     pub review_status: &'a str,
     pub reviewed_by_user_id: &'a str,
     pub review_notes_safe: Option<&'a str>,
+}
+
+pub struct UpsertComplianceFrameworkReviewReportAssignmentsInput<'a> {
+    pub org_id: &'a str,
+    pub report_id: &'a str,
+    pub auditor_client_ids: &'a [String],
+    pub assigned_by_user_id: &'a str,
+    pub assignment_notes_safe: Option<&'a str>,
+}
+
+pub struct CreateComplianceFrameworkReviewReportCommentInput<'a> {
+    pub org_id: &'a str,
+    pub report_id: &'a str,
+    pub commenter_client_id: &'a str,
+    pub comment_body_safe: &'a str,
+    pub review_status_suggestion: Option<&'a str>,
 }
 
 #[derive(Debug, Clone)]

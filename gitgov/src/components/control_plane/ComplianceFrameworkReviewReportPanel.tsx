@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Download, FileCheck2, History, RefreshCw, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, Download, FileCheck2, History, MessageSquare, RefreshCw, ShieldAlert, Users } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -37,18 +37,35 @@ function reviewBadgeVariant(status?: string | null): 'success' | 'warning' | 'da
 export function ComplianceFrameworkReviewReportPanel() {
   const [reviewStatus, setReviewStatus] = useState('reviewed')
   const [reviewNotesSafe, setReviewNotesSafe] = useState('')
+  const [assignmentInput, setAssignmentInput] = useState('')
+  const [assignmentNotesSafe, setAssignmentNotesSafe] = useState('')
+  const [commentBodySafe, setCommentBodySafe] = useState('')
+  const [commentSuggestion, setCommentSuggestion] = useState('')
   const mapping = useControlPlaneStore((state) => state.complianceEvidenceMapping?.mapping ?? null)
   const packageRecord = useControlPlaneStore((state) => state.complianceReviewPackage?.review_package ?? null)
   const report = useControlPlaneStore((state) => state.complianceFrameworkReviewReport?.report ?? null)
   const reportHistory = useControlPlaneStore((state) => state.complianceFrameworkReviewReports)
+  const assignedReports = useControlPlaneStore((state) => state.assignedComplianceFrameworkReviewReports)
+  const assignments = useControlPlaneStore((state) => state.complianceFrameworkReviewReportAssignments)
+  const comments = useControlPlaneStore((state) => state.complianceFrameworkReviewReportComments)
   const reportArtifact = useControlPlaneStore((state) => state.complianceFrameworkReviewReportArtifact)
   const isCreating = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportCreating)
   const isHistoryLoading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportsLoading)
+  const isAssignedLoading = useControlPlaneStore((state) => state.isAssignedComplianceFrameworkReviewReportsLoading)
+  const isAssignmentsLoading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportAssignmentsLoading)
+  const isAssignmentsSaving = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportAssignmentsSaving)
+  const isCommentsLoading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportCommentsLoading)
+  const isCommenting = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportCommenting)
   const isReviewing = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportReviewing)
   const isDownloading = useControlPlaneStore((state) => state.isComplianceFrameworkReviewReportDownloading)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const createReport = useControlPlaneStore((state) => state.createComplianceFrameworkReviewReport)
   const loadReports = useControlPlaneStore((state) => state.loadComplianceFrameworkReviewReports)
+  const loadAssignedReports = useControlPlaneStore((state) => state.loadAssignedComplianceFrameworkReviewReports)
+  const loadAssignments = useControlPlaneStore((state) => state.loadComplianceFrameworkReviewReportAssignments)
+  const saveAssignments = useControlPlaneStore((state) => state.saveComplianceFrameworkReviewReportAssignments)
+  const loadComments = useControlPlaneStore((state) => state.loadComplianceFrameworkReviewReportComments)
+  const createComment = useControlPlaneStore((state) => state.createComplianceFrameworkReviewReportComment)
   const reviewReport = useControlPlaneStore((state) => state.reviewComplianceFrameworkReviewReport)
   const downloadReport = useControlPlaneStore((state) => state.downloadComplianceFrameworkReviewReport)
 
@@ -75,6 +92,13 @@ export function ComplianceFrameworkReviewReportPanel() {
     })
   }
 
+  const handleLoadAssigned = async () => {
+    await loadAssignedReports({
+      framework_id: mapping?.framework_id ?? null,
+      limit: 25,
+    })
+  }
+
   const handleDownloadHistory = async (reportId: string) => {
     const artifact = await downloadReport(reportId)
     if (artifact) {
@@ -85,6 +109,26 @@ export function ComplianceFrameworkReviewReportPanel() {
   const handleReview = async () => {
     if (!report) return
     await reviewReport(report.report_id, reviewStatus, reviewNotesSafe)
+  }
+
+  const handleLoadCollaboration = async () => {
+    if (!report) return
+    await Promise.all([
+      loadAssignments(report.report_id),
+      loadComments(report.report_id),
+    ])
+  }
+
+  const handleSaveAssignments = async () => {
+    if (!report) return
+    const auditorClientIds = assignmentInput.split(',').map((value) => value.trim()).filter(Boolean)
+    await saveAssignments(report.report_id, auditorClientIds, assignmentNotesSafe)
+  }
+
+  const handleCreateComment = async () => {
+    if (!report) return
+    const created = await createComment(report.report_id, commentBodySafe, commentSuggestion || null)
+    if (created) setCommentBodySafe('')
   }
 
   return (
@@ -122,6 +166,16 @@ export function ComplianceFrameworkReviewReportPanel() {
           >
             <RefreshCw size={13} />
             History
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            loading={isAssignedLoading}
+            onClick={() => void handleLoadAssigned()}
+            title="Load framework review reports assigned to the current Auditor"
+          >
+            <Users size={13} />
+            Assigned
           </Button>
           <Button
             size="sm"
@@ -229,6 +283,116 @@ export function ComplianceFrameworkReviewReportPanel() {
         </div>
       )}
 
+      {report && (
+        <div className="mt-3 rounded border border-white/8 bg-white/[0.03] p-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-surface-200">
+              <Users size={13} className="text-brand-300" />
+              Auditor assignments and comments
+              {assignments && <Badge variant="info">{assignments.assignments.filter((item) => item.assignment_status === 'active').length} active</Badge>}
+              {comments && <Badge variant="neutral">{comments.count} comments</Badge>}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isAssignmentsLoading || isCommentsLoading}
+              onClick={() => void handleLoadCollaboration()}
+              title="Load assignments and comments for this framework review report"
+            >
+              <RefreshCw size={13} />
+              Load
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <input
+              className="h-9 rounded border border-white/10 bg-surface-950 px-2 text-xs text-surface-100 outline-none placeholder:text-surface-600 focus:border-brand-400"
+              value={assignmentInput}
+              onChange={(event) => setAssignmentInput(event.target.value)}
+              placeholder="auditor client ids, comma separated"
+              aria-label="Assigned auditor client ids"
+            />
+            <input
+              className="h-9 rounded border border-white/10 bg-surface-950 px-2 text-xs text-surface-100 outline-none placeholder:text-surface-600 focus:border-brand-400"
+              value={assignmentNotesSafe}
+              onChange={(event) => setAssignmentNotesSafe(event.target.value)}
+              maxLength={1000}
+              placeholder="Safe assignment note"
+              aria-label="Assignment notes"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isAssignmentsSaving}
+              onClick={() => void handleSaveAssignments()}
+              title="Replace active Auditor assignments for this report"
+            >
+              <Users size={13} />
+              Assign
+            </Button>
+          </div>
+          {assignments && assignments.assignments.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+              {assignments.assignments.map((item) => (
+                <span
+                  key={item.id}
+                  className="rounded border border-white/8 bg-surface-950 px-2 py-1 text-surface-300"
+                  title={item.assignment_notes_safe ?? undefined}
+                >
+                  <span className="font-mono">{item.auditor_client_id}</span> · {item.assignment_status}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[140px_minmax(0,1fr)_auto]">
+            <select
+              className="h-9 rounded border border-white/10 bg-surface-950 px-2 text-xs text-surface-100 outline-none focus:border-brand-400"
+              value={commentSuggestion}
+              onChange={(event) => setCommentSuggestion(event.target.value)}
+              aria-label="Comment review status suggestion"
+            >
+              <option value="">No suggestion</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="needs_changes">Needs changes</option>
+              <option value="rejected">Rejected</option>
+              <option value="needs_review">Needs review</option>
+            </select>
+            <textarea
+              className="min-h-9 rounded border border-white/10 bg-surface-950 px-2 py-2 text-xs text-surface-100 outline-none placeholder:text-surface-600 focus:border-brand-400"
+              value={commentBodySafe}
+              onChange={(event) => setCommentBodySafe(event.target.value)}
+              maxLength={2000}
+              placeholder="Safe reviewer comment"
+              aria-label="Framework report comment"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isCommenting}
+              disabled={!commentBodySafe.trim()}
+              onClick={() => void handleCreateComment()}
+              title="Add a safe reviewer comment"
+            >
+              <MessageSquare size={13} />
+              Comment
+            </Button>
+          </div>
+          {comments && comments.comments.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {comments.comments.map((item) => (
+                <div key={item.id} className="rounded border border-white/6 bg-surface-950 p-2 text-[11px]">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-surface-500">
+                    <span>Reviewer: <span className="font-mono text-surface-300">{item.commenter_client_id}</span></span>
+                    <span>Created: <span className="text-surface-300">{formatTs(item.created_at, displayTimezone)}</span></span>
+                    {item.review_status_suggestion && <span>Suggestion: <span className="text-surface-300">{item.review_status_suggestion}</span></span>}
+                  </div>
+                  <p className="mt-1 leading-5 text-surface-300">{item.comment_body_safe}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {reportArtifact && (
         <p className="mt-3 text-[11px] text-success-200">
           Server framework report artifact downloaded and ready for local JSON save.
@@ -274,6 +438,34 @@ export function ComplianceFrameworkReviewReportPanel() {
                       <Download size={13} />
                       Save
                     </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {assignedReports && (
+        <div className="mt-3 border-t border-white/8 pt-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-surface-200">
+            <Users size={13} className="text-brand-300" />
+            Assigned to me
+            <Badge variant="info">{assignedReports.count} loaded</Badge>
+          </div>
+          {assignedReports.items.length === 0 ? (
+            <p className="text-[11px] text-surface-500">No assigned framework review reports found for the current filter.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {assignedReports.items.map((item) => (
+                <div key={item.report_id} className="rounded border border-white/6 bg-white/[0.03] p-2">
+                  <div className="truncate font-mono text-[11px] text-surface-100" title={item.report_id}>
+                    {item.report_id}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-surface-500">
+                    <span>Framework: <span className="text-surface-300">{item.framework_id}</span></span>
+                    <span>Review: <span className="text-surface-300">{item.review_status}</span></span>
+                    <span>Created: <span className="text-surface-300">{formatTs(item.created_at, displayTimezone)}</span></span>
                   </div>
                 </div>
               ))}

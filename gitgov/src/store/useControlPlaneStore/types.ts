@@ -525,6 +525,7 @@ export interface ComplianceFrameworkReviewReportQuery {
   mapping_id?: string | null
   review_package_id?: string | null
   limit?: number | null
+  assigned_to_me?: boolean | null
 }
 
 export interface ComplianceFrameworkReviewReportReviewRequest {
@@ -573,6 +574,58 @@ export interface ComplianceFrameworkReviewReportListResponse {
   items: ComplianceFrameworkReviewReportRecord[]
   count: number
   limit: number
+}
+
+export interface ComplianceFrameworkReviewReportAssignmentsRequest {
+  org_name?: string | null
+  auditor_client_ids: string[]
+  assignment_notes_safe?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportAssignmentQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportAssignmentRecord {
+  id: string
+  org_id: string
+  report_id: string
+  auditor_client_id: string
+  assignment_status: string
+  assigned_by_user_id: string
+  assignment_notes_safe?: string | null
+  created_at: number
+  updated_at: number
+}
+
+export interface ComplianceFrameworkReviewReportAssignmentsResponse {
+  assignments: ComplianceFrameworkReviewReportAssignmentRecord[]
+  count: number
+}
+
+export interface ComplianceFrameworkReviewReportCommentRequest {
+  org_name?: string | null
+  comment_body_safe: string
+  review_status_suggestion?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportCommentsQuery {
+  org_name?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportCommentRecord {
+  id: string
+  org_id: string
+  report_id: string
+  commenter_client_id: string
+  comment_body_safe: string
+  review_status_suggestion?: string | null
+  created_at: number
+}
+
+export interface ComplianceFrameworkReviewReportCommentsResponse {
+  comments: ComplianceFrameworkReviewReportCommentRecord[]
+  count: number
 }
 
 export interface EnterpriseReleaseApprovalQuery {
@@ -997,6 +1050,9 @@ export interface ControlPlaneState {
   complianceReviewPackageArtifact: Record<string, unknown> | null
   complianceFrameworkReviewReport: ComplianceFrameworkReviewReportResponse | null
   complianceFrameworkReviewReports: ComplianceFrameworkReviewReportListResponse | null
+  assignedComplianceFrameworkReviewReports: ComplianceFrameworkReviewReportListResponse | null
+  complianceFrameworkReviewReportAssignments: ComplianceFrameworkReviewReportAssignmentsResponse | null
+  complianceFrameworkReviewReportComments: ComplianceFrameworkReviewReportCommentsResponse | null
   complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
@@ -1011,6 +1067,11 @@ export interface ControlPlaneState {
   isComplianceReviewPackageDownloading: boolean
   isComplianceFrameworkReviewReportCreating: boolean
   isComplianceFrameworkReviewReportsLoading: boolean
+  isAssignedComplianceFrameworkReviewReportsLoading: boolean
+  isComplianceFrameworkReviewReportAssignmentsLoading: boolean
+  isComplianceFrameworkReviewReportAssignmentsSaving: boolean
+  isComplianceFrameworkReviewReportCommentsLoading: boolean
+  isComplianceFrameworkReviewReportCommenting: boolean
   isComplianceFrameworkReviewReportReviewing: boolean
   isComplianceFrameworkReviewReportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
@@ -1106,6 +1167,19 @@ export interface ControlPlaneActions {
   downloadComplianceReviewPackage: (reviewPackageId: string) => Promise<Record<string, unknown> | null>
   createComplianceFrameworkReviewReport: (mappingId: string, reviewPackageId: string) => Promise<ComplianceFrameworkReviewReportResponse | null>
   loadComplianceFrameworkReviewReports: (filters?: Omit<ComplianceFrameworkReviewReportQuery, 'org_name'>) => Promise<ComplianceFrameworkReviewReportListResponse | null>
+  loadAssignedComplianceFrameworkReviewReports: (filters?: Omit<ComplianceFrameworkReviewReportQuery, 'org_name' | 'assigned_to_me'>) => Promise<ComplianceFrameworkReviewReportListResponse | null>
+  loadComplianceFrameworkReviewReportAssignments: (reportId: string) => Promise<ComplianceFrameworkReviewReportAssignmentsResponse | null>
+  saveComplianceFrameworkReviewReportAssignments: (
+    reportId: string,
+    auditorClientIds: string[],
+    assignmentNotesSafe?: string | null,
+  ) => Promise<ComplianceFrameworkReviewReportAssignmentsResponse | null>
+  loadComplianceFrameworkReviewReportComments: (reportId: string) => Promise<ComplianceFrameworkReviewReportCommentsResponse | null>
+  createComplianceFrameworkReviewReportComment: (
+    reportId: string,
+    commentBodySafe: string,
+    reviewStatusSuggestion?: string | null,
+  ) => Promise<ComplianceFrameworkReviewReportCommentRecord | null>
   reviewComplianceFrameworkReviewReport: (
     reportId: string,
     reviewStatus: ComplianceFrameworkReviewReportReviewRequest['review_status'],

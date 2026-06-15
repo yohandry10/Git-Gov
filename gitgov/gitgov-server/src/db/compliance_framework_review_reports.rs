@@ -34,6 +34,36 @@ fn compliance_framework_review_report_from_row(
     }
 }
 
+fn compliance_framework_review_report_assignment_from_row(
+    row: &PgRow,
+) -> ComplianceFrameworkReviewReportAssignmentRecord {
+    ComplianceFrameworkReviewReportAssignmentRecord {
+        id: row.get("id"),
+        org_id: row.get("org_id"),
+        report_id: row.get("report_id"),
+        auditor_client_id: row.get("auditor_client_id"),
+        assignment_status: row.get("assignment_status"),
+        assigned_by_user_id: row.get("assigned_by_user_id"),
+        assignment_notes_safe: row.get("assignment_notes_safe"),
+        created_at: row.get("created_at_ms"),
+        updated_at: row.get("updated_at_ms"),
+    }
+}
+
+fn compliance_framework_review_report_comment_from_row(
+    row: &PgRow,
+) -> ComplianceFrameworkReviewReportCommentRecord {
+    ComplianceFrameworkReviewReportCommentRecord {
+        id: row.get("id"),
+        org_id: row.get("org_id"),
+        report_id: row.get("report_id"),
+        commenter_client_id: row.get("commenter_client_id"),
+        comment_body_safe: row.get("comment_body_safe"),
+        review_status_suggestion: row.get("review_status_suggestion"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
 impl Database {
     pub async fn list_compliance_framework_review_reports(
         &self,
@@ -74,14 +104,26 @@ impl Database {
               AND ($2::text IS NULL OR framework_id = $2)
               AND ($3::text IS NULL OR mapping_id = $3)
               AND ($4::text IS NULL OR review_package_id = $4)
+              AND (
+                $5::text IS NULL
+                OR EXISTS (
+                    SELECT 1
+                    FROM compliance_framework_review_report_assignments a
+                    WHERE a.org_id = compliance_framework_review_reports.org_id
+                      AND a.report_id = compliance_framework_review_reports.report_id
+                      AND a.auditor_client_id = $5
+                      AND a.assignment_status = 'active'
+                )
+              )
             ORDER BY created_at DESC, report_id DESC
-            LIMIT $5
+            LIMIT $6
             "#,
         )
         .bind(input.org_id)
         .bind(input.framework_id)
         .bind(input.mapping_id)
         .bind(input.review_package_id)
+        .bind(input.assigned_auditor_client_id)
         .bind(input.limit)
         .fetch_all(&self.pool)
         .await
@@ -333,5 +375,261 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.map(|row| row.get("payload_json_redacted")))
+    }
+
+    pub async fn compliance_framework_review_report_has_active_assignments(
+        &self,
+        org_id: &str,
+        report_id: &str,
+    ) -> Result<bool, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM compliance_framework_review_report_assignments
+                WHERE org_id = $1::uuid
+                  AND report_id = $2
+                  AND assignment_status = 'active'
+            ) AS has_assignments
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.get("has_assignments"))
+    }
+
+    pub async fn compliance_framework_review_report_is_assigned_to(
+        &self,
+        org_id: &str,
+        report_id: &str,
+        auditor_client_id: &str,
+    ) -> Result<bool, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM compliance_framework_review_report_assignments
+                WHERE org_id = $1::uuid
+                  AND report_id = $2
+                  AND auditor_client_id = $3
+                  AND assignment_status = 'active'
+            ) AS is_assigned
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .bind(auditor_client_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.get("is_assigned"))
+    }
+
+    pub async fn tenant_principal_is_auditor(
+        &self,
+        org_id: &str,
+        client_id: &str,
+    ) -> Result<bool, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM api_keys
+                WHERE org_id = $1::uuid
+                  AND client_id = $2
+                  AND role = 'Auditor'
+                  AND is_active = TRUE
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM org_users
+                WHERE org_id = $1::uuid
+                  AND login = $2
+                  AND role = 'Auditor'
+                  AND status = 'active'
+            ) AS is_auditor
+            "#,
+        )
+        .bind(org_id)
+        .bind(client_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.get("is_auditor"))
+    }
+
+    pub async fn upsert_compliance_framework_review_report_assignments(
+        &self,
+        input: &UpsertComplianceFrameworkReviewReportAssignmentsInput<'_>,
+    ) -> Result<Vec<ComplianceFrameworkReviewReportAssignmentRecord>, DbError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            UPDATE compliance_framework_review_report_assignments
+            SET assignment_status = 'revoked',
+                updated_at = NOW()
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+              AND assignment_status = 'active'
+              AND NOT (auditor_client_id = ANY($3::text[]))
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.report_id)
+        .bind(input.auditor_client_ids)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        for auditor_client_id in input.auditor_client_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO compliance_framework_review_report_assignments (
+                    org_id,
+                    report_id,
+                    auditor_client_id,
+                    assignment_status,
+                    assigned_by_user_id,
+                    assignment_notes_safe
+                )
+                VALUES ($1::uuid, $2, $3, 'active', $4, $5)
+                ON CONFLICT (org_id, report_id, auditor_client_id) DO UPDATE
+                SET assignment_status = 'active',
+                    assigned_by_user_id = EXCLUDED.assigned_by_user_id,
+                    assignment_notes_safe = EXCLUDED.assignment_notes_safe,
+                    updated_at = NOW()
+                "#,
+            )
+            .bind(input.org_id)
+            .bind(input.report_id)
+            .bind(auditor_client_id)
+            .bind(input.assigned_by_user_id)
+            .bind(input.assignment_notes_safe)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        self.list_compliance_framework_review_report_assignments(input.org_id, input.report_id)
+            .await
+    }
+
+    pub async fn list_compliance_framework_review_report_assignments(
+        &self,
+        org_id: &str,
+        report_id: &str,
+    ) -> Result<Vec<ComplianceFrameworkReviewReportAssignmentRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id::text,
+                org_id::text,
+                report_id,
+                auditor_client_id,
+                assignment_status,
+                assigned_by_user_id,
+                assignment_notes_safe,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM updated_at) * 1000)::BIGINT AS updated_at_ms
+            FROM compliance_framework_review_report_assignments
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+            ORDER BY assignment_status ASC, updated_at DESC, auditor_client_id ASC
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_framework_review_report_assignment_from_row(&row))
+            .collect())
+    }
+
+    pub async fn create_compliance_framework_review_report_comment(
+        &self,
+        input: &CreateComplianceFrameworkReviewReportCommentInput<'_>,
+    ) -> Result<ComplianceFrameworkReviewReportCommentRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO compliance_framework_review_report_comments (
+                org_id,
+                report_id,
+                commenter_client_id,
+                comment_body_safe,
+                review_status_suggestion
+            )
+            VALUES ($1::uuid, $2, $3, $4, $5)
+            RETURNING
+                id::text,
+                org_id::text,
+                report_id,
+                commenter_client_id,
+                comment_body_safe,
+                review_status_suggestion,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.report_id)
+        .bind(input.commenter_client_id)
+        .bind(input.comment_body_safe)
+        .bind(input.review_status_suggestion)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_framework_review_report_comment_from_row(&row))
+    }
+
+    pub async fn list_compliance_framework_review_report_comments(
+        &self,
+        org_id: &str,
+        report_id: &str,
+    ) -> Result<Vec<ComplianceFrameworkReviewReportCommentRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id::text,
+                org_id::text,
+                report_id,
+                commenter_client_id,
+                comment_body_safe,
+                review_status_suggestion,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM compliance_framework_review_report_comments
+            WHERE org_id = $1::uuid
+              AND report_id = $2
+            ORDER BY created_at ASC, id ASC
+            "#,
+        )
+        .bind(org_id)
+        .bind(report_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_framework_review_report_comment_from_row(&row))
+            .collect())
     }
 }

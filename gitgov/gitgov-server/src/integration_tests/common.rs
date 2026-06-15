@@ -500,6 +500,43 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_compliance_framework_review_reports_review_status
             ON compliance_framework_review_reports(org_id, review_status, created_at DESC);
 
+        CREATE TABLE IF NOT EXISTS compliance_framework_review_report_assignments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            report_id TEXT NOT NULL REFERENCES compliance_framework_review_reports(report_id) ON DELETE CASCADE,
+            auditor_client_id TEXT NOT NULL,
+            assignment_status TEXT NOT NULL DEFAULT 'active',
+            assigned_by_user_id TEXT NOT NULL,
+            assignment_notes_safe TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT compliance_framework_review_report_assignments_status_check
+                CHECK (assignment_status IN ('active', 'revoked')),
+            UNIQUE (org_id, report_id, auditor_client_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_cfr_report_assignments_report_status
+            ON compliance_framework_review_report_assignments(org_id, report_id, assignment_status);
+
+        CREATE INDEX IF NOT EXISTS idx_cfr_report_assignments_auditor_status
+            ON compliance_framework_review_report_assignments(org_id, auditor_client_id, assignment_status, updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS compliance_framework_review_report_comments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            report_id TEXT NOT NULL REFERENCES compliance_framework_review_reports(report_id) ON DELETE CASCADE,
+            commenter_client_id TEXT NOT NULL,
+            comment_body_safe TEXT NOT NULL,
+            review_status_suggestion TEXT CHECK (
+                review_status_suggestion IS NULL
+                OR review_status_suggestion IN ('needs_review', 'reviewed', 'needs_changes', 'rejected')
+            ),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_cfr_report_comments_report_created
+            ON compliance_framework_review_report_comments(org_id, report_id, created_at ASC);
+
         INSERT INTO compliance_control_frameworks (
             framework_id,
             name,
@@ -1596,8 +1633,22 @@ pub(super) fn build_test_app_with_options(
                 .post(handlers::create_compliance_framework_review_report),
         )
         .route(
+            "/compliance/framework-review-reports/assigned-to-me",
+            get(handlers::list_assigned_compliance_framework_review_reports),
+        )
+        .route(
             "/compliance/framework-review-reports/{report_id}",
             get(handlers::get_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/assignments",
+            get(handlers::list_compliance_framework_review_report_assignments)
+                .put(handlers::upsert_compliance_framework_review_report_assignments),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/comments",
+            get(handlers::list_compliance_framework_review_report_comments)
+                .post(handlers::create_compliance_framework_review_report_comment),
         )
         .route(
             "/compliance/framework-review-reports/{report_id}/review",

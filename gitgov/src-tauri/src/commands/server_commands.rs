@@ -8,11 +8,16 @@ use crate::control_plane::{
     ComplianceEvidenceMappingResponse, ComplianceFrameworkPackImportRequest,
     ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
     ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
-    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportListResponse,
-    ComplianceFrameworkReviewReportQuery, ComplianceFrameworkReviewReportRequest,
-    ComplianceFrameworkReviewReportResponse, ComplianceFrameworkReviewReportReviewRequest,
-    ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
-    ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportAssignmentQuery,
+    ComplianceFrameworkReviewReportAssignmentsRequest,
+    ComplianceFrameworkReviewReportAssignmentsResponse,
+    ComplianceFrameworkReviewReportCommentRecord, ComplianceFrameworkReviewReportCommentRequest,
+    ComplianceFrameworkReviewReportCommentsQuery, ComplianceFrameworkReviewReportCommentsResponse,
+    ComplianceFrameworkReviewReportListResponse, ComplianceFrameworkReviewReportQuery,
+    ComplianceFrameworkReviewReportRequest, ComplianceFrameworkReviewReportResponse,
+    ComplianceFrameworkReviewReportReviewRequest, ComplianceReviewPackageQuery,
+    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
+    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
@@ -1102,6 +1107,110 @@ pub async fn cmd_server_get_compliance_framework_review_report(
             .get_compliance_framework_review_report(&report_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_assigned_compliance_framework_review_reports(
+    config: ServerConnectionConfig,
+    query: ComplianceFrameworkReviewReportQuery,
+) -> Result<ComplianceFrameworkReviewReportListResponse, String> {
+    run_blocking_command(
+        "LIST_ASSIGNED_COMPLIANCE_FRAMEWORK_REVIEW_REPORTS",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .list_assigned_compliance_framework_review_reports(&query)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_framework_review_report_assignments(
+    config: ServerConnectionConfig,
+    report_id: String,
+    query: ComplianceFrameworkReviewReportAssignmentQuery,
+) -> Result<ComplianceFrameworkReviewReportAssignmentsResponse, String> {
+    run_blocking_command(
+        "LIST_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_ASSIGNMENTS",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .list_compliance_framework_review_report_assignments(&report_id, &query)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_upsert_compliance_framework_review_report_assignments(
+    config: ServerConnectionConfig,
+    report_id: String,
+    payload: ComplianceFrameworkReviewReportAssignmentsRequest,
+) -> Result<ComplianceFrameworkReviewReportAssignmentsResponse, String> {
+    run_blocking_command(
+        "UPSERT_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_ASSIGNMENTS",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .upsert_compliance_framework_review_report_assignments(&report_id, &payload)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_framework_review_report_comments(
+    config: ServerConnectionConfig,
+    report_id: String,
+    query: ComplianceFrameworkReviewReportCommentsQuery,
+) -> Result<ComplianceFrameworkReviewReportCommentsResponse, String> {
+    run_blocking_command(
+        "LIST_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_COMMENTS",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .list_compliance_framework_review_report_comments(&report_id, &query)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_framework_review_report_comment(
+    config: ServerConnectionConfig,
+    report_id: String,
+    payload: ComplianceFrameworkReviewReportCommentRequest,
+) -> Result<ComplianceFrameworkReviewReportCommentRecord, String> {
+    run_blocking_command(
+        "CREATE_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_COMMENT",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .create_compliance_framework_review_report_comment(&report_id, &payload)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
     .await
 }
 

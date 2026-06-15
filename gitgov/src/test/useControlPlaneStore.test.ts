@@ -1010,6 +1010,79 @@ describe('useControlPlaneStore', () => {
           limit: 25,
         })
         .mockResolvedValueOnce({
+          items: [
+            {
+              report_id: 'frr_123',
+              org_id: 'org-1',
+              created_by_user_id: 'admin',
+              mapping_id: 'cem_123',
+              review_package_id: 'crp_123',
+              evidence_export_id: 'cee_123',
+              evidence_export_hash: 'a'.repeat(64),
+              mapping_hash: 'b'.repeat(64),
+              review_package_hash: 'c'.repeat(64),
+              framework_id: 'gitgov_release_governance_baseline_v1',
+              framework_version: '1.0.0',
+              framework_owner_type: 'gitgov',
+              format: 'json',
+              artifact_hash: 'd'.repeat(64),
+              compliance_claim: false,
+              regulatory_claim: false,
+              requires_auditor_review: true,
+              certification: false,
+              review_status: 'needs_review',
+              reviewed_by_user_id: null,
+              reviewed_at: null,
+              review_notes_safe: null,
+              created_at: 5,
+              downloaded_at: null,
+            },
+          ],
+          count: 1,
+          limit: 25,
+        })
+        .mockResolvedValueOnce({
+          assignments: [{
+            id: 'assign-1',
+            org_id: 'org-1',
+            report_id: 'frr_123',
+            auditor_client_id: 'kan109-auditor',
+            assignment_status: 'active',
+            assigned_by_user_id: 'admin',
+            assignment_notes_safe: 'Assigned note',
+            created_at: 7,
+            updated_at: 7,
+          }],
+          count: 1,
+        })
+        .mockResolvedValueOnce({
+          assignments: [{
+            id: 'assign-1',
+            org_id: 'org-1',
+            report_id: 'frr_123',
+            auditor_client_id: 'kan109-auditor',
+            assignment_status: 'active',
+            assigned_by_user_id: 'admin',
+            assignment_notes_safe: 'Assigned note',
+            created_at: 7,
+            updated_at: 8,
+          }],
+          count: 1,
+        })
+        .mockResolvedValueOnce({
+          comments: [],
+          count: 0,
+        })
+        .mockResolvedValueOnce({
+          id: 'comment-1',
+          org_id: 'org-1',
+          report_id: 'frr_123',
+          commenter_client_id: 'kan109-auditor',
+          comment_body_safe: 'Needs owner sign-off.',
+          review_status_suggestion: 'needs_changes',
+          created_at: 9,
+        })
+        .mockResolvedValueOnce({
           report: {
             report_id: 'frr_123',
             org_id: 'org-1',
@@ -1054,6 +1127,29 @@ describe('useControlPlaneStore', () => {
         review_package_id: ' crp_123 ',
         limit: 500,
       })
+      const assignedReports = await useControlPlaneStore.getState().loadAssignedComplianceFrameworkReviewReports({
+        framework_id: ' gitgov_release_governance_baseline_v1 ',
+      })
+      const loadedAssignments = await useControlPlaneStore
+        .getState()
+        .loadComplianceFrameworkReviewReportAssignments(' frr_123 ')
+      const savedAssignments = await useControlPlaneStore
+        .getState()
+        .saveComplianceFrameworkReviewReportAssignments(
+          ' frr_123 ',
+          [' kan109-auditor ', 'kan109-auditor', ' '],
+          ' Assigned note ',
+        )
+      const loadedComments = await useControlPlaneStore
+        .getState()
+        .loadComplianceFrameworkReviewReportComments(' frr_123 ')
+      const createdComment = await useControlPlaneStore
+        .getState()
+        .createComplianceFrameworkReviewReportComment(
+          ' frr_123 ',
+          ' Needs owner sign-off. ',
+          ' needs_changes ',
+        )
       const reviewedReport = await useControlPlaneStore.getState().reviewComplianceFrameworkReviewReport(
         ' frr_123 ',
         ' needs_changes ',
@@ -1129,9 +1225,53 @@ describe('useControlPlaneStore', () => {
           mapping_id: 'cem_123',
           review_package_id: 'crp_123',
           limit: 500,
+          assigned_to_me: null,
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(7, 'cmd_server_review_compliance_framework_review_report', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(7, 'cmd_server_list_assigned_compliance_framework_review_reports', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          framework_id: 'gitgov_release_governance_baseline_v1',
+          mapping_id: null,
+          review_package_id: null,
+          limit: 25,
+          assigned_to_me: true,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(8, 'cmd_server_list_compliance_framework_review_report_assignments', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(9, 'cmd_server_upsert_compliance_framework_review_report_assignments', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        payload: {
+          org_name: 'yohandry10',
+          auditor_client_ids: ['kan109-auditor'],
+          assignment_notes_safe: 'Assigned note',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(10, 'cmd_server_list_compliance_framework_review_report_comments', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(11, 'cmd_server_create_compliance_framework_review_report_comment', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        reportId: 'frr_123',
+        payload: {
+          org_name: 'yohandry10',
+          comment_body_safe: 'Needs owner sign-off.',
+          review_status_suggestion: 'needs_changes',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(12, 'cmd_server_review_compliance_framework_review_report', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         reportId: 'frr_123',
         payload: {
@@ -1140,7 +1280,7 @@ describe('useControlPlaneStore', () => {
           review_notes_safe: 'Needs owner sign-off.',
         },
       })
-      expect(mockInvoke).toHaveBeenNthCalledWith(8, 'cmd_server_download_compliance_framework_review_report', {
+      expect(mockInvoke).toHaveBeenNthCalledWith(13, 'cmd_server_download_compliance_framework_review_report', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         reportId: 'frr_123',
         query: {
@@ -1156,10 +1296,18 @@ describe('useControlPlaneStore', () => {
       const historyItem = reportHistory?.items[0] as Record<string, unknown> | undefined
       expect(historyItem?.artifact).toBeUndefined()
       expect(historyItem?.payload_json_redacted).toBeUndefined()
+      expect(assignedReports?.items[0]?.report_id).toBe('frr_123')
+      expect(loadedAssignments?.assignments[0]?.auditor_client_id).toBe('kan109-auditor')
+      expect(savedAssignments?.assignments[0]?.updated_at).toBe(8)
+      expect(loadedComments?.count).toBe(0)
+      expect(createdComment?.review_status_suggestion).toBe('needs_changes')
       expect(reviewedReport?.report.review_status).toBe('needs_changes')
       expect(reportArtifact?.schema_version).toBe('gitgov_framework_review_report.v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
+      expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
+      expect(useControlPlaneStore.getState().complianceFrameworkReviewReportAssignments?.assignments[0]?.assignment_status).toBe('active')
+      expect(useControlPlaneStore.getState().complianceFrameworkReviewReportComments?.comments[0]?.comment_body_safe).toBe('Needs owner sign-off.')
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 
