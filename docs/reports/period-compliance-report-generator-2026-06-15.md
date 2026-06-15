@@ -53,3 +53,23 @@ Implement the first Compliance Report Generator slice as a manual, on-demand JSO
   - Ran `cargo test --manifest-path gitgov/gitgov-server/Cargo.toml period_compliance_report_aggregates_reviewed_reports_without_claims -- --nocapture`.
 
 The real integration test builds the full chain: deployment gate evidence, evidence export, evidence mapping, review package, two in-range reviewed Framework Review Reports, one out-of-range reviewed report, provenance manifests, Auditor source assignment, period report generation, Auditor list/download, unassigned/other-tenant denial, hash recomputation, no-claim assertions, source report non-mutation, and no Agent Governance evaluation creation.
+
+## Production
+
+- PR: `#394`
+- Merge commit: `3b6d760`
+- Render deploy: `dep-d8nplmh9rddc739v7ivg`
+- Production migration: `supabase_schema_v55.sql`
+- Production postcheck: `supabase_schema_v55_postcheck.sql`
+
+Production smoke passed:
+
+- `/health=ok`
+- Created period report `cpr_132e9f0fdef841278be3e167ff22cf32`.
+- `report_count=1`.
+- `artifact_hash=sha256:24ae1cb58186e2185dbccf931531225b4b861c6805bc6b9249a3f723a3df0d32`.
+- Downloaded artifact schema was `gitgov_period_compliance_report.v1`.
+- Source report count was `1`.
+- Manifest hash count was `1`.
+- No-claim flags remained false and `requires_auditor_review=true`.
+- `agent_governance_required=false`.
