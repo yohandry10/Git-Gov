@@ -1762,6 +1762,47 @@ async fn period_report_profiles_run_real_artifacts_and_enforce_manual_boundaries
     assert_eq!(archive_json["profile"]["status"], "archived");
     assert!(archive_json["profile"]["archived_at"].as_i64().is_some());
 
+    let (status, active_after_archive) = json_request(
+        &app,
+        "GET",
+        "/compliance/period-report-profiles?status=active&limit=25",
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let active_after_archive_json: serde_json::Value =
+        serde_json::from_str(&active_after_archive).expect("active profiles after archive JSON");
+    assert!(
+        active_after_archive_json["items"]
+            .as_array()
+            .expect("active profile items")
+            .iter()
+            .all(|item| item["profile_id"] != profile_id),
+        "archived profile must not appear in status=active profile list"
+    );
+
+    let (status, archived_after_archive) = json_request(
+        &app,
+        "GET",
+        "/compliance/period-report-profiles?status=archived&limit=25",
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let archived_after_archive_json: serde_json::Value =
+        serde_json::from_str(&archived_after_archive)
+            .expect("archived profiles after archive JSON");
+    assert!(
+        archived_after_archive_json["items"]
+            .as_array()
+            .expect("archived profile items")
+            .iter()
+            .any(|item| item["profile_id"] == profile_id),
+        "archived profile must appear in status=archived profile list"
+    );
+
     let (status, archived_run) = json_request(
         &app,
         "POST",
