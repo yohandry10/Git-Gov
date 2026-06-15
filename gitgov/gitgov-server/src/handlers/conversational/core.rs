@@ -97,7 +97,7 @@ const PROJECT_KNOWLEDGE_BASE: &[(&str, &[&str], &str)] = &[
     (
         "Roles y permisos",
         &["roles", "admin", "developer", "architect", "pm", "scope", "visibilidad", "permisos", "acceso"],
-        "GitGov tiene 4 roles: Admin (acceso total: stats, dashboard, todas las integraciones, gestión de keys), Architect (reservado para futuras restricciones), Developer (solo ve sus propios eventos en /logs), PM (reservado). El rol se asigna al crear la API key. Admin ve toda la organización; Developer ve solo su propio contexto.",
+        "GitGov tiene 5 roles tenant: Admin (acceso total a configuración y administración), Auditor (lectura/descarga/revisión de evidencia compliance, sin configuración), Architect (reservado para futuras restricciones), Developer (solo ve su propio contexto operativo), PM (reservado). El rol se asigna al crear la API key. Admin ve toda la organización; Developer ve solo su propio contexto.",
     ),
     (
         "Crear y gestionar API keys",

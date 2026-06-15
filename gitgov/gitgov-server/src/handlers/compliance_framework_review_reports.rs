@@ -571,7 +571,7 @@ pub async fn list_compliance_framework_review_reports(
     State(state): State<Arc<AppState>>,
     Query(mut query): Query<ComplianceFrameworkReviewReportQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     let limit = match normalize_framework_review_report_query(&mut query) {
@@ -635,7 +635,7 @@ pub async fn get_compliance_framework_review_report(
     Path(report_id): Path<String>,
     Query(mut query): Query<ComplianceFrameworkReviewReportQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);
@@ -682,7 +682,7 @@ pub async fn review_compliance_framework_review_report(
     Path(report_id): Path<String>,
     Json(mut payload): Json<ComplianceFrameworkReviewReportReviewRequest>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     if !report_id.starts_with("frr_") || report_id.len() > 80 {
@@ -779,7 +779,7 @@ pub async fn download_compliance_framework_review_report(
     Path(report_id): Path<String>,
     Query(mut query): Query<ComplianceFrameworkReviewReportQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);

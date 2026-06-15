@@ -5,6 +5,7 @@ import { formatTs } from '@/lib/timezone'
 
 function roleBadgeClass(role: string): string {
   if (role === 'Admin') return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+  if (role === 'Auditor') return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
   if (role === 'Developer') return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
   return 'bg-surface-700 text-surface-300 border-surface-600'
 }

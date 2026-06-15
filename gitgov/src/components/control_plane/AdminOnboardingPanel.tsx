@@ -135,6 +135,7 @@ export function AdminOnboardingPanel() {
             className="w-full bg-surface-900 border border-white/10 rounded px-2 py-1.5 text-xs text-surface-100"
           >
             <option>Admin</option>
+            <option>Auditor</option>
             <option>Architect</option>
             <option>Developer</option>
             <option>PM</option>
@@ -179,6 +180,7 @@ export function AdminOnboardingPanel() {
             className="w-full bg-surface-900 border border-white/10 rounded px-2 py-1.5 text-xs text-surface-100"
           >
             <option>Developer</option>
+            <option>Auditor</option>
             <option>Admin</option>
             <option>Architect</option>
             <option>PM</option>

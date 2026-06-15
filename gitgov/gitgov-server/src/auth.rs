@@ -262,7 +262,7 @@ pub async fn auth_middleware(
     };
 
     if auth_validation.used_stale_cache
-        && auth_user.role == UserRole::Admin
+        && matches!(auth_user.role, UserRole::Admin | UserRole::Auditor)
         && is_sensitive_admin_path(path.as_str())
     {
         tracing::warn!(
@@ -341,6 +341,15 @@ pub fn require_admin(user: &AuthUser) -> Result<(), AuthError> {
     Ok(())
 }
 
+pub fn require_compliance_reviewer(user: &AuthUser) -> Result<(), AuthError> {
+    if !matches!(user.role, UserRole::Admin | UserRole::Auditor) {
+        return Err(AuthError::forbidden(
+            "Admin or Auditor compliance review access required",
+        ));
+    }
+    Ok(())
+}
+
 pub fn is_founder_global_admin(user: &AuthUser) -> bool {
     user.role == UserRole::Admin && user.org_id.is_none() && user.is_platform_founder
 }
@@ -398,6 +407,15 @@ mod tests {
     #[test]
     fn require_admin_blocks_developer() {
         assert!(require_admin(&dev_user("dev1")).is_err());
+    }
+
+    #[test]
+    fn require_compliance_reviewer_allows_admin_and_auditor_only() {
+        let mut auditor = dev_user("auditor1");
+        auditor.role = UserRole::Auditor;
+        assert!(require_compliance_reviewer(&admin_user()).is_ok());
+        assert!(require_compliance_reviewer(&auditor).is_ok());
+        assert!(require_compliance_reviewer(&dev_user("dev1")).is_err());
     }
 
     #[test]

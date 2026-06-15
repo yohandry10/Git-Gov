@@ -495,7 +495,7 @@ pub async fn get_compliance_review_package(
     Path(review_package_id): Path<String>,
     Query(mut query): Query<ComplianceReviewPackageQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);
@@ -542,7 +542,7 @@ pub async fn download_compliance_review_package(
     Path(review_package_id): Path<String>,
     Query(mut query): Query<ComplianceReviewPackageQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);

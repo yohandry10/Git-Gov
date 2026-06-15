@@ -342,7 +342,7 @@ CREATE TABLE IF NOT EXISTS members (
     org_id UUID REFERENCES orgs(id) ON DELETE CASCADE,
     github_login TEXT NOT NULL,
     github_id BIGINT,
-    role TEXT NOT NULL DEFAULT 'Developer',  -- Admin, Architect, Developer, PM
+    role TEXT NOT NULL DEFAULT 'Developer',  -- Admin, Auditor, Architect, Developer, PM
     groups JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -512,7 +512,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_used TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE,
-    CONSTRAINT api_keys_role_check CHECK (role IN ('Admin', 'Architect', 'Developer', 'PM'))
+    CONSTRAINT api_keys_role_check CHECK (role IN ('Admin', 'Auditor', 'Architect', 'Developer', 'PM'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
