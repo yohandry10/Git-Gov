@@ -761,6 +761,11 @@ export interface CompliancePeriodReportRecord {
   certification: boolean
   created_at: number
   downloaded_at?: number | null
+  retention_status: 'active' | 'archived' | 'retention_expired' | string
+  retention_until: number
+  download_count: number
+  last_downloaded_at?: number | null
+  archived_at?: number | null
   error_message_safe?: string | null
 }
 
@@ -772,6 +777,36 @@ export interface CompliancePeriodReportResponse {
 
 export interface CompliancePeriodReportListResponse {
   items: CompliancePeriodReportRecord[]
+  count: number
+  limit: number
+}
+
+export interface CompliancePeriodReportRetentionRequest {
+  org_name?: string | null
+  retention_until?: number | null
+  archive?: boolean
+}
+
+export interface CompliancePeriodReportAccessLogQuery {
+  org_name?: string | null
+  limit?: number | null
+}
+
+export interface CompliancePeriodReportAccessLogRecord {
+  access_log_id: string
+  org_id: string
+  period_report_id: string
+  actor_client_id: string
+  action: string
+  artifact_type: string
+  artifact_id?: string | null
+  artifact_hash?: string | null
+  metadata: Record<string, unknown>
+  created_at: number
+}
+
+export interface CompliancePeriodReportAccessLogResponse {
+  items: CompliancePeriodReportAccessLogRecord[]
   count: number
   limit: number
 }
@@ -1244,6 +1279,7 @@ export interface ControlPlaneState {
   compliancePeriodReport: CompliancePeriodReportResponse | null
   compliancePeriodReports: CompliancePeriodReportListResponse | null
   compliancePeriodReportArtifact: Record<string, unknown> | null
+  compliancePeriodReportAccessLog: CompliancePeriodReportAccessLogResponse | null
   compliancePeriodReportPdfExport: CompliancePeriodReportPdfExportResponse | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
@@ -1272,6 +1308,8 @@ export interface ControlPlaneState {
   isCompliancePeriodReportCreating: boolean
   isCompliancePeriodReportsLoading: boolean
   isCompliancePeriodReportDownloading: boolean
+  isCompliancePeriodReportRetentionUpdating: boolean
+  isCompliancePeriodReportAccessLogLoading: boolean
   isCompliancePeriodReportPdfExportCreating: boolean
   isCompliancePeriodReportPdfExportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
@@ -1400,6 +1438,14 @@ export interface ControlPlaneActions {
   ) => Promise<CompliancePeriodReportResponse | null>
   loadCompliancePeriodReports: (filters?: Omit<CompliancePeriodReportQuery, 'org_name'>) => Promise<CompliancePeriodReportListResponse | null>
   downloadCompliancePeriodReport: (periodReportId: string) => Promise<Record<string, unknown> | null>
+  updateCompliancePeriodReportRetention: (
+    periodReportId: string,
+    payload: Omit<CompliancePeriodReportRetentionRequest, 'org_name'>,
+  ) => Promise<CompliancePeriodReportResponse | null>
+  loadCompliancePeriodReportAccessLog: (
+    periodReportId: string,
+    query?: Omit<CompliancePeriodReportAccessLogQuery, 'org_name'>,
+  ) => Promise<CompliancePeriodReportAccessLogResponse | null>
   createCompliancePeriodReportPdfExport: (periodReportId: string) => Promise<CompliancePeriodReportPdfExportResponse | null>
   downloadCompliancePeriodReportPdfExport: (periodReportId: string, pdfExportId?: string | null) => Promise<CompliancePeriodReportPdfDownloadResponse | null>
   resetComplianceEvidenceFlow: () => void

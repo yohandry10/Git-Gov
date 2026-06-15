@@ -22,10 +22,12 @@ use crate::control_plane::{
     ComplianceFrameworkReviewReportProvenanceManifestResponse,
     ComplianceFrameworkReviewReportQuery, ComplianceFrameworkReviewReportRequest,
     ComplianceFrameworkReviewReportResponse, ComplianceFrameworkReviewReportReviewRequest,
+    CompliancePeriodReportAccessLogQuery, CompliancePeriodReportAccessLogResponse,
     CompliancePeriodReportListResponse, CompliancePeriodReportPdfDownloadResponse,
     CompliancePeriodReportPdfExportQuery, CompliancePeriodReportPdfExportRequest,
     CompliancePeriodReportPdfExportResponse, CompliancePeriodReportQuery,
-    CompliancePeriodReportRequest, CompliancePeriodReportResponse, ComplianceReviewPackageQuery,
+    CompliancePeriodReportRequest, CompliancePeriodReportResponse,
+    CompliancePeriodReportRetentionRequest, ComplianceReviewPackageQuery,
     ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
     CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
@@ -1452,6 +1454,42 @@ pub async fn cmd_server_download_compliance_period_report(
         });
         client
             .download_compliance_period_report(&period_report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_update_compliance_period_report_retention(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    payload: CompliancePeriodReportRetentionRequest,
+) -> Result<CompliancePeriodReportResponse, String> {
+    run_blocking_command("UPDATE_COMPLIANCE_PERIOD_REPORT_RETENTION", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .update_compliance_period_report_retention(&period_report_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_period_report_access_log(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    query: CompliancePeriodReportAccessLogQuery,
+) -> Result<CompliancePeriodReportAccessLogResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_PERIOD_REPORT_ACCESS_LOG", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_period_report_access_log(&period_report_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

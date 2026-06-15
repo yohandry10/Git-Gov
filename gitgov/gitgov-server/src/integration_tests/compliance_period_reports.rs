@@ -495,6 +495,16 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert_eq!(period_report["regulatory_claim"], false);
     assert_eq!(period_report["certification"], false);
     assert_eq!(period_report["requires_auditor_review"], true);
+    assert_eq!(period_report["retention_status"], "active");
+    assert!(
+        period_report["retention_until"]
+            .as_i64()
+            .unwrap_or_default()
+            > period_report["created_at"].as_i64().unwrap_or_default()
+    );
+    assert_eq!(period_report["download_count"], 0);
+    assert!(period_report["last_downloaded_at"].is_null());
+    assert!(period_report["archived_at"].is_null());
     assert_eq!(
         artifact["schema_version"],
         "gitgov_period_compliance_report.v1"
@@ -543,6 +553,15 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
         Sha256::digest(serde_json::to_string(artifact).unwrap().as_bytes())
     );
     assert_eq!(recomputed_hash, artifact_hash);
+
+    let initial_access_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("initial period access log count");
+    assert_eq!(initial_access_log_count, 0);
 
     let (status, auditor_list) = json_request(
         &app,
@@ -600,6 +619,22 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert!(other_download.contains("not found"));
 
+    let (status, auditor_get) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor get failed: {auditor_get}");
+    let auditor_get: serde_json::Value =
+        serde_json::from_str(&auditor_get).expect("auditor get JSON");
+    assert_eq!(
+        auditor_get["period_report"]["period_report_id"],
+        period_report_id
+    );
+
     let (status, download) = json_request(
         &app,
         "GET",
@@ -618,6 +653,32 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert_eq!(downloaded["period_report_id"], period_report_id);
     assert_eq!(downloaded["source_hashes"], artifact["source_hashes"]);
     assert_eq!(downloaded["claims"]["requires_auditor_review"], true);
+
+    let download_custody: (i32, Option<i64>) = sqlx::query_as(
+        r#"
+        SELECT
+            download_count,
+            ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at
+        FROM compliance_period_reports
+        WHERE period_report_id = $1
+        "#,
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period report JSON download custody");
+    assert_eq!(download_custody.0, 1);
+    assert!(download_custody.1.unwrap_or_default() > 0);
+
+    let json_download_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action = 'downloaded_json' AND artifact_hash = $2",
+    )
+    .bind(period_report_id)
+    .bind(artifact_hash)
+    .fetch_one(&pool)
+    .await
+    .expect("period JSON download access log");
+    assert_eq!(json_download_log_count, 1);
 
     let (status, _unassigned_pdf_create) = json_request(
         &app,
@@ -693,6 +754,33 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     let recomputed_pdf_hash = format!("sha256:{:x}", Sha256::digest(pdf_download.as_bytes()));
     assert_eq!(recomputed_pdf_hash, pdf_artifact_hash);
 
+    let pdf_download_custody: (i32, Option<i64>) = sqlx::query_as(
+        r#"
+        SELECT
+            download_count,
+            ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at
+        FROM compliance_period_reports
+        WHERE period_report_id = $1
+        "#,
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("period report PDF download custody");
+    assert_eq!(pdf_download_custody.0, 2);
+    assert!(pdf_download_custody.1.unwrap_or_default() > 0);
+
+    let pdf_download_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action = 'downloaded_pdf' AND artifact_id = $2 AND artifact_hash = $3",
+    )
+    .bind(period_report_id)
+    .bind(pdf_export_id)
+    .bind(pdf_artifact_hash)
+    .fetch_one(&pool)
+    .await
+    .expect("period PDF download access log");
+    assert_eq!(pdf_download_log_count, 1);
+
     let pdf_downloaded_at: Option<i64> = sqlx::query_scalar(
         "SELECT ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT FROM compliance_period_report_pdf_exports WHERE pdf_export_id = $1",
     )
@@ -719,6 +807,175 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("downloaded_at");
     assert!(downloaded_at.unwrap_or_default() > 0);
+
+    let retention_until_future = chrono::Utc::now().timestamp_millis() + 365 * 24 * 60 * 60 * 1000;
+    let (status, auditor_retention_update) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/retention"),
+        Some(
+            &json!({
+                "retention_until": retention_until_future,
+                "archive": false
+            })
+            .to_string(),
+        ),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_retention_update.contains("Admin access required"));
+
+    let retention_until_past = chrono::Utc::now().timestamp_millis() - 24 * 60 * 60 * 1000;
+    let (status, expired_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/retention"),
+        Some(
+            &json!({
+                "retention_until": retention_until_past,
+                "archive": false
+            })
+            .to_string(),
+        ),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "retention expiration update failed: {expired_response}"
+    );
+    let expired_response: serde_json::Value =
+        serde_json::from_str(&expired_response).expect("expired response JSON");
+    assert_eq!(
+        expired_response["period_report"]["retention_status"],
+        "retention_expired"
+    );
+    assert_eq!(expired_response["period_report"]["download_count"], 2);
+
+    let (status, expired_download) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/download"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "expired report logical download failed: {expired_download}"
+    );
+    assert!(expired_download.contains(period_report_id));
+
+    let (status, future_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/retention"),
+        Some(
+            &json!({
+                "retention_until": retention_until_future,
+                "archive": false
+            })
+            .to_string(),
+        ),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "retention extension failed: {future_response}"
+    );
+    let future_response: serde_json::Value =
+        serde_json::from_str(&future_response).expect("future retention response JSON");
+    assert_eq!(
+        future_response["period_report"]["retention_status"],
+        "active"
+    );
+
+    let (status, archive_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-reports/{period_report_id}/retention"),
+        Some(&json!({ "archive": true }).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "archive failed: {archive_response}");
+    let archive_response: serde_json::Value =
+        serde_json::from_str(&archive_response).expect("archive response JSON");
+    assert_eq!(
+        archive_response["period_report"]["retention_status"],
+        "archived"
+    );
+    assert!(
+        archive_response["period_report"]["archived_at"]
+            .as_i64()
+            .unwrap_or_default()
+            > 0
+    );
+
+    let (status, access_log_response) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/access-log?limit=20"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "access log failed: {access_log_response}"
+    );
+    let access_log_response: serde_json::Value =
+        serde_json::from_str(&access_log_response).expect("access log JSON");
+    let actions = access_log_response["items"]
+        .as_array()
+        .expect("access log items")
+        .iter()
+        .filter_map(|item| item["action"].as_str())
+        .collect::<Vec<_>>();
+    assert!(actions.contains(&"viewed"));
+    assert!(actions.contains(&"downloaded_json"));
+    assert!(actions.contains(&"downloaded_pdf"));
+    assert!(actions.contains(&"retention_updated"));
+    assert!(actions.contains(&"archived"));
+    assert_eq!(
+        access_log_response["items"][0]["artifact_hash"],
+        artifact_hash
+    );
+
+    let (status, other_access_log_response) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/access-log"),
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_access_log_response.contains("not found"));
+
+    let archived_row: (String, Option<i64>, i32) = sqlx::query_as(
+        r#"
+        SELECT
+            retention_status,
+            ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at,
+            download_count
+        FROM compliance_period_reports
+        WHERE period_report_id = $1
+        "#,
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("archived report still exists");
+    assert_eq!(archived_row.0, "archived");
+    assert!(archived_row.1.unwrap_or_default() > 0);
+    assert_eq!(archived_row.2, 3);
 
     let report_hash_after_period: String = sqlx::query_scalar(
         "SELECT artifact_hash FROM compliance_framework_review_reports WHERE report_id = $1",
@@ -760,6 +1017,24 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("count period PDF audit rows");
     assert_eq!(pdf_audit_count, 1);
+
+    let retention_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.retention_updated'",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count retention audit rows");
+    assert_eq!(retention_audit_count, 2);
+
+    let archive_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.archived'",
+    )
+    .bind(period_report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count archive audit rows");
+    assert_eq!(archive_audit_count, 1);
 
     teardown(&admin_pool, &schema).await;
 }

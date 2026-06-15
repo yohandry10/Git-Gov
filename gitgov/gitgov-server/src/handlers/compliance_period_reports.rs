@@ -588,11 +588,35 @@ pub async fn get_compliance_period_report(
         )
         .await
     {
-        Ok(Some(period_report)) => (
-            StatusCode::OK,
-            Json(compliance_period_report_response(period_report, None)),
-        )
-            .into_response(),
+        Ok(Some(period_report)) => {
+            append_period_report_access_log(
+                &state,
+                PeriodReportAccessLogInput {
+                    org_id: &org_id,
+                    period_report_id: &period_report_id,
+                    actor_client_id: &auth_user.client_id,
+                    action: "viewed",
+                    artifact_type: "metadata",
+                    artifact_id: Some(&period_report.period_report_id),
+                    artifact_hash: Some(&period_report.artifact_hash),
+                    metadata: json!({
+                    "retention_status": period_report.retention_status.clone(),
+                    "retention_until": period_report.retention_until,
+                    "download_count": period_report.download_count,
+                    "compliance_claim": false,
+                    "regulatory_claim": false,
+                    "certification": false,
+                    "agent_governance_required": false
+                    }),
+                },
+            )
+            .await;
+            (
+                StatusCode::OK,
+                Json(compliance_period_report_response(period_report, None)),
+            )
+                .into_response()
+        }
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "Compliance period report not found" })),
@@ -646,6 +670,29 @@ pub async fn download_compliance_period_report(
         .await
     {
         Ok(Some((period_report, artifact))) => {
+            append_period_report_access_log(
+                &state,
+                PeriodReportAccessLogInput {
+                    org_id: &org_id,
+                    period_report_id: &period_report_id,
+                    actor_client_id: &auth_user.client_id,
+                    action: "downloaded_json",
+                    artifact_type: "json",
+                    artifact_id: Some(&period_report.period_report_id),
+                    artifact_hash: Some(&period_report.artifact_hash),
+                    metadata: json!({
+                    "download_count": period_report.download_count,
+                    "last_downloaded_at": period_report.last_downloaded_at,
+                    "retention_status": period_report.retention_status.clone(),
+                    "retention_until": period_report.retention_until,
+                    "compliance_claim": false,
+                    "regulatory_claim": false,
+                    "certification": false,
+                    "agent_governance_required": false
+                    }),
+                },
+            )
+            .await;
             let mut headers = HeaderMap::new();
             headers.insert(
                 axum::http::header::CONTENT_TYPE,
@@ -682,4 +729,5 @@ pub async fn download_compliance_period_report(
     }
 }
 
+include!("compliance_period_reports/retention.rs");
 include!("compliance_period_reports/pdf_exports.rs");

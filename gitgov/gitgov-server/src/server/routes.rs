@@ -318,6 +318,14 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::get_compliance_period_report),
         )
         .route(
+            "/compliance/period-reports/{period_report_id}/retention",
+            patch(handlers::update_compliance_period_report_retention),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/access-log",
+            get(handlers::list_compliance_period_report_access_log),
+        )
+        .route(
             "/compliance/period-reports/{period_report_id}/pdf-export",
             get(handlers::get_compliance_period_report_pdf_export)
                 .post(handlers::create_compliance_period_report_pdf_export),

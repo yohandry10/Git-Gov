@@ -1,4 +1,4 @@
-import { CalendarDays, Download, FileJson, FileText, RefreshCw } from 'lucide-react'
+import { Archive, CalendarDays, Clock3, Download, FileJson, FileText, History, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
@@ -72,6 +72,21 @@ function summaryNumber(artifact: Record<string, unknown> | null, key: string): n
   return typeof value === 'number' ? value : null
 }
 
+function retentionBadgeVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'active') return 'success'
+  if (status === 'retention_expired') return 'warning'
+  if (status === 'archived') return 'neutral'
+  return 'danger'
+}
+
+function formatOptionalTs(timestamp: number | null | undefined, timezone: string): string {
+  return timestamp ? formatTs(timestamp, timezone) : 'not recorded'
+}
+
+function oneYearFromNow(): number {
+  return Date.now() + 365 * 24 * 60 * 60 * 1000
+}
+
 export function CompliancePeriodReportPanel() {
   const [dateRangeStart, setDateRangeStart] = useState(defaultPeriodStart)
   const [dateRangeEnd, setDateRangeEnd] = useState(defaultPeriodEnd)
@@ -79,19 +94,26 @@ export function CompliancePeriodReportPanel() {
   const periodReport = useControlPlaneStore((state) => state.compliancePeriodReport?.period_report ?? null)
   const periodReports = useControlPlaneStore((state) => state.compliancePeriodReports)
   const periodArtifact = useControlPlaneStore((state) => state.compliancePeriodReportArtifact)
+  const periodAccessLog = useControlPlaneStore((state) => state.compliancePeriodReportAccessLog)
   const periodPdfExport = useControlPlaneStore((state) => state.compliancePeriodReportPdfExport?.pdf_export ?? null)
   const isCreating = useControlPlaneStore((state) => state.isCompliancePeriodReportCreating)
   const isLoading = useControlPlaneStore((state) => state.isCompliancePeriodReportsLoading)
   const isDownloading = useControlPlaneStore((state) => state.isCompliancePeriodReportDownloading)
+  const isRetentionUpdating = useControlPlaneStore((state) => state.isCompliancePeriodReportRetentionUpdating)
+  const isAccessLogLoading = useControlPlaneStore((state) => state.isCompliancePeriodReportAccessLogLoading)
   const isCreatingPdf = useControlPlaneStore((state) => state.isCompliancePeriodReportPdfExportCreating)
   const isDownloadingPdf = useControlPlaneStore((state) => state.isCompliancePeriodReportPdfExportDownloading)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
+  const userRole = useControlPlaneStore((state) => state.userRole)
   const createPeriodReport = useControlPlaneStore((state) => state.createCompliancePeriodReport)
   const loadPeriodReports = useControlPlaneStore((state) => state.loadCompliancePeriodReports)
   const downloadPeriodReport = useControlPlaneStore((state) => state.downloadCompliancePeriodReport)
+  const updatePeriodReportRetention = useControlPlaneStore((state) => state.updateCompliancePeriodReportRetention)
+  const loadPeriodReportAccessLog = useControlPlaneStore((state) => state.loadCompliancePeriodReportAccessLog)
   const createPeriodReportPdf = useControlPlaneStore((state) => state.createCompliancePeriodReportPdfExport)
   const downloadPeriodReportPdf = useControlPlaneStore((state) => state.downloadCompliancePeriodReportPdfExport)
 
+  const isAdmin = userRole === 'Admin'
   const canGenerate = dateRangeStart > 0 && dateRangeEnd > dateRangeStart
   const reportCount = summaryNumber(periodArtifact, 'report_count') ?? periodReport?.report_count ?? 0
   const missingCount = summaryNumber(periodArtifact, 'missing_evidence_type_count')
@@ -118,6 +140,23 @@ export function CompliancePeriodReportPanel() {
     await createPeriodReportPdf(periodReportId)
   }
 
+  const handleExtendRetention = async (periodReportId: string) => {
+    await updatePeriodReportRetention(periodReportId, {
+      retention_until: oneYearFromNow(),
+      archive: false,
+    })
+    await loadPeriodReportAccessLog(periodReportId, { limit: 10 })
+  }
+
+  const handleArchive = async (periodReportId: string) => {
+    await updatePeriodReportRetention(periodReportId, { archive: true })
+    await loadPeriodReportAccessLog(periodReportId, { limit: 10 })
+  }
+
+  const handleLoadAccessLog = async (periodReportId: string) => {
+    await loadPeriodReportAccessLog(periodReportId, { limit: 10 })
+  }
+
   const handleDownloadPdf = async (periodReportId: string, pdfExportId?: string | null) => {
     const response = await downloadPeriodReportPdf(periodReportId, pdfExportId)
     if (response) {
@@ -133,6 +172,11 @@ export function CompliancePeriodReportPanel() {
           Period compliance report
           <Badge variant="info">manual JSON/PDF</Badge>
           {periodReport && <Badge variant="success">{periodReport.report_count} reports</Badge>}
+          {periodReport && (
+            <Badge variant={retentionBadgeVariant(periodReport.retention_status)}>
+              {periodReport.retention_status.replace(/_/g, ' ')}
+            </Badge>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-1 text-[11px] text-surface-500">
@@ -202,6 +246,31 @@ export function CompliancePeriodReportPanel() {
             <div className="mt-1 text-surface-200">{reportCount} reviewed reports</div>
             <div className="mt-1 text-surface-500">{missingCount ?? 'unknown'} missing evidence types</div>
           </div>
+          <div className="rounded border border-white/6 bg-surface-950 p-2 md:col-span-2">
+            <div className="flex items-center gap-1 text-surface-500">
+              <Clock3 size={12} />
+              Retention
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <Badge variant={retentionBadgeVariant(periodReport.retention_status)}>
+                {periodReport.retention_status.replace(/_/g, ' ')}
+              </Badge>
+              <span className="text-surface-200">{formatOptionalTs(periodReport.retention_until, displayTimezone)}</span>
+            </div>
+            <div className="mt-1 text-surface-500">
+              Archived: {formatOptionalTs(periodReport.archived_at, displayTimezone)}
+            </div>
+          </div>
+          <div className="rounded border border-white/6 bg-surface-950 p-2 md:col-span-2">
+            <div className="flex items-center gap-1 text-surface-500">
+              <History size={12} />
+              Export custody
+            </div>
+            <div className="mt-1 text-surface-200">{periodReport.download_count} downloads</div>
+            <div className="mt-1 text-surface-500">
+              Last download: {formatOptionalTs(periodReport.last_downloaded_at, displayTimezone)}
+            </div>
+          </div>
         </div>
       )}
 
@@ -212,6 +281,40 @@ export function CompliancePeriodReportPanel() {
             {periodReport.source_report_ids.length > 4 ? ` +${periodReport.source_report_ids.length - 4}` : ''}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              loading={isAccessLogLoading}
+              onClick={() => void handleLoadAccessLog(periodReport.period_report_id)}
+              title="Load append-only access log for this period compliance report"
+            >
+              <History size={13} />
+              Log
+            </Button>
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                loading={isRetentionUpdating}
+                onClick={() => void handleExtendRetention(periodReport.period_report_id)}
+                title="Extend retention one year from now"
+              >
+                <Clock3 size={13} />
+                Extend
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                loading={isRetentionUpdating}
+                onClick={() => void handleArchive(periodReport.period_report_id)}
+                title="Archive this period compliance report without deleting the artifact"
+              >
+                <Archive size={13} />
+                Archive
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -261,6 +364,29 @@ export function CompliancePeriodReportPanel() {
         </div>
       )}
 
+      {periodAccessLog && periodAccessLog.items.length > 0 && (
+        <div className="mt-2 rounded border border-white/6 bg-surface-950 p-2 text-[11px]">
+          <div className="flex items-center gap-2 text-surface-300">
+            <History size={13} className="text-brand-300" />
+            Access log
+            <Badge variant="neutral">{periodAccessLog.count} events</Badge>
+          </div>
+          <div className="mt-2 space-y-1">
+            {periodAccessLog.items.slice(0, 10).map((entry) => (
+              <div key={entry.access_log_id} className="grid gap-1 rounded border border-white/6 bg-white/[0.02] p-2 md:grid-cols-[140px_1fr_160px]">
+                <div className="font-mono text-surface-200">{entry.action}</div>
+                <div className="min-w-0 truncate text-surface-500" title={`${entry.artifact_type} ${entry.artifact_id ?? ''} ${entry.artifact_hash ?? ''}`}>
+                  {entry.artifact_type}
+                  {entry.artifact_id ? ` · ${entry.artifact_id}` : ''}
+                  {entry.artifact_hash ? ` · ${shortHash(entry.artifact_hash)}` : ''}
+                </div>
+                <div className="text-surface-500">{formatTs(entry.created_at, displayTimezone)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {periodReports && periodReports.items.length > 0 && (
         <div className="mt-2 space-y-2">
           {periodReports.items.slice(0, 5).map((item) => (
@@ -270,11 +396,23 @@ export function CompliancePeriodReportPanel() {
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-surface-500">
                   <span>{item.report_count} reports</span>
                   <span>{shortHash(item.artifact_hash)}</span>
+                  <span>{item.download_count} downloads</span>
+                  <span>{item.retention_status.replace(/_/g, ' ')}</span>
                   <span>{formatTs(item.created_at, displayTimezone)}</span>
                   <span>{item.framework_id ?? 'all frameworks'}</span>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={isAccessLogLoading}
+                  onClick={() => void handleLoadAccessLog(item.period_report_id)}
+                  title="Load access log for this historical period report"
+                >
+                  <History size={13} />
+                  Log
+                </Button>
                 <Button
                   size="sm"
                   variant="ghost"

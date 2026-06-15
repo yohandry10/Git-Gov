@@ -608,8 +608,18 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             requires_auditor_review BOOLEAN NOT NULL DEFAULT TRUE CHECK (requires_auditor_review = TRUE),
             certification BOOLEAN NOT NULL DEFAULT FALSE CHECK (certification = FALSE),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            retention_status TEXT NOT NULL DEFAULT 'active'
+                CHECK (retention_status IN ('active', 'archived', 'retention_expired')),
+            retention_until TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 years'),
+            download_count INTEGER NOT NULL DEFAULT 0 CHECK (download_count >= 0),
+            last_downloaded_at TIMESTAMPTZ,
+            archived_at TIMESTAMPTZ,
             downloaded_at TIMESTAMPTZ,
             error_message_safe TEXT,
+            CHECK (
+                (retention_status = 'archived' AND archived_at IS NOT NULL)
+                OR retention_status <> 'archived'
+            ),
             CHECK (period_report_id LIKE 'cpr_%'),
             CHECK (date_range_end > date_range_start),
             CHECK (jsonb_typeof(source_report_ids) = 'array'),
@@ -630,6 +640,32 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_compliance_period_reports_artifact_hash
             ON compliance_period_reports(org_id, artifact_hash);
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_reports_retention
+            ON compliance_period_reports(org_id, retention_status, retention_until);
+
+        CREATE TABLE IF NOT EXISTS compliance_period_report_access_log (
+            access_log_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
+            actor_client_id TEXT NOT NULL,
+            action TEXT NOT NULL CHECK (
+                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated')
+            ),
+            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention')),
+            artifact_id TEXT,
+            artifact_hash TEXT CHECK (artifact_hash IS NULL OR artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CHECK (access_log_id LIKE 'cprlog_%'),
+            CHECK (jsonb_typeof(metadata) = 'object')
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_report_access_log_report_created
+            ON compliance_period_report_access_log(org_id, period_report_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_report_access_log_actor_created
+            ON compliance_period_report_access_log(org_id, actor_client_id, created_at DESC);
 
         CREATE TABLE IF NOT EXISTS compliance_period_report_pdf_exports (
             pdf_export_id TEXT PRIMARY KEY,
@@ -1809,6 +1845,14 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/period-reports/{period_report_id}",
             get(handlers::get_compliance_period_report),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/retention",
+            patch(handlers::update_compliance_period_report_retention),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/access-log",
+            get(handlers::list_compliance_period_report_access_log),
         )
         .route(
             "/compliance/period-reports/{period_report_id}/pdf-export",

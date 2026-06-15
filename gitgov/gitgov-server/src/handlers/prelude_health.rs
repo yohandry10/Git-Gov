@@ -5,6 +5,7 @@ use crate::db::{
     CreateComplianceFrameworkReviewReportPdfExportInput,
     CreateComplianceFrameworkReviewReportProvenanceManifestInput,
     CreateCompliancePeriodReportInput,
+    CreateCompliancePeriodReportAccessLogInput,
     CreateCompliancePeriodReportPdfExportInput,
     CreateAgentGovernanceEvaluationInput, CreateComplianceEvidenceExportInput,
     CreateComplianceEvidenceMappingInput, CreateComplianceEvidenceMappingItemInput,
@@ -17,6 +18,7 @@ use crate::db::{
     ListPolicyChangeRequestsInput, NoncomplianceSignalsQuery, PipelineRunsForEvidencePacketQuery,
     PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput,
     UpdateComplianceFrameworkReviewReportReviewInput, UpsertOrgUserInput,
+    UpdateCompliancePeriodReportRetentionInput,
     UpsertComplianceFrameworkReviewReportAssignmentsInput,
 };
 use crate::models::*;
