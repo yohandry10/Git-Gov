@@ -47,7 +47,28 @@ unassigned Auditor, blocks another tenant, creates a safe comment, rejects secre
 review metadata as the assigned Auditor, checks audit rows, preserves the artifact hash and no-claim
 flags, and confirms Agent Governance evaluations are unchanged.
 
-## Remaining Before Merge
+## Merge
 
-- Push `product/KAN-109-auditor-assignments-comments`, open PR, wait required checks, merge, deploy,
-  apply production migration, and run production smoke with temporary Auditor keys.
+Completed by PR `#381`, merged to `main` as `cee4594`.
+
+## Production Validation
+
+- Post-merge `main` checks passed for `cee4594`: `CI`, `Release Readiness Gate`, `Quality Gate
+  Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop
+  Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8nlhi6q1p3s738c7f10` for `cee4594` reached `live`.
+- Production `supabase_schema_v52.sql` plus `supabase_schema_v52_postcheck.sql` passed.
+- Production smoke passed on report `frr_ac4ee214bc051caee783485d5755d34a`:
+  - `/health=200`
+  - authenticated `/stats=200`
+  - temporary Auditor A assigned to the report
+  - Auditor A `assigned-to-me` returned the report
+  - temporary Auditor B `assigned-to-me` did not return the report
+  - Auditor A comment returned `201`
+  - Auditor B comment and review returned `403 auditor_not_assigned`
+  - Auditor A review returned `200`
+  - report `artifact_hash` stayed unchanged
+  - `compliance_claim=false`, `regulatory_claim=false`, `certification=false`, and
+    `requires_auditor_review=true` stayed unchanged
+  - active assignments were cleared after smoke
+  - all `kan109-prod-*` temporary API keys were revoked (`activeTemp=0`)
