@@ -33,6 +33,8 @@ use crate::control_plane::{
     CompliancePeriodReportProvenanceManifestResponse, CompliancePeriodReportQuery,
     CompliancePeriodReportRequest, CompliancePeriodReportResponse,
     CompliancePeriodReportRetentionRequest, CompliancePeriodReportReviewRequest,
+    CompliancePeriodReportSharePackageListResponse, CompliancePeriodReportSharePackageQuery,
+    CompliancePeriodReportSharePackageRequest, CompliancePeriodReportSharePackageResponse,
     ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
     ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
@@ -1619,6 +1621,99 @@ pub async fn cmd_server_list_compliance_period_report_access_log(
         });
         client
             .list_compliance_period_report_access_log(&period_report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_period_report_share_package(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    payload: CompliancePeriodReportSharePackageRequest,
+) -> Result<CompliancePeriodReportSharePackageResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_period_report_share_package(&period_report_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_period_report_share_packages(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    query: CompliancePeriodReportSharePackageQuery,
+) -> Result<CompliancePeriodReportSharePackageListResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGES", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_period_report_share_packages(&period_report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_period_report_share_package(
+    config: ServerConnectionConfig,
+    share_package_id: String,
+    query: CompliancePeriodReportSharePackageQuery,
+) -> Result<CompliancePeriodReportSharePackageResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_period_report_share_package(&share_package_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_period_report_share_package(
+    config: ServerConnectionConfig,
+    share_package_id: String,
+    query: CompliancePeriodReportSharePackageQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command(
+        "DOWNLOAD_COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .download_compliance_period_report_share_package(&share_package_id, &query)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_revoke_compliance_period_report_share_package(
+    config: ServerConnectionConfig,
+    share_package_id: String,
+    payload: CompliancePeriodReportSharePackageRequest,
+) -> Result<CompliancePeriodReportSharePackageResponse, String> {
+    run_blocking_command("REVOKE_COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .revoke_compliance_period_report_share_package(&share_package_id, &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

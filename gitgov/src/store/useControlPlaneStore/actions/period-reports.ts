@@ -4,6 +4,8 @@ import type {
   CompliancePeriodReportPdfDownloadResponse,
   CompliancePeriodReportPdfExportResponse,
   CompliancePeriodReportProvenanceManifestResponse,
+  CompliancePeriodReportSharePackageListResponse,
+  CompliancePeriodReportSharePackageResponse,
   CompliancePeriodReportProfileListResponse,
   CompliancePeriodReportProfilePatchRequest,
   CompliancePeriodReportProfileRequest,
@@ -32,6 +34,10 @@ type PeriodReportActionKeys =
   | 'downloadCompliancePeriodReportPdfExport'
   | 'createCompliancePeriodReportProvenanceManifest'
   | 'downloadCompliancePeriodReportProvenanceManifest'
+  | 'createCompliancePeriodReportSharePackage'
+  | 'loadCompliancePeriodReportSharePackages'
+  | 'downloadCompliancePeriodReportSharePackage'
+  | 'revokeCompliancePeriodReportSharePackage'
 
 export function createCompliancePeriodReportActions(
   set: ControlPlaneSet,
@@ -704,6 +710,193 @@ export function createCompliancePeriodReportActions(
         set({
           complianceEvidenceError: message,
           isCompliancePeriodReportProvenanceManifestDownloading: false,
+        })
+        return null
+      }
+    },
+
+    createCompliancePeriodReportSharePackage: async (periodReportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      if (!serverConfig || !normalizedPeriodReportId) return null
+
+      set({
+        isCompliancePeriodReportSharePackageCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportSharePackageResponse>(
+          'cmd_server_create_compliance_period_report_share_package',
+          {
+            config: serverConfig,
+            periodReportId: normalizedPeriodReportId,
+            payload: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        const currentPackages = get().compliancePeriodReportSharePackages
+        set({
+          compliancePeriodReportSharePackage: response,
+          compliancePeriodReportSharePackageArtifact: response.artifact ?? null,
+          compliancePeriodReportSharePackages: currentPackages
+            ? {
+              ...currentPackages,
+              items: [
+                response.share_package,
+                ...currentPackages.items.filter(
+                  (item) => item.share_package_id !== response.share_package.share_package_id,
+                ),
+              ].slice(0, currentPackages.limit),
+              count: Math.min(currentPackages.limit, currentPackages.count + 1),
+            }
+            : {
+              items: [response.share_package],
+              count: 1,
+              limit: 25,
+            },
+          isCompliancePeriodReportSharePackageCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportSharePackageCreating: false,
+        })
+        return null
+      }
+    },
+
+    loadCompliancePeriodReportSharePackages: async (periodReportId, query = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      if (!serverConfig || !normalizedPeriodReportId) return null
+
+      set({
+        isCompliancePeriodReportSharePackagesLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportSharePackageListResponse>(
+          'cmd_server_list_compliance_period_report_share_packages',
+          {
+            config: serverConfig,
+            periodReportId: normalizedPeriodReportId,
+            query: {
+              org_name: selectedOrgName.trim() || null,
+              status: query.status ?? null,
+              limit: query.limit ?? 25,
+            },
+          },
+        )
+        set({
+          compliancePeriodReportSharePackages: response,
+          isCompliancePeriodReportSharePackagesLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportSharePackagesLoading: false,
+        })
+        return null
+      }
+    },
+
+    downloadCompliancePeriodReportSharePackage: async (sharePackageId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedSharePackageId = sharePackageId.trim()
+      if (!serverConfig || !normalizedSharePackageId) return null
+
+      set({
+        isCompliancePeriodReportSharePackageDownloading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const artifact = await tauriInvoke<Record<string, unknown>>(
+          'cmd_server_download_compliance_period_report_share_package',
+          {
+            config: serverConfig,
+            sharePackageId: normalizedSharePackageId,
+            query: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        const currentPackages = get().compliancePeriodReportSharePackages
+        set({
+          compliancePeriodReportSharePackageArtifact: artifact,
+          compliancePeriodReportSharePackages: currentPackages
+            ? {
+              ...currentPackages,
+              items: currentPackages.items.map((item) =>
+                item.share_package_id === normalizedSharePackageId
+                  ? {
+                    ...item,
+                    download_count: item.download_count + 1,
+                    last_downloaded_at: Date.now(),
+                    downloaded_at: item.downloaded_at ?? Date.now(),
+                  }
+                  : item,
+              ),
+            }
+            : currentPackages,
+          isCompliancePeriodReportSharePackageDownloading: false,
+        })
+        return artifact
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportSharePackageDownloading: false,
+        })
+        return null
+      }
+    },
+
+    revokeCompliancePeriodReportSharePackage: async (sharePackageId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedSharePackageId = sharePackageId.trim()
+      if (!serverConfig || !normalizedSharePackageId) return null
+
+      set({
+        isCompliancePeriodReportSharePackageRevoking: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportSharePackageResponse>(
+          'cmd_server_revoke_compliance_period_report_share_package',
+          {
+            config: serverConfig,
+            sharePackageId: normalizedSharePackageId,
+            payload: {
+              org_name: selectedOrgName.trim() || null,
+            },
+          },
+        )
+        const currentPackages = get().compliancePeriodReportSharePackages
+        set({
+          compliancePeriodReportSharePackage: response,
+          compliancePeriodReportSharePackages: currentPackages
+            ? {
+              ...currentPackages,
+              items: currentPackages.items.map((item) =>
+                item.share_package_id === response.share_package.share_package_id
+                  ? response.share_package
+                  : item,
+              ),
+            }
+            : currentPackages,
+          isCompliancePeriodReportSharePackageRevoking: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportSharePackageRevoking: false,
         })
         return null
       }

@@ -645,6 +645,17 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
         "needs_review"
     );
 
+    let (status, share_before_review) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(share_before_review.contains("period_report_not_reviewed"));
+
     let (status, developer_review) = json_request(
         &app,
         "PATCH",
@@ -769,6 +780,17 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("period review access log count");
     assert_eq!(review_log_count, 1);
+
+    let (status, share_before_pdf) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(share_before_pdf.contains("period_report_pdf_required"));
 
     let (status, download) = json_request(
         &app,
@@ -933,6 +955,17 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .await
     .expect("period hash after pdf");
     assert_eq!(period_hash_after_pdf, artifact_hash);
+
+    let (status, share_before_manifest) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(share_before_manifest.contains("period_report_manifest_required"));
 
     let (status, _unassigned_manifest_create) = json_request(
         &app,
@@ -1134,6 +1167,295 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     .expect("downloaded_at");
     assert!(downloaded_at.unwrap_or_default() > 0);
 
+    let agent_key_body = json!({
+        "display_name": "kan119-share-package-agent",
+        "description": "Integration test agent key for negative compliance access",
+        "environment": "staging",
+        "allowed_actions": ["commit", "push", "deploy"]
+    });
+    let (status, agent_key_response) = json_request(
+        &app,
+        "POST",
+        "/agent-governance/agent-keys",
+        Some(&agent_key_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "agent key create failed: {agent_key_response}"
+    );
+    let agent_key_response: serde_json::Value =
+        serde_json::from_str(&agent_key_response).expect("agent key response JSON");
+    let agent_token = agent_key_response["token"]
+        .as_str()
+        .expect("agent token for negative share package access")
+        .to_string();
+
+    let (status, auditor_create_share) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        Some(&json!({}).to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_create_share.contains("Admin access required"));
+
+    let (status, share_create_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "share package create failed: {share_create_response}"
+    );
+    assert!(!share_create_response.contains("must-not-report"));
+    assert!(!share_create_response.contains("ghp_"));
+    let share_create_response: serde_json::Value =
+        serde_json::from_str(&share_create_response).expect("share package create JSON");
+    let share_package = &share_create_response["share_package"];
+    let share_artifact = &share_create_response["artifact"];
+    let share_package_id = share_package["share_package_id"]
+        .as_str()
+        .expect("share package id");
+    let share_package_hash = share_package["artifact_hash"]
+        .as_str()
+        .expect("share package hash");
+    assert!(share_package_id.starts_with("cprsp_"));
+    assert!(share_package_hash.starts_with("sha256:"));
+    assert_eq!(share_package["status"], "active");
+    assert_eq!(share_package["period_report_id"], period_report_id);
+    assert_eq!(share_package["period_report_artifact_hash"], artifact_hash);
+    assert_eq!(share_package["pdf_export_id"], pdf_export_id);
+    assert_eq!(share_package["pdf_artifact_hash"], pdf_artifact_hash);
+    assert_eq!(
+        share_package["manifest_hash"],
+        second_manifest["manifest_hash"]
+    );
+    assert_eq!(
+        share_artifact["schema_version"],
+        "gitgov_period_compliance_report_share_package.v1"
+    );
+    assert_eq!(
+        share_artifact["period_report"]["artifact_hash"],
+        artifact_hash
+    );
+    assert_eq!(share_artifact["period_report"]["review_status"], "reviewed");
+    assert_eq!(
+        share_artifact["pdf_export"]["pdf_artifact_hash"],
+        pdf_artifact_hash
+    );
+    assert_eq!(
+        share_artifact["provenance_manifest"]["manifest_hash"],
+        second_manifest["manifest_hash"]
+    );
+    assert_eq!(share_artifact["claims"]["compliance_claim"], false);
+    assert_eq!(share_artifact["claims"]["regulatory_claim"], false);
+    assert_eq!(share_artifact["claims"]["certification"], false);
+    assert_eq!(share_artifact["claims"]["requires_auditor_review"], true);
+    assert_eq!(share_artifact["positioning"]["manual_sharing_only"], true);
+    assert_eq!(share_artifact["positioning"]["public_link"], false);
+    assert_eq!(share_artifact["positioning"]["email_delivery"], false);
+    assert_eq!(share_artifact["positioning"]["compliance_score"], false);
+    assert_eq!(
+        share_artifact["audit_metadata"]["agent_governance_required"],
+        false
+    );
+    assert_eq!(
+        share_artifact["audit_metadata"]["source_period_report_artifact_mutated"],
+        false
+    );
+    assert_eq!(
+        share_artifact["verification"]["package_hash"],
+        share_package_hash
+    );
+    let mut canonical_share_artifact = share_artifact.clone();
+    canonical_share_artifact["verification"]["package_hash"] = serde_json::Value::Null;
+    let recomputed_share_hash = format!(
+        "sha256:{:x}",
+        Sha256::digest(
+            serde_json::to_string(&canonical_share_artifact)
+                .expect("canonical share artifact JSON")
+                .as_bytes()
+        )
+    );
+    assert_eq!(recomputed_share_hash, share_package_hash);
+
+    let (status, share_list_response) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages?status=active"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "share package list failed: {share_list_response}"
+    );
+    let share_list_response: serde_json::Value =
+        serde_json::from_str(&share_list_response).expect("share list JSON");
+    assert_eq!(share_list_response["count"], 1);
+    assert_eq!(
+        share_list_response["items"][0]["share_package_id"],
+        share_package_id
+    );
+
+    let (status, developer_share_list) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        None,
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_share_list.contains("Admin or Auditor compliance review access required"));
+
+    let (status, agent_share_list) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-reports/{period_report_id}/share-packages"),
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(agent_share_list.contains("Agent key scope does not allow this request"));
+
+    let (status, other_share_download) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-report-share-packages/{share_package_id}/download"),
+        None,
+        Some(&other_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(other_share_download.contains("not found"));
+
+    let (status, share_download_response) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-report-share-packages/{share_package_id}/download"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "share package download failed: {share_download_response}"
+    );
+    let share_download_response: serde_json::Value =
+        serde_json::from_str(&share_download_response).expect("share download JSON");
+    assert_eq!(
+        share_download_response["share_package_id"],
+        share_package_id
+    );
+    assert_eq!(
+        share_download_response["verification"]["package_hash"],
+        share_package_hash
+    );
+    assert_eq!(
+        share_download_response["audit_metadata"]["agent_governance_used"],
+        false
+    );
+
+    let share_row: (String, i32, Option<i64>, Option<i64>) = sqlx::query_as(
+        r#"
+        SELECT
+            status,
+            download_count,
+            ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at,
+            ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at
+        FROM compliance_period_report_share_packages
+        WHERE share_package_id = $1
+        "#,
+    )
+    .bind(share_package_id)
+    .fetch_one(&pool)
+    .await
+    .expect("share package download custody row");
+    assert_eq!(share_row.0, "active");
+    assert_eq!(share_row.1, 1);
+    assert!(share_row.2.unwrap_or_default() > 0);
+    assert!(share_row.3.unwrap_or_default() > 0);
+
+    let share_log_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM compliance_period_report_access_log WHERE period_report_id = $1 AND action IN ('share_package_created', 'share_package_downloaded') AND artifact_id = $2 AND artifact_hash = $3",
+    )
+    .bind(period_report_id)
+    .bind(share_package_id)
+    .bind(share_package_hash)
+    .fetch_one(&pool)
+    .await
+    .expect("share package access log count");
+    assert_eq!(share_log_count, 2);
+
+    let share_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_period_report.share_package_created'",
+    )
+    .bind(share_package_id)
+    .fetch_one(&pool)
+    .await
+    .expect("share package audit count");
+    assert_eq!(share_audit_count, 1);
+
+    let (status, auditor_revoke_share) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-report-share-packages/{share_package_id}/revoke"),
+        Some(&json!({}).to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(auditor_revoke_share.contains("Admin access required"));
+
+    let (status, revoke_share_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/period-report-share-packages/{share_package_id}/revoke"),
+        Some(&json!({}).to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "share revoke failed: {revoke_share_response}"
+    );
+    let revoke_share_response: serde_json::Value =
+        serde_json::from_str(&revoke_share_response).expect("share revoke JSON");
+    assert_eq!(revoke_share_response["share_package"]["status"], "revoked");
+    assert!(
+        revoke_share_response["share_package"]["revoked_at"]
+            .as_i64()
+            .unwrap_or_default()
+            > 0
+    );
+
+    let (status, revoked_share_download) = json_request(
+        &app,
+        "GET",
+        &format!("/compliance/period-report-share-packages/{share_package_id}/download"),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(revoked_share_download.contains("share_package_revoked"));
+
     let retention_until_future = chrono::Utc::now().timestamp_millis() + 365 * 24 * 60 * 60 * 1000;
     let (status, auditor_retention_update) = json_request(
         &app,
@@ -1289,10 +1611,14 @@ async fn period_compliance_report_aggregates_reviewed_reports_without_claims() {
     assert!(actions.contains(&"manifest_created"));
     assert!(actions.contains(&"manifest_downloaded"));
     assert!(actions.contains(&"review_updated"));
-    assert_eq!(
-        access_log_response["items"][0]["artifact_hash"],
-        artifact_hash
-    );
+    assert!(actions.contains(&"share_package_created"));
+    assert!(actions.contains(&"share_package_downloaded"));
+    assert!(actions.contains(&"share_package_revoked"));
+    assert!(access_log_response["items"]
+        .as_array()
+        .expect("access log items for artifact hash")
+        .iter()
+        .any(|item| item["artifact_hash"] == artifact_hash));
 
     let (status, other_access_log_response) = json_request(
         &app,

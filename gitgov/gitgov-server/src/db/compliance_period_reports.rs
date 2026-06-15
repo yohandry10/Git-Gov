@@ -137,6 +137,36 @@ fn compliance_period_report_provenance_manifest_from_row(
     }
 }
 
+fn compliance_period_report_share_package_from_row(
+    row: &PgRow,
+) -> CompliancePeriodReportSharePackageRecord {
+    CompliancePeriodReportSharePackageRecord {
+        share_package_id: row.get("share_package_id"),
+        org_id: row.get("org_id"),
+        period_report_id: row.get("period_report_id"),
+        created_by_user_id: row.get("created_by_user_id"),
+        package_format: row.get("package_format"),
+        status: row.get("status"),
+        artifact_hash: row.get("artifact_hash"),
+        period_report_artifact_hash: row.get("period_report_artifact_hash"),
+        pdf_export_id: row.get("pdf_export_id"),
+        pdf_artifact_hash: row.get("pdf_artifact_hash"),
+        manifest_id: row.get("manifest_id"),
+        manifest_hash: row.get("manifest_hash"),
+        no_claims_snapshot: row.get("no_claims_snapshot"),
+        source_hashes: row.get("source_hashes"),
+        review_snapshot: row.get("review_snapshot"),
+        retention_snapshot: row.get("retention_snapshot"),
+        download_count: row.get("download_count"),
+        downloaded_at: row.get("downloaded_at_ms"),
+        last_downloaded_at: row.get("last_downloaded_at_ms"),
+        revoked_at: row.get("revoked_at_ms"),
+        revoked_by_user_id: row.get("revoked_by_user_id"),
+        created_at: row.get("created_at_ms"),
+        error_message_safe: row.get("error_message_safe"),
+    }
+}
+
 fn compliance_period_report_profile_from_row(row: &PgRow) -> CompliancePeriodReportProfileRecord {
     CompliancePeriodReportProfileRecord {
         profile_id: row.get("profile_id"),
@@ -162,6 +192,32 @@ fn compliance_period_report_profile_from_row(row: &PgRow) -> CompliancePeriodRep
         updated_at: row.get("updated_at_ms"),
     }
 }
+
+const COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT: &str = r#"
+    share_package_id,
+    org_id::text,
+    period_report_id,
+    created_by_user_id,
+    package_format,
+    status,
+    artifact_hash,
+    period_report_artifact_hash,
+    pdf_export_id,
+    pdf_artifact_hash,
+    manifest_id,
+    manifest_hash,
+    no_claims_snapshot,
+    source_hashes,
+    review_snapshot,
+    retention_snapshot,
+    download_count,
+    ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+    ROUND(EXTRACT(EPOCH FROM last_downloaded_at) * 1000)::BIGINT AS last_downloaded_at_ms,
+    ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+    revoked_by_user_id,
+    ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+    error_message_safe
+"#;
 
 impl Database {
     pub async fn list_reviewed_compliance_framework_review_reports_for_period(
@@ -1087,6 +1143,249 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.map(|row| row.get("manifest_hash")))
+    }
+
+    pub async fn get_latest_compliance_period_report_manifest(
+        &self,
+        org_id: &str,
+        period_report_id: &str,
+    ) -> Result<Option<CompliancePeriodReportProvenanceManifestRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                manifest_id,
+                org_id::text,
+                period_report_id,
+                generated_by_user_id,
+                manifest_hash,
+                previous_manifest_hash,
+                signature_algorithm,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM compliance_period_report_manifests
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+            ORDER BY created_at DESC, manifest_id DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(period_report_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_provenance_manifest_from_row(&row)))
+    }
+
+    pub async fn create_compliance_period_report_share_package(
+        &self,
+        input: &CreateCompliancePeriodReportSharePackageInput<'_>,
+    ) -> Result<CompliancePeriodReportSharePackageRecord, DbError> {
+        let select = COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT;
+        let query = format!(
+            r#"
+            INSERT INTO compliance_period_report_share_packages (
+                share_package_id,
+                org_id,
+                period_report_id,
+                created_by_user_id,
+                package_format,
+                status,
+                artifact_hash,
+                payload_json_redacted,
+                period_report_artifact_hash,
+                pdf_export_id,
+                pdf_artifact_hash,
+                manifest_id,
+                manifest_hash,
+                no_claims_snapshot,
+                source_hashes,
+                review_snapshot,
+                retention_snapshot
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $4,
+                $5,
+                'active',
+                $6,
+                $7::jsonb,
+                $8,
+                $9,
+                $10,
+                $11,
+                $12,
+                $13::jsonb,
+                $14::jsonb,
+                $15::jsonb,
+                $16::jsonb
+            )
+            RETURNING {select}
+            "#
+        );
+        let row = sqlx::query(&query)
+            .bind(input.share_package_id)
+            .bind(input.org_id)
+            .bind(input.period_report_id)
+            .bind(input.created_by_user_id)
+            .bind(input.package_format)
+            .bind(input.artifact_hash)
+            .bind(input.payload_json_redacted)
+            .bind(input.period_report_artifact_hash)
+            .bind(input.pdf_export_id)
+            .bind(input.pdf_artifact_hash)
+            .bind(input.manifest_id)
+            .bind(input.manifest_hash)
+            .bind(input.no_claims_snapshot)
+            .bind(input.source_hashes)
+            .bind(input.review_snapshot)
+            .bind(input.retention_snapshot)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(compliance_period_report_share_package_from_row(&row))
+    }
+
+    pub async fn list_compliance_period_report_share_packages(
+        &self,
+        input: &ListCompliancePeriodReportSharePackagesInput<'_>,
+    ) -> Result<Vec<CompliancePeriodReportSharePackageRecord>, DbError> {
+        let select = COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT;
+        let query = format!(
+            r#"
+            SELECT {select}
+            FROM compliance_period_report_share_packages
+            WHERE org_id = $1::uuid
+              AND period_report_id = $2
+              AND ($3::text IS NULL OR status = $3)
+            ORDER BY created_at DESC, share_package_id DESC
+            LIMIT $4
+            "#
+        );
+        let rows = sqlx::query(&query)
+            .bind(input.org_id)
+            .bind(input.period_report_id)
+            .bind(input.status)
+            .bind(input.limit)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| compliance_period_report_share_package_from_row(&row))
+            .collect())
+    }
+
+    pub async fn get_compliance_period_report_share_package(
+        &self,
+        org_id: &str,
+        share_package_id: &str,
+    ) -> Result<Option<CompliancePeriodReportSharePackageRecord>, DbError> {
+        let select = COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT;
+        let query = format!(
+            r#"
+            SELECT {select}
+            FROM compliance_period_report_share_packages
+            WHERE org_id = $1::uuid
+              AND share_package_id = $2
+            LIMIT 1
+            "#
+        );
+        let row = sqlx::query(&query)
+            .bind(org_id)
+            .bind(share_package_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_share_package_from_row(&row)))
+    }
+
+    pub async fn get_compliance_period_report_share_package_payload(
+        &self,
+        org_id: &str,
+        share_package_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT payload_json_redacted
+            FROM compliance_period_report_share_packages
+            WHERE org_id = $1::uuid
+              AND share_package_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(share_package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("payload_json_redacted")))
+    }
+
+    pub async fn download_compliance_period_report_share_package(
+        &self,
+        org_id: &str,
+        share_package_id: &str,
+    ) -> Result<Option<(CompliancePeriodReportSharePackageRecord, serde_json::Value)>, DbError>
+    {
+        let select = COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT;
+        let query = format!(
+            r#"
+            UPDATE compliance_period_report_share_packages
+            SET downloaded_at = NOW(),
+                last_downloaded_at = NOW(),
+                download_count = download_count + 1
+            WHERE org_id = $1::uuid
+              AND share_package_id = $2
+              AND status = 'active'
+            RETURNING {select}, payload_json_redacted
+            "#
+        );
+        let row = sqlx::query(&query)
+            .bind(org_id)
+            .bind(share_package_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let record = compliance_period_report_share_package_from_row(&row);
+            let payload: serde_json::Value = row.get("payload_json_redacted");
+            (record, payload)
+        }))
+    }
+
+    pub async fn revoke_compliance_period_report_share_package(
+        &self,
+        input: &RevokeCompliancePeriodReportSharePackageInput<'_>,
+    ) -> Result<Option<CompliancePeriodReportSharePackageRecord>, DbError> {
+        let select = COMPLIANCE_PERIOD_REPORT_SHARE_PACKAGE_SELECT;
+        let query = format!(
+            r#"
+            UPDATE compliance_period_report_share_packages
+            SET status = 'revoked',
+                revoked_at = COALESCE(revoked_at, NOW()),
+                revoked_by_user_id = $3
+            WHERE org_id = $1::uuid
+              AND share_package_id = $2
+            RETURNING {select}
+            "#
+        );
+        let row = sqlx::query(&query)
+            .bind(input.org_id)
+            .bind(input.share_package_id)
+            .bind(input.revoked_by_user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| compliance_period_report_share_package_from_row(&row)))
     }
 
     pub async fn create_compliance_period_report_profile(

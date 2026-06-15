@@ -139,6 +139,25 @@ fn compliance_period_report_manifest_query_params(
     query_params
 }
 
+fn compliance_period_report_share_package_query_params(
+    query: &CompliancePeriodReportSharePackageQuery,
+    include_list_filters: bool,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    if include_list_filters {
+        if let Some(status) = &query.status {
+            query_params.push(("status".to_string(), status.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+    }
+    query_params
+}
+
 impl ControlPlaneClient {
     pub fn list_compliance_control_frameworks(
         &self,
@@ -1243,6 +1262,153 @@ impl ControlPlaneClient {
         ])?;
         let query_params = compliance_period_report_access_log_query_params(query);
         let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn create_compliance_period_report_share_package(
+        &self,
+        period_report_id: &str,
+        payload: &CompliancePeriodReportSharePackageRequest,
+    ) -> Result<CompliancePeriodReportSharePackageResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-reports",
+            period_report_id,
+            "share-packages",
+        ])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_compliance_period_report_share_packages(
+        &self,
+        period_report_id: &str,
+        query: &CompliancePeriodReportSharePackageQuery,
+    ) -> Result<CompliancePeriodReportSharePackageListResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-reports",
+            period_report_id,
+            "share-packages",
+        ])?;
+        let query_params = compliance_period_report_share_package_query_params(query, true);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_compliance_period_report_share_package(
+        &self,
+        share_package_id: &str,
+        query: &CompliancePeriodReportSharePackageQuery,
+    ) -> Result<CompliancePeriodReportSharePackageResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-report-share-packages",
+            share_package_id,
+        ])?;
+        let query_params = compliance_period_report_share_package_query_params(query, false);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_compliance_period_report_share_package(
+        &self,
+        share_package_id: &str,
+        query: &CompliancePeriodReportSharePackageQuery,
+    ) -> Result<serde_json::Value, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-report-share-packages",
+            share_package_id,
+            "download",
+        ])?;
+        let query_params = compliance_period_report_share_package_query_params(query, false);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn revoke_compliance_period_report_share_package(
+        &self,
+        share_package_id: &str,
+        payload: &CompliancePeriodReportSharePackageRequest,
+    ) -> Result<CompliancePeriodReportSharePackageResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "period-report-share-packages",
+            share_package_id,
+            "revoke",
+        ])?;
+        let mut request = self.client.patch(url).json(payload);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }

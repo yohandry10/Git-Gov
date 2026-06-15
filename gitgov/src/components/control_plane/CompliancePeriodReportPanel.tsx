@@ -7,6 +7,7 @@ import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { CompliancePeriodReportProfilePanel } from './CompliancePeriodReportProfilePanel'
 import { CompliancePeriodReportProvenancePanel } from './CompliancePeriodReportProvenancePanel'
 import { CompliancePeriodReportReviewPanel } from './CompliancePeriodReportReviewPanel'
+import { CompliancePeriodReportSharePackagePanel } from './CompliancePeriodReportSharePackagePanel'
 
 function shortHash(value?: string | null): string {
   if (!value) return 'not available'
@@ -396,6 +397,13 @@ export function CompliancePeriodReportPanel() {
 
       {periodReport && (
         <CompliancePeriodReportProvenancePanel
+          periodReport={periodReport}
+          displayTimezone={displayTimezone}
+        />
+      )}
+
+      {periodReport && (
+        <CompliancePeriodReportSharePackagePanel
           periodReport={periodReport}
           displayTimezone={displayTimezone}
         />

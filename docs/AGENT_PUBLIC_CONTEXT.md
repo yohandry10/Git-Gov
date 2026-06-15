@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-15
-Ticket: `KAN-118` Saved Period Compliance Report Profiles
+Ticket: `KAN-119` Period Compliance Report Share Packages
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -35,8 +35,8 @@ The repo already contains substantial product surface:
 - Manual-first compliance evidence chain through customer framework packs, framework review reports,
   auditor assignments/comments, report review metadata, provenance manifests, PDF exports, period
   compliance reports, retention/custody history, period report provenance manifests, period report
-  review/sign-off metadata, and KAN-118 saved manual report profiles, including the production
-  status-filter hotfix that keeps archived profiles out of active profile listings.
+  review/sign-off metadata, KAN-118 saved manual report profiles, and KAN-119 manual share
+  packages/offline verification bundles for reviewed Period Compliance Reports.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

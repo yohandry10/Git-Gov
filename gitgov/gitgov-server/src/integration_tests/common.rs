@@ -668,9 +668,9 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
             actor_client_id TEXT NOT NULL,
             action TEXT NOT NULL CHECK (
-                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated', 'manifest_created', 'manifest_downloaded', 'review_updated')
+                action IN ('viewed', 'downloaded_json', 'downloaded_pdf', 'archived', 'retention_updated', 'manifest_created', 'manifest_downloaded', 'review_updated', 'share_package_created', 'share_package_downloaded', 'share_package_revoked')
             ),
-            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention', 'manifest', 'review')),
+            artifact_type TEXT NOT NULL CHECK (artifact_type IN ('metadata', 'json', 'pdf', 'retention', 'manifest', 'review', 'share_package')),
             artifact_id TEXT,
             artifact_hash TEXT CHECK (artifact_hash IS NULL OR artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
             metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -787,6 +787,61 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_cpr_profiles_org_framework
             ON compliance_period_report_profiles(org_id, framework_id, status);
+
+        CREATE TABLE IF NOT EXISTS compliance_period_report_share_packages (
+            share_package_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            period_report_id TEXT NOT NULL REFERENCES compliance_period_reports(period_report_id) ON DELETE CASCADE,
+            created_by_user_id TEXT NOT NULL,
+            package_format TEXT NOT NULL DEFAULT 'json_bundle' CHECK (package_format = 'json_bundle'),
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+            artifact_hash TEXT NOT NULL CHECK (artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            payload_json_redacted JSONB NOT NULL,
+            period_report_artifact_hash TEXT NOT NULL CHECK (period_report_artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            pdf_export_id TEXT NOT NULL,
+            pdf_artifact_hash TEXT NOT NULL CHECK (pdf_artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            manifest_id TEXT NOT NULL,
+            manifest_hash TEXT NOT NULL CHECK (manifest_hash ~ '^sha256:[a-f0-9]{64}$'),
+            no_claims_snapshot JSONB NOT NULL,
+            source_hashes JSONB NOT NULL,
+            review_snapshot JSONB NOT NULL,
+            retention_snapshot JSONB NOT NULL,
+            download_count INTEGER NOT NULL DEFAULT 0 CHECK (download_count >= 0),
+            downloaded_at TIMESTAMPTZ,
+            last_downloaded_at TIMESTAMPTZ,
+            revoked_at TIMESTAMPTZ,
+            revoked_by_user_id TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            error_message_safe TEXT,
+            CHECK (share_package_id LIKE 'cprsp_%'),
+            CHECK (
+                COALESCE((no_claims_snapshot ->> 'compliance_claim')::boolean, true) = false
+                AND COALESCE((no_claims_snapshot ->> 'regulatory_claim')::boolean, true) = false
+                AND COALESCE((no_claims_snapshot ->> 'certification')::boolean, true) = false
+                AND COALESCE((no_claims_snapshot ->> 'compliance_score')::boolean, true) = false
+                AND COALESCE((no_claims_snapshot ->> 'requires_auditor_review')::boolean, false) = true
+                AND COALESCE((no_claims_snapshot ->> 'agent_governance_required')::boolean, true) = false
+            ),
+            CHECK (
+                payload_json_redacted ->> 'schema_version' = 'gitgov_period_compliance_report_share_package.v1'
+                AND COALESCE((payload_json_redacted #>> '{claims,compliance_claim}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,regulatory_claim}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,certification}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,compliance_score}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{claims,requires_auditor_review}')::boolean, false) = true
+                AND COALESCE((payload_json_redacted #>> '{audit_metadata,agent_governance_required}')::boolean, true) = false
+                AND COALESCE((payload_json_redacted #>> '{audit_metadata,source_period_report_artifact_mutated}')::boolean, true) = false
+            )
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_report_share_packages_report_created
+            ON compliance_period_report_share_packages(org_id, period_report_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_compliance_period_report_share_packages_status
+            ON compliance_period_report_share_packages(org_id, status, created_at DESC);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_compliance_period_report_share_packages_hash
+            ON compliance_period_report_share_packages(org_id, artifact_hash);
 
         INSERT INTO compliance_control_frameworks (
             framework_id,
@@ -1986,6 +2041,23 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/period-reports/{period_report_id}/provenance-manifests/{manifest_id}",
             get(handlers::download_compliance_period_report_provenance_manifest),
+        )
+        .route(
+            "/compliance/period-reports/{period_report_id}/share-packages",
+            get(handlers::list_compliance_period_report_share_packages)
+                .post(handlers::create_compliance_period_report_share_package),
+        )
+        .route(
+            "/compliance/period-report-share-packages/{share_package_id}",
+            get(handlers::get_compliance_period_report_share_package),
+        )
+        .route(
+            "/compliance/period-report-share-packages/{share_package_id}/download",
+            get(handlers::download_compliance_period_report_share_package),
+        )
+        .route(
+            "/compliance/period-report-share-packages/{share_package_id}/revoke",
+            patch(handlers::revoke_compliance_period_report_share_package),
         )
         .route(
             "/compliance/period-reports/{period_report_id}/download",
