@@ -20,6 +20,7 @@ mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
 mod compliance_framework_packs;
 mod compliance_framework_review_reports;
+mod compliance_period_reports;
 mod compliance_review_packages;
 mod coverage_and_compliance;
 mod events_and_admin;

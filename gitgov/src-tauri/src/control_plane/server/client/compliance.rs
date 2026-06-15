@@ -62,6 +62,25 @@ fn framework_review_report_pdf_query_params(
     query_params
 }
 
+fn compliance_period_report_query_params(
+    query: &CompliancePeriodReportQuery,
+    include_filters: bool,
+) -> Vec<(String, String)> {
+    let mut query_params = Vec::new();
+    if let Some(org_name) = &query.org_name {
+        query_params.push(("org_name".to_string(), org_name.clone()));
+    }
+    if include_filters {
+        if let Some(framework_id) = &query.framework_id {
+            query_params.push(("framework_id".to_string(), framework_id.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+    }
+    query_params
+}
+
 impl ControlPlaneClient {
     pub fn list_compliance_control_frameworks(
         &self,
@@ -849,5 +868,103 @@ impl ControlPlaneClient {
             pdf_export: metadata.pdf_export,
             pdf_base64: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
         })
+    }
+
+    pub fn create_compliance_period_report(
+        &self,
+        payload: &CompliancePeriodReportRequest,
+    ) -> Result<CompliancePeriodReportResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "period-reports"])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_compliance_period_reports(
+        &self,
+        query: &CompliancePeriodReportQuery,
+    ) -> Result<CompliancePeriodReportListResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "period-reports"])?;
+        let query_params = compliance_period_report_query_params(query, true);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_compliance_period_report(
+        &self,
+        period_report_id: &str,
+        query: &CompliancePeriodReportQuery,
+    ) -> Result<CompliancePeriodReportResponse, ServerError> {
+        let url = self.endpoint_url(&["compliance", "period-reports", period_report_id])?;
+        let query_params = compliance_period_report_query_params(query, false);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_compliance_period_report(
+        &self,
+        period_report_id: &str,
+        query: &CompliancePeriodReportQuery,
+    ) -> Result<serde_json::Value, ServerError> {
+        let url =
+            self.endpoint_url(&["compliance", "period-reports", period_report_id, "download"])?;
+        let query_params = compliance_period_report_query_params(query, false);
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 }

@@ -729,6 +729,53 @@ export interface ComplianceFrameworkReviewReportPdfDownloadResponse {
   pdf_base64: string
 }
 
+export interface CompliancePeriodReportRequest {
+  org_name?: string | null
+  date_range_start: number
+  date_range_end: number
+  framework_id?: string | null
+  format?: string | null
+}
+
+export interface CompliancePeriodReportQuery {
+  org_name?: string | null
+  framework_id?: string | null
+  limit?: number | null
+}
+
+export interface CompliancePeriodReportRecord {
+  period_report_id: string
+  org_id: string
+  created_by_user_id: string
+  framework_id?: string | null
+  date_range_start: number
+  date_range_end: number
+  report_count: number
+  source_report_ids: string[]
+  format: string
+  status: string
+  artifact_hash: string
+  compliance_claim: boolean
+  regulatory_claim: boolean
+  requires_auditor_review: boolean
+  certification: boolean
+  created_at: number
+  downloaded_at?: number | null
+  error_message_safe?: string | null
+}
+
+export interface CompliancePeriodReportResponse {
+  period_report: CompliancePeriodReportRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
+export interface CompliancePeriodReportListResponse {
+  items: CompliancePeriodReportRecord[]
+  count: number
+  limit: number
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1158,6 +1205,9 @@ export interface ControlPlaneState {
   complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
   complianceFrameworkReviewReportProvenanceManifest: ComplianceFrameworkReviewReportProvenanceManifestResponse | null
   complianceFrameworkReviewReportPdfExport: ComplianceFrameworkReviewReportPdfExportResponse | null
+  compliancePeriodReport: CompliancePeriodReportResponse | null
+  compliancePeriodReports: CompliancePeriodReportListResponse | null
+  compliancePeriodReportArtifact: Record<string, unknown> | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1182,6 +1232,9 @@ export interface ControlPlaneState {
   isComplianceFrameworkReviewReportProvenanceManifestCreating: boolean
   isComplianceFrameworkReviewReportPdfExportCreating: boolean
   isComplianceFrameworkReviewReportPdfExportDownloading: boolean
+  isCompliancePeriodReportCreating: boolean
+  isCompliancePeriodReportsLoading: boolean
+  isCompliancePeriodReportDownloading: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1301,6 +1354,13 @@ export interface ControlPlaneActions {
   createComplianceFrameworkReviewReportProvenanceManifest: (reportId: string) => Promise<ComplianceFrameworkReviewReportProvenanceManifestResponse | null>
   createComplianceFrameworkReviewReportPdfExport: (reportId: string, manifestId?: string | null) => Promise<ComplianceFrameworkReviewReportPdfExportResponse | null>
   downloadComplianceFrameworkReviewReportPdfExport: (reportId: string, pdfExportId?: string | null) => Promise<ComplianceFrameworkReviewReportPdfDownloadResponse | null>
+  createCompliancePeriodReport: (
+    dateRangeStart: number,
+    dateRangeEnd: number,
+    frameworkId?: string | null,
+  ) => Promise<CompliancePeriodReportResponse | null>
+  loadCompliancePeriodReports: (filters?: Omit<CompliancePeriodReportQuery, 'org_name'>) => Promise<CompliancePeriodReportListResponse | null>
+  downloadCompliancePeriodReport: (periodReportId: string) => Promise<Record<string, unknown> | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

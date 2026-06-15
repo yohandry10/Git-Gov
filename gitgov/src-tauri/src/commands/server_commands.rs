@@ -22,10 +22,11 @@ use crate::control_plane::{
     ComplianceFrameworkReviewReportProvenanceManifestResponse,
     ComplianceFrameworkReviewReportQuery, ComplianceFrameworkReviewReportRequest,
     ComplianceFrameworkReviewReportResponse, ComplianceFrameworkReviewReportReviewRequest,
-    ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
-    ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
-    CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
-    CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
+    CompliancePeriodReportListResponse, CompliancePeriodReportQuery, CompliancePeriodReportRequest,
+    CompliancePeriodReportResponse, ComplianceReviewPackageQuery, ComplianceReviewPackageRequest,
+    ComplianceReviewPackageResponse, ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest,
+    CreateOrgInvitationRequest, CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse,
+    CreateOrgUserRequest, CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
     EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
     EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
@@ -1380,6 +1381,76 @@ pub async fn cmd_server_download_compliance_framework_review_report_pdf_export(
                 .map_err(|e| to_command_error(e, "SERVER_ERROR"))
         },
     )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_period_report(
+    config: ServerConnectionConfig,
+    payload: CompliancePeriodReportRequest,
+) -> Result<CompliancePeriodReportResponse, String> {
+    run_blocking_command("CREATE_COMPLIANCE_PERIOD_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_compliance_period_report(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_compliance_period_reports(
+    config: ServerConnectionConfig,
+    query: CompliancePeriodReportQuery,
+) -> Result<CompliancePeriodReportListResponse, String> {
+    run_blocking_command("LIST_COMPLIANCE_PERIOD_REPORTS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_compliance_period_reports(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_compliance_period_report(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    query: CompliancePeriodReportQuery,
+) -> Result<CompliancePeriodReportResponse, String> {
+    run_blocking_command("GET_COMPLIANCE_PERIOD_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_compliance_period_report(&period_report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_period_report(
+    config: ServerConnectionConfig,
+    period_report_id: String,
+    query: CompliancePeriodReportQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_COMPLIANCE_PERIOD_REPORT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_compliance_period_report(&period_report_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
     .await
 }
 

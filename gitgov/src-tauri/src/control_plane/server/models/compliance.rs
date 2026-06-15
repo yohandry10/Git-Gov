@@ -551,3 +551,66 @@ pub struct ComplianceFrameworkReviewReportPdfDownloadResponse {
     pub pdf_export: ComplianceFrameworkReviewReportPdfExportRecord,
     pub pdf_base64: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub date_range_start: i64,
+    pub date_range_end: i64,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub format: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CompliancePeriodReportQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportRecord {
+    pub period_report_id: String,
+    pub org_id: String,
+    pub created_by_user_id: String,
+    #[serde(default)]
+    pub framework_id: Option<String>,
+    pub date_range_start: i64,
+    pub date_range_end: i64,
+    pub report_count: i32,
+    #[serde(default)]
+    pub source_report_ids: Vec<String>,
+    pub format: String,
+    pub status: String,
+    pub artifact_hash: String,
+    pub compliance_claim: bool,
+    pub regulatory_claim: bool,
+    pub requires_auditor_review: bool,
+    pub certification: bool,
+    pub created_at: i64,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+    #[serde(default)]
+    pub error_message_safe: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportResponse {
+    pub period_report: CompliancePeriodReportRecord,
+    pub download_url: String,
+    #[serde(default)]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompliancePeriodReportListResponse {
+    pub items: Vec<CompliancePeriodReportRecord>,
+    pub count: usize,
+    pub limit: i64,
+}

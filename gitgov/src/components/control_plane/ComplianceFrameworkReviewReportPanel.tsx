@@ -6,6 +6,7 @@ import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { ComplianceFrameworkReviewReportPdfExportPanel } from './ComplianceFrameworkReviewReportPdfExportPanel'
 import { ComplianceFrameworkReviewReportProvenancePanel } from './ComplianceFrameworkReviewReportProvenancePanel'
+import { CompliancePeriodReportPanel } from './CompliancePeriodReportPanel'
 
 function shortHash(value?: string | null): string {
   if (!value) return 'not available'
@@ -287,6 +288,7 @@ export function ComplianceFrameworkReviewReportPanel() {
 
       <ComplianceFrameworkReviewReportProvenancePanel />
       <ComplianceFrameworkReviewReportPdfExportPanel />
+      <CompliancePeriodReportPanel />
 
       {report && (
         <div className="mt-3 rounded border border-white/8 bg-white/[0.03] p-2">

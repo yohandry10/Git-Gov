@@ -298,6 +298,39 @@ pub struct CreateComplianceFrameworkReviewReportPdfExportInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct CompliancePeriodSourceReport {
+    pub report: ComplianceFrameworkReviewReportRecord,
+    pub payload_json_redacted: serde_json::Value,
+    pub latest_manifest_id: Option<String>,
+    pub latest_manifest_hash: Option<String>,
+    pub latest_manifest_created_at: Option<i64>,
+    pub manifest_count: i64,
+}
+
+pub struct CreateCompliancePeriodReportInput<'a> {
+    pub period_report_id: &'a str,
+    pub org_id: &'a str,
+    pub created_by_user_id: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub date_range_start: chrono::DateTime<chrono::Utc>,
+    pub date_range_end: chrono::DateTime<chrono::Utc>,
+    pub report_count: i32,
+    pub source_report_ids: &'a serde_json::Value,
+    pub format: &'a str,
+    pub status: &'a str,
+    pub artifact_hash: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListCompliancePeriodReportsInput<'a> {
+    pub org_id: &'a str,
+    pub framework_id: Option<&'a str>,
+    pub auditor_client_id: Option<&'a str>,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,
     pub replaced: AgentGovernanceAgentKeyRecord,
@@ -759,6 +792,7 @@ mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
 mod compliance_framework_review_report_pdf_exports;
 mod compliance_framework_review_reports;
+mod compliance_period_reports;
 mod compliance_review_packages;
 mod core;
 mod deployment_gates;

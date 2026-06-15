@@ -2,7 +2,7 @@
 
 Updated: 2026-06-15
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator
 
 ## Decision
 
@@ -268,6 +268,13 @@ Current primitives:
   a new artifact, does not create Agent Governance evaluations, and repeats the same no-claim flags:
   `compliance_claim=false`, `regulatory_claim=false`, `gitgov_certifies=false`,
   `official_regulatory_mapping=false`, and `requires_auditor_review=true`.
+- `KAN-113`: Period Compliance Report Generator. Admins can generate an append-only JSON report for
+  a selected date range and optional framework from already reviewed Framework Review Reports. The
+  artifact records source report hashes, manifest hashes when present, source report ids, missing
+  evidence aggregation, report counts, date window, and no-claim flags. It is manual/on-demand,
+  tenant-scoped, readable by Admins and Auditors who can access every source report, does not mutate
+  source artifacts, does not create Agent Governance evaluations, and is not a certification,
+  compliance score, official regulatory report, or legal attestation.
 
 Future scope:
 
@@ -410,13 +417,25 @@ Current primitives:
 
 - Audit export, evidence packets, release approvals, GitHub/Jira/Jenkins/Sonar evidence, policy
   history, and compliance helpers exist.
+- `KAN-99` through `KAN-112` now provide the evidence chain used by `KAN-113`: evidence export,
+  evidence-to-control mapping, review package, Framework Review Report, manual review metadata,
+  Auditor role/assignments/comments, provenance manifests, PDF exports, and framework pack diff.
+- `KAN-113` adds the first manual period report artifact:
+  `POST /compliance/period-reports`, `GET /compliance/period-reports`,
+  `GET /compliance/period-reports/{period_report_id}`, and
+  `GET /compliance/period-reports/{period_report_id}/download`.
+  The first output format is JSON only. It requires at least one reviewed source report in the
+  period and enforces `compliance_claim=false`, `regulatory_claim=false`, `certification=false`,
+  and `requires_auditor_review=true`.
 
 Future scope:
 
 - Organization/repository report templates.
-- PDF and JSON outputs with hashes.
+- PDF/DOCX formal templates and scheduling after the JSON artifact is validated with customers.
 - Digitally signable evidence packet references.
 - Regulator/auditor wording that maps to the Regulatory Framework Mapper when enabled.
+- Official regulatory mappings, compliance scoring, and certification wording remain future work
+  and must require explicit human/auditor review before use.
 
 ### 0.10 Developer Distribution Surfaces
 
