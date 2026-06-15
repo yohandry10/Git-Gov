@@ -3,6 +3,8 @@
 Updated: 2026-06-15
 Ticket: `KAN-110`
 Branch: `product/KAN-110-reviewed-report-provenance-manifest`
+PR: `#384`
+Merge commit: `a7ab2e5`
 
 ## Implemented
 
@@ -44,8 +46,24 @@ Branch: `product/KAN-110-reviewed-report-provenance-manifest`
 - `git diff --check`
 - `.\scripts\security\publication_guard.ps1`
 
-## Remaining Before Merge
+## PR And Production Validation
 
-- Open PR, wait for required checks, merge.
-- Apply `v53` in production during deployment validation.
-- Smoke production with a reviewed report after merge and Render deploy.
+- PR `#384` required checks passed and merged to `main` as `a7ab2e5`.
+- Post-merge `main` checks passed for `a7ab2e5`: `CI`, `Release Readiness Gate`,
+  `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`,
+  `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8nmoluq1p3s738cqdl0` for `a7ab2e5` reached `live`.
+- Production `v53` migration and postcheck passed.
+- Production smoke passed against real report `frr_ac4ee214bc051caee783485d5755d34a`:
+  - `/health=200`
+  - report status was `reviewed`
+  - created manifest `frrm_ed5a356ad89f406b90e236756655183c`
+  - created manifest `frrm_a3135e737c43d92fbc3f8b56d19d0a0c`
+  - second manifest `previous_manifest_hash` matched the first manifest hash
+  - downloaded manifest hash-chain matched the stored manifest
+  - schema was `gitgov_framework_review_report_provenance_manifest.v1`
+  - signature algorithm was `sha256-provenance-manifest-v1`
+  - source report `artifact_hash` stayed unchanged
+  - no-claim flags stayed valid
+  - `agent_governance_required=false`
+  - `source_report_artifact_mutated=false`
