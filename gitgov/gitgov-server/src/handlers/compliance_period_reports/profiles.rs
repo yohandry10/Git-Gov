@@ -197,8 +197,13 @@ fn normalize_compliance_period_report_profile_query(
     normalize_release_approval_optional_text(&mut query.org_name);
     normalize_compliance_period_report_framework_id(&mut query.framework_id);
     let status = normalize_compliance_period_report_profile_status(&mut query.status);
-    if let Err(mut status_errors) = status {
-        errors.append(&mut status_errors);
+    match status {
+        Ok(normalized_status) => {
+            query.status = normalized_status;
+        }
+        Err(mut status_errors) => {
+            errors.append(&mut status_errors);
+        }
     }
     if let Some(framework_id) = query.framework_id.as_deref() {
         if framework_id.len() > 160
