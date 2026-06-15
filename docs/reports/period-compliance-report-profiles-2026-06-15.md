@@ -91,4 +91,28 @@ Results:
 
 ## Production Validation
 
-Pending until PR merge, Render deploy, production `v60` migration/postcheck, and production smoke.
+- PR `#410` merged to `main` as `1ecb61b`.
+- Post-merge `main` checks passed, including `CI`, `Release Readiness Gate`,
+  `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation
+  Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8o29ccvikkc73evb8cg` reached `live` for `1ecb61b`.
+- Production `v60` migration ran and `supabase_schema_v60_postcheck.sql` passed.
+- `/health` returned `ok`.
+- Production smoke used reviewed Framework Review Report
+  `frr_ac4ee214bc051caee783485d5755d34a` and framework
+  `gitgov_release_governance_baseline_v1`.
+- Saved profile `cprprof_0f4c3ece4eb04856b4928b3eaeeed469` ran manually and created:
+  - Period Compliance Report `cpr_9389010c74a34484a8e080942b56956e`.
+  - PDF export `cprpdf_0d2e6aad239125a198e64c1a307b158d`.
+  - Provenance manifest `cprm_fdf8d9344b81fcd2111300511e139c00`.
+- JSON download returned schema `gitgov_period_compliance_report.v1`.
+- PDF download returned `%PDF-1.4`, `2571` bytes, and recomputed SHA-256 matched the stored
+  `pdf_artifact_hash`.
+- Manifest download returned schema `gitgov_period_compliance_report_provenance_manifest.v1`.
+- After profile update disabled PDF and manifest creation, second run
+  `cpr_66dd549b6c2a4ad9ade49a20721e979a` created no PDF export and no manifest.
+- Archiving the profile changed status to `archived`; a subsequent run returned HTTP `409`.
+- A temporary Auditor API key was created only to validate mutation denial; profile creation returned
+  HTTP `403`, and the temporary key was revoked.
+- Agent Governance evaluation count stayed unchanged at `7`, confirming KAN-118 did not create
+  Agent Governance evidence.
