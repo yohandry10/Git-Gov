@@ -26,6 +26,7 @@ include!("handlers/compliance_review_packages.rs");
 include!("handlers/compliance_framework_review_reports.rs");
 include!("handlers/compliance_framework_review_report_collaboration.rs");
 include!("handlers/compliance_framework_review_report_pdf_exports.rs");
+include!("handlers/compliance_period_reports.rs");
 include!("handlers/agent_governance.rs");
 include!("handlers/agent_governance_dry_run.rs");
 include!("handlers/agent_governance_context.rs");

@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-15
-Ticket: `KAN-112` Framework pack versioning and diff
+Ticket: `KAN-113` Period Compliance Report Generator
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,8 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation branch: `product/KAN-112-framework-pack-version-diff`.
-- Current implementation ticket: GitHub issue `#390`, `KAN-112: Framework pack versioning and diff`.
+- Current implementation branch: `product/KAN-113-period-compliance-report-generator`.
+- Current implementation ticket: GitHub issue `#393`, `KAN-113: Period Compliance Report Generator`.
+- KAN-113 product decision from GPT consultation and local roadmap/repo analysis: after KAN-112, implement a manual/on-demand Period Compliance Report Generator before scheduler, DOCX/PDF formal templates, official regulatory wording, compliance scoring, certification claims, AI summaries, Integration Wizard, Change Risk Score, Multi-Repo Executive View, BYOM, MCP, chatbot behavior, or broader Agent Governance. The first slice generates append-only JSON reports for `org + date_range + optional framework_id` from already reviewed Framework Review Reports.
+- KAN-113 implementation status on 2026-06-15: in progress on branch `product/KAN-113-period-compliance-report-generator`. Implemented so far: Supabase migration/postcheck `v55` for `compliance_period_reports`; backend routes `POST/GET /compliance/period-reports`, `GET /compliance/period-reports/{period_report_id}`, and `GET /compliance/period-reports/{period_report_id}/download`; artifact schema `gitgov_period_compliance_report.v1`; Admin-only creation; Admin/Auditor read/download with Auditor access requiring visibility to every source Framework Review Report; no-claim constraints; Tauri models/client/commands; Desktop Evidence Review Period Compliance Report panel; store state/actions/tests; roadmap/architecture/report docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, focused real Postgres test `period_compliance_report_aggregates_reviewed_reports_without_claims`, full backend Postgres suite (`310` passed), local `v55` migration/postcheck through ignored `DATABASE_URL`, Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, Tauri tests (`49` passed), frontend `pnpm --dir gitgov typecheck`, `pnpm --dir gitgov lint`, focused store test (`35` passed), full Vitest run (`367` passed), frontend build, `git diff --check`, and publication guard. Still pending before completion: commit/PR/checks/merge/deploy/prod smoke.
 - KAN-112 product decision from GPT consultation attempt and local roadmap/repo analysis: after KAN-111, implement read-only customer framework pack diff before official regulatory mapping, compliance scoring, DOCX export, BYOM, MCP, chatbot behavior, or broader Agent Governance. The diff compares two customer-provided versions of the same original framework id, remains Admin-only and tenant-scoped, preserves no-claim flags, does not persist a new artifact in this MVP, and does not create Agent Governance evaluations.
 - KAN-112 implementation status on 2026-06-15: completed by PR `#391`, merged to `main` as `5499f78`. It adds backend `GET /compliance/framework-packs/diff`, raw redacted pack diff source loading, deterministic added/removed/changed/unchanged control comparison, same-original-framework enforcement, no-claim invariant checks, Tauri models/client/command, Desktop Governance Evidence Review diff UI, focused store test coverage, roadmap/architecture/design/report docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, focused real Postgres test `customer_framework_pack_diff_compares_real_versions_without_claims`, full backend Postgres suite (`309` passed), Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, Tauri tests (`49` passed), frontend `pnpm --dir gitgov typecheck`, focused store test (`35` passed), full Vitest run (`367` passed), frontend lint/build, `git diff --check`, and publication guard. PR checks passed. Post-merge `main` checks passed for `5499f78`: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`. Render deploy `dep-d8noflu8bjmc73f2u2rg` for `5499f78` reached `live`. Production smoke passed: `/health=ok`, imported and reviewed two temporary customer-provided packs for original framework `bank_release_controls_kan112_20260615001152`, diffed `cfp_8181d41d2bb39ed54af8050056fbb7eb` to `cfp_fdec1d243cad05936aee96a678ca35e1`, summary was `added=1`, `removed=1`, `changed=1`, `unchanged=2`, and no-claim flags stayed `compliance_claim=false`, `regulatory_claim=false`, `gitgov_certifies=false`, `official_regulatory_mapping=false`, `requires_auditor_review=true`.
 - KAN-111 product decision from GPT consultation and local roadmap/repo analysis: after KAN-110, implement PDF export for reviewed Framework Review Reports before DOCX, formal regulatory templates, official regulatory mappings, BYOM, MCP, chatbot behavior, or broader Agent Governance. The PDF must be manual-first, bound to the existing source report hash and provenance manifest hash, readable by Admins and assigned Auditors, and explicitly not a certification, compliance score, legal attestation, or official regulatory claim.
@@ -924,12 +926,13 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-112 is complete and production-smoked. KAN-111, KAN-110, KAN-109, and KAN-108 are also complete and production-smoked.
+KAN-113 is the active implementation slice and is not merged or production-smoked yet. KAN-112, KAN-111, KAN-110, KAN-109, and KAN-108 are complete and production-smoked.
 
 Current work types are:
 
-- Select the next roadmap slice only after a fresh product decision.
-- Keep future compliance/reporting work manual-first unless a customer explicitly opts into agentic features.
+- Finish KAN-113 validation, PR, merge, deploy, and production smoke.
+- Keep compliance/reporting work manual-first unless a customer explicitly opts into agentic features.
+- Do not add official regulatory wording, compliance scoring, certification claims, scheduler, or AI summaries to KAN-113.
 
 ## Practical Next Steps
 

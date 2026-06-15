@@ -16,6 +16,8 @@ import type {
   ComplianceFrameworkReviewReportPdfExportResponse,
   ComplianceFrameworkReviewReportProvenanceManifestResponse,
   ComplianceFrameworkReviewReportResponse,
+  CompliancePeriodReportListResponse,
+  CompliancePeriodReportResponse,
   ComplianceReviewPackageResponse,
   ControlPlaneActions,
 } from '../types'
@@ -45,6 +47,9 @@ type ComplianceActionKeys =
   | 'createComplianceFrameworkReviewReportProvenanceManifest'
   | 'createComplianceFrameworkReviewReportPdfExport'
   | 'downloadComplianceFrameworkReviewReportPdfExport'
+  | 'createCompliancePeriodReport'
+  | 'loadCompliancePeriodReports'
+  | 'downloadCompliancePeriodReport'
   | 'resetComplianceEvidenceFlow'
 
 export function createComplianceActions(
@@ -850,6 +855,122 @@ export function createComplianceActions(
       }
     },
 
+    createCompliancePeriodReport: async (dateRangeStart, dateRangeEnd, frameworkId = null) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedFrameworkId = frameworkId?.trim() || null
+      if (!serverConfig || !dateRangeStart || !dateRangeEnd) return null
+
+      set({
+        isCompliancePeriodReportCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportResponse>('cmd_server_create_compliance_period_report', {
+          config: serverConfig,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+            date_range_start: dateRangeStart,
+            date_range_end: dateRangeEnd,
+            framework_id: normalizedFrameworkId,
+            format: 'json',
+          },
+        })
+        const currentReports = get().compliancePeriodReports
+        set({
+          compliancePeriodReport: response,
+          compliancePeriodReportArtifact: response.artifact ?? null,
+          compliancePeriodReports: currentReports
+            ? {
+              ...currentReports,
+              items: [
+                response.period_report,
+                ...currentReports.items.filter((item) => item.period_report_id !== response.period_report.period_report_id),
+              ].slice(0, currentReports.limit),
+              count: Math.min(currentReports.limit, currentReports.count + 1),
+            }
+            : {
+              items: [response.period_report],
+              count: 1,
+              limit: 25,
+            },
+          isCompliancePeriodReportCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportCreating: false,
+        })
+        return null
+      }
+    },
+
+    loadCompliancePeriodReports: async (filters = {}) => {
+      const { serverConfig, selectedOrgName } = get()
+      if (!serverConfig) return null
+      const normalizedFrameworkId = filters.framework_id?.trim() || null
+
+      set({
+        isCompliancePeriodReportsLoading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<CompliancePeriodReportListResponse>('cmd_server_list_compliance_period_reports', {
+          config: serverConfig,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+            framework_id: normalizedFrameworkId,
+            limit: filters.limit ?? 25,
+          },
+        })
+        set({
+          compliancePeriodReports: response,
+          isCompliancePeriodReportsLoading: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportsLoading: false,
+        })
+        return null
+      }
+    },
+
+    downloadCompliancePeriodReport: async (periodReportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedPeriodReportId = periodReportId.trim()
+      if (!serverConfig || !normalizedPeriodReportId) return null
+
+      set({
+        isCompliancePeriodReportDownloading: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const artifact = await tauriInvoke<Record<string, unknown>>('cmd_server_download_compliance_period_report', {
+          config: serverConfig,
+          periodReportId: normalizedPeriodReportId,
+          query: {
+            org_name: selectedOrgName.trim() || null,
+          },
+        })
+        set({
+          compliancePeriodReportArtifact: artifact,
+          isCompliancePeriodReportDownloading: false,
+        })
+        return artifact
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isCompliancePeriodReportDownloading: false,
+        })
+        return null
+      }
+    },
+
     resetComplianceEvidenceFlow: () => set({
       complianceEvidenceSelectedDeploymentGateId: null,
       selectedComplianceFrameworkId: GITGOV_RELEASE_GOVERNANCE_BASELINE,
@@ -867,6 +988,9 @@ export function createComplianceActions(
       complianceFrameworkReviewReportArtifact: null,
       complianceFrameworkReviewReportProvenanceManifest: null,
       complianceFrameworkReviewReportPdfExport: null,
+      compliancePeriodReport: null,
+      compliancePeriodReports: null,
+      compliancePeriodReportArtifact: null,
       complianceEvidenceError: null,
     }),
   }

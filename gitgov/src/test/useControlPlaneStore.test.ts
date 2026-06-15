@@ -1185,6 +1185,77 @@ describe('useControlPlaneStore', () => {
           },
           pdf_base64: 'JVBERi0xLjQK',
         })
+        .mockResolvedValueOnce({
+          period_report: {
+            period_report_id: 'cpr_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            date_range_start: 1000,
+            date_range_end: 2000,
+            report_count: 1,
+            source_report_ids: ['frr_123'],
+            format: 'json',
+            status: 'generated',
+            artifact_hash: 'sha256:' + '1'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 13,
+            downloaded_at: null,
+          },
+          download_url: '/compliance/period-reports/cpr_123/download',
+          artifact: {
+            schema_version: 'gitgov_period_compliance_report.v1',
+            summary: {
+              report_count: 1,
+              reports_with_manifest_count: 1,
+            },
+            claims: {
+              compliance_claim: false,
+              regulatory_claim: false,
+              certification: false,
+              requires_auditor_review: true,
+            },
+          },
+        })
+        .mockResolvedValueOnce({
+          items: [{
+            period_report_id: 'cpr_123',
+            org_id: 'org-1',
+            created_by_user_id: 'admin',
+            framework_id: 'gitgov_release_governance_baseline_v1',
+            date_range_start: 1000,
+            date_range_end: 2000,
+            report_count: 1,
+            source_report_ids: ['frr_123'],
+            format: 'json',
+            status: 'generated',
+            artifact_hash: 'sha256:' + '1'.repeat(64),
+            compliance_claim: false,
+            regulatory_claim: false,
+            requires_auditor_review: true,
+            certification: false,
+            created_at: 13,
+            downloaded_at: null,
+          }],
+          count: 1,
+          limit: 25,
+        })
+        .mockResolvedValueOnce({
+          schema_version: 'gitgov_period_compliance_report.v1',
+          period_report_id: 'cpr_123',
+          source_hashes: {
+            report_hashes: ['sha256:' + 'd'.repeat(64)],
+          },
+          claims: {
+            compliance_claim: false,
+            regulatory_claim: false,
+            certification: false,
+            requires_auditor_review: true,
+          },
+        })
 
       const exportResponse = await useControlPlaneStore.getState().createComplianceEvidenceExport(' dga_123 ')
       const mappingResponse = await useControlPlaneStore.getState().createComplianceEvidenceMapping(' cee_123 ')
@@ -1235,6 +1306,13 @@ describe('useControlPlaneStore', () => {
       const pdfDownload = await useControlPlaneStore
         .getState()
         .downloadComplianceFrameworkReviewReportPdfExport(' frr_123 ', ' frrpdf_123 ')
+      const periodReport = await useControlPlaneStore
+        .getState()
+        .createCompliancePeriodReport(1000, 2000, ' gitgov_release_governance_baseline_v1 ')
+      const periodReports = await useControlPlaneStore
+        .getState()
+        .loadCompliancePeriodReports({ framework_id: ' gitgov_release_governance_baseline_v1 ' })
+      const periodArtifact = await useControlPlaneStore.getState().downloadCompliancePeriodReport(' cpr_123 ')
 
       expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_compliance_evidence_export', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1389,6 +1467,31 @@ describe('useControlPlaneStore', () => {
           pdf_export_id: 'frrpdf_123',
         },
       })
+      expect(mockInvoke).toHaveBeenNthCalledWith(17, 'cmd_server_create_compliance_period_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          date_range_start: 1000,
+          date_range_end: 2000,
+          framework_id: 'gitgov_release_governance_baseline_v1',
+          format: 'json',
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(18, 'cmd_server_list_compliance_period_reports', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          framework_id: 'gitgov_release_governance_baseline_v1',
+          limit: 25,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(19, 'cmd_server_download_compliance_period_report', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        periodReportId: 'cpr_123',
+        query: {
+          org_name: 'yohandry10',
+        },
+      })
       expect(exportResponse?.export.export_id).toBe('cee_123')
       expect(mappingResponse?.items).toHaveLength(1)
       expect(packageResponse?.review_package.certification).toBe(false)
@@ -1408,6 +1511,9 @@ describe('useControlPlaneStore', () => {
       expect(manifest?.manifest.signature_algorithm).toBe('sha256-provenance-manifest-v1')
       expect(pdfExport?.pdf_export.pdf_artifact_hash).toBe('sha256:' + 'f'.repeat(64))
       expect(pdfDownload?.pdf_base64).toBe('JVBERi0xLjQK')
+      expect(periodReport?.period_report.period_report_id).toBe('cpr_123')
+      expect(periodReports?.items[0]?.source_report_ids).toEqual(['frr_123'])
+      expect(periodArtifact?.schema_version).toBe('gitgov_period_compliance_report.v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.count).toBe(1)
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReports?.items[0]?.review_status).toBe('needs_changes')
       expect(useControlPlaneStore.getState().assignedComplianceFrameworkReviewReports?.count).toBe(1)
@@ -1415,6 +1521,14 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportComments?.comments[0]?.comment_body_safe).toBe('Needs owner sign-off.')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportProvenanceManifest?.artifact.schema_version).toBe('gitgov_framework_review_report_provenance_manifest.v1')
       expect(useControlPlaneStore.getState().complianceFrameworkReviewReportPdfExport?.pdf_export.downloaded_at).toBe(12)
+      expect(useControlPlaneStore.getState().compliancePeriodReport?.period_report.artifact_hash).toBe('sha256:' + '1'.repeat(64))
+      expect(useControlPlaneStore.getState().compliancePeriodReports?.count).toBe(1)
+      expect(useControlPlaneStore.getState().compliancePeriodReportArtifact?.claims).toEqual({
+        compliance_claim: false,
+        regulatory_claim: false,
+        certification: false,
+        requires_auditor_review: true,
+      })
       expect(useControlPlaneStore.getState().complianceEvidenceSelectedDeploymentGateId).toBe('dga_123')
     })
 
