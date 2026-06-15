@@ -266,6 +266,17 @@ pub struct CreateComplianceFrameworkReviewReportCommentInput<'a> {
     pub review_status_suggestion: Option<&'a str>,
 }
 
+pub struct CreateComplianceFrameworkReviewReportProvenanceManifestInput<'a> {
+    pub manifest_id: &'a str,
+    pub org_id: &'a str,
+    pub report_id: &'a str,
+    pub generated_by_user_id: &'a str,
+    pub manifest_hash: &'a str,
+    pub previous_manifest_hash: Option<&'a str>,
+    pub signature_algorithm: &'a str,
+    pub payload_json_redacted: &'a serde_json::Value,
+}
+
 #[derive(Debug, Clone)]
 pub struct RotateAgentGovernanceAgentKeyRecords {
     pub replacement: AgentGovernanceAgentKeyRecord,

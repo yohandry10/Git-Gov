@@ -1066,6 +1066,18 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     .expect("count comment audit rows");
     assert_eq!(comment_audit_count, 1);
 
+    let manifest_body = json!({});
+    let (status, manifest_before_review) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/provenance-manifests"),
+        Some(&manifest_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(manifest_before_review.contains("report_not_reviewed"));
+
     let invalid_status = json!({
         "review_status": "approved",
         "review_notes_safe": "valid plain text"
@@ -1131,6 +1143,190 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert!(other_tenant_review.contains("not found"));
 
+    let (status, final_review_response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/compliance/framework-review-reports/{report_id}/review"),
+        Some(&reviewed_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "final reviewed status failed: {final_review_response}"
+    );
+    let final_review_response: serde_json::Value =
+        serde_json::from_str(&final_review_response).expect("final review JSON");
+    assert_eq!(final_review_response["report"]["review_status"], "reviewed");
+    assert_eq!(
+        final_review_response["report"]["artifact_hash"],
+        artifact_hash
+    );
+
+    let (status, unassigned_manifest) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/provenance-manifests"),
+        Some(&manifest_body.to_string()),
+        Some(&second_auditor),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(unassigned_manifest.contains("auditor_not_assigned"));
+
+    let (status, developer_manifest) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/provenance-manifests"),
+        Some(&manifest_body.to_string()),
+        Some(&developer),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(developer_manifest.contains("Admin or Auditor compliance review access required"));
+
+    let (status, first_manifest_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/provenance-manifests"),
+        Some(&manifest_body.to_string()),
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "first provenance manifest failed: {first_manifest_response}"
+    );
+    assert!(
+        !first_manifest_response.contains("must-not-report"),
+        "provenance manifest leaked secret-like fixture payload"
+    );
+    let first_manifest: serde_json::Value =
+        serde_json::from_str(&first_manifest_response).expect("first manifest JSON");
+    let first_manifest_hash = first_manifest["manifest"]["manifest_hash"]
+        .as_str()
+        .expect("first manifest hash");
+    assert!(first_manifest["manifest"]["manifest_id"]
+        .as_str()
+        .expect("manifest id")
+        .starts_with("frrm_"));
+    assert_eq!(
+        first_manifest["manifest"]["signature_algorithm"],
+        "sha256-provenance-manifest-v1"
+    );
+    assert_eq!(
+        first_manifest["manifest"]["previous_manifest_hash"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        first_manifest["artifact"]["schema_version"],
+        "gitgov_framework_review_report_provenance_manifest.v1"
+    );
+    assert_eq!(
+        first_manifest["artifact"]["source_hashes"]["report_artifact_hash"],
+        artifact_hash
+    );
+    assert_eq!(
+        first_manifest["artifact"]["report"]["review_status"],
+        "reviewed"
+    );
+    assert_eq!(
+        first_manifest["artifact"]["hash_chain"]["manifest_hash"],
+        first_manifest_hash
+    );
+    assert_eq!(
+        first_manifest["artifact"]["hash_chain"]["previous_manifest_hash"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        first_manifest["artifact"]["claims"]["compliance_claim"],
+        false
+    );
+    assert_eq!(
+        first_manifest["artifact"]["claims"]["regulatory_claim"],
+        false
+    );
+    assert_eq!(first_manifest["artifact"]["claims"]["certification"], false);
+    assert_eq!(
+        first_manifest["artifact"]["audit_metadata"]["source_report_artifact_mutated"],
+        false
+    );
+    assert_eq!(
+        first_manifest["artifact"]["audit_metadata"]["agent_governance_required"],
+        false
+    );
+    assert_eq!(
+        first_manifest["artifact"]["collaboration"]["active_assignment_count"],
+        1
+    );
+    assert_eq!(
+        first_manifest["artifact"]["collaboration"]["comment_count"],
+        1
+    );
+    let first_manifest_id = first_manifest["manifest"]["manifest_id"]
+        .as_str()
+        .expect("first manifest id");
+    let (status, first_manifest_download) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/compliance/framework-review-reports/{report_id}/provenance-manifests/{first_manifest_id}"
+        ),
+        None,
+        Some(&auditor),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "manifest download failed: {first_manifest_download}"
+    );
+    let first_manifest_download: serde_json::Value =
+        serde_json::from_str(&first_manifest_download).expect("manifest download JSON");
+    assert_eq!(
+        first_manifest_download["hash_chain"]["manifest_hash"],
+        first_manifest_hash
+    );
+
+    let (status, second_manifest_response) = json_request(
+        &app,
+        "POST",
+        &format!("/compliance/framework-review-reports/{report_id}/provenance-manifests"),
+        Some(&manifest_body.to_string()),
+        Some(&admin),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "second provenance manifest failed: {second_manifest_response}"
+    );
+    let second_manifest: serde_json::Value =
+        serde_json::from_str(&second_manifest_response).expect("second manifest JSON");
+    assert_eq!(
+        second_manifest["manifest"]["previous_manifest_hash"],
+        first_manifest_hash
+    );
+    assert_eq!(
+        second_manifest["artifact"]["hash_chain"]["previous_manifest_hash"],
+        first_manifest_hash
+    );
+    assert_ne!(
+        second_manifest["manifest"]["manifest_hash"],
+        first_manifest["manifest"]["manifest_hash"]
+    );
+
+    let manifest_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE target_id = $1 AND action = 'compliance_framework_review_report.provenance_manifest_created'",
+    )
+    .bind(report_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count provenance manifest audit rows");
+    assert_eq!(manifest_audit_count, 2);
+
     let (status, list) = json_request(
         &app,
         "GET",
@@ -1147,7 +1343,7 @@ async fn framework_review_report_exports_baseline_mapping_with_source_hashes_and
     assert_eq!(list["limit"], 100);
     assert_eq!(list["items"][0]["report_id"], report_id);
     assert_eq!(list["items"][0]["framework_id"], BASELINE_FRAMEWORK_ID);
-    assert_eq!(list["items"][0]["review_status"], "needs_changes");
+    assert_eq!(list["items"][0]["review_status"], "reviewed");
     assert!(list["items"][0].get("artifact").is_none());
     assert!(list["items"][0].get("payload_json_redacted").is_none());
 

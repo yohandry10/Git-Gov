@@ -11,6 +11,7 @@ import type {
   ComplianceFrameworkReviewReportCommentsResponse,
   ComplianceFrameworkPackListResponse,
   ComplianceFrameworkReviewReportListResponse,
+  ComplianceFrameworkReviewReportProvenanceManifestResponse,
   ComplianceFrameworkReviewReportResponse,
   ComplianceReviewPackageResponse,
   ControlPlaneActions,
@@ -37,6 +38,7 @@ type ComplianceActionKeys =
   | 'createComplianceFrameworkReviewReportComment'
   | 'reviewComplianceFrameworkReviewReport'
   | 'downloadComplianceFrameworkReviewReport'
+  | 'createComplianceFrameworkReviewReportProvenanceManifest'
   | 'resetComplianceEvidenceFlow'
 
 export function createComplianceActions(
@@ -705,6 +707,38 @@ export function createComplianceActions(
       }
     },
 
+    createComplianceFrameworkReviewReportProvenanceManifest: async (reportId) => {
+      const { serverConfig, selectedOrgName } = get()
+      const normalizedReportId = reportId.trim()
+      if (!serverConfig || !normalizedReportId) return null
+
+      set({
+        isComplianceFrameworkReviewReportProvenanceManifestCreating: true,
+        complianceEvidenceError: null,
+      })
+      try {
+        const response = await tauriInvoke<ComplianceFrameworkReviewReportProvenanceManifestResponse>('cmd_server_create_compliance_framework_review_report_provenance_manifest', {
+          config: serverConfig,
+          reportId: normalizedReportId,
+          payload: {
+            org_name: selectedOrgName.trim() || null,
+          },
+        })
+        set({
+          complianceFrameworkReviewReportProvenanceManifest: response,
+          isComplianceFrameworkReviewReportProvenanceManifestCreating: false,
+        })
+        return response
+      } catch (e) {
+        const message = parseCommandError(String(e)).message
+        set({
+          complianceEvidenceError: message,
+          isComplianceFrameworkReviewReportProvenanceManifestCreating: false,
+        })
+        return null
+      }
+    },
+
     resetComplianceEvidenceFlow: () => set({
       complianceEvidenceSelectedDeploymentGateId: null,
       selectedComplianceFrameworkId: GITGOV_RELEASE_GOVERNANCE_BASELINE,
@@ -719,6 +753,7 @@ export function createComplianceActions(
       complianceFrameworkReviewReportAssignments: null,
       complianceFrameworkReviewReportComments: null,
       complianceFrameworkReviewReportArtifact: null,
+      complianceFrameworkReviewReportProvenanceManifest: null,
       complianceEvidenceError: null,
     }),
   }

@@ -13,11 +13,13 @@ use crate::control_plane::{
     ComplianceFrameworkReviewReportAssignmentsResponse,
     ComplianceFrameworkReviewReportCommentRecord, ComplianceFrameworkReviewReportCommentRequest,
     ComplianceFrameworkReviewReportCommentsQuery, ComplianceFrameworkReviewReportCommentsResponse,
-    ComplianceFrameworkReviewReportListResponse, ComplianceFrameworkReviewReportQuery,
-    ComplianceFrameworkReviewReportRequest, ComplianceFrameworkReviewReportResponse,
-    ComplianceFrameworkReviewReportReviewRequest, ComplianceReviewPackageQuery,
-    ComplianceReviewPackageRequest, ComplianceReviewPackageResponse, ControlPlaneClient,
-    CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
+    ComplianceFrameworkReviewReportListResponse,
+    ComplianceFrameworkReviewReportProvenanceManifestRequest,
+    ComplianceFrameworkReviewReportProvenanceManifestResponse,
+    ComplianceFrameworkReviewReportQuery, ComplianceFrameworkReviewReportRequest,
+    ComplianceFrameworkReviewReportResponse, ComplianceFrameworkReviewReportReviewRequest,
+    ComplianceReviewPackageQuery, ComplianceReviewPackageRequest, ComplianceReviewPackageResponse,
+    ControlPlaneClient, CreateEnterpriseReleaseApprovalRequest, CreateOrgInvitationRequest,
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
@@ -1247,6 +1249,53 @@ pub async fn cmd_server_download_compliance_framework_review_report(
             .download_compliance_framework_review_report(&report_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_compliance_framework_review_report_provenance_manifest(
+    config: ServerConnectionConfig,
+    report_id: String,
+    payload: ComplianceFrameworkReviewReportProvenanceManifestRequest,
+) -> Result<ComplianceFrameworkReviewReportProvenanceManifestResponse, String> {
+    run_blocking_command(
+        "CREATE_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_PROVENANCE_MANIFEST",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .create_compliance_framework_review_report_provenance_manifest(&report_id, &payload)
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_compliance_framework_review_report_provenance_manifest(
+    config: ServerConnectionConfig,
+    report_id: String,
+    manifest_id: String,
+    query: ComplianceFrameworkReviewReportQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command(
+        "DOWNLOAD_COMPLIANCE_FRAMEWORK_REVIEW_REPORT_PROVENANCE_MANIFEST",
+        move || {
+            let client = ControlPlaneClient::new(ServerConfig {
+                url: config.url,
+                api_key: config.api_key,
+            });
+            client
+                .download_compliance_framework_review_report_provenance_manifest(
+                    &report_id,
+                    &manifest_id,
+                    &query,
+                )
+                .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+        },
+    )
     .await
 }
 

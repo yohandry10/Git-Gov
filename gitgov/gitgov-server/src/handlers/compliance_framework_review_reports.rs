@@ -4,6 +4,10 @@
 
 const COMPLIANCE_FRAMEWORK_REVIEW_REPORT_SCHEMA_VERSION: &str =
     "gitgov_framework_review_report.v1";
+const COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SCHEMA_VERSION: &str =
+    "gitgov_framework_review_report_provenance_manifest.v1";
+const COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SIGNATURE_ALGORITHM: &str =
+    "sha256-provenance-manifest-v1";
 const DEFAULT_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 25;
 const MAX_FRAMEWORK_REVIEW_REPORT_LIST_LIMIT: i64 = 100;
 const FRAMEWORK_REVIEW_REPORT_REVIEW_NEEDS_REVIEW: &str = "needs_review";
@@ -331,6 +335,151 @@ fn framework_review_report_response(
     );
     ComplianceFrameworkReviewReportResponse {
         report: record,
+        download_url,
+        artifact,
+    }
+}
+
+fn deterministic_framework_review_report_manifest_id(
+    report_id: &str,
+    generated_by: &str,
+    generated_at: i64,
+    previous_manifest_hash: Option<&str>,
+    content_hash: &str,
+) -> String {
+    let content = format!(
+        "{COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SCHEMA_VERSION}:{report_id}:{generated_by}:{generated_at}:{}:{content_hash}",
+        previous_manifest_hash.unwrap_or("root")
+    );
+    let digest = format!("{:x}", Sha256::digest(content.as_bytes()));
+    format!("frrm_{}", &digest[..32])
+}
+
+fn normalize_framework_review_report_manifest_id(
+    manifest_id: &str,
+) -> Result<String, &'static str> {
+    let normalized = manifest_id.trim().to_string();
+    if normalized.starts_with("frrm_") && normalized.len() == 37 {
+        Ok(normalized)
+    } else {
+        Err("manifest_id must be a valid frrm_ identifier")
+    }
+}
+
+struct FrameworkReviewReportManifestPayloadInput<'a> {
+    manifest_id: &'a str,
+    generated_at: i64,
+    generated_by: &'a str,
+    report: &'a ComplianceFrameworkReviewReportRecord,
+    previous_manifest_hash: Option<&'a str>,
+    manifest_hash: Option<&'a str>,
+    assignments: &'a [ComplianceFrameworkReviewReportAssignmentRecord],
+    comments: &'a [ComplianceFrameworkReviewReportCommentRecord],
+}
+
+fn build_framework_review_report_manifest_payload(
+    input: &FrameworkReviewReportManifestPayloadInput<'_>,
+) -> serde_json::Value {
+    let active_assignment_count = input
+        .assignments
+        .iter()
+        .filter(|item| item.assignment_status == "active")
+        .count();
+    let mut reviewers = HashSet::new();
+    for assignment in input.assignments {
+        if assignment.assignment_status == "active" {
+            reviewers.insert(assignment.auditor_client_id.clone());
+        }
+    }
+    for comment in input.comments {
+        reviewers.insert(comment.commenter_client_id.clone());
+    }
+    if let Some(reviewer) = input.report.reviewed_by_user_id.as_ref() {
+        reviewers.insert(reviewer.clone());
+    }
+    let mut reviewers = reviewers.into_iter().collect::<Vec<_>>();
+    reviewers.sort();
+
+    json!({
+        "schema_version": COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SCHEMA_VERSION,
+        "manifest_id": input.manifest_id,
+        "generated_at": input.generated_at,
+        "generated_by_user_id": input.generated_by,
+        "signature": {
+            "algorithm": COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SIGNATURE_ALGORITHM,
+            "signed_by_user_id": input.generated_by,
+            "signed_at": input.generated_at,
+            "signature_hash": input.manifest_hash
+        },
+        "hash_chain": {
+            "subject_type": "framework_review_report",
+            "subject_id": input.report.report_id,
+            "previous_manifest_hash": input.previous_manifest_hash,
+            "manifest_hash": input.manifest_hash
+        },
+        "report": {
+            "report_id": input.report.report_id,
+            "artifact_hash": input.report.artifact_hash,
+            "format": input.report.format,
+            "created_at": input.report.created_at,
+            "created_by_user_id": input.report.created_by_user_id,
+            "review_status": input.report.review_status,
+            "reviewed_by_user_id": input.report.reviewed_by_user_id,
+            "reviewed_at": input.report.reviewed_at,
+            "has_review_notes_safe": input.report.review_notes_safe.is_some()
+        },
+        "framework": {
+            "framework_id": input.report.framework_id,
+            "framework_version": input.report.framework_version,
+            "framework_owner_type": input.report.framework_owner_type,
+            "framework_review_status": input.report.framework_review_status,
+            "pack_hash": input.report.pack_hash
+        },
+        "source_hashes": {
+            "evidence_export_id": input.report.evidence_export_id,
+            "evidence_export_hash": input.report.evidence_export_hash,
+            "mapping_id": input.report.mapping_id,
+            "mapping_hash": input.report.mapping_hash,
+            "review_package_id": input.report.review_package_id,
+            "review_package_hash": input.report.review_package_hash,
+            "report_artifact_hash": input.report.artifact_hash
+        },
+        "collaboration": {
+            "assignment_count": input.assignments.len(),
+            "active_assignment_count": active_assignment_count,
+            "comment_count": input.comments.len(),
+            "reviewers": reviewers
+        },
+        "claims": {
+            "compliance_claim": input.report.compliance_claim,
+            "regulatory_claim": input.report.regulatory_claim,
+            "certification": input.report.certification,
+            "requires_auditor_review": input.report.requires_auditor_review,
+            "official_regulatory_mapping": false
+        },
+        "audit_metadata": {
+            "artifact_redacted": true,
+            "raw_payload_included": false,
+            "source_report_artifact_mutated": false,
+            "agent_governance_required": false,
+            "llm_decision": false,
+            "policy_mutation": false,
+            "provider_mutation": false,
+            "report_scope": "reviewed_framework_report_provenance_manifest"
+        }
+    })
+}
+
+fn framework_review_report_manifest_response(
+    manifest: ComplianceFrameworkReviewReportProvenanceManifestRecord,
+    artifact: serde_json::Value,
+) -> ComplianceFrameworkReviewReportProvenanceManifestResponse {
+    let download_url = format!(
+        "/compliance/framework-review-reports/{}/provenance-manifests/{}",
+        manifest.report_id, manifest.manifest_id
+    );
+    ComplianceFrameworkReviewReportProvenanceManifestResponse {
+        manifest,
         download_url,
         artifact,
     }
@@ -818,6 +967,297 @@ pub async fn download_compliance_framework_review_report(
             .into_response(),
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to download compliance framework review report");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn create_compliance_framework_review_report_provenance_manifest(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(report_id): Path<String>,
+    Json(mut payload): Json<ComplianceFrameworkReviewReportProvenanceManifestRequest>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+    let report_id = match normalize_framework_review_report_id(&report_id) {
+        Ok(report_id) => report_id,
+        Err(error) => {
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))).into_response();
+        }
+    };
+    normalize_release_approval_optional_text(&mut payload.org_name);
+    let org_id = match resolve_compliance_framework_review_report_org(
+        &state,
+        &auth_user,
+        payload.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    if let Some(resp) =
+        require_framework_review_report_collaboration_access(&state, &auth_user, &org_id, &report_id)
+            .await
+    {
+        return resp;
+    }
+
+    let report = match state
+        .db
+        .get_compliance_framework_review_report(&org_id, &report_id)
+        .await
+    {
+        Ok(Some(record)) => record,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Compliance framework review report not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to load framework review report before provenance manifest");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    if report.review_status != FRAMEWORK_REVIEW_REPORT_REVIEW_REVIEWED {
+        return (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "error": "Framework review report must be reviewed before a provenance manifest can be generated",
+                "code": "report_not_reviewed"
+            })),
+        )
+            .into_response();
+    }
+
+    if report.compliance_claim
+        || report.regulatory_claim
+        || report.certification
+        || !report.requires_auditor_review
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Framework review report claims are not eligible for a non-claim provenance manifest" })),
+        )
+            .into_response();
+    }
+
+    let assignments = match state
+        .db
+        .list_compliance_framework_review_report_assignments(&org_id, &report_id)
+        .await
+    {
+        Ok(assignments) => assignments,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to load framework review report assignments for provenance manifest");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+    let comments = match state
+        .db
+        .list_compliance_framework_review_report_comments(&org_id, &report_id)
+        .await
+    {
+        Ok(comments) => comments,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to load framework review report comments for provenance manifest");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+    let previous_manifest_hash = match state
+        .db
+        .latest_compliance_framework_review_report_manifest_hash(&org_id, &report_id)
+        .await
+    {
+        Ok(value) => value,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to load previous framework review report manifest hash");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let generated_at = chrono::Utc::now().timestamp_millis();
+    let preimage =
+        build_framework_review_report_manifest_payload(&FrameworkReviewReportManifestPayloadInput {
+            manifest_id: "pending",
+            generated_at,
+            generated_by: &auth_user.client_id,
+            report: &report,
+            previous_manifest_hash: previous_manifest_hash.as_deref(),
+            manifest_hash: None,
+            assignments: &assignments,
+            comments: &comments,
+        });
+    let content_hash = compliance_review_package_hash(&preimage);
+    let manifest_id = deterministic_framework_review_report_manifest_id(
+        &report.report_id,
+        &auth_user.client_id,
+        generated_at,
+        previous_manifest_hash.as_deref(),
+        &content_hash,
+    );
+    let mut artifact =
+        build_framework_review_report_manifest_payload(&FrameworkReviewReportManifestPayloadInput {
+            manifest_id: &manifest_id,
+            generated_at,
+            generated_by: &auth_user.client_id,
+            report: &report,
+            previous_manifest_hash: previous_manifest_hash.as_deref(),
+            manifest_hash: None,
+            assignments: &assignments,
+            comments: &comments,
+        });
+    let manifest_hash = compliance_review_package_hash(&artifact);
+    artifact =
+        build_framework_review_report_manifest_payload(&FrameworkReviewReportManifestPayloadInput {
+            manifest_id: &manifest_id,
+            generated_at,
+            generated_by: &auth_user.client_id,
+            report: &report,
+            previous_manifest_hash: previous_manifest_hash.as_deref(),
+            manifest_hash: Some(&manifest_hash),
+            assignments: &assignments,
+            comments: &comments,
+        });
+
+    match state
+        .db
+        .create_compliance_framework_review_report_provenance_manifest(
+            &CreateComplianceFrameworkReviewReportProvenanceManifestInput {
+                manifest_id: &manifest_id,
+                org_id: &org_id,
+                report_id: &report.report_id,
+                generated_by_user_id: &auth_user.client_id,
+                manifest_hash: &manifest_hash,
+                previous_manifest_hash: previous_manifest_hash.as_deref(),
+                signature_algorithm: COMPLIANCE_FRAMEWORK_REVIEW_REPORT_MANIFEST_SIGNATURE_ALGORITHM,
+                payload_json_redacted: &artifact,
+            },
+        )
+        .await
+    {
+        Ok(manifest) => {
+            let audit_entry = AdminAuditLogEntry {
+                id: Uuid::new_v4().to_string(),
+                actor_client_id: auth_user.client_id.clone(),
+                action: "compliance_framework_review_report.provenance_manifest_created".to_string(),
+                target_type: Some("compliance_framework_review_report".to_string()),
+                target_id: Some(report.report_id.clone()),
+                metadata: json!({
+                    "org_id": org_id,
+                    "report_id": report.report_id,
+                    "manifest_id": manifest.manifest_id,
+                    "manifest_hash": manifest.manifest_hash,
+                    "previous_manifest_hash": manifest.previous_manifest_hash,
+                    "signature_algorithm": manifest.signature_algorithm,
+                    "source_report_artifact_hash": report.artifact_hash,
+                    "source_report_artifact_mutated": false,
+                    "compliance_claim": false,
+                    "regulatory_claim": false,
+                    "certification": false,
+                    "agent_governance_required": false
+                }),
+                created_at: chrono::Utc::now().timestamp_millis(),
+            };
+            if let Err(e) = state.db.insert_admin_audit_log(&audit_entry).await {
+                tracing::warn!("Failed to write framework review report manifest audit log: {}", e);
+            }
+            (
+                StatusCode::CREATED,
+                Json(framework_review_report_manifest_response(manifest, artifact)),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, "Failed to create framework review report provenance manifest");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn download_compliance_framework_review_report_provenance_manifest(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path((report_id, manifest_id)): Path<(String, String)>,
+    Query(mut query): Query<ComplianceFrameworkReviewReportQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+    let report_id = match normalize_framework_review_report_id(&report_id) {
+        Ok(report_id) => report_id,
+        Err(error) => {
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))).into_response();
+        }
+    };
+    let manifest_id = match normalize_framework_review_report_manifest_id(&manifest_id) {
+        Ok(manifest_id) => manifest_id,
+        Err(error) => {
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))).into_response();
+        }
+    };
+    normalize_release_approval_optional_text(&mut query.org_name);
+    let org_id = match resolve_compliance_framework_review_report_org(
+        &state,
+        &auth_user,
+        query.org_name.as_deref(),
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(resp) => return resp,
+    };
+
+    if let Some(resp) =
+        require_framework_review_report_collaboration_access(&state, &auth_user, &org_id, &report_id)
+            .await
+    {
+        return resp;
+    }
+
+    match state
+        .db
+        .get_compliance_framework_review_report_manifest_payload(&org_id, &report_id, &manifest_id)
+        .await
+    {
+        Ok(Some(payload)) => (StatusCode::OK, Json(payload)).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Compliance framework review report provenance manifest not found" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, report_id = %report_id, manifest_id = %manifest_id, "Failed to download framework review report provenance manifest");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),

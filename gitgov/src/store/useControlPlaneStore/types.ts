@@ -628,6 +628,27 @@ export interface ComplianceFrameworkReviewReportCommentsResponse {
   count: number
 }
 
+export interface ComplianceFrameworkReviewReportProvenanceManifestRequest {
+  org_name?: string | null
+}
+
+export interface ComplianceFrameworkReviewReportProvenanceManifestRecord {
+  manifest_id: string
+  org_id: string
+  report_id: string
+  generated_by_user_id: string
+  manifest_hash: string
+  previous_manifest_hash?: string | null
+  signature_algorithm: string
+  created_at: number
+}
+
+export interface ComplianceFrameworkReviewReportProvenanceManifestResponse {
+  manifest: ComplianceFrameworkReviewReportProvenanceManifestRecord
+  download_url: string
+  artifact: Record<string, unknown>
+}
+
 export interface EnterpriseReleaseApprovalQuery {
   org_name?: string | null
   repository_full_name?: string | null
@@ -1054,6 +1075,7 @@ export interface ControlPlaneState {
   complianceFrameworkReviewReportAssignments: ComplianceFrameworkReviewReportAssignmentsResponse | null
   complianceFrameworkReviewReportComments: ComplianceFrameworkReviewReportCommentsResponse | null
   complianceFrameworkReviewReportArtifact: Record<string, unknown> | null
+  complianceFrameworkReviewReportProvenanceManifest: ComplianceFrameworkReviewReportProvenanceManifestResponse | null
   releaseGovernanceEvaluation: EnterpriseReleaseGovernanceEvaluationResponse | null
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
@@ -1074,6 +1096,7 @@ export interface ControlPlaneState {
   isComplianceFrameworkReviewReportCommenting: boolean
   isComplianceFrameworkReviewReportReviewing: boolean
   isComplianceFrameworkReviewReportDownloading: boolean
+  isComplianceFrameworkReviewReportProvenanceManifestCreating: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
   complianceEvidenceError: string | null
@@ -1186,6 +1209,7 @@ export interface ControlPlaneActions {
     reviewNotesSafe?: string | null,
   ) => Promise<ComplianceFrameworkReviewReportResponse | null>
   downloadComplianceFrameworkReviewReport: (reportId: string) => Promise<Record<string, unknown> | null>
+  createComplianceFrameworkReviewReportProvenanceManifest: (reportId: string) => Promise<ComplianceFrameworkReviewReportProvenanceManifestResponse | null>
   resetComplianceEvidenceFlow: () => void
   evaluateEnterpriseReleaseGovernance: (query: EnterpriseReleaseGovernanceEvaluationQuery) => Promise<EnterpriseReleaseGovernanceEvaluationResponse | null>
   createEnterpriseReleaseApproval: (payload: CreateEnterpriseReleaseApprovalRequest) => Promise<EnterpriseReleaseApprovalRecord | null>

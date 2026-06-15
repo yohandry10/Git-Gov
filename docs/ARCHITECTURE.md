@@ -199,6 +199,8 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/compliance/framework-review-reports/{report_id}/comments` | Bearer (admin/auditor asignado) | Listar o crear comentarios seguros de revision; no cambia artifact hash ni claims |
 | `/compliance/framework-review-reports/{report_id}/review` | Bearer (admin/auditor) | Guardar metadata de revisión manual del reporte; no cambia artifact hash ni crea claims |
 | `/compliance/framework-review-reports/{report_id}/download` | Bearer (admin/auditor) | Descargar reporte JSON redacted con controles, evidencias, faltantes, hashes y provenance |
+| `/compliance/framework-review-reports/{report_id}/provenance-manifests` | Bearer (admin/auditor asignado) | Crear manifiesto JSON append-only para reportes `reviewed`; encadena hashes y no cambia artifact ni claims |
+| `/compliance/framework-review-reports/{report_id}/provenance-manifests/{manifest_id}` | Bearer (admin/auditor asignado) | Descargar un manifiesto JSON de procedencia ya materializado |
 | `/evidence/packets/tickets/{ticket_id}` | Bearer (admin) | Evidence packet auditable por ticket |
 | `/api-keys` | Bearer (admin) | Gestión de API keys; acepta `org_name` para scope de organización o sin `org_name` para catálogo global de Admin global |
 | `/integrations/jenkins` | Bearer (admin) | Ingesta de pipeline events |
@@ -677,6 +679,7 @@ El sistema trabaja con estas entidades principales:
 | `supabase_schema_v50.sql` | Metadata de revisión manual KAN-107 para Framework Review Reports (`review_status`, reviewer, timestamp, notas seguras) |
 | `supabase_schema_v51.sql` | Rol tenant `Auditor` para revisión/lectura de evidencia compliance sin permisos de configuración |
 | `supabase_schema_v52.sql` | Asignaciones granulares de Auditors y comentarios seguros KAN-109 sobre Framework Review Reports |
+| `supabase_schema_v53.sql` | Manifiestos append-only KAN-110 para Framework Review Reports revisados, con hash chain y no-claim constraints |
 
 ### Relaciones entre Entidades
 

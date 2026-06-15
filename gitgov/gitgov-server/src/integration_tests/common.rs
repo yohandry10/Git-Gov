@@ -537,6 +537,28 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_cfr_report_comments_report_created
             ON compliance_framework_review_report_comments(org_id, report_id, created_at ASC);
 
+        CREATE TABLE IF NOT EXISTS compliance_framework_review_report_manifests (
+            manifest_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            report_id TEXT NOT NULL REFERENCES compliance_framework_review_reports(report_id) ON DELETE CASCADE,
+            generated_by_user_id TEXT NOT NULL,
+            manifest_hash TEXT NOT NULL,
+            previous_manifest_hash TEXT,
+            signature_algorithm TEXT NOT NULL DEFAULT 'sha256-provenance-manifest-v1',
+            payload_json_redacted JSONB NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CHECK (manifest_id ~ '^frrm_[0-9a-f]{32}$'),
+            CHECK (manifest_hash ~ '^sha256:[0-9a-f]{64}$'),
+            CHECK (previous_manifest_hash IS NULL OR previous_manifest_hash ~ '^sha256:[0-9a-f]{64}$'),
+            CHECK (signature_algorithm = 'sha256-provenance-manifest-v1')
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_cfr_report_manifests_report_created
+            ON compliance_framework_review_report_manifests(org_id, report_id, created_at DESC);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_cfr_report_manifests_hash
+            ON compliance_framework_review_report_manifests(org_id, manifest_hash);
+
         INSERT INTO compliance_control_frameworks (
             framework_id,
             name,
@@ -1657,6 +1679,14 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/compliance/framework-review-reports/{report_id}/download",
             get(handlers::download_compliance_framework_review_report),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/provenance-manifests",
+            post(handlers::create_compliance_framework_review_report_provenance_manifest),
+        )
+        .route(
+            "/compliance/framework-review-reports/{report_id}/provenance-manifests/{manifest_id}",
+            get(handlers::download_compliance_framework_review_report_provenance_manifest),
         )
         .route(
             "/enterprise/adoption-profile",

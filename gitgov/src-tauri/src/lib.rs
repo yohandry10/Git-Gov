@@ -283,6 +283,8 @@ pub fn run() {
             commands::cmd_server_create_compliance_framework_review_report_comment,
             commands::cmd_server_review_compliance_framework_review_report,
             commands::cmd_server_download_compliance_framework_review_report,
+            commands::cmd_server_create_compliance_framework_review_report_provenance_manifest,
+            commands::cmd_server_download_compliance_framework_review_report_provenance_manifest,
             commands::cmd_server_create_enterprise_release_approval,
             commands::cmd_server_get_me,
             commands::cmd_server_create_org,

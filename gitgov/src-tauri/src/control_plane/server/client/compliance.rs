@@ -648,4 +648,66 @@ impl ControlPlaneClient {
             .json()
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
+
+    pub fn create_compliance_framework_review_report_provenance_manifest(
+        &self,
+        report_id: &str,
+        payload: &ComplianceFrameworkReviewReportProvenanceManifestRequest,
+    ) -> Result<ComplianceFrameworkReviewReportProvenanceManifestResponse, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "provenance-manifests",
+        ])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_compliance_framework_review_report_provenance_manifest(
+        &self,
+        report_id: &str,
+        manifest_id: &str,
+        query: &ComplianceFrameworkReviewReportQuery,
+    ) -> Result<serde_json::Value, ServerError> {
+        let url = self.endpoint_url(&[
+            "compliance",
+            "framework-review-reports",
+            report_id,
+            "provenance-manifests",
+            manifest_id,
+        ])?;
+        let query_params = framework_review_report_query_params(query, false);
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
 }
