@@ -46,4 +46,12 @@ Focused validation completed during implementation:
 - `psql --dbname=<local ignored DATABASE_URL without pgbouncer> -v ON_ERROR_STOP=1 -f gitgov/gitgov-server/supabase/supabase_schema_v51_postcheck.sql`
 - `git diff --check`
 
-Publication guard, PR checks, merge, Render deploy, and production smoke are recorded in `docs/CURRENT_CONTEXT.md` after completion.
+- `.\scripts\security\publication_guard.ps1`
+
+Publication and production validation:
+
+- PR `#378` passed required checks and merged to `main` as `98cf543`.
+- Post-merge checks passed for `98cf543`: `CI`, `Release Readiness Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8nk7hm8bjmc73f0sfng` for `98cf543` reached `live`.
+- Production `v51` migration and postcheck passed.
+- Production smoke passed with a temporary Auditor API key: evidence/report read and downloads returned `200`, report review returned `200`, report artifact hash stayed unchanged, no-claim flags stayed intact, Admin-only mutation surfaces returned `403`, and the temporary Auditor key was revoked.
