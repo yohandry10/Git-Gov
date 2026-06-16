@@ -2,6 +2,53 @@
 
 Updated: 2026-06-16
 
+## KAN-136 VS Code Extension Read-Only Governance Context - 2026-06-16
+
+`KAN-136 - VS Code Extension Read-Only Governance Context MVP` is in progress. GitHub issue `#476`
+tracks the slice.
+
+Product decision:
+
+- Continue `0.10 Developer Distribution Surfaces` after KAN-132 through KAN-135 completed the
+  native terminal surface.
+- Add a minimal VS Code extension that shows read-only GitGov governance context for the current
+  repo/branch.
+- Keep VS Code as a convenience surface only. It does not approve, block, certify, deploy, execute
+  Git commands, mutate providers/repos, or create a second enforcement model.
+
+Implemented locally:
+
+- Added `gitgov-vscode` package.
+- Added VS Code extension manifest, activity bar container, `GitGov Governance` tree view, and
+  configure/refresh/clear commands.
+- Added SecretStorage-backed API key handling; API keys are not stored in plain settings.
+- Added read-only Git context detection for workspace repo/branch and GitHub remote normalization.
+- Added GET-only GitGov client for existing Deployment Gate, Change Risk, and Executive Governance
+  endpoints.
+- Added CI job `VS Code Extension Lint + Typecheck + Test`.
+
+Guardrails:
+
+- No backend migration or new Control Plane API.
+- No Render/API deploy expected.
+- No command interception, enforcement, approvals, CAB updates, Change Risk creation, or deploy
+  execution.
+- No Git push/pull/fetch/checkout.
+- No provider/repo/deploy mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+- No public links, aggressive polling, branch protection manipulation, plain-text API key storage,
+  or secret logging.
+
+Validation:
+
+- Extension `npm ci`, lint, typecheck, tests, and build pass locally.
+- Extension tests cover real Git repo detection, non-git safe state, SecretStorage-compatible key
+  store/read/delete, GET-only endpoint usage, 401/403 safe errors without token leakage, and no
+  GitGov calls when git/config/key prerequisites are absent.
+- `git diff --check`, publication guard, and static no-mutation grep pass locally.
+- PR checks remain pending before merge.
+
 ## KAN-135 Native Terminal Governance Context - 2026-06-16
 
 `KAN-135 - Native Terminal Governance Context Panel MVP` is completed. GitHub issue `#473` shipped

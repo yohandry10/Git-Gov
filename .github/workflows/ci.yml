@@ -101,6 +101,27 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  vscode-extension-lint:
+    name: VS Code Extension Lint + Typecheck + Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gitgov-vscode
+    steps:
+      - uses: actions/checkout@v6
+      - name: Assert explicit runtime env
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assert-gitgov-env.sh"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: gitgov-vscode/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   website-lint:
     name: Website Lint + Typecheck + Build
     runs-on: ubuntu-latest
