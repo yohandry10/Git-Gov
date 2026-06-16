@@ -17,7 +17,13 @@ fn deterministic_change_risk_cab_decision_manifest_id(
 fn normalize_change_risk_cab_decision_manifest_id(
     value: &str,
 ) -> Result<String, &'static str> {
-    let normalized = value.trim().to_string();
+    let trimmed = value.trim();
+    let without_query = trimmed.split_once('?').map(|(path, _)| path).unwrap_or(trimmed);
+    let without_fragment = without_query
+        .split_once('#')
+        .map(|(path, _)| path)
+        .unwrap_or(without_query);
+    let normalized = without_fragment.trim_end_matches('/').to_string();
     if normalized.starts_with("crcabdm_") && normalized.len() == 40 {
         Ok(normalized)
     } else {
@@ -709,5 +715,32 @@ pub async fn revoke_change_risk_cab_decision_manifest(
             )
                 .into_response()
         }
+    }
+}
+
+#[cfg(test)]
+mod change_risk_cab_decision_manifest_tests {
+    use super::normalize_change_risk_cab_decision_manifest_id;
+
+    #[test]
+    fn normalizes_terminal_manifest_id_when_query_or_fragment_is_attached() {
+        let manifest_id = "crcabdm_cf376cfc585cca7d8174c35f2eb03a6b";
+
+        assert_eq!(
+            normalize_change_risk_cab_decision_manifest_id(manifest_id).unwrap(),
+            manifest_id
+        );
+        assert_eq!(
+            normalize_change_risk_cab_decision_manifest_id(&format!(
+                "{manifest_id}?org_name=yohandry10"
+            ))
+            .unwrap(),
+            manifest_id
+        );
+        assert_eq!(
+            normalize_change_risk_cab_decision_manifest_id(&format!("{manifest_id}#download"))
+                .unwrap(),
+            manifest_id
+        );
     }
 }
