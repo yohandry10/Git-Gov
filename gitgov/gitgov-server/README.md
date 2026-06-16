@@ -241,7 +241,7 @@ The `jobs` table allows state transitions but restricts which columns can be upd
 
 ## Endpoints
 
-Source of truth is `src/main.rs`. As of `KAN-71`, the production router has `72` Axum `.route(...)` registrations, plus Swagger UI mounted at `/api-docs` as a partial schema explorer.
+Source of truth is `src/server/routes.rs`. As of `KAN-139`, the production router has `158` Axum `.route(...)` registrations, plus Swagger UI mounted at `/api-docs` as a partial schema explorer.
 
 ### Health
 

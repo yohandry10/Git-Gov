@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-16
-Ticket: `KAN-137` Remove external editor extension direction
+Ticket: `KAN-139` Correct OpenAPI route-source technical debt
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation ticket: GitHub issue `#479`, `KAN-137 Remove external editor extension product direction`, completed through PR `#480`, merged to `main` as `be9aed9e`.
+- Current implementation ticket: GitHub issue `#484`, `KAN-139 Correct OpenAPI route-source technical debt`, active on branch `tech/KAN-139-openapi-route-source-debt`.
+- KAN-139 current status on 2026-06-16: implementation in progress corrects the partial OpenAPI contract disclaimer and living backend docs to point at `gitgov/gitgov-server/src/server/routes.rs` instead of the stale `main.rs` route table. The production router currently has `158` Axum `.route(...)` registrations. This does not expand OpenAPI into a full generated SDK/contract surface; it keeps `/api-docs` as an intentionally partial schema explorer while fixing its operational source-of-truth pointer. No backend route behavior, DB migration, or provider mutation is expected; Render may redeploy only to refresh the served `/api-docs` description.
+- Previous implementation ticket: GitHub issue `#479`, `KAN-137 Remove external editor extension product direction`, completed through PR `#480`, merged to `main` as `be9aed9e`.
 - KAN-137 current status on 2026-06-16: user product decision explicitly removed the external editor extension direction from the roadmap and current repository. Implementation deleted the dedicated editor package, removed its CI job, removed its design/report docs, and updated roadmap/context docs so `0.10 Developer Distribution Surfaces` remains focused on Desktop/Workspace terminal surfaces unless a future explicit product decision reopens external editor plugins. Local validation passed: `git diff --check`, publication guard, and repository grep for the removed direction returned no matches. PR checks passed, including Workflow Lint, Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates warn/block matrix, Sonar Scan + Quality Gate, Vercel, and internal marker guard. No backend/API/server DB change and no Render deploy were required.
 - Previous implementation ticket: GitHub issue `#473`, `KAN-135 Native Terminal Governance Context Panel MVP`, completed through PR `#474`, merged to `main` as `b9dbb57c`.
 - KAN-135 current status on 2026-06-16: GPT/product-leader consultation was performed in the existing ChatGPT thread after KAN-134 and returned the ordinance `KAN-135: Native Terminal Governance Context Panel MVP`. Product decision: after KAN-132 history, KAN-133 repo/branch context, and KAN-134 safe quick commands, show read-only governance context inside the native terminal without turning the terminal into enforcement or automation. Implementation adds `terminalGovernanceContext.ts`, `TerminalGovernanceContextPanel`, and extracts `TerminalSessionHistoryDrawer` to keep `TerminalPanel` focused. The panel derives a safe GitHub `owner/repo` target from existing repo validation remote metadata, then loads existing read-only Deployment Gate, Change Risk, and Executive Governance data through existing Tauri commands. Guardrails: no backend/API/server DB change, no backend persistence or audit write, no command execution/interception/blocking/approval/auto-run, no provider/repo/deploy mutation, no AI/Agent Governance/OPA/Rego/MCP dependency, no compliance/certification/legal/regulatory claim, and no absolute local path exposure in governance labels. Local validation passed: focused terminal governance/quick/history/git-context tests (`18` passed), frontend typecheck/lint/build/full Vitest (`404` passed), Tauri fmt/check/clippy/full tests (`52` passed), `git diff --check`, publication guard, and static grep proving no terminal PTY write or mutating Control Plane command in the new panel. PR checks passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard. No Render/API deploy was required because KAN-135 is Desktop/frontend local and reuses existing read endpoints.
@@ -704,7 +706,7 @@ Production validation after Render deploy `dep-d7phm1m8bjmc73fko1lg`:
 - OpenAPI is not the API itself.
 - Normal GitGov API work uses the real backend routes/API.
 - `/api-docs` is intentionally a partial schema explorer.
-- `docs/ARCHITECTURE.md` plus the backend `main.rs` route table are the operational route source of truth.
+- `docs/ARCHITECTURE.md` plus `gitgov/gitgov-server/src/server/routes.rs` are the operational route source of truth.
 - Full OpenAPI annotation is optional product work. Implement it only if generated SDKs or Swagger contract tests become a real requirement.
 
 ### Documentation Memory
