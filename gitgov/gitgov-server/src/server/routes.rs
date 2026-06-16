@@ -478,6 +478,23 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::get_change_risk_evaluation),
         )
         .route(
+            "/change-risk/cab-packets",
+            get(handlers::list_change_risk_cab_packets)
+                .post(handlers::create_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}/download",
+            get(handlers::download_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}/archive",
+            patch(handlers::archive_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}",
+            get(handlers::get_change_risk_cab_packet),
+        )
+        .route(
             "/agent-governance/evaluate",
             post(handlers::evaluate_agent_governance),
         )

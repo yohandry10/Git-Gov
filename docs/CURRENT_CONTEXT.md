@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-16
-Ticket: `KAN-124` Change Risk Review Queue and CAB Evidence Filter
+Ticket: `KAN-125` Change Risk CAB Review Packet
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,10 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation ticket: GitHub issue `#432`, `KAN-124 Change Risk Review Queue and CAB Evidence Filter`, completed by PR `#433`.
+- Current implementation ticket: GitHub issue `#435`, `KAN-125 Change Risk CAB Review Packet`, active on branch `product/KAN-125-change-risk-cab-packet`.
+- KAN-125 product decision from GPT/product review: after KAN-121 deterministic advisory, KAN-122 rule-level explainability, KAN-123 manual review metadata, and KAN-124 review queue filtering, package selected or filtered Change Risk evaluations into a manual CAB/internal-audit artifact. The packet must be JSON-only, hashable, tenant-scoped, no-claim, and manual-first. Admins create/archive; Admins and Auditors list/read/download. Do not add release blocking, deployment execution, provider/repo mutation, policy enforcement, AI/LLM/BYOM/MCP/chatbot behavior, Agent Governance dependency, approval quorum, public links, email/Slack, scheduler, PDF/DOCX, compliance score, certification, legal attestation, or official regulatory claim.
+- KAN-125 local implementation status on 2026-06-16: in progress. Local changes add Supabase migration/postcheck `v65`; backend `change_risk_cab_packets`; routes `POST/GET /change-risk/cab-packets`, `GET /change-risk/cab-packets/{packet_id}`, `GET /change-risk/cab-packets/{packet_id}/download`, and `PATCH /change-risk/cab-packets/{packet_id}/archive`; artifact schema `gitgov_change_risk_cab_packet.v1`; audit actions for created/downloaded/archived packets; Tauri DTO/client/commands; Control Plane store state/actions; Governance > Releases `ChangeRiskCabPacketsPanel`; focused real Postgres backend test `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation`; focused store test coverage; and design/report/roadmap/architecture/status/public-context docs. Local validation completed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test --no-run`; Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test` (`49` passed); frontend `pnpm --dir gitgov typecheck`, `lint`, full Vitest (`378` passed), focused store test (`44` passed), and build with the pre-existing Vite large chunk warning; focused backend real Postgres Change Risk suite (`3` passed); real Postgres `v65` migration/postcheck in rollback; `git diff --check`; and publication guard. Known local limit: full backend `cargo test -- --test-threads=2` exceeded the local `7` minute command timeout without useful failure output. Pending: PR checks, merge, Render deploy, production migration, and production smoke.
+- Previous current implementation ticket: GitHub issue `#432`, `KAN-124 Change Risk Review Queue and CAB Evidence Filter`, completed by PR `#433`.
 - KAN-124 product decision from GPT consultation attempt and local repo/roadmap analysis: after KAN-121 deterministic advisory, KAN-122 rule-level explainability, and KAN-123 manual review metadata, the next manual-first value is a CAB/operator review queue over existing Change Risk evaluations. ChatGPT was consulted twice in the existing product-lead conversation, but it did not return a usable KAN-124 ordinance: one visible answer repeated KAN-123 and the follow-up rendered empty. The local decision is to add `review_status` filtering to `GET /change-risk/evaluations`, Tauri/store query support, and Desktop `Review queue` controls. Do not add scoring, enforcement, release blocking, deployment execution, provider mutation, repository mutation, AI/LLM, BYOM, MCP, chatbot behavior, Agent Governance dependency, compliance/certification/legal/regulatory claim, notifications, approval quorum, or multi-reviewer workflow.
 - KAN-124 implementation status on 2026-06-16: completed by PR `#433`, merged to `main` as `d145d6fe`. It adds optional `review_status` filtering to `GET /change-risk/evaluations`; backend validation for allowed KAN-123 review states; SQL filtering in `list_change_risk_evaluations`; Tauri query param support; frontend store filter support; Desktop `ChangeRiskPanel` `Review queue` selector; and docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test --no-run`, and focused real Postgres `cargo test change_risk -- --nocapture` (`2` passed); Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed); frontend `pnpm --dir gitgov typecheck`, `lint`, full Vitest (`377` passed), focused store test (`43` passed), and `build` with the pre-existing Vite chunk warning; `git diff --check`; and `scripts/security/publication_guard.ps1`. PR checks and post-merge `main` checks passed. Render deploy `dep-d8odh5c2m8qs73amf7p0` for `d145d6fe` reached `live`. Production smoke passed: `/health=ok`, authenticated `/stats=200`, `GET /change-risk/evaluations?review_status=accepted_risk` returned the KAN-123 smoke evaluation `cra_4d59c84859a747789e577ca24945ec50`, `GET /change-risk/evaluations?review_status=needs_review` excluded it, invalid `review_status=approved` returned HTTP `400`, no-claim/manual flags stayed `advisory_only=true`, `llm_used=false`, `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`, and DB counts stayed unchanged at `deployment_gate_authorizations=2` and `agent_governance_evaluations=7`.
 - Previous current implementation ticket: GitHub issue `#429`, `KAN-123 Change Risk Manual Review & Mitigation Notes`, completed by PR `#430`.
@@ -953,12 +956,13 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-124 is complete on `main` commit `d145d6fe` and production-smoked. No new roadmap slice is
-active until the next explicit product decision.
+KAN-124 is complete on `main` commit `d145d6fe` and production-smoked. KAN-125 is the active
+roadmap slice after GPT/product review selected manual Change Risk CAB Review Packets.
 
 Current work types are:
 
-- Select the next roadmap slice only after a fresh product decision.
+- Finish KAN-125 implementation, validation, PR, merge, Render deploy, production migration, and
+  production smoke.
 - Keep compliance/reporting and deployment-governance work manual-first unless a customer explicitly
   opts into agentic features.
 - Do not add official regulatory wording, compliance scoring, certification claims, scheduler, AI

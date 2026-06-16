@@ -507,6 +507,81 @@ pub struct ChangeRiskEvaluationReviewResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabPacketRecord {
+    pub packet_id: String,
+    pub org_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub filters: serde_json::Value,
+    #[serde(default)]
+    pub evaluation_ids: Vec<String>,
+    pub artifact_hash: String,
+    pub status: String,
+    pub created_by_user_id: String,
+    pub created_at: i64,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+    pub download_count: i64,
+    #[serde(default)]
+    pub archived_at: Option<i64>,
+    #[serde(default)]
+    pub archived_by_user_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskCabPacketRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub risk_level: Option<String>,
+    #[serde(default)]
+    pub review_status: Option<String>,
+    #[serde(default)]
+    pub date_range_start: Option<i64>,
+    #[serde(default)]
+    pub date_range_end: Option<i64>,
+    #[serde(default)]
+    pub evaluation_ids: Vec<String>,
+    #[serde(default)]
+    pub deployment_gate_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskCabPacketQuery {
+    pub org_name: Option<String>,
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabPacketResponse {
+    pub packet: ChangeRiskCabPacketRecord,
+    pub download_url: String,
+    #[serde(default)]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabPacketListResponse {
+    #[serde(default)]
+    pub items: Vec<ChangeRiskCabPacketRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct CreateEnterpriseReleaseApprovalRequest {
     pub org_name: Option<String>,

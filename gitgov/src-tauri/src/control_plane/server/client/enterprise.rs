@@ -701,6 +701,148 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn create_change_risk_cab_packet(
+        &self,
+        payload: &ChangeRiskCabPacketRequest,
+    ) -> Result<ChangeRiskCabPacketResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "cab-packets"])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_change_risk_cab_packets(
+        &self,
+        query: &ChangeRiskCabPacketQuery,
+    ) -> Result<ChangeRiskCabPacketListResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "cab-packets"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        if let Some(status) = &query.status {
+            query_params.push(("status".to_string(), status.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+        if let Some(offset) = query.offset {
+            query_params.push(("offset".to_string(), offset.to_string()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_change_risk_cab_packet(
+        &self,
+        packet_id: &str,
+        query: &ChangeRiskCabPacketQuery,
+    ) -> Result<ChangeRiskCabPacketResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "cab-packets", packet_id])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_change_risk_cab_packet(
+        &self,
+        packet_id: &str,
+        query: &ChangeRiskCabPacketQuery,
+    ) -> Result<serde_json::Value, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "cab-packets", packet_id, "download"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn archive_change_risk_cab_packet(
+        &self,
+        packet_id: &str,
+        payload: &ChangeRiskCabPacketRequest,
+    ) -> Result<ChangeRiskCabPacketResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "cab-packets", packet_id, "archive"])?;
+        let mut request = self.client.patch(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_enterprise_release_approval(
         &self,
         payload: &CreateEnterpriseReleaseApprovalRequest,

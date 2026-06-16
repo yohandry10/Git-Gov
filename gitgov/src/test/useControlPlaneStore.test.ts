@@ -80,10 +80,22 @@ describe('useControlPlaneStore', () => {
       changeRiskSelectedEvaluation: null,
       changeRiskRuleCatalog: null,
       changeRiskEvaluationTrace: null,
+      changeRiskEvaluationReview: null,
+      changeRiskCabPackets: [],
+      changeRiskCabPacketsTotal: 0,
+      changeRiskCabPacketsFilters: { limit: 10, offset: 0 },
+      changeRiskCabPacket: null,
+      changeRiskCabPacketArtifact: null,
       isChangeRiskEvaluationsLoading: false,
       isChangeRiskRulesLoading: false,
       isChangeRiskTraceLoading: false,
       isChangeRiskEvaluationCreating: false,
+      isChangeRiskReviewLoading: false,
+      isChangeRiskReviewUpdating: false,
+      isChangeRiskCabPacketsLoading: false,
+      isChangeRiskCabPacketCreating: false,
+      isChangeRiskCabPacketDownloading: false,
+      isChangeRiskCabPacketArchiving: false,
       changeRiskError: null,
       complianceEvidenceSelectedDeploymentGateId: null,
       firstGovernedRepoSetup: null,
@@ -1414,6 +1426,142 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.evaluation_id).toBe('cra_456')
       expect(useControlPlaneStore.getState().changeRiskEvaluationTrace?.trace_hash).toBe('sha256:' + 'c'.repeat(64))
       expect(useControlPlaneStore.getState().changeRiskEvaluations[0].blocking_gaps).toContain('Deployment gate blocked by release governance.')
+    })
+
+    it('creates, downloads, and archives change risk CAB packets as manual JSON artifacts', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const packet = {
+        packet_id: 'crcab_' + '1'.repeat(32),
+        org_id: 'org-1',
+        name: 'KAN-125 CAB packet',
+        filters: { review_status: 'accepted_risk' },
+        evaluation_ids: ['cra_123'],
+        artifact_hash: 'sha256:' + 'f'.repeat(64),
+        status: 'active',
+        created_by_user_id: 'admin',
+        created_at: 10,
+        downloaded_at: null,
+        download_count: 0,
+        archived_at: null,
+        archived_by_user_id: null,
+      }
+      const artifact = {
+        schema_version: 'gitgov_change_risk_cab_packet.v1',
+        packet_id: packet.packet_id,
+        summary: { total_evaluations: 1 },
+        claims: {
+          advisory_only: true,
+          manual_review_packet: true,
+          compliance_claim: false,
+          certification: false,
+        },
+        audit_metadata: {
+          llm_used: false,
+          agent_governance_used: false,
+          enforcement: false,
+          source_evaluations_mutated: false,
+        },
+        verification: {
+          packet_hash: packet.artifact_hash,
+        },
+      }
+      mockInvoke
+        .mockResolvedValueOnce({
+          items: [packet],
+          total: 1,
+          limit: 10,
+          offset: 0,
+        })
+        .mockResolvedValueOnce({
+          packet,
+          download_url: `/change-risk/cab-packets/${packet.packet_id}/download`,
+          artifact,
+        })
+        .mockResolvedValueOnce(artifact)
+        .mockResolvedValueOnce({
+          packet: {
+            ...packet,
+            status: 'archived',
+            archived_at: 12,
+            archived_by_user_id: 'admin',
+          },
+          download_url: `/change-risk/cab-packets/${packet.packet_id}/download`,
+          artifact: null,
+        })
+
+      const listed = await useControlPlaneStore.getState().loadChangeRiskCabPackets({
+        status: 'active',
+      })
+      const created = await useControlPlaneStore.getState().createChangeRiskCabPacket({
+        name: ' KAN-125 CAB packet ',
+        repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        environment: ' production ',
+        review_status: ' accepted_risk ',
+        evaluation_ids: [' cra_123 ', ''],
+        deployment_gate_ids: [' dga_123 '],
+      })
+      const downloaded = await useControlPlaneStore
+        .getState()
+        .downloadChangeRiskCabPacket(` ${packet.packet_id} `)
+      const archived = await useControlPlaneStore
+        .getState()
+        .archiveChangeRiskCabPacket(` ${packet.packet_id} `)
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_list_change_risk_cab_packets', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          status: 'active',
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_create_change_risk_cab_packet', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          name: 'KAN-125 CAB packet',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          risk_level: null,
+          review_status: 'accepted_risk',
+          date_range_start: null,
+          date_range_end: null,
+          evaluation_ids: ['cra_123'],
+          deployment_gate_ids: ['dga_123'],
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_download_change_risk_cab_packet', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId: packet.packet_id,
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_archive_change_risk_cab_packet', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId: packet.packet_id,
+        payload: {
+          org_name: 'yohandry10',
+          name: '',
+          evaluation_ids: [],
+          deployment_gate_ids: [],
+        },
+      })
+      expect(listed?.total).toBe(1)
+      expect(created?.artifact?.claims).toEqual(expect.objectContaining({
+        advisory_only: true,
+        compliance_claim: false,
+      }))
+      expect(downloaded?.verification).toEqual({ packet_hash: packet.artifact_hash })
+      expect(archived?.packet.status).toBe('archived')
+      expect(useControlPlaneStore.getState().changeRiskCabPacketArtifact?.verification).toEqual({
+        packet_hash: packet.artifact_hash,
+      })
+      expect(useControlPlaneStore.getState().changeRiskCabPackets[0].status).toBe('archived')
     })
 
     it('creates the compliance evidence review chain with explicit manual-first payloads', async () => {

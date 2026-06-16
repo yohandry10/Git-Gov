@@ -2,6 +2,78 @@
 
 Updated: 2026-06-16
 
+## KAN-125 Change Risk CAB Review Packet - 2026-06-16
+
+`KAN-125 - Change Risk CAB Review Packet` is in local implementation on branch
+`product/KAN-125-change-risk-cab-packet`.
+
+Product decision:
+
+- Package existing deterministic Change Risk evaluations into manual CAB/internal-audit review
+  packets.
+- Let Admins create packets by filters or explicit evaluation IDs.
+- Let Admins and Auditors list/read/download active packets.
+- Let Admins archive packets.
+- Keep the artifact JSON-only, hashable, tenant-scoped, and no-claim.
+- Do not add release blocking, deployment execution, provider/repo mutation, policy enforcement,
+  AI/LLM/BYOM/MCP/chatbot behavior, Agent Governance dependency, public links, email/Slack,
+  scheduler, PDF/DOCX, compliance score, certification, legal attestation, or official regulatory
+  claim.
+
+Implemented locally:
+
+- Supabase migration/postcheck `v65`.
+- `change_risk_cab_packets` with artifact hash, filters, selected evaluation IDs, lifecycle,
+  download count, and no-claim JSON constraints.
+- Backend routes:
+  - `POST /change-risk/cab-packets`.
+  - `GET /change-risk/cab-packets`.
+  - `GET /change-risk/cab-packets/{packet_id}`.
+  - `GET /change-risk/cab-packets/{packet_id}/download`.
+  - `PATCH /change-risk/cab-packets/{packet_id}/archive`.
+- Artifact schema `gitgov_change_risk_cab_packet.v1`.
+- Admin audit actions for created/downloaded/archived packets.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- Governance > Releases `ChangeRiskCabPacketsPanel`.
+- Design, roadmap, architecture, report, public-context, and current-context docs.
+
+Local validation completed:
+
+- Backend `cargo fmt --check`.
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri `cargo test` (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest `pnpm --dir gitgov test` (`378` passed).
+- Frontend `pnpm --dir gitgov build` passed with the pre-existing Vite large chunk warning.
+- Focused backend real Postgres test
+  `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` passed.
+- Focused backend real Postgres Change Risk suite `cargo test change_risk -- --nocapture` passed
+  (`3` tests).
+- Focused store test `pnpm --dir gitgov test src/test/useControlPlaneStore.test.ts` passed
+  (`44` tests).
+- Real Postgres `v65` migration/postcheck passed in a rollback transaction.
+- `git diff --check` passed.
+- `scripts/security/publication_guard.ps1` passed.
+
+Known local validation limit:
+
+- Full backend `cargo test -- --test-threads=2` exceeded the local `7` minute command timeout
+  without returning useful failure output. Backend test compilation and the affected Change Risk
+  real Postgres suite passed.
+
+Pending before completion:
+
+- PR checks, merge, Render deploy, production migration, and production smoke.
+
+Report: `docs/reports/change-risk-cab-review-packet-2026-06-16.md`.
+
 ## KAN-124 Change Risk Review Queue And CAB Evidence Filter - 2026-06-16
 
 `KAN-124 - Change Risk Review Queue and CAB Evidence Filter` is completed. PR `#433` merged to
