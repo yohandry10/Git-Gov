@@ -277,4 +277,66 @@ mod tests {
         assert!(wrapped.contains("$ggLastExit = $LASTEXITCODE"));
         assert!(wrapped.contains("__GITGOV_EXIT__:cmd-1:$ggEc"));
     }
+
+    #[test]
+    fn native_terminal_git_context_reports_non_git_directory_without_running_git() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let context = native_terminal_git_context(temp.path().to_str().unwrap(), None);
+
+        assert!(!context.is_git_repo);
+        assert!(!context.is_detached);
+        assert_eq!(context.repo_name, None);
+        assert_eq!(context.branch, None);
+        assert_eq!(context.commit_short, None);
+        assert!(!context.cwd.is_empty());
+    }
+
+    #[test]
+    fn native_terminal_git_context_reports_repo_branch_and_commit() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let repo = git2::Repository::init(temp.path()).expect("repo init");
+        let file_path = temp.path().join("README.md");
+        std::fs::write(&file_path, "hello").expect("write file");
+
+        let mut index = repo.index().expect("index");
+        index
+            .add_path(std::path::Path::new("README.md"))
+            .expect("add file");
+        let tree_oid = index.write_tree().expect("write tree");
+        let tree = repo.find_tree(tree_oid).expect("tree");
+        let signature = git2::Signature::now("GitGov Test", "test@example.com").expect("signature");
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "KAN-133 test commit",
+            &tree,
+            &[],
+        )
+        .expect("commit");
+
+        let context = native_terminal_git_context(temp.path().to_str().unwrap(), None);
+
+        assert!(context.is_git_repo);
+        assert!(!context.is_detached);
+        assert_eq!(context.repo_name.as_deref(), temp.path().file_name().and_then(|v| v.to_str()));
+        assert!(matches!(context.branch.as_deref(), Some("main") | Some("master")));
+        assert_eq!(context.commit_short.as_ref().map(String::len), Some(7));
+    }
+
+    #[test]
+    fn terminal_cd_resolution_updates_only_for_simple_existing_directory_changes() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let nested = temp.path().join("nested repo");
+        std::fs::create_dir(&nested).expect("nested dir");
+
+        let resolved = resolve_terminal_cwd_after_command(temp.path(), Some(r#"cd "nested repo""#));
+        assert_eq!(resolved, nested.canonicalize().expect("canonical nested"));
+
+        let ignored = resolve_terminal_cwd_after_command(temp.path(), Some("cd nested repo && git status"));
+        assert_eq!(ignored, temp.path().canonicalize().expect("canonical temp"));
+
+        let missing = resolve_terminal_cwd_after_command(temp.path(), Some("cd missing"));
+        assert_eq!(missing, temp.path().canonicalize().expect("canonical temp"));
+    }
 }

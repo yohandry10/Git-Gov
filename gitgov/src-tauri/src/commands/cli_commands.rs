@@ -3,6 +3,7 @@
 
 include!("cli_commands/types.rs");
 include!("cli_commands/helpers.rs");
+include!("cli_commands/git_context.rs");
 include!("cli_commands/shell_session.rs");
 include!("cli_commands/native_terminal.rs");
 include!("cli_commands/execute.rs");

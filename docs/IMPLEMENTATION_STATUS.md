@@ -2,6 +2,51 @@
 
 Updated: 2026-06-16
 
+## KAN-133 Native Terminal Repo/Branch Context - 2026-06-16
+
+`KAN-133 - Native Terminal Repo/Branch Context MVP` starts the next `0.10 Developer Distribution
+Surfaces` slice after KAN-132. GitHub issue: `#467`.
+
+Product decision:
+
+- Show safe local Git repo/branch context in the Desktop native terminal header.
+- Keep it as a developer convenience surface only. It is not command interception, policy
+  enforcement, audit evidence, release approval, release blocking, or compliance evidence.
+
+Implemented locally:
+
+- Added local Tauri command `cmd_get_native_terminal_git_context`.
+- Added Rust helpers to detect non-git/git/detached context using `git2::Repository::discover`
+  without executing Git commands.
+- Added safe cwd inference for simple directory-change commands (`cd`, `chdir`, `sl`,
+  `Set-Location`) and rejection of compound shell commands.
+- Updated `TerminalPanel` to show `repo:branch`, detached, pending, or non-git context labels while
+  preserving KAN-132 session history.
+- Added frontend helpers/tests for refresh trigger detection and safe labels.
+
+Guardrails:
+
+- No backend migration or Control Plane API.
+- No backend persistence or audit write.
+- No command blocking, approval, interception, or automatic re-run.
+- No Git push/pull/fetch/checkout.
+- No provider/repo/deploy mutation.
+- No quick commands, VS Code extension, branch gate status, or policy preview.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Local validation:
+
+- Tauri `cargo fmt --check`.
+- Focused Tauri tests for non-git/real git context and safe `cd` resolution.
+- Tauri `cargo check`, `cargo clippy -- -D warnings`, and full Tauri tests (`52` passed).
+- Focused frontend terminal git-context/history tests.
+- Frontend `typecheck`, `lint`, build with the pre-existing Vite chunk warning, and full Vitest
+  (`395` passed).
+- `git diff --check` and publication guard.
+
+Report: `docs/reports/native-terminal-git-context-2026-06-16.md`.
+
 ## KAN-132 Native Terminal Session History - 2026-06-16
 
 `KAN-132 - Native Terminal Session History MVP` is completed. GitHub issue `#464` shipped through

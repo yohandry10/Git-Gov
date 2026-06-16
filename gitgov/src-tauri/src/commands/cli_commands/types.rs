@@ -144,6 +144,24 @@ pub struct CliNativeTerminalStopResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CliNativeTerminalGitContextRequest {
+    pub cwd: String,
+    #[serde(default)]
+    pub command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CliNativeTerminalGitContextResult {
+    pub cwd: String,
+    pub is_git_repo: bool,
+    pub is_detached: bool,
+    pub repo_name: Option<String>,
+    pub branch: Option<String>,
+    pub commit_short: Option<String>,
+    pub detected_at_ms: u128,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliNativeTerminalOutputEvent {
     pub session_id: String,
     pub data: String,

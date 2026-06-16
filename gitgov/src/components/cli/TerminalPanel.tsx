@@ -13,6 +13,12 @@ import {
   applyNativeTerminalInputToDraft,
   type TerminalSessionCommand,
 } from './terminalSessionHistory'
+import {
+  formatTerminalGitContextLabel,
+  shouldRefreshTerminalGitContext,
+  terminalGitContextTitle,
+  type NativeTerminalGitContext,
+} from './terminalGitContext'
 import '@xterm/xterm/css/xterm.css'
 
 interface CliNativeTerminalStartResult {
@@ -61,6 +67,7 @@ export function TerminalPanel() {
   const [nativeTerminalDisabled, setNativeTerminalDisabled] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
   const [sessionCommands, setSessionCommands] = useState<TerminalSessionCommand[]>([])
+  const [terminalGitContext, setTerminalGitContext] = useState<NativeTerminalGitContext | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<XTerm | null>(null)
@@ -76,6 +83,7 @@ export function TerminalPanel() {
   const repoPathRef = useRef<string | null>(null)
   const currentBranchRef = useRef<string | null>(null)
   const shellNameRef = useRef('shell')
+  const terminalCwdRef = useRef<string | null>(null)
 
   const repoPath = useRepoStore((s) => s.repoPath)
   const currentBranch = useRepoStore((s) => s.currentBranch)
@@ -128,6 +136,30 @@ export function TerminalPanel() {
     }
   }, [])
 
+  const loadTerminalGitContext = useCallback(
+    async (command?: string) => {
+      const cwd = terminalCwdRef.current
+      if (!cwd) {
+        setTerminalGitContext(null)
+        return
+      }
+
+      try {
+        const context = await tauriInvoke<NativeTerminalGitContext>('cmd_get_native_terminal_git_context', {
+          request: {
+            cwd,
+            command: command ?? null,
+          },
+        })
+        terminalCwdRef.current = context.cwd
+        setTerminalGitContext(context)
+      } catch {
+        setTerminalGitContext(null)
+      }
+    },
+    [],
+  )
+
   const captureSessionCommands = useCallback(
     (data: string) => {
       const result = applyNativeTerminalInputToDraft(commandDraftRef.current, data)
@@ -147,8 +179,14 @@ export function TerminalPanel() {
           current,
         ),
       )
+
+      for (const command of result.submittedCommands) {
+        if (shouldRefreshTerminalGitContext(command)) {
+          void loadTerminalGitContext(command)
+        }
+      }
     },
-    [],
+    [loadTerminalGitContext],
   )
 
   const startNativeSession = useCallback(
@@ -171,6 +209,8 @@ export function TerminalPanel() {
         await stopNativeSession()
         terminal.clear()
         commandDraftRef.current = ''
+        terminalCwdRef.current = null
+        setTerminalGitContext(null)
         setSessionCommands([])
         if (mountedRef.current) {
           setIsConnecting(false)
@@ -187,6 +227,7 @@ export function TerminalPanel() {
         await stopNativeSession(sessionIdRef.current)
       }
       commandDraftRef.current = ''
+      terminalCwdRef.current = repoPath
 
       setIsConnecting(true)
       fitAddon.fit()
@@ -218,6 +259,7 @@ export function TerminalPanel() {
         setShellName(result.shell || 'shell')
         setNativeTerminalDisabled(false)
         setSessionCommands([])
+        void loadTerminalGitContext()
 
         terminal.focus()
         writeSystem(`[GitGov] Native terminal connected (${result.shell})`, ANSI.success)
@@ -236,7 +278,7 @@ export function TerminalPanel() {
         }
       }
     },
-    [repoPath, sendResize, stopNativeSession, writeSystem],
+    [loadTerminalGitContext, repoPath, sendResize, stopNativeSession, writeSystem],
   )
 
   useEffect(() => {
@@ -350,6 +392,8 @@ export function TerminalPanel() {
         commandDraftRef.current = ''
         sessionIdRef.current = null
         sessionCwdRef.current = null
+        terminalCwdRef.current = null
+        setTerminalGitContext(null)
         if (mountedRef.current) {
           setSessionId(null)
         }
@@ -411,6 +455,12 @@ export function TerminalPanel() {
         <Terminal size={12} className="text-surface-500" />
         <span className="text-[10px] font-medium uppercase tracking-wider text-surface-400">
           Terminal
+        </span>
+        <span
+          className="min-w-0 max-w-[240px] truncate rounded border border-surface-700 bg-surface-900 px-1.5 py-0.5 font-mono text-[9px] text-surface-300"
+          title={terminalGitContextTitle(terminalGitContext)}
+        >
+          {formatTerminalGitContextLabel(terminalGitContext)}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
