@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-126 Change Risk CAB Packet Manual Disposition - 2026-06-16
 
-`KAN-126 - Change Risk CAB Packet Manual Disposition` is in implementation on branch
-`product/KAN-126-cab-packet-manual-disposition`.
+`KAN-126 - Change Risk CAB Packet Manual Disposition` is completed. PR `#440` merged to `main` as
+`b7bc9e81`.
 
 Product decision:
 
@@ -17,7 +17,7 @@ Product decision:
   Change Risk evaluations, use AI/LLM/agents, create compliance scores, or make certification/legal
   claims.
 
-Implemented locally:
+Implemented:
 
 - Supabase migration/postcheck `v66`.
 - Review metadata on `change_risk_cab_packets`.
@@ -48,6 +48,18 @@ Local validation completed so far:
   `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` passed with
   `TEST_DATABASE_URL` mapped from ignored local `DATABASE_URL`.
 - Real Postgres `v66` migration/postcheck passed in a rollback transaction.
+
+Production validation:
+
+- Production `v66` migration/postcheck passed.
+- Render deploy `dep-d8ofa167r5hc73c1nf5g` for `b7bc9e81` reached `live`.
+- Final production smoke passed: `/health=ok`, authenticated `/stats=200`, CAB packet
+  `crcab_23d138be426a4967ae0895810e679a19` created, artifact hash
+  `sha256:d314caf9c2e41886cdfcbd5e56c841ea84f6329b0c00c7f6f7398a3dbe3b1d9a` stayed unchanged
+  across review updates, review moved through `pending_review`, `reviewed`, `accepted_risk`, and
+  final `needs_mitigation`, unsafe secret-looking review note was rejected with HTTP `400`,
+  no-claim flags stayed safe, review audit rows were present (`2` viewed, `3` updated), Deployment
+  Gate authorization count stayed `2`, and Agent Governance evaluation count stayed `7`.
 
 Report: `docs/reports/change-risk-cab-packet-manual-disposition-2026-06-16.md`.
 
