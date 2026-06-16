@@ -80,8 +80,21 @@ Completed locally:
 
 ## Remaining Before Merge/Production
 
-- Run final `git diff --check` and publication guard.
-- Open PR, wait required checks, merge after green.
-- After Render deploy, smoke the production routes with the existing admin key and verify safety
-  flags remain false for secrets, provider mutation, release blocking, compliance claim, and Agent
-  Governance dependency.
+Completed after local validation:
+
+- PR `#419` merged to `main` as `e244c1c`.
+- Post-merge `main` checks passed.
+- Render deploy `dep-d8o9t619rddc73cugjvg` for `e244c1c` reached `live`.
+- No migration was applied or required.
+
+Production smoke against `https://gitgov-api.onrender.com`:
+
+- `/health=ok`.
+- Authenticated `/stats=200`.
+- Initial wizard state for `org_name=yohandry10` returned `found=false`.
+- `POST /onboarding/first-governed-repo/runs` created run
+  `71d55474-0833-4d15-b485-6281792841ae`.
+- `validate` returned `providerHealthCount=3` and `stores_secret_values=false`.
+- `plan` returned `provider_mutation=false` and `deployment_gate_mode=advisory`.
+- `complete` returned `status=completed`, `release_blocking_default=false`,
+  `agent_governance_required=false`, and `compliance_claim=false`.
