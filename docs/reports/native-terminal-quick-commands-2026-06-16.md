@@ -3,6 +3,8 @@
 Date: 2026-06-16
 Ticket: KAN-134
 Issue: #470
+Pull request: #471
+Main commit: 6b8faef9
 
 ## Summary
 
@@ -63,8 +65,9 @@ Initial focused validation:
 - `powershell -ExecutionPolicy Bypass -File scripts/security/publication_guard.ps1`
   - Result: passed.
 
-Remaining before merge:
+- PR checks passed.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
 
-- PR checks.
-
-No Render/API deploy is expected because the change is Desktop/frontend local only.
+No Render/API deploy was required because the change is Desktop/frontend local only.
