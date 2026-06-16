@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-137 Remove External Editor Extension Direction - 2026-06-16
 
-`KAN-137 - Remove external editor extension product direction` is in progress. GitHub issue `#479`
-tracks the cleanup.
+`KAN-137 - Remove external editor extension product direction` is completed. GitHub issue `#479`
+shipped through PR `#480`, merged to `main` as `be9aed9e`.
 
 Product decision:
 
@@ -30,8 +30,10 @@ Guardrails:
 Validation:
 
 - Local `git diff --check`, publication guard, and repository grep for the removed direction passed.
-- Local `actionlint` could not run because this Windows environment has no working bash/Go runtime;
-  workflow syntax remains covered by the required PR check.
+- Required PR checks passed, including Workflow Lint, Security Guard, Frontend Lint + Typecheck,
+  Desktop Rust Clippy, Server Clippy + Check, Website Lint + Typecheck + Build, Validate
+  Policy-as-Code, Validate quality_gates warn/block matrix, Sonar Scan + Quality Gate, Vercel, and
+  internal marker guard.
 
 ## KAN-135 Native Terminal Governance Context - 2026-06-16
 
