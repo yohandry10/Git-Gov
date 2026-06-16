@@ -1783,7 +1783,7 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
         &app,
         "PATCH",
         &format!("/executive/snapshots/{snapshot_id}/archive"),
-        Some(r#"{"org_name":"executive-org","name":"archive"}"#),
+        Some(r#"{"org_name":"executive-org"}"#),
         Some(&admin_key),
     )
     .await;
