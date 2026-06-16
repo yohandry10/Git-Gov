@@ -277,6 +277,8 @@ pub fn run() {
             commands::cmd_server_create_change_risk_cab_packet,
             commands::cmd_server_list_change_risk_cab_packets,
             commands::cmd_server_get_change_risk_cab_packet,
+            commands::cmd_server_get_change_risk_cab_packet_review,
+            commands::cmd_server_update_change_risk_cab_packet_review,
             commands::cmd_server_download_change_risk_cab_packet,
             commands::cmd_server_archive_change_risk_cab_packet,
             commands::cmd_server_create_compliance_evidence_export,

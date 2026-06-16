@@ -473,7 +473,16 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 download_count,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
-                archived_by_user_id
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
             "#,
         )
         .bind(input.packet_id)
@@ -511,6 +520,15 @@ impl Database {
                 download_count,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
                 archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 COUNT(*) OVER() AS total_count
             FROM change_risk_cab_packets
             WHERE org_id = $1::uuid
@@ -556,7 +574,16 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 download_count,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
-                archived_by_user_id
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
             FROM change_risk_cab_packets
             WHERE org_id = $1::uuid
               AND packet_id = $2
@@ -620,7 +647,16 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 download_count,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
-                archived_by_user_id
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
             "#,
         )
         .bind(org_id)
@@ -660,12 +696,80 @@ impl Database {
                 ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
                 download_count,
                 ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
-                archived_by_user_id
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
             "#,
         )
         .bind(input.org_id)
         .bind(input.packet_id)
         .bind(input.archived_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_cab_packet_from_row(&row)))
+    }
+
+    pub async fn update_change_risk_cab_packet_review(
+        &self,
+        input: &UpdateChangeRiskCabPacketReviewInput<'_>,
+    ) -> Result<Option<ChangeRiskCabPacketRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_cab_packets
+            SET review_status = $3,
+                reviewed_by_user_id = $4,
+                reviewed_at = NOW(),
+                review_notes_safe = $5,
+                mitigation_notes_safe = $6,
+                decision_reason_safe = $7,
+                follow_up_required = $8,
+                follow_up_owner_safe = $9,
+                review_updated_at = NOW()
+            WHERE org_id = $1::uuid
+              AND packet_id = $2
+            RETURNING
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.packet_id)
+        .bind(input.review_status)
+        .bind(input.reviewed_by_user_id)
+        .bind(input.review_notes_safe)
+        .bind(input.mitigation_notes_safe)
+        .bind(input.decision_reason_safe)
+        .bind(input.follow_up_required)
+        .bind(input.follow_up_owner_safe)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;

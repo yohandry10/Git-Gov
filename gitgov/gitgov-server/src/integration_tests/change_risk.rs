@@ -1350,6 +1350,244 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
     let fetched_filter: serde_json::Value =
         serde_json::from_str(&response).expect("fetched filter packet JSON");
     assert_eq!(fetched_filter["packet"]["artifact_hash"], filter_hash);
+    assert_eq!(fetched_filter["packet"]["review_status"], "pending_review");
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor CAB review read: {response}"
+    );
+    let initial_cab_review: serde_json::Value =
+        serde_json::from_str(&response).expect("initial CAB review JSON");
+    assert_eq!(initial_cab_review["review_status"], "pending_review");
+    assert_eq!(initial_cab_review["artifact_hash"], filter_hash);
+    assert_eq!(initial_cab_review["manual_cab_disposition_only"], true);
+    assert_eq!(initial_cab_review["advisory_only"], true);
+    assert_eq!(initial_cab_review["llm_used"], false);
+    assert_eq!(initial_cab_review["agent_governance_used"], false);
+    assert_eq!(initial_cab_review["release_blocking"], false);
+    assert_eq!(initial_cab_review["deployment_execution"], false);
+    assert_eq!(initial_cab_review["compliance_claim"], false);
+    assert_eq!(initial_cab_review["certification"], false);
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes": "CAB coordinator reviewed the packet contents manually.",
+                "mitigation_notes": "No mitigation requested for this packet.",
+                "decision_reason": "Packet is ready for CAB discussion."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "CAB reviewed update: {response}");
+    let cab_reviewed: serde_json::Value =
+        serde_json::from_str(&response).expect("CAB reviewed JSON");
+    assert_eq!(cab_reviewed["review_status"], "reviewed");
+    assert_eq!(cab_reviewed["reviewed_by_user_id"], "kan-125-cab-admin");
+    assert_eq!(cab_reviewed["artifact_hash"], filter_hash);
+    assert_eq!(
+        cab_reviewed["review_notes_safe"],
+        "CAB coordinator reviewed the packet contents manually."
+    );
+    assert_eq!(cab_reviewed["manual_cab_disposition_only"], true);
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "accepted_risk",
+                "review_notes": "CAB accepted risk only as a manual disposition.",
+                "mitigation_notes": "Rollback owner remains available.",
+                "decision_reason": "Business owner accepted the residual risk."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "CAB accepted risk update: {response}"
+    );
+    let cab_accepted: serde_json::Value =
+        serde_json::from_str(&response).expect("CAB accepted JSON");
+    assert_eq!(cab_accepted["review_status"], "accepted_risk");
+    assert_eq!(
+        cab_accepted["decision_reason_safe"],
+        "Business owner accepted the residual risk."
+    );
+    assert_eq!(cab_accepted["release_blocking"], false);
+    assert_eq!(cab_accepted["deployment_execution"], false);
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "needs_mitigation",
+                "review_notes": "CAB requires one follow-up before release sign-off elsewhere.",
+                "mitigation_notes": "Attach rollback rehearsal evidence to the ticket.",
+                "decision_reason": "Missing rollback rehearsal evidence.",
+                "follow_up_required": true,
+                "follow_up_owner": "release-owner"
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "CAB needs mitigation update: {response}"
+    );
+    let cab_needs_mitigation: serde_json::Value =
+        serde_json::from_str(&response).expect("CAB mitigation JSON");
+    assert_eq!(cab_needs_mitigation["review_status"], "needs_mitigation");
+    assert_eq!(cab_needs_mitigation["follow_up_required"], true);
+    assert_eq!(
+        cab_needs_mitigation["follow_up_owner_safe"],
+        "release-owner"
+    );
+    assert_eq!(cab_needs_mitigation["artifact_hash"], filter_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "accepted_risk",
+                "review_notes": "Authorization: Bearer sk-test-secret",
+                "decision_reason": "This must be rejected before persistence."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "secret-looking CAB review notes must be rejected: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "accepted_risk",
+                "review_notes": "Accepted without a reason should fail."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "accepted risk CAB disposition requires reason: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "needs_mitigation",
+                "mitigation_notes": "Missing follow-up flag should fail.",
+                "follow_up_required": false
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "needs mitigation requires follow-up flag: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes": "Auditor is read-only for CAB packet disposition."
+            })
+            .to_string(),
+        ),
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "auditor must not update CAB packet disposition: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        None,
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not read CAB packet disposition: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review?org_name=risk-cab-other"),
+        None,
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "other tenant admin must not read CAB packet disposition: {response}"
+    );
+
+    let post_review_packet_hash: String = sqlx::query_scalar(
+        "SELECT artifact_hash FROM change_risk_cab_packets WHERE packet_id = $1",
+    )
+    .bind(&filter_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("post review CAB hash");
+    assert_eq!(post_review_packet_hash, filter_hash);
 
     let (status, response) = json_request(
         &app,
@@ -1510,6 +1748,38 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         StatusCode::FORBIDDEN,
         "agent key must not list CAB packets: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not read CAB packet disposition: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes": "Agent keys cannot update CAB packet disposition."
+            })
+            .to_string(),
+        ),
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not update CAB packet disposition: {response}"
+    );
 
     let (status, response) = json_request(
         &app,
@@ -1582,6 +1852,22 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
     .await
     .expect("CAB downloaded audit count");
     assert_eq!(downloaded_audit_count, 1);
+    let review_viewed_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_review_viewed' AND target_id = $1",
+    )
+    .bind(&filter_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB review viewed audit count");
+    assert_eq!(review_viewed_audit_count, 1);
+    let review_updated_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_review_updated' AND target_id = $1",
+    )
+    .bind(&filter_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB review updated audit count");
+    assert_eq!(review_updated_audit_count, 3);
     let archived_audit_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_archived' AND target_id = $1",
     )

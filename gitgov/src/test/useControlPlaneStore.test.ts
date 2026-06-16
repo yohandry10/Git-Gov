@@ -1447,6 +1447,15 @@ describe('useControlPlaneStore', () => {
         download_count: 0,
         archived_at: null,
         archived_by_user_id: null,
+        review_status: 'pending_review',
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        review_notes_safe: null,
+        mitigation_notes_safe: null,
+        decision_reason_safe: null,
+        follow_up_required: false,
+        follow_up_owner_safe: null,
+        review_updated_at: null,
       }
       const artifact = {
         schema_version: 'gitgov_change_risk_cab_packet.v1',
@@ -1562,6 +1571,114 @@ describe('useControlPlaneStore', () => {
         packet_hash: packet.artifact_hash,
       })
       expect(useControlPlaneStore.getState().changeRiskCabPackets[0].status).toBe('archived')
+    })
+
+    it('loads and updates change risk CAB packet manual disposition without changing the packet hash', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+        changeRiskCabPackets: [
+          {
+            packet_id: 'crcab_' + '2'.repeat(32),
+            org_id: 'org-1',
+            name: 'KAN-126 CAB packet',
+            filters: { review_status: 'accepted_risk' },
+            evaluation_ids: ['cra_456'],
+            artifact_hash: 'sha256:' + 'e'.repeat(64),
+            status: 'active',
+            created_by_user_id: 'admin',
+            created_at: 20,
+            downloaded_at: null,
+            download_count: 0,
+            archived_at: null,
+            archived_by_user_id: null,
+            review_status: 'pending_review',
+            reviewed_by_user_id: null,
+            reviewed_at: null,
+            review_notes_safe: null,
+            mitigation_notes_safe: null,
+            decision_reason_safe: null,
+            follow_up_required: false,
+            follow_up_owner_safe: null,
+            review_updated_at: null,
+          },
+        ],
+      })
+      const packetId = 'crcab_' + '2'.repeat(32)
+      const initialReview = {
+        packet_id: packetId,
+        org_id: 'org-1',
+        artifact_hash: 'sha256:' + 'e'.repeat(64),
+        packet_status: 'active',
+        review_status: 'pending_review',
+        reviewed_by_user_id: null,
+        reviewed_at: null,
+        review_notes_safe: null,
+        mitigation_notes_safe: null,
+        decision_reason_safe: null,
+        follow_up_required: false,
+        follow_up_owner_safe: null,
+        review_updated_at: null,
+        manual_cab_disposition_only: true,
+        advisory_only: true,
+        llm_used: false,
+        agent_governance_used: false,
+        release_blocking: false,
+        deployment_execution: false,
+        compliance_claim: false,
+        certification: false,
+      }
+      const updatedReview = {
+        ...initialReview,
+        review_status: 'needs_mitigation',
+        reviewed_by_user_id: 'kan-126-admin',
+        reviewed_at: 30,
+        review_notes_safe: 'Manual CAB disposition recorded.',
+        mitigation_notes_safe: 'Attach rollback rehearsal evidence.',
+        decision_reason_safe: 'Rollback rehearsal evidence missing.',
+        follow_up_required: true,
+        follow_up_owner_safe: 'release-owner',
+        review_updated_at: 31,
+      }
+      mockInvoke.mockResolvedValueOnce(initialReview).mockResolvedValueOnce(updatedReview)
+
+      const loaded = await useControlPlaneStore
+        .getState()
+        .getChangeRiskCabPacketReview(` ${packetId} `)
+      const saved = await useControlPlaneStore.getState().updateChangeRiskCabPacketReview(` ${packetId} `, {
+        review_status: ' needs_mitigation ',
+        review_notes: ' Manual CAB disposition recorded. ',
+        mitigation_notes: ' Attach rollback rehearsal evidence. ',
+        decision_reason: ' Rollback rehearsal evidence missing. ',
+        follow_up_required: true,
+        follow_up_owner: ' release-owner ',
+      })
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_get_change_risk_cab_packet_review', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId,
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_update_change_risk_cab_packet_review', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId,
+        payload: {
+          org_name: 'yohandry10',
+          review_status: 'needs_mitigation',
+          review_notes: 'Manual CAB disposition recorded.',
+          mitigation_notes: 'Attach rollback rehearsal evidence.',
+          decision_reason: 'Rollback rehearsal evidence missing.',
+          follow_up_required: true,
+          follow_up_owner: 'release-owner',
+        },
+      })
+      expect(loaded?.manual_cab_disposition_only).toBe(true)
+      expect(saved?.artifact_hash).toBe('sha256:' + 'e'.repeat(64))
+      expect(saved?.release_blocking).toBe(false)
+      expect(saved?.deployment_execution).toBe(false)
+      expect(useControlPlaneStore.getState().changeRiskCabPackets[0].review_status).toBe('needs_mitigation')
+      expect(useControlPlaneStore.getState().changeRiskCabPackets[0].artifact_hash).toBe('sha256:' + 'e'.repeat(64))
+      expect(useControlPlaneStore.getState().changeRiskCabPackets[0].follow_up_required).toBe(true)
     })
 
     it('creates the compliance evidence review chain with explicit manual-first payloads', async () => {

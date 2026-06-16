@@ -487,7 +487,25 @@ export interface ChangeRiskCabPacketRecord {
   download_count: number
   archived_at?: number | null
   archived_by_user_id?: string | null
+  review_status: ChangeRiskCabPacketReviewStatus
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
+  mitigation_notes_safe?: string | null
+  decision_reason_safe?: string | null
+  follow_up_required: boolean
+  follow_up_owner_safe?: string | null
+  review_updated_at?: number | null
 }
+
+export type ChangeRiskCabPacketReviewStatus =
+  | 'pending_review'
+  | 'reviewed'
+  | 'accepted_risk'
+  | 'needs_mitigation'
+  | 'returned_to_owner'
+  | 'rejected'
+  | string
 
 export interface ChangeRiskCabPacketRequest {
   org_name?: string | null
@@ -521,6 +539,40 @@ export interface ChangeRiskCabPacketListResponse {
   total: number
   limit: number
   offset: number
+}
+
+export interface ChangeRiskCabPacketReviewRequest {
+  org_name?: string | null
+  review_status: ChangeRiskCabPacketReviewStatus
+  review_notes?: string | null
+  mitigation_notes?: string | null
+  decision_reason?: string | null
+  follow_up_required?: boolean
+  follow_up_owner?: string | null
+}
+
+export interface ChangeRiskCabPacketReviewResponse {
+  packet_id: string
+  org_id: string
+  artifact_hash: string
+  packet_status: string
+  review_status: ChangeRiskCabPacketReviewStatus
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
+  mitigation_notes_safe?: string | null
+  decision_reason_safe?: string | null
+  follow_up_required: boolean
+  follow_up_owner_safe?: string | null
+  review_updated_at?: number | null
+  manual_cab_disposition_only: boolean
+  advisory_only: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  release_blocking: boolean
+  deployment_execution: boolean
+  compliance_claim: boolean
+  certification: boolean
 }
 
 export interface ComplianceEvidenceExportRequest {
@@ -1647,6 +1699,7 @@ export interface ControlPlaneState {
   changeRiskCabPacketsFilters: ChangeRiskCabPacketQuery
   changeRiskCabPacket: ChangeRiskCabPacketResponse | null
   changeRiskCabPacketArtifact: Record<string, unknown> | null
+  changeRiskCabPacketReview: ChangeRiskCabPacketReviewResponse | null
   isChangeRiskEvaluationsLoading: boolean
   isChangeRiskRulesLoading: boolean
   isChangeRiskTraceLoading: boolean
@@ -1657,6 +1710,8 @@ export interface ControlPlaneState {
   isChangeRiskCabPacketCreating: boolean
   isChangeRiskCabPacketDownloading: boolean
   isChangeRiskCabPacketArchiving: boolean
+  isChangeRiskCabPacketReviewLoading: boolean
+  isChangeRiskCabPacketReviewUpdating: boolean
   changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
   complianceControlFrameworks: ComplianceControlFramework[]
@@ -1835,6 +1890,8 @@ export interface ControlPlaneActions {
   createChangeRiskCabPacket: (payload: ChangeRiskCabPacketRequest) => Promise<ChangeRiskCabPacketResponse | null>
   loadChangeRiskCabPackets: (query?: ChangeRiskCabPacketQuery) => Promise<ChangeRiskCabPacketListResponse | null>
   getChangeRiskCabPacket: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<ChangeRiskCabPacketResponse | null>
+  getChangeRiskCabPacketReview: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<ChangeRiskCabPacketReviewResponse | null>
+  updateChangeRiskCabPacketReview: (packetId: string, payload: ChangeRiskCabPacketReviewRequest) => Promise<ChangeRiskCabPacketReviewResponse | null>
   downloadChangeRiskCabPacket: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<Record<string, unknown> | null>
   archiveChangeRiskCabPacket: (packetId: string, orgName?: string | null) => Promise<ChangeRiskCabPacketResponse | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>

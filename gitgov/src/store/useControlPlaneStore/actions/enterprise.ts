@@ -4,6 +4,8 @@ import type {
   ChangeRiskCabPacketListResponse,
   ChangeRiskCabPacketQuery,
   ChangeRiskCabPacketRecord,
+  ChangeRiskCabPacketReviewRequest,
+  ChangeRiskCabPacketReviewResponse,
   ChangeRiskCabPacketRequest,
   ChangeRiskCabPacketResponse,
   ChangeRiskEvaluationListResponse,
@@ -60,6 +62,8 @@ type EnterpriseActionKeys =
   | 'createChangeRiskCabPacket'
   | 'loadChangeRiskCabPackets'
   | 'getChangeRiskCabPacket'
+  | 'getChangeRiskCabPacketReview'
+  | 'updateChangeRiskCabPacketReview'
   | 'downloadChangeRiskCabPacket'
   | 'archiveChangeRiskCabPacket'
   | 'evaluateEnterpriseReleaseGovernance'
@@ -119,6 +123,25 @@ function applyChangeRiskCabPacketToList(
 ): ChangeRiskCabPacketRecord[] {
   const next = items.filter((item) => item.packet_id !== packet.packet_id)
   return [packet, ...next]
+}
+
+function applyChangeRiskCabPacketReview(
+  packet: ChangeRiskCabPacketRecord,
+  review: ChangeRiskCabPacketReviewResponse,
+): ChangeRiskCabPacketRecord {
+  if (packet.packet_id !== review.packet_id) return packet
+  return {
+    ...packet,
+    review_status: review.review_status,
+    reviewed_by_user_id: review.reviewed_by_user_id ?? null,
+    reviewed_at: review.reviewed_at ?? null,
+    review_notes_safe: review.review_notes_safe ?? null,
+    mitigation_notes_safe: review.mitigation_notes_safe ?? null,
+    decision_reason_safe: review.decision_reason_safe ?? null,
+    follow_up_required: review.follow_up_required,
+    follow_up_owner_safe: review.follow_up_owner_safe ?? null,
+    review_updated_at: review.review_updated_at ?? null,
+  }
 }
 
 export function createEnterpriseActions(
@@ -955,6 +978,79 @@ export function createEnterpriseActions(
       set({
         changeRiskError: message,
         isChangeRiskCabPacketsLoading: false,
+      })
+      return null
+    }
+  },
+
+  getChangeRiskCabPacketReview: async (packetId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabPacketQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabPacketReviewLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketReviewResponse>('cmd_server_get_change_risk_cab_packet_review', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        query: nextQuery,
+      })
+      set({ changeRiskCabPacketReview: response, isChangeRiskCabPacketReviewLoading: false })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketReviewLoading: false,
+      })
+      return null
+    }
+  },
+
+  updateChangeRiskCabPacketReview: async (packetId, payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+    const request: ChangeRiskCabPacketReviewRequest = {
+      org_name: orgName ?? null,
+      review_status: payload.review_status.trim(),
+      review_notes: payload.review_notes?.trim() || null,
+      mitigation_notes: payload.mitigation_notes?.trim() || null,
+      decision_reason: payload.decision_reason?.trim() || null,
+      follow_up_required: Boolean(payload.follow_up_required),
+      follow_up_owner: payload.follow_up_owner?.trim() || null,
+    }
+
+    set({ isChangeRiskCabPacketReviewUpdating: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketReviewResponse>('cmd_server_update_change_risk_cab_packet_review', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        payload: request,
+      })
+      set((state) => ({
+        changeRiskCabPacketReview: response,
+        changeRiskCabPackets: state.changeRiskCabPackets.map((packet) =>
+          applyChangeRiskCabPacketReview(packet, response),
+        ),
+        changeRiskCabPacket: state.changeRiskCabPacket
+          ? {
+              ...state.changeRiskCabPacket,
+              packet: applyChangeRiskCabPacketReview(state.changeRiskCabPacket.packet, response),
+            }
+          : null,
+        isChangeRiskCabPacketReviewUpdating: false,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketReviewUpdating: false,
       })
       return null
     }

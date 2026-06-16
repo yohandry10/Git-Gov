@@ -31,6 +31,7 @@ use crate::db::{
     RecordCompliancePeriodReportProfileRunInput,
     RevokeCompliancePeriodReportSharePackageInput,
     UpdateChangeRiskEvaluationReviewInput,
+    UpdateChangeRiskCabPacketReviewInput,
     UpdateComplianceFrameworkReviewReportReviewInput, UpdateCompliancePeriodReportReviewInput,
     UpdateCompliancePeriodReportProfileInput,
     UpsertOrgUserInput,

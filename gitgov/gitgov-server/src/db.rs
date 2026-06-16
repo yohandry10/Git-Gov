@@ -575,6 +575,19 @@ pub struct ArchiveChangeRiskCabPacketInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct UpdateChangeRiskCabPacketReviewInput<'a> {
+    pub org_id: &'a str,
+    pub packet_id: &'a str,
+    pub review_status: &'a str,
+    pub reviewed_by_user_id: &'a str,
+    pub review_notes_safe: Option<&'a str>,
+    pub mitigation_notes_safe: Option<&'a str>,
+    pub decision_reason_safe: Option<&'a str>,
+    pub follow_up_required: bool,
+    pub follow_up_owner_safe: Option<&'a str>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateAgentGovernanceEvaluationInput {
     pub evaluation_id: String,
     pub payload: AgentGovernanceEvaluationRequest,
@@ -740,6 +753,15 @@ fn change_risk_cab_packet_from_row(row: &PgRow) -> ChangeRiskCabPacketRecord {
         download_count: row.get("download_count"),
         archived_at: row.get("archived_at_ms"),
         archived_by_user_id: row.get("archived_by_user_id"),
+        review_status: row.get("review_status"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        review_notes_safe: row.get("review_notes_safe"),
+        mitigation_notes_safe: row.get("mitigation_notes_safe"),
+        decision_reason_safe: row.get("decision_reason_safe"),
+        follow_up_required: row.get("follow_up_required"),
+        follow_up_owner_safe: row.get("follow_up_owner_safe"),
+        review_updated_at: row.get("review_updated_at_ms"),
     }
 }
 

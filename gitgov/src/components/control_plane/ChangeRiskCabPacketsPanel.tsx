@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, Download, FileJson, PackageCheck, RefreshCw } from 'lucide-react'
+import { Archive, ClipboardCheck, Download, FileJson, PackageCheck, RefreshCw, Save } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type {
   ChangeRiskCabPacketRecord,
+  ChangeRiskCabPacketReviewStatus,
   ChangeRiskEvaluationRecord,
 } from '@/store/useControlPlaneStore/types'
+
+const CAB_REVIEW_STATUSES: ChangeRiskCabPacketReviewStatus[] = [
+  'pending_review',
+  'reviewed',
+  'accepted_risk',
+  'needs_mitigation',
+  'returned_to_owner',
+  'rejected',
+]
 
 function safeDownloadName(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 96) || 'packet'
@@ -33,6 +43,14 @@ function packetVariant(status: string): 'success' | 'warning' | 'danger' | 'info
   if (status === 'active') return 'success'
   if (status === 'archived') return 'neutral'
   return 'info'
+}
+
+function reviewVariant(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (status === 'reviewed' || status === 'accepted_risk') return 'success'
+  if (status === 'needs_mitigation' || status === 'returned_to_owner') return 'warning'
+  if (status === 'rejected') return 'danger'
+  if (status === 'pending_review') return 'info'
+  return 'neutral'
 }
 
 function shortHash(value?: string | null): string {
@@ -63,6 +81,7 @@ function PacketRow({
   displayTimezone,
   onDownload,
   onArchive,
+  onReview,
   isDownloading,
   isArchiving,
 }: {
@@ -70,6 +89,7 @@ function PacketRow({
   displayTimezone: string
   onDownload: (packet: ChangeRiskCabPacketRecord) => void
   onArchive: (packet: ChangeRiskCabPacketRecord) => void
+  onReview: (packet: ChangeRiskCabPacketRecord) => void
   isDownloading: boolean
   isArchiving: boolean
 }) {
@@ -79,6 +99,7 @@ function PacketRow({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={packetVariant(packet.status)}>{packet.status}</Badge>
+            <Badge variant={reviewVariant(packet.review_status)}>{reviewLabel(packet.review_status)}</Badge>
             <span className="font-medium text-surface-100">{packet.name}</span>
           </div>
           <div className="mt-1 grid grid-cols-1 gap-1 text-[11px] text-surface-400 md:grid-cols-2">
@@ -86,9 +107,21 @@ function PacketRow({
             <span>Created: <span className="text-surface-200">{formatTs(packet.created_at, displayTimezone)}</span></span>
             <span className="truncate">Hash: <span className="font-mono text-surface-200">{shortHash(packet.artifact_hash)}</span></span>
             <span>Downloads: <span className="text-surface-200">{packet.download_count}</span></span>
+            {packet.review_updated_at && (
+              <span>Review: <span className="text-surface-200">{formatTs(packet.review_updated_at, displayTimezone)}</span></span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onReview(packet)}
+            title="Open manual CAB disposition"
+          >
+            <ClipboardCheck size={13} />
+            Review
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -117,6 +150,121 @@ function PacketRow({
   )
 }
 
+function CabPacketDispositionPanel({
+  selectedPacket,
+  displayTimezone,
+  onSave,
+  isSaving,
+}: {
+  selectedPacket: ChangeRiskCabPacketRecord
+  displayTimezone: string
+  onSave: (payload: {
+    review_status: ChangeRiskCabPacketReviewStatus
+    review_notes: string
+    mitigation_notes: string
+    decision_reason: string
+    follow_up_required: boolean
+    follow_up_owner: string
+  }) => void
+  isSaving: boolean
+}) {
+  const [reviewStatus, setReviewStatus] = useState<ChangeRiskCabPacketReviewStatus>(selectedPacket.review_status)
+  const [reviewNotes, setReviewNotes] = useState(selectedPacket.review_notes_safe ?? '')
+  const [mitigationNotes, setMitigationNotes] = useState(selectedPacket.mitigation_notes_safe ?? '')
+  const [decisionReason, setDecisionReason] = useState(selectedPacket.decision_reason_safe ?? '')
+  const [followUpRequired, setFollowUpRequired] = useState(Boolean(selectedPacket.follow_up_required))
+  const [followUpOwner, setFollowUpOwner] = useState(selectedPacket.follow_up_owner_safe ?? '')
+
+  return (
+    <div className="border-b border-white/6 bg-surface-950/40 p-3 text-xs">
+      <div className="rounded border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-warning-100">
+        Manual CAB disposition only. Does not approve, block, certify, or deploy.
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Badge variant={reviewVariant(reviewStatus)}>{reviewLabel(reviewStatus)}</Badge>
+        <span className="truncate font-mono text-surface-400">{selectedPacket.packet_id}</span>
+        <span className="truncate font-mono text-surface-500">{shortHash(selectedPacket.artifact_hash)}</span>
+        {selectedPacket.reviewed_at && (
+          <span className="text-surface-500">Reviewed {formatTs(selectedPacket.reviewed_at, displayTimezone)}</span>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+        <label className="space-y-1">
+          <span className="text-[11px] text-surface-500">Disposition</span>
+          <select
+            value={reviewStatus}
+            onChange={(event) => setReviewStatus(event.target.value as ChangeRiskCabPacketReviewStatus)}
+            className="h-9 w-full rounded border border-white/10 bg-surface-950/70 px-2 text-xs text-surface-100 outline-none transition-colors focus:border-brand-500/60"
+          >
+            {CAB_REVIEW_STATUSES.map((status) => (
+              <option key={status} value={status}>{reviewLabel(status)}</option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-[11px] text-surface-500">Follow-up owner</span>
+          <input
+            value={followUpOwner}
+            onChange={(event) => setFollowUpOwner(event.target.value)}
+            maxLength={1000}
+            className="h-9 w-full rounded border border-white/10 bg-surface-950/70 px-2 text-xs text-surface-100 outline-none transition-colors focus:border-brand-500/60"
+          />
+        </label>
+      </div>
+      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+        <textarea
+          value={reviewNotes}
+          onChange={(event) => setReviewNotes(event.target.value)}
+          placeholder="Review notes"
+          maxLength={1000}
+          className="min-h-[74px] rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+        />
+        <textarea
+          value={mitigationNotes}
+          onChange={(event) => setMitigationNotes(event.target.value)}
+          placeholder="Mitigation notes"
+          maxLength={1000}
+          className="min-h-[74px] rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+        />
+        <textarea
+          value={decisionReason}
+          onChange={(event) => setDecisionReason(event.target.value)}
+          placeholder="Decision reason"
+          maxLength={1000}
+          className="min-h-[74px] rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <label className="inline-flex items-center gap-2 text-[11px] text-surface-300">
+          <input
+            type="checkbox"
+            checked={followUpRequired}
+            onChange={(event) => setFollowUpRequired(event.target.checked)}
+            className="h-4 w-4 rounded border-white/20 bg-surface-950"
+          />
+          Follow-up required
+        </label>
+        <Button
+          size="sm"
+          loading={isSaving}
+          onClick={() => onSave({
+            review_status: reviewStatus,
+            review_notes: reviewNotes,
+            mitigation_notes: mitigationNotes,
+            decision_reason: decisionReason,
+            follow_up_required: followUpRequired,
+            follow_up_owner: followUpOwner,
+          })}
+          title="Save manual CAB disposition"
+        >
+          <Save size={13} />
+          Save disposition
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function ChangeRiskCabPacketsPanel({
   selectedOrgName,
   repositoryFullName,
@@ -138,17 +286,24 @@ export function ChangeRiskCabPacketsPanel({
   const cabPacketsTotal = useControlPlaneStore((state) => state.changeRiskCabPacketsTotal)
   const cabPacketArtifact = useControlPlaneStore((state) => state.changeRiskCabPacketArtifact)
   const selectedCabPacket = useControlPlaneStore((state) => state.changeRiskCabPacket)
+  const cabPacketReview = useControlPlaneStore((state) => state.changeRiskCabPacketReview)
   const isLoading = useControlPlaneStore((state) => state.isChangeRiskCabPacketsLoading)
   const isCreating = useControlPlaneStore((state) => state.isChangeRiskCabPacketCreating)
   const isDownloading = useControlPlaneStore((state) => state.isChangeRiskCabPacketDownloading)
   const isArchiving = useControlPlaneStore((state) => state.isChangeRiskCabPacketArchiving)
+  const isReviewLoading = useControlPlaneStore((state) => state.isChangeRiskCabPacketReviewLoading)
+  const isReviewUpdating = useControlPlaneStore((state) => state.isChangeRiskCabPacketReviewUpdating)
   const loadPackets = useControlPlaneStore((state) => state.loadChangeRiskCabPackets)
   const createPacket = useControlPlaneStore((state) => state.createChangeRiskCabPacket)
   const downloadPacket = useControlPlaneStore((state) => state.downloadChangeRiskCabPacket)
   const archivePacket = useControlPlaneStore((state) => state.archiveChangeRiskCabPacket)
+  const getPacket = useControlPlaneStore((state) => state.getChangeRiskCabPacket)
+  const getPacketReview = useControlPlaneStore((state) => state.getChangeRiskCabPacketReview)
+  const updatePacketReview = useControlPlaneStore((state) => state.updateChangeRiskCabPacketReview)
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('active')
   const [packetName, setPacketName] = useState('')
+  const [reviewPacketId, setReviewPacketId] = useState<string | null>(null)
 
   const effectiveReviewStatus = reviewQueueFilter === 'all' ? null : reviewQueueFilter
   const defaultPacketName = useMemo(() => {
@@ -203,6 +358,31 @@ export function ChangeRiskCabPacketsPanel({
 
   const handleArchive = async (packet: ChangeRiskCabPacketRecord) => {
     await archivePacket(packet.packet_id, selectedOrgName || null)
+  }
+
+  const handleReview = async (packet: ChangeRiskCabPacketRecord) => {
+    setReviewPacketId(packet.packet_id)
+    await getPacket(packet.packet_id, { org_name: selectedOrgName || null })
+    await getPacketReview(packet.packet_id, { org_name: selectedOrgName || null })
+  }
+
+  const selectedReviewPacket = cabPackets.find((packet) => packet.packet_id === reviewPacketId)
+    ?? selectedCabPacket?.packet
+    ?? null
+
+  const handleSaveReview = async (payload: {
+    review_status: ChangeRiskCabPacketReviewStatus
+    review_notes: string
+    mitigation_notes: string
+    decision_reason: string
+    follow_up_required: boolean
+    follow_up_owner: string
+  }) => {
+    if (!selectedReviewPacket) return
+    await updatePacketReview(selectedReviewPacket.packet_id, {
+      org_name: selectedOrgName || null,
+      ...payload,
+    })
   }
 
   const selectedHash = readArtifactHash(cabPacketArtifact) ?? selectedCabPacket?.packet.artifact_hash ?? null
@@ -275,6 +455,21 @@ export function ChangeRiskCabPacketsPanel({
         </div>
       )}
 
+      {selectedReviewPacket && (
+        <CabPacketDispositionPanel
+          key={`${selectedReviewPacket.packet_id}-${selectedReviewPacket.review_updated_at ?? 'pending'}`}
+          selectedPacket={selectedReviewPacket}
+          displayTimezone={displayTimezone}
+          onSave={handleSaveReview}
+          isSaving={isReviewUpdating || isReviewLoading}
+        />
+      )}
+      {cabPacketReview && selectedReviewPacket?.packet_id === cabPacketReview.packet_id && (
+        <div className="border-b border-white/6 px-3 py-2 text-[11px] text-surface-500">
+          Review source: manual only · artifact hash unchanged · no release blocking · no deployment execution
+        </div>
+      )}
+
       <div className="max-h-[320px] overflow-auto divide-y divide-white/6">
         {cabPackets.map((packet) => (
           <PacketRow
@@ -283,6 +478,7 @@ export function ChangeRiskCabPacketsPanel({
             displayTimezone={displayTimezone}
             onDownload={handleDownload}
             onArchive={handleArchive}
+            onReview={handleReview}
             isDownloading={isDownloading}
             isArchiving={isArchiving}
           />
