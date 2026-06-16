@@ -2,6 +2,42 @@
 
 Updated: 2026-06-16
 
+## KAN-139 Correct OpenAPI Route-Source Technical Debt - 2026-06-16
+
+`KAN-139 - Correct OpenAPI route-source technical debt` is in progress. GitHub issue `#484`
+tracks the cleanup.
+
+Product/technical decision:
+
+- Keep `/api-docs` intentionally partial; do not implement full generated SDK/contract coverage in
+  this slice.
+- Correct the technical debt where the OpenAPI disclaimer and backend docs still pointed operators
+  to the old `main.rs` route table after route composition moved to `src/server/routes.rs`.
+- Record the current verified route count as `158` Axum `.route(...)` registrations.
+
+Implemented:
+
+- Updated the generated OpenAPI description and unit guard to reference
+  `gitgov-server/src/server/routes.rs`.
+- Updated living backend/architecture/status/context docs to use `src/server/routes.rs` as the
+  operational route source of truth.
+- Added report `docs/reports/openapi-route-source-technical-debt-2026-06-16.md`.
+
+Guardrails:
+
+- No new route behavior.
+- No DB migration.
+- Render may redeploy only to refresh the served `/api-docs` description.
+- No API route behavior change.
+- No full OpenAPI path annotation rollout or SDK generation.
+
+Validation:
+
+- Local validation passed: focused OpenAPI unit test, backend `cargo fmt --check`, backend
+  `cargo check`, `git diff --check`, publication guard, route-source stale grep, and route-count
+  verification (`158`).
+- PR checks pending.
+
 ## KAN-137 Remove External Editor Extension Direction - 2026-06-16
 
 `KAN-137 - Remove external editor extension product direction` is completed. GitHub issue `#479`
@@ -1186,7 +1222,7 @@ Verification follow-up: `docs/reports/enterprise-action-center-verification-2026
 - Latest completed follow-up: `KAN-75 - Public web roadmap claims documentation audit`, which reconciled public docs and content architecture notes with implemented Jira, governance, Render production, risk-outcome, pricing, metadata, and web runtime facts when `KAN-69` was still pending. PR `#200` merged as `b393a82`; post-merge `CI` run `25265387894` and `Release Readiness Gate` run `25265387888` passed.
 - The current repo has `32` active GitHub Actions workflows, schema migrations through `supabase_schema_v25.sql`, `193` backend tests reported by `cargo test -- --list`, `296` desktop frontend tests across `25` files, and `23` Tauri/Rust tests.
 - CI/workflow docs were checked against `.github/workflows`, `.github/scripts`, `scripts/github`, `scripts/control-plane`, and live GitHub branch protection metadata; verified facts include `5` pull_request workflows, `9` push workflows, `29` workflow_dispatch workflows, `22` scheduled workflows, `28` artifact-producing workflows, and `6` strict required checks on `main`.
-- Backend/API docs are being checked against `gitgov/gitgov-server/src/main.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `72` production Axum route registrations plus `/api-docs` as a partial schema explorer.
+- Backend/API docs are checked against `gitgov/gitgov-server/src/server/routes.rs`, `gitgov/gitgov-server/src/handlers`, `gitgov/gitgov-server/supabase`, and `.env.example`; the verified backend router has `158` production Axum route registrations plus `/api-docs` as a partial schema explorer.
 - Desktop/dashboard docs were checked against `gitgov/src`, `gitgov/src-tauri`, `gitgov/package.json`, and `gitgov/src-tauri/tauri.conf.json`; verified facts include `27` Control Plane component modules, `94` registered Tauri commands, React `19.2.0`, and an updater endpoint configured through GitHub Releases.
 - Public web docs were checked against `gitgov-web/package.json`, `gitgov-web/README.md`, bilingual public docs, `CONTENT_ARCHITECTURE_GUIDE.md`, and current product-state docs; corrected public claims include Next.js `15.5.15`, Jira operational maturity, governance blocking boundaries, Render-managed production, risk-outcome metrics, pricing/pilot-fit language, and stale `/docs/privacy` references.
 - Existing documentation edits in `README.md`, `gitgov/README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/QUICKSTART.md`, `docs/TROUBLESHOOTING.md`, and `gitgov/gitgov-server/README.md` are being included only where they match code/configuration reality.
@@ -1207,7 +1243,7 @@ This section consolidates the latest completed implementation/documentation poin
 | `KAN-12` | Website publication and traceability recovery | Recreated the local web changes under a traceable Jira branch/commit/PR flow. The invalid local-only commit `f2bdb24` (`dle`) was not pushed; the valid publication landed on `main` through PR `#77`. | PR `#77`, main commit `a0a4174`, CI run `24974947818`, Release Readiness run `24974947816`, `docs/reports/kan-12-web-publication-2026-04-28.md` |
 | `KAN-13` | Documentation publication governance | Clarified when docs must use placeholders and when real repo/service identifiers may remain for agent operating memory or historical validation evidence. | `docs/PUBLICATION_POLICY.md`, `docs/reports/kan-13-publication-governance-2026-04-28.md` |
 | `KAN-14` | Operational validation refresh | Refreshed local and production validation after starting Docker Desktop and the Sonar/Jenkins Compose profiles. | Render `/health` `ok`, production `/stats` HTTP `200`, local backend `/health` on port `3001`, Sonar `UP` / quality gate `OK`, Jenkins build `#30` `SUCCESS`, readiness `91/100`; `docs/reports/kan-14-operational-validation-2026-04-28.md` |
-| `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the `main.rs` route table as the operational contract source. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
+| `KAN-15` | OpenAPI partial-contract guard | Added a regression test that preserves the `/api-docs` partial schema-explorer disclaimer and keeps `docs/ARCHITECTURE.md` plus the backend route composition file as the operational contract source. KAN-139 later updated that pointer to `gitgov/gitgov-server/src/server/routes.rs`. | `gitgov/gitgov-server/src/openapi.rs`, `docs/reports/kan-15-openapi-partial-contract-guard-2026-04-28.md` |
 | `KAN-16` | Provider access validation | Added a single secret-safe PowerShell smoke test for GitGov production/local health, SonarQube, Jenkins, Jira, and optional release readiness using ignored env files. | `scripts/control-plane/validate_provider_access.ps1`; latest validation all checks `ok`, readiness `91/100` |
 | `KAN-17` | Local Sonar self-hosted runner runbook | Documented how to safely add a dedicated GitHub self-hosted runner for local SonarQube without breaking the current GitHub-hosted/non-blocking CI path. | `docs/runbooks/local-sonar-self-hosted-runner.md` |
 | `KAN-18` | Jenkins trigger-only token flow | Added a dry-run-first validator and runbook for the optional `/build?token=...` path while keeping authenticated Jenkins API access as the default verification path. | `scripts/jenkins/validate_trigger_token_flow.ps1`, `docs/runbooks/jenkins-trigger-token-flow.md`, `docs/reports/kan-18-jenkins-trigger-token-flow-2026-04-28.md` |
@@ -1389,7 +1425,7 @@ Resume context is centralized in `docs/CURRENT_CONTEXT.md`. Read it first before
   - Scoped admin keys cannot ingest pipeline events into a different org; unresolved repo scope now falls back to the key scope for scoped keys.
 - OpenAPI/Swagger claim adjusted to reflect real scope:
   - `/api-docs` is now described as a schema explorer (partial), preventing mismatch with full operational route coverage.
-  - OpenAPI info description now points to `docs/ARCHITECTURE.md` + `main.rs` route table as source of truth until full path annotation rollout.
+  - OpenAPI info description now points to `docs/ARCHITECTURE.md` + `gitgov/gitgov-server/src/server/routes.rs` as source of truth until full path annotation rollout.
 - API contract drift reconciliation completed under `KAN-8`:
   - `docs/ARCHITECTURE.md` already documents the real backend routes for job retry, compliance, and violation decisions.
   - `docs/ARCHITECTURE.md` schema migration chain now includes `supabase_schema_v22.sql`.

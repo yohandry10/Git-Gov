@@ -11,7 +11,7 @@ use utoipa::OpenApi;
     info(
         title = "GitGov Control Plane API",
         version = "1.0.0",
-        description = "Centralized audit, governance, and policy server for Git repositories.\n\nAuthentication: most endpoints require `Authorization: Bearer {api_key}`.\n\nNote: this OpenAPI surface is schema-first and intentionally partial for now; use `docs/ARCHITECTURE.md` + route table in `main.rs` as the operational source of truth.",
+        description = "Centralized audit, governance, and policy server for Git repositories.\n\nAuthentication: most endpoints require `Authorization: Bearer {api_key}`.\n\nNote: this OpenAPI surface is schema-first and intentionally partial for now; use `docs/ARCHITECTURE.md` + `gitgov-server/src/server/routes.rs` as the operational route source of truth.",
         license(name = "Proprietary")
     ),
     components(schemas(
@@ -107,7 +107,7 @@ mod tests {
             "OpenAPI description must point operators to the architecture route contract"
         );
         assert!(
-            description.contains("main.rs"),
+            description.contains("gitgov-server/src/server/routes.rs"),
             "OpenAPI description must point operators to the runtime route table"
         );
     }

@@ -12,9 +12,9 @@ The API endpoint drift originally called out in the backend audit is already cor
 
 | Area | Current documented contract | Backend evidence |
 |---|---|---|
-| Job retry | `/jobs/{job_id}/retry` | `gitgov/gitgov-server/src/main.rs` route table |
-| Compliance | `/compliance/{org_name}` | `gitgov/gitgov-server/src/main.rs` route table |
-| Violations | `/violations/{violation_id}/decisions` only | `gitgov/gitgov-server/src/main.rs` route table |
+| Job retry | `/jobs/{job_id}/retry` | `gitgov/gitgov-server/src/server/routes.rs` route table |
+| Compliance | `/compliance/{org_name}` | `gitgov/gitgov-server/src/server/routes.rs` route table |
+| Violations | `/violations/{violation_id}/decisions` only | `gitgov/gitgov-server/src/server/routes.rs` route table |
 
 There is no documented general `/violations` list endpoint in the current architecture contract.
 
@@ -38,4 +38,4 @@ The same audit block contained stale pending items that were already closed by p
 The remaining backend contract debt is not endpoint drift. It is optional OpenAPI completeness:
 
 - add `#[utoipa::path]` coverage if generated SDKs or Swagger-based contract tests become a product requirement
-- otherwise keep `docs/ARCHITECTURE.md` plus `main.rs` route table as the source of truth
+- otherwise keep `docs/ARCHITECTURE.md` plus `gitgov/gitgov-server/src/server/routes.rs` as the source of truth

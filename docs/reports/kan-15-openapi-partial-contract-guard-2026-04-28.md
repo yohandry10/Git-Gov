@@ -12,7 +12,7 @@ Do not implement full `#[utoipa::path]` route coverage yet.
 
 Rationale:
 
-- The documentation already states that `docs/ARCHITECTURE.md` plus the `main.rs` route table are the operational source of truth.
+- The documentation now states that `docs/ARCHITECTURE.md` plus `gitgov/gitgov-server/src/server/routes.rs` are the operational source of truth.
 - Full OpenAPI path annotation is only worth the cost when generated SDKs or Swagger-based contract tests become a product requirement.
 - The immediate risk is not missing annotations; it is accidentally presenting the partial schema explorer as complete.
 
@@ -24,7 +24,7 @@ The test requires the generated OpenAPI description to include:
 
 - `intentionally partial`
 - `docs/ARCHITECTURE.md`
-- `main.rs`
+- `gitgov-server/src/server/routes.rs`
 
 ## Validation
 

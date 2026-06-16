@@ -23,7 +23,7 @@ Current state:
 
 - GitGov can be operated through the real backend routes/API.
 - `/api-docs` is intentionally a partial schema explorer.
-- `docs/ARCHITECTURE.md` plus the `main.rs` route table remain the operational route source of truth.
+- `docs/ARCHITECTURE.md` plus `gitgov/gitgov-server/src/server/routes.rs` remain the operational route source of truth.
 
 Full OpenAPI annotation is optional product work. Implement it only if generated SDKs or Swagger-based contract tests become a real requirement.
 
