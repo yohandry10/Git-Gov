@@ -2,6 +2,60 @@
 
 Updated: 2026-06-16
 
+## KAN-135 Native Terminal Governance Context - 2026-06-16
+
+`KAN-135 - Native Terminal Governance Context Panel MVP` is in progress. GitHub issue `#473` tracks
+the slice.
+
+Product decision:
+
+- Add a read-only Governance Context panel to the Desktop native terminal after KAN-132 session
+  history, KAN-133 repo/branch context, and KAN-134 safe quick commands.
+- Reuse existing Deployment Gate, Change Risk, and Executive Governance read endpoints through
+  existing Tauri commands.
+- Keep the terminal as a convenience surface only. It does not approve, block, certify, deploy,
+  execute commands, or create a second enforcement model.
+
+Implemented locally:
+
+- Added `terminalGovernanceContext.ts` to derive a safe `owner/repo` target from KAN-133 Git context
+  plus existing repo validation remote metadata.
+- Added `TerminalGovernanceContextPanel` with a `Context` drawer in the native terminal header.
+- The panel loads latest Deployment Gate authorization, latest Change Risk evaluation, and
+  Executive Governance posture for the detected repository/branch.
+- Added safe states for pending Git context, non-git directories, missing GitHub remotes, Control
+  Plane not configured, permission denied, empty governance data, loading, and success.
+- Extracted `TerminalSessionHistoryDrawer` so `TerminalPanel` remains focused and below the normal
+  maintainability ceiling while preserving KAN-132 behavior.
+
+Guardrails:
+
+- No backend migration or new Control Plane API.
+- No backend persistence or audit write.
+- No command execution, command interception, command approval, command blocking, or auto-run.
+- No mutating Git/provider/deploy command.
+- No provider/repo/deploy mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No VS Code extension.
+- No compliance/certification/legal/regulatory claim.
+- No absolute local path exposure in governance target labels.
+
+Validation:
+
+- Focused terminal governance tests prove GitHub remote parsing, no cwd leak, pending/non-git/missing
+  remote empty states, and evidence detection from gate/risk/executive rows.
+- Focused terminal regression tests cover KAN-132 history, KAN-133 git context, and KAN-134 quick
+  commands.
+- Focused terminal test set passed (`18` tests).
+- Frontend typecheck, lint, build, and full Vitest passed (`404` frontend tests).
+- Tauri fmt/check/clippy/full tests passed (`52` Tauri tests).
+- `git diff --check` and publication guard passed.
+- Static grep verified the new panel does not write to the terminal PTY and does not call mutating
+  Control Plane commands.
+- PR checks remain pending before merge.
+- No Render/API deploy is expected because KAN-135 reuses existing read endpoints and changes
+  Desktop/frontend only.
+
 ## KAN-134 Native Terminal Safe Quick Commands - 2026-06-16
 
 `KAN-134 - Native Terminal Safe Quick Commands MVP` is completed. GitHub issue `#470` shipped
