@@ -15,6 +15,10 @@ impl Database {
         let recommended_manual_actions_json =
             serde_json::to_value(&input.recommended_manual_actions)
                 .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let triggered_rules_json = serde_json::to_value(&input.triggered_rules)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
+        let non_triggered_rules_json = serde_json::to_value(&input.non_triggered_rules)
+            .map_err(|e| DbError::SerializationError(e.to_string()))?;
 
         let row = sqlx::query(
             r#"
@@ -30,10 +34,15 @@ impl Database {
                 commit_sha,
                 evidence_packet_hash,
                 risk_level,
+                ruleset_version,
                 risk_reasons,
                 missing_evidence,
                 blocking_gaps,
                 recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
                 advisory_only,
                 llm_used,
                 agent_governance_used,
@@ -55,18 +64,23 @@ impl Database {
                 $9,
                 $10,
                 $11,
-                $12::jsonb,
+                $12,
                 $13::jsonb,
                 $14::jsonb,
                 $15::jsonb,
+                $16::jsonb,
+                $17::jsonb,
+                $18::jsonb,
+                $19::jsonb,
+                $20,
                 TRUE,
                 FALSE,
                 FALSE,
                 FALSE,
                 FALSE,
-                $16::jsonb,
-                $17::jsonb,
-                $18
+                $21::jsonb,
+                $22::jsonb,
+                $23
             )
             RETURNING
                 evaluation_id,
@@ -80,10 +94,15 @@ impl Database {
                 commit_sha,
                 evidence_packet_hash,
                 risk_level,
+                ruleset_version,
                 risk_reasons,
                 missing_evidence,
                 blocking_gaps,
                 recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
                 advisory_only,
                 llm_used,
                 agent_governance_used,
@@ -106,10 +125,15 @@ impl Database {
         .bind(input.payload.commit_sha.as_deref())
         .bind(input.payload.evidence_packet_hash.as_deref())
         .bind(&input.risk_level)
+        .bind(&input.ruleset_version)
         .bind(&risk_reasons_json)
         .bind(&missing_evidence_json)
         .bind(&blocking_gaps_json)
         .bind(&recommended_manual_actions_json)
+        .bind(&triggered_rules_json)
+        .bind(&non_triggered_rules_json)
+        .bind(&input.evaluation_trace)
+        .bind(&input.trace_hash)
         .bind(&input.evaluation)
         .bind(&input.request_payload)
         .bind(&input.created_by)
@@ -139,10 +163,15 @@ impl Database {
                 commit_sha,
                 evidence_packet_hash,
                 risk_level,
+                ruleset_version,
                 risk_reasons,
                 missing_evidence,
                 blocking_gaps,
                 recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
                 advisory_only,
                 llm_used,
                 agent_governance_used,
@@ -187,10 +216,15 @@ impl Database {
                 commit_sha,
                 evidence_packet_hash,
                 risk_level,
+                ruleset_version,
                 risk_reasons,
                 missing_evidence,
                 blocking_gaps,
                 recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
                 advisory_only,
                 llm_used,
                 agent_governance_used,

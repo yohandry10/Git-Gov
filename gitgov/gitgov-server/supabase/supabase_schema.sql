@@ -187,10 +187,15 @@ CREATE TABLE IF NOT EXISTS change_risk_evaluations (
     commit_sha TEXT,
     evidence_packet_hash TEXT,
     risk_level TEXT NOT NULL CHECK (risk_level IN ('low', 'medium', 'high', 'unknown')),
+    ruleset_version TEXT NOT NULL DEFAULT 'change_risk_rules.v1',
     risk_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
     missing_evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
     blocking_gaps JSONB NOT NULL DEFAULT '[]'::jsonb,
     recommended_manual_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    triggered_rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    non_triggered_rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    evaluation_trace JSONB NOT NULL DEFAULT '{}'::jsonb,
+    trace_hash TEXT NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
     advisory_only BOOLEAN NOT NULL DEFAULT TRUE,
     llm_used BOOLEAN NOT NULL DEFAULT FALSE,
     agent_governance_used BOOLEAN NOT NULL DEFAULT FALSE,
@@ -205,7 +210,12 @@ CREATE TABLE IF NOT EXISTS change_risk_evaluations (
     CHECK (llm_used = FALSE),
     CHECK (agent_governance_used = FALSE),
     CHECK (compliance_claim = FALSE),
-    CHECK (certification = FALSE)
+    CHECK (certification = FALSE),
+    CONSTRAINT change_risk_evaluations_ruleset_version_check CHECK (ruleset_version <> ''),
+    CONSTRAINT change_risk_evaluations_triggered_rules_check CHECK (jsonb_typeof(triggered_rules) = 'array'),
+    CONSTRAINT change_risk_evaluations_non_triggered_rules_check CHECK (jsonb_typeof(non_triggered_rules) = 'array'),
+    CONSTRAINT change_risk_evaluations_trace_json_check CHECK (jsonb_typeof(evaluation_trace) = 'object'),
+    CONSTRAINT change_risk_evaluations_trace_hash_check CHECK (trace_hash ~ '^sha256:[a-f0-9]{64}$')
 );
 
 CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_org_created
@@ -231,6 +241,9 @@ CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_release
 CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_commit
     ON change_risk_evaluations(org_id, commit_sha, created_at DESC)
     WHERE commit_sha IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_ruleset
+    ON change_risk_evaluations(org_id, ruleset_version, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS agent_governance_settings (
     org_id UUID PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,

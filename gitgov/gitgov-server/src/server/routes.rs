@@ -458,10 +458,15 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::list_deployment_gate_break_glass_approvals)
                 .post(handlers::create_deployment_gate_break_glass_approval),
         )
+        .route("/change-risk/rules", get(handlers::get_change_risk_rules))
         .route(
             "/change-risk/evaluations",
             get(handlers::list_change_risk_evaluations)
                 .post(handlers::create_change_risk_evaluation),
+        )
+        .route(
+            "/change-risk/evaluations/{evaluation_id}/trace",
+            get(handlers::get_change_risk_evaluation_trace),
         )
         .route(
             "/change-risk/evaluations/{evaluation_id}",

@@ -5,6 +5,8 @@ import type {
   ChangeRiskEvaluationQuery,
   ChangeRiskEvaluationRecord,
   ChangeRiskEvaluationRequest,
+  ChangeRiskEvaluationTraceResponse,
+  ChangeRiskRuleCatalogResponse,
   DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationQuery,
   EnterpriseAdoptionProfileRecord,
@@ -42,7 +44,9 @@ type EnterpriseActionKeys =
   | 'loadEnterpriseReleaseApprovals'
   | 'loadDeploymentGateAuthorizations'
   | 'loadChangeRiskEvaluations'
+  | 'loadChangeRiskRules'
   | 'getChangeRiskEvaluation'
+  | 'loadChangeRiskEvaluationTrace'
   | 'createChangeRiskEvaluation'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
@@ -548,6 +552,30 @@ export function createEnterpriseActions(
     }
   },
 
+  loadChangeRiskRules: async () => {
+    const { serverConfig } = get()
+    if (!serverConfig) return null
+
+    set({ isChangeRiskRulesLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskRuleCatalogResponse>('cmd_server_get_change_risk_rules', {
+        config: serverConfig,
+      })
+      set({
+        changeRiskRuleCatalog: response,
+        isChangeRiskRulesLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskRulesLoading: false,
+      })
+      return null
+    }
+  },
+
   getChangeRiskEvaluation: async (evaluationId, query = {}) => {
     const { serverConfig, selectedOrgName } = get()
     if (!serverConfig) return null
@@ -566,6 +594,23 @@ export function createEnterpriseActions(
       })
       set({
         changeRiskSelectedEvaluation: record,
+        changeRiskEvaluationTrace: record.evaluation_trace
+          ? {
+              evaluation_id: record.evaluation_id,
+              org_id: record.org_id,
+              ruleset_version: record.ruleset_version,
+              triggered_rules: record.triggered_rules,
+              non_triggered_rules: record.non_triggered_rules,
+              evaluation_trace: record.evaluation_trace,
+              trace_hash: record.trace_hash,
+              advisory_only: record.advisory_only,
+              llm_used: record.llm_used,
+              agent_governance_used: record.agent_governance_used,
+              compliance_claim: record.compliance_claim,
+              certification: record.certification,
+              created_at: record.created_at,
+            }
+          : null,
         isChangeRiskEvaluationsLoading: false,
       })
       return record
@@ -574,6 +619,37 @@ export function createEnterpriseActions(
       set({
         changeRiskError: message,
         isChangeRiskEvaluationsLoading: false,
+      })
+      return null
+    }
+  },
+
+  loadChangeRiskEvaluationTrace: async (evaluationId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskEvaluationQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskTraceLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskEvaluationTraceResponse>('cmd_server_get_change_risk_evaluation_trace', {
+        config: serverConfig,
+        evaluationId: evaluationId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskEvaluationTrace: response,
+        isChangeRiskTraceLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskTraceLoading: false,
       })
       return null
     }
@@ -607,6 +683,21 @@ export function createEnterpriseActions(
         changeRiskEvaluations: [record, ...state.changeRiskEvaluations].slice(0, state.changeRiskEvaluationsFilters.limit ?? 10),
         changeRiskEvaluationsTotal: state.changeRiskEvaluationsTotal + 1,
         changeRiskSelectedEvaluation: record,
+        changeRiskEvaluationTrace: {
+          evaluation_id: record.evaluation_id,
+          org_id: record.org_id,
+          ruleset_version: record.ruleset_version,
+          triggered_rules: record.triggered_rules,
+          non_triggered_rules: record.non_triggered_rules,
+          evaluation_trace: record.evaluation_trace,
+          trace_hash: record.trace_hash,
+          advisory_only: record.advisory_only,
+          llm_used: record.llm_used,
+          agent_governance_used: record.agent_governance_used,
+          compliance_claim: record.compliance_claim,
+          certification: record.certification,
+          created_at: record.created_at,
+        },
         isChangeRiskEvaluationCreating: false,
         changeRiskError: null,
       }))

@@ -250,6 +250,8 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         insert_test_api_key_for_org(&pool, "kan-121-risk-admin", "Admin", &org_id).await;
     let developer_key =
         insert_test_api_key_for_org(&pool, "kan-121-risk-dev", "Developer", &org_id).await;
+    let auditor_key =
+        insert_test_api_key_for_org(&pool, "kan-122-risk-auditor", "Auditor", &org_id).await;
     insert_gate(
         &pool,
         &org_id,
@@ -294,6 +296,11 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     assert_eq!(status, StatusCode::CREATED, "low risk create: {response}");
     let low: serde_json::Value = serde_json::from_str(&response).expect("low risk JSON");
     assert_eq!(low["risk_level"], "low");
+    assert_eq!(low["ruleset_version"], "change_risk_rules.v1");
+    assert!(low["trace_hash"]
+        .as_str()
+        .expect("low trace hash")
+        .starts_with("sha256:"));
     assert_eq!(low["advisory_only"], true);
     assert_eq!(low["llm_used"], false);
     assert_eq!(low["agent_governance_used"], false);
@@ -304,7 +311,36 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         .unwrap()
         .iter()
         .any(|value| value == "deployment_gate_allowed"));
+    assert_eq!(low["triggered_rules"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        low["evaluation_trace"]["ruleset_version"],
+        "change_risk_rules.v1"
+    );
+    assert_eq!(low["evaluation_trace"]["advisory_only"], true);
+    assert_eq!(low["evaluation_trace"]["llm_used"], false);
+    assert_eq!(low["evaluation_trace"]["agent_governance_used"], false);
     let low_id = low["evaluation_id"].as_str().expect("low eval id");
+    let low_trace_hash = low["trace_hash"]
+        .as_str()
+        .expect("low trace hash")
+        .to_string();
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&risk_payload(Some("dga_kan121_low"), "staging").to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "repeat low risk create: {response}"
+    );
+    let repeat_low: serde_json::Value =
+        serde_json::from_str(&response).expect("repeat low risk JSON");
+    assert_eq!(repeat_low["trace_hash"], low_trace_hash);
 
     let (status, response) = json_request(
         &app,
@@ -317,11 +353,28 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     assert_eq!(status, StatusCode::CREATED, "high risk create: {response}");
     let high: serde_json::Value = serde_json::from_str(&response).expect("high risk JSON");
     assert_eq!(high["risk_level"], "high");
+    assert_eq!(high["ruleset_version"], "change_risk_rules.v1");
     assert!(high["risk_reasons"]
         .as_array()
         .unwrap()
         .iter()
         .any(|value| value == "deployment_gate_blocked"));
+    for expected_rule in [
+        "missing_release_approval",
+        "production_environment",
+        "gate_requires_approval",
+        "gate_blocked",
+        "insufficient_evidence",
+    ] {
+        assert!(
+            high["triggered_rules"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == expected_rule),
+            "expected high risk triggered rule {expected_rule}: {high:?}"
+        );
+    }
     assert!(high["missing_evidence"]
         .as_array()
         .unwrap()
@@ -349,6 +402,32 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         .unwrap()
         .iter()
         .any(|value| value == "break_glass_involved"));
+    assert!(break_glass["triggered_rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|value| value == "break_glass_involved"));
+
+    let (status, response) =
+        json_request(&app, "GET", "/change-risk/rules", None, Some(&admin_key)).await;
+    assert_eq!(status, StatusCode::OK, "get rules: {response}");
+    let rules: serde_json::Value = serde_json::from_str(&response).expect("rules JSON");
+    assert_eq!(rules["ruleset_version"], "change_risk_rules.v1");
+    assert_eq!(rules["advisory_only"], true);
+    assert_eq!(rules["llm_used"], false);
+    assert_eq!(rules["agent_governance_used"], false);
+    assert_eq!(rules["compliance_claim"], false);
+    assert_eq!(rules["certification"], false);
+    assert!(rules["catalog_hash"]
+        .as_str()
+        .expect("catalog hash")
+        .starts_with("sha256:"));
+    assert_eq!(rules["rules"].as_array().unwrap().len(), 12);
+    assert!(rules["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|rule| rule["rule_id"] == "missing_ci_evidence"));
 
     let (status, response) = json_request(
         &app,
@@ -359,6 +438,23 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "get low risk: {response}");
+    let fetched_low: serde_json::Value = serde_json::from_str(&response).expect("fetched low JSON");
+    assert_eq!(fetched_low["trace_hash"], low_trace_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{low_id}/trace"),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "get low trace: {response}");
+    let low_trace: serde_json::Value = serde_json::from_str(&response).expect("trace JSON");
+    assert_eq!(low_trace["ruleset_version"], "change_risk_rules.v1");
+    assert_eq!(low_trace["trace_hash"], low_trace_hash);
+    assert_eq!(low_trace["evaluation_trace"]["risk_level"], "low");
+    assert_eq!(low_trace["advisory_only"], true);
 
     let (status, response) = json_request(
         &app,
@@ -372,6 +468,20 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     let listed: serde_json::Value = serde_json::from_str(&response).expect("list JSON");
     assert_eq!(listed["total"], 1);
 
+    for path in [
+        "/change-risk/rules".to_string(),
+        format!("/change-risk/evaluations/{low_id}"),
+        format!("/change-risk/evaluations/{low_id}/trace"),
+        "/change-risk/evaluations?deployment_gate_id=dga_kan121_high".to_string(),
+    ] {
+        let (status, response) = json_request(&app, "GET", &path, None, Some(&auditor_key)).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "auditor read-only endpoint failed at {path}: {response}"
+        );
+    }
+
     let (status, response) = json_request(
         &app,
         "POST",
@@ -384,6 +494,19 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         status,
         StatusCode::FORBIDDEN,
         "developer must not create change risk: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{low_id}/trace"),
+        None,
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not read change risk trace: {response}"
     );
 
     let agent_token = create_agent_key(&app, &admin_key).await;
@@ -399,6 +522,13 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         status,
         StatusCode::FORBIDDEN,
         "agent key must not call change risk: {response}"
+    );
+    let (status, response) =
+        json_request(&app, "GET", "/change-risk/rules", None, Some(&agent_token)).await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not read change risk rules: {response}"
     );
 
     let agent_eval_count: i64 = sqlx::query_scalar(
@@ -416,7 +546,16 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
             .fetch_one(&pool)
             .await
             .expect("change risk persisted count");
-    assert_eq!(persisted_count, 3);
+    assert_eq!(persisted_count, 4);
+
+    let gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("deployment gate unchanged count");
+    assert_eq!(gate_count, 3);
 
     teardown(&admin_pool, &schema).await;
 }
@@ -441,6 +580,8 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
         insert_test_api_key_for_org(&pool, "kan-121-tenant-a-admin", "Admin", &org_a).await;
     let admin_b =
         insert_test_api_key_for_org(&pool, "kan-121-tenant-b-admin", "Admin", &org_b).await;
+    let auditor_b =
+        insert_test_api_key_for_org(&pool, "kan-122-tenant-b-auditor", "Auditor", &org_b).await;
     let db = Arc::new(Database::from_pool(pool.clone()));
     let app = build_test_app(db);
 
@@ -469,6 +610,19 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
         StatusCode::NOT_FOUND,
         "tenant B must not read tenant A risk: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{eval_id}/trace"),
+        None,
+        Some(&auditor_b),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "tenant B auditor must not read tenant A trace: {response}"
+    );
 
     let (status, response) = json_request(
         &app,
@@ -487,8 +641,7 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
     let missing_context = json!({
         "repository_full_name": "risk-tenant-b/repo",
         "branch": "main",
-        "environment": "production",
-        "change_id": "KAN-121-missing-context"
+        "environment": "production"
     });
     let (status, response) = json_request(
         &app,
@@ -505,6 +658,24 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
     );
     let missing: serde_json::Value = serde_json::from_str(&response).expect("missing context JSON");
     assert_eq!(missing["risk_level"], "medium");
+    assert_eq!(missing["ruleset_version"], "change_risk_rules.v1");
+    for expected_rule in [
+        "missing_ci_evidence",
+        "missing_code_review",
+        "missing_change_link",
+        "production_environment",
+        "stale_evidence",
+        "insufficient_evidence",
+    ] {
+        assert!(
+            missing["triggered_rules"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == expected_rule),
+            "expected missing-context triggered rule {expected_rule}: {missing:?}"
+        );
+    }
     assert!(missing["missing_evidence"]
         .as_array()
         .unwrap()

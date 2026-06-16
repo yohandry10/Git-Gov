@@ -78,7 +78,11 @@ describe('useControlPlaneStore', () => {
       changeRiskEvaluationsTotal: 0,
       changeRiskEvaluationsFilters: { limit: 10, offset: 0 },
       changeRiskSelectedEvaluation: null,
+      changeRiskRuleCatalog: null,
+      changeRiskEvaluationTrace: null,
       isChangeRiskEvaluationsLoading: false,
+      isChangeRiskRulesLoading: false,
+      isChangeRiskTraceLoading: false,
       isChangeRiskEvaluationCreating: false,
       changeRiskError: null,
       complianceEvidenceSelectedDeploymentGateId: null,
@@ -1093,10 +1097,15 @@ describe('useControlPlaneStore', () => {
           commit_sha: 'abcdef1234567890abcdef1234567890abcdef12',
           evidence_packet_hash: 'e'.repeat(64),
           risk_level: 'medium',
+          ruleset_version: 'change_risk_rules.v1',
           risk_reasons: ['production_environment', 'deployment_gate_advisory'],
           missing_evidence: [],
           blocking_gaps: [],
           recommended_manual_actions: ['Review Deployment Gate warnings before approving change.'],
+          triggered_rules: ['production_environment'],
+          non_triggered_rules: ['gate_blocked'],
+          evaluation_trace: { ruleset_version: 'change_risk_rules.v1', triggered_rules: ['production_environment'] },
+          trace_hash: 'sha256:' + '1'.repeat(64),
           advisory_only: true,
           llm_used: false,
           agent_governance_used: false,
@@ -1144,6 +1153,63 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().changeRiskEvaluationsTotal).toBe(1)
     })
 
+    it('loads change risk rule catalog and evaluation trace', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke
+        .mockResolvedValueOnce({
+          ruleset_version: 'change_risk_rules.v1',
+          catalog_hash: 'sha256:' + 'a'.repeat(64),
+          rules: [{
+            rule_id: 'gate_blocked',
+            title: 'Gate blocked',
+            description: 'The deployment gate returned a blocking decision.',
+            severity: 'high',
+            evidence_inputs: ['deployment_gate'],
+            manual_action_hint: 'Resolve blocking governance gaps.',
+            enabled: true,
+          }],
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+        })
+        .mockResolvedValueOnce({
+          evaluation_id: 'cra_123',
+          org_id: 'org-1',
+          ruleset_version: 'change_risk_rules.v1',
+          triggered_rules: ['gate_blocked'],
+          non_triggered_rules: ['production_environment'],
+          evaluation_trace: { risk_level: 'high', rules: [{ rule_id: 'gate_blocked', triggered: true }] },
+          trace_hash: 'sha256:' + 'b'.repeat(64),
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+          created_at: 6,
+        })
+
+      const catalog = await useControlPlaneStore.getState().loadChangeRiskRules()
+      const trace = await useControlPlaneStore.getState().loadChangeRiskEvaluationTrace(' cra_123 ')
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_get_change_risk_rules', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_get_change_risk_evaluation_trace', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        evaluationId: 'cra_123',
+        query: { org_name: 'yohandry10' },
+      })
+      expect(catalog?.rules[0].rule_id).toBe('gate_blocked')
+      expect(trace?.trace_hash).toBe('sha256:' + 'b'.repeat(64))
+      expect(useControlPlaneStore.getState().changeRiskRuleCatalog?.catalog_hash).toBe('sha256:' + 'a'.repeat(64))
+      expect(useControlPlaneStore.getState().changeRiskEvaluationTrace?.triggered_rules).toContain('gate_blocked')
+    })
+
     it('creates change risk advisory records without AI, agent governance, or compliance claims', async () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
@@ -1161,10 +1227,15 @@ describe('useControlPlaneStore', () => {
         commit_sha: 'abcdef1234567890abcdef1234567890abcdef12',
         evidence_packet_hash: 'e'.repeat(64),
         risk_level: 'high',
+        ruleset_version: 'change_risk_rules.v1',
         risk_reasons: ['production_environment', 'deployment_gate_blocked'],
         missing_evidence: ['release_approval'],
         blocking_gaps: ['Deployment gate blocked by release governance.'],
         recommended_manual_actions: ['Resolve blocking Deployment Gate gaps before approving deployment.'],
+        triggered_rules: ['production_environment', 'gate_blocked'],
+        non_triggered_rules: ['missing_ci_evidence'],
+        evaluation_trace: { risk_level: 'high', rules: [{ rule_id: 'gate_blocked', triggered: true }] },
+        trace_hash: 'sha256:' + 'c'.repeat(64),
         advisory_only: true,
         llm_used: false,
         agent_governance_used: false,
@@ -1211,6 +1282,7 @@ describe('useControlPlaneStore', () => {
       expect(response?.compliance_claim).toBe(false)
       expect(response?.certification).toBe(false)
       expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.evaluation_id).toBe('cra_456')
+      expect(useControlPlaneStore.getState().changeRiskEvaluationTrace?.trace_hash).toBe('sha256:' + 'c'.repeat(64))
       expect(useControlPlaneStore.getState().changeRiskEvaluations[0].blocking_gaps).toContain('Deployment gate blocked by release governance.')
     })
 

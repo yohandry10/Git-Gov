@@ -250,10 +250,15 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             commit_sha TEXT,
             evidence_packet_hash TEXT,
             risk_level TEXT NOT NULL CHECK (risk_level IN ('low', 'medium', 'high', 'unknown')),
+            ruleset_version TEXT NOT NULL DEFAULT 'change_risk_rules.v1',
             risk_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
             missing_evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
             blocking_gaps JSONB NOT NULL DEFAULT '[]'::jsonb,
             recommended_manual_actions JSONB NOT NULL DEFAULT '[]'::jsonb,
+            triggered_rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+            non_triggered_rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+            evaluation_trace JSONB NOT NULL DEFAULT '{}'::jsonb,
+            trace_hash TEXT NOT NULL DEFAULT 'sha256:0000000000000000000000000000000000000000000000000000000000000000',
             advisory_only BOOLEAN NOT NULL DEFAULT TRUE,
             llm_used BOOLEAN NOT NULL DEFAULT FALSE,
             agent_governance_used BOOLEAN NOT NULL DEFAULT FALSE,
@@ -268,7 +273,12 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             CHECK (llm_used = FALSE),
             CHECK (agent_governance_used = FALSE),
             CHECK (compliance_claim = FALSE),
-            CHECK (certification = FALSE)
+            CHECK (certification = FALSE),
+            CHECK (ruleset_version <> ''),
+            CHECK (jsonb_typeof(triggered_rules) = 'array'),
+            CHECK (jsonb_typeof(non_triggered_rules) = 'array'),
+            CHECK (jsonb_typeof(evaluation_trace) = 'object'),
+            CHECK (trace_hash ~ '^sha256:[a-f0-9]{64}$')
         );
 
         CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_org_created
@@ -286,6 +296,9 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_gate
             ON change_risk_evaluations(org_id, deployment_gate_id, created_at DESC)
             WHERE deployment_gate_id IS NOT NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_ruleset
+            ON change_risk_evaluations(org_id, ruleset_version, created_at DESC);
 
         CREATE TABLE IF NOT EXISTS compliance_evidence_exports (
             export_id TEXT PRIMARY KEY,
@@ -2173,10 +2186,15 @@ pub(super) fn build_test_app_with_options(
             get(handlers::list_deployment_gate_break_glass_approvals)
                 .post(handlers::create_deployment_gate_break_glass_approval),
         )
+        .route("/change-risk/rules", get(handlers::get_change_risk_rules))
         .route(
             "/change-risk/evaluations",
             get(handlers::list_change_risk_evaluations)
                 .post(handlers::create_change_risk_evaluation),
+        )
+        .route(
+            "/change-risk/evaluations/{evaluation_id}/trace",
+            get(handlers::get_change_risk_evaluation_trace),
         )
         .route(
             "/change-risk/evaluations/{evaluation_id}",

@@ -268,6 +268,10 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
+| `/change-risk/rules` | Bearer (admin/auditor) | Leer el catálogo determinístico `change_risk_rules.v1`; no usa AI, no muta proveedores/repos y no crea claims |
+| `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk |
+| `/change-risk/evaluations/{evaluation_id}` | Bearer (admin/auditor) | Leer una evaluación Change Risk tenant-scoped |
+| `/change-risk/evaluations/{evaluation_id}/trace` | Bearer (admin/auditor) | Leer el trace versionado de reglas, reglas disparadas/no disparadas y hash de evaluación |
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |
 | `/agent-governance/evaluations` | Bearer (admin) | Listar historial de evaluaciones agent governance con request payload minimizado |

@@ -4,7 +4,12 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
-import type { ChangeRiskEvaluationRecord, DeploymentGateAuthorizationRecord } from '@/store/useControlPlaneStore/types'
+import type {
+  ChangeRiskEvaluationRecord,
+  ChangeRiskEvaluationTraceResponse,
+  ChangeRiskRuleCatalogResponse,
+  DeploymentGateAuthorizationRecord,
+} from '@/store/useControlPlaneStore/types'
 
 function riskVariant(level: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
   if (level === 'low') return 'success'
@@ -47,7 +52,116 @@ function Field({
   )
 }
 
-function EvaluationSummary({ evaluation }: { evaluation: ChangeRiskEvaluationRecord }) {
+type TraceRuleEntry = {
+  rule_id: string
+  title: string
+  severity: string
+  triggered: boolean
+  manual_action_hint: string
+}
+
+function readTraceRules(trace: ChangeRiskEvaluationTraceResponse | null): TraceRuleEntry[] {
+  const rawRules = trace?.evaluation_trace?.rules
+  if (!Array.isArray(rawRules)) return []
+  return rawRules
+    .filter((rule): rule is Record<string, unknown> => Boolean(rule) && typeof rule === 'object')
+    .map((rule) => ({
+      rule_id: String(rule.rule_id ?? ''),
+      title: String(rule.title ?? rule.rule_id ?? ''),
+      severity: String(rule.severity ?? 'medium'),
+      triggered: Boolean(rule.triggered),
+      manual_action_hint: String(rule.manual_action_hint ?? ''),
+    }))
+    .filter((rule) => rule.rule_id)
+}
+
+function WhyThisRisk({
+  evaluation,
+  trace,
+  catalog,
+  isLoading,
+  onReload,
+}: {
+  evaluation: ChangeRiskEvaluationRecord
+  trace: ChangeRiskEvaluationTraceResponse | null
+  catalog: ChangeRiskRuleCatalogResponse | null
+  isLoading: boolean
+  onReload: () => void
+}) {
+  const traceRules = readTraceRules(trace)
+  const triggered = traceRules.filter((rule) => rule.triggered)
+  const nonTriggeredCount = trace?.non_triggered_rules?.length ?? evaluation.non_triggered_rules?.length ?? 0
+
+  return (
+    <div className="mt-3 rounded border border-info-500/20 bg-info-500/8 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-info-200">Why this risk?</div>
+          <div className="mt-1 text-[11px] text-info-50">
+            Ruleset {trace?.ruleset_version || evaluation.ruleset_version || 'not recorded'} · {triggered.length || evaluation.triggered_rules.length} triggered · {nonTriggeredCount} not triggered
+          </div>
+        </div>
+        <Button size="sm" variant="outline" loading={isLoading} onClick={onReload} title="Reload evaluation trace">
+          <RefreshCw size={13} />
+          Trace
+        </Button>
+      </div>
+
+      <div className="mt-2 rounded border border-white/8 bg-surface-950/40 p-2 text-[11px] text-surface-300">
+        Advisory only. Does not approve, block, certify, or deploy.
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2">
+        {(triggered.length > 0 ? triggered : evaluation.triggered_rules.map((ruleId) => ({
+          rule_id: ruleId,
+          title: catalog?.rules.find((rule) => rule.rule_id === ruleId)?.title ?? ruleId,
+          severity: catalog?.rules.find((rule) => rule.rule_id === ruleId)?.severity ?? 'medium',
+          triggered: true,
+          manual_action_hint: catalog?.rules.find((rule) => rule.rule_id === ruleId)?.manual_action_hint ?? '',
+        }))).slice(0, 6).map((rule) => (
+          <div key={rule.rule_id} className="rounded border border-white/8 bg-surface-950/50 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={riskVariant(rule.severity)}>{rule.severity}</Badge>
+              <span className="font-medium text-surface-100">{rule.title}</span>
+              <span className="font-mono text-[10px] text-surface-500">{rule.rule_id}</span>
+            </div>
+            {rule.manual_action_hint && (
+              <div className="mt-1 text-[11px] text-surface-400">{rule.manual_action_hint}</div>
+            )}
+          </div>
+        ))}
+        {triggered.length === 0 && evaluation.triggered_rules.length === 0 && (
+          <div className="rounded border border-white/8 bg-surface-950/50 p-2 text-[11px] text-surface-400">
+            No risk rule triggered for this evaluation.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] md:grid-cols-2">
+        <div className="truncate text-surface-400">
+          Catalog: <span className="font-mono text-surface-200">{catalog?.catalog_hash || 'not loaded'}</span>
+        </div>
+        <div className="truncate text-surface-400">
+          Trace: <span className="font-mono text-surface-200">{trace?.trace_hash || evaluation.trace_hash || 'not recorded'}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EvaluationSummary({
+  evaluation,
+  trace,
+  catalog,
+  isTraceLoading,
+  onReloadTrace,
+}: {
+  evaluation: ChangeRiskEvaluationRecord
+  trace: ChangeRiskEvaluationTraceResponse | null
+  catalog: ChangeRiskRuleCatalogResponse | null
+  isTraceLoading: boolean
+  onReloadTrace: () => void
+}) {
   return (
     <div className="rounded-lg border border-white/8 bg-surface-900/70 p-3 text-xs">
       <div className="flex flex-wrap items-center gap-2">
@@ -91,6 +205,13 @@ function EvaluationSummary({ evaluation }: { evaluation: ChangeRiskEvaluationRec
           </div>
         </div>
       )}
+      <WhyThisRisk
+        evaluation={evaluation}
+        trace={trace}
+        catalog={catalog}
+        isLoading={isTraceLoading}
+        onReload={onReloadTrace}
+      />
     </div>
   )
 }
@@ -102,11 +223,18 @@ export function ChangeRiskPanel() {
   const evaluations = useControlPlaneStore((state) => state.changeRiskEvaluations)
   const evaluationsTotal = useControlPlaneStore((state) => state.changeRiskEvaluationsTotal)
   const selectedEvaluation = useControlPlaneStore((state) => state.changeRiskSelectedEvaluation)
+  const ruleCatalog = useControlPlaneStore((state) => state.changeRiskRuleCatalog)
+  const evaluationTrace = useControlPlaneStore((state) => state.changeRiskEvaluationTrace)
   const isLoading = useControlPlaneStore((state) => state.isChangeRiskEvaluationsLoading)
+  const isRulesLoading = useControlPlaneStore((state) => state.isChangeRiskRulesLoading)
+  const isTraceLoading = useControlPlaneStore((state) => state.isChangeRiskTraceLoading)
   const isCreating = useControlPlaneStore((state) => state.isChangeRiskEvaluationCreating)
   const error = useControlPlaneStore((state) => state.changeRiskError)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const loadEvaluations = useControlPlaneStore((state) => state.loadChangeRiskEvaluations)
+  const loadRules = useControlPlaneStore((state) => state.loadChangeRiskRules)
+  const getEvaluation = useControlPlaneStore((state) => state.getChangeRiskEvaluation)
+  const loadTrace = useControlPlaneStore((state) => state.loadChangeRiskEvaluationTrace)
   const createEvaluation = useControlPlaneStore((state) => state.createChangeRiskEvaluation)
 
   const latestGate = firstGate(deploymentGateAuthorizations)
@@ -149,11 +277,18 @@ export function ChangeRiskPanel() {
       limit: 10,
       offset: 0,
     })
-  }, [branch, loadDeploymentGateAuthorizations, loadEvaluations, repositoryFullName, selectedOrgName])
+    void loadRules()
+  }, [branch, loadDeploymentGateAuthorizations, loadEvaluations, loadRules, repositoryFullName, selectedOrgName])
 
   useEffect(() => {
     void loadEvaluations({ org_name: selectedOrgName || null, limit: 10, offset: 0 })
-  }, [loadEvaluations, selectedOrgName])
+    void loadRules()
+  }, [loadEvaluations, loadRules, selectedOrgName])
+
+  useEffect(() => {
+    if (!selectedEvaluation?.evaluation_id) return
+    void loadTrace(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })
+  }, [loadTrace, selectedEvaluation?.evaluation_id, selectedOrgName])
 
   const canEvaluate =
     repositoryFullName.trim() &&
@@ -267,7 +402,13 @@ export function ChangeRiskPanel() {
 
         <div className="space-y-3">
           {selectedEvaluation ? (
-            <EvaluationSummary evaluation={selectedEvaluation} />
+            <EvaluationSummary
+              evaluation={selectedEvaluation}
+              trace={evaluationTrace}
+              catalog={ruleCatalog}
+              isTraceLoading={isTraceLoading}
+              onReloadTrace={() => void loadTrace(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })}
+            />
           ) : (
             <div className="rounded-lg border border-white/8 bg-surface-900/60 p-4 text-xs text-surface-500">
               No assessment selected yet.
@@ -276,11 +417,16 @@ export function ChangeRiskPanel() {
           <div className="rounded-lg border border-white/8 bg-surface-900/60">
             <div className="flex items-center justify-between border-b border-white/6 px-3 py-2">
               <span className="text-[11px] font-medium text-surface-300">Recent risk assessments</span>
-              <span className="text-[10px] text-surface-600">{evaluationsTotal} total</span>
+              <span className="text-[10px] text-surface-600">{isRulesLoading ? 'rules loading' : `${evaluationsTotal} total`}</span>
             </div>
             <div className="max-h-[340px] overflow-auto divide-y divide-white/6">
               {evaluations.map((evaluation) => (
-                <div key={evaluation.evaluation_id} className="p-3 text-xs">
+                <button
+                  type="button"
+                  key={evaluation.evaluation_id}
+                  className="block w-full p-3 text-left text-xs transition-colors hover:bg-white/5"
+                  onClick={() => void getEvaluation(evaluation.evaluation_id, { org_name: selectedOrgName || null })}
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={riskVariant(evaluation.risk_level)}>{evaluation.risk_level}</Badge>
                     <span className="font-medium text-surface-100">{evaluation.release_id || 'release not set'}</span>
@@ -293,9 +439,9 @@ export function ChangeRiskPanel() {
                     <span>Created: <span className="text-surface-200">{formatTs(evaluation.created_at, displayTimezone)}</span></span>
                   </div>
                   <div className="mt-2 text-[11px] text-surface-500">
-                    {evaluation.risk_reasons.slice(0, 2).join(', ') || 'No reasons recorded.'}
+                    {evaluation.triggered_rules?.slice(0, 2).join(', ') || evaluation.risk_reasons.slice(0, 2).join(', ') || 'No reasons recorded.'}
                   </div>
-                </div>
+                </button>
               ))}
               {evaluations.length === 0 && (
                 <div className="p-6 text-center text-xs text-surface-600">

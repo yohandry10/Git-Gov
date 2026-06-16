@@ -4,6 +4,7 @@
 
 const CHANGE_RISK_LEVELS: &[&str] = &["low", "medium", "high", "unknown"];
 const CHANGE_RISK_TEXT_MAX_CHARS: usize = 200;
+const CHANGE_RISK_RULESET_VERSION: &str = "change_risk_rules.v1";
 
 fn change_risk_scope_error_message(error: OrgScopeError) -> &'static str {
     release_approval_scope_error_message(error)
@@ -156,6 +157,9 @@ fn push_unique(values: &mut Vec<String>, value: &str) {
         values.push(value.to_string());
     }
 }
+
+include!("change_risk_rules.rs");
+
 
 fn change_risk_level(reasons: &[String], missing: &[String], blocking: &[String]) -> String {
     if !blocking.is_empty()
@@ -416,6 +420,49 @@ async fn load_change_risk_gate(
     }
 }
 
+fn change_risk_trace_response_from_record(
+    record: ChangeRiskEvaluationRecord,
+) -> ChangeRiskEvaluationTraceResponse {
+    ChangeRiskEvaluationTraceResponse {
+        evaluation_id: record.evaluation_id,
+        org_id: record.org_id,
+        ruleset_version: record.ruleset_version,
+        triggered_rules: record.triggered_rules,
+        non_triggered_rules: record.non_triggered_rules,
+        evaluation_trace: record.evaluation_trace,
+        trace_hash: record.trace_hash,
+        advisory_only: record.advisory_only,
+        llm_used: record.llm_used,
+        agent_governance_used: record.agent_governance_used,
+        compliance_claim: record.compliance_claim,
+        certification: record.certification,
+        created_at: record.created_at,
+    }
+}
+
+pub async fn get_change_risk_rules(
+    Extension(auth_user): Extension<AuthUser>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+
+    (
+        StatusCode::OK,
+        Json(ChangeRiskRuleCatalogResponse {
+            ruleset_version: CHANGE_RISK_RULESET_VERSION.to_string(),
+            catalog_hash: change_risk_catalog_hash(),
+            rules: change_risk_rule_catalog(),
+            advisory_only: true,
+            llm_used: false,
+            agent_governance_used: false,
+            compliance_claim: false,
+            certification: false,
+        }),
+    )
+        .into_response()
+}
+
 pub async fn create_change_risk_evaluation(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -454,9 +501,26 @@ pub async fn create_change_risk_evaluation(
         payload.commit_sha = gate.as_ref().map(|gate| gate.target_sha.clone());
     }
 
-    let (risk_level, risk_reasons, missing_evidence, blocking_gaps, recommended_manual_actions, evaluation) =
+    let (risk_level, risk_reasons, missing_evidence, blocking_gaps, recommended_manual_actions, mut evaluation) =
         evaluate_change_risk_advisory(&payload, gate.as_ref());
     debug_assert!(CHANGE_RISK_LEVELS.contains(&risk_level.as_str()));
+    let (triggered_rules, non_triggered_rules, evaluation_trace, trace_hash) =
+        build_change_risk_rule_trace(
+            &payload,
+            gate.as_ref(),
+            &risk_level,
+            &risk_reasons,
+            &missing_evidence,
+            &blocking_gaps,
+        );
+    if let Some(evaluation_object) = evaluation.as_object_mut() {
+        evaluation_object.insert(
+            "ruleset_version".to_string(),
+            json!(CHANGE_RISK_RULESET_VERSION),
+        );
+        evaluation_object.insert("triggered_rules".to_string(), json!(&triggered_rules));
+        evaluation_object.insert("trace_hash".to_string(), json!(&trace_hash));
+    }
     let request_payload = match serde_json::to_value(&payload) {
         Ok(value) => value,
         Err(e) => {
@@ -473,10 +537,15 @@ pub async fn create_change_risk_evaluation(
         evaluation_id,
         payload,
         risk_level,
+        ruleset_version: CHANGE_RISK_RULESET_VERSION.to_string(),
         risk_reasons,
         missing_evidence,
         blocking_gaps,
         recommended_manual_actions,
+        triggered_rules,
+        non_triggered_rules,
+        evaluation_trace,
+        trace_hash,
         evaluation,
         request_payload,
         created_by: auth_user.client_id.clone(),
@@ -504,6 +573,9 @@ pub async fn create_change_risk_evaluation(
                     "deployment_gate_id": &record.deployment_gate_id,
                     "release_id": &record.release_id,
                     "risk_level": &record.risk_level,
+                    "ruleset_version": &record.ruleset_version,
+                    "triggered_rules": &record.triggered_rules,
+                    "trace_hash": &record.trace_hash,
                     "advisory_only": record.advisory_only,
                     "llm_used": record.llm_used,
                     "agent_governance_used": record.agent_governance_used,
@@ -534,7 +606,7 @@ pub async fn get_change_risk_evaluation(
     Path(evaluation_id): Path<String>,
     Query(mut query): Query<ChangeRiskEvaluationQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
     normalize_release_approval_optional_text(&mut query.org_name);
@@ -566,12 +638,54 @@ pub async fn get_change_risk_evaluation(
     }
 }
 
+pub async fn get_change_risk_evaluation_trace(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(evaluation_id): Path<String>,
+    Query(mut query): Query<ChangeRiskEvaluationQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+    normalize_release_approval_optional_text(&mut query.org_name);
+    let org_id = match resolve_change_risk_org(&state, &auth_user, query.org_name.as_deref()).await
+    {
+        Ok(org_id) => org_id,
+        Err(response) => return response.into_response(),
+    };
+
+    match state
+        .db
+        .get_change_risk_evaluation(&org_id, evaluation_id.trim())
+        .await
+    {
+        Ok(Some(record)) => (
+            StatusCode::OK,
+            Json(change_risk_trace_response_from_record(record)),
+        )
+            .into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Change risk evaluation not found" })),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to get change risk evaluation trace");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
 pub async fn list_change_risk_evaluations(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
     Query(mut query): Query<ChangeRiskEvaluationQuery>,
 ) -> impl IntoResponse {
-    if let Err(resp) = require_admin(&auth_user) {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
         return resp.into_response();
     }
 

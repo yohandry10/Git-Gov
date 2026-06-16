@@ -544,12 +544,61 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn get_change_risk_rules(&self) -> Result<ChangeRiskRuleCatalogResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "rules"])?;
+        let mut request = self.client.get(url);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn get_change_risk_evaluation(
         &self,
         evaluation_id: &str,
         query: &ChangeRiskEvaluationQuery,
     ) -> Result<ChangeRiskEvaluationRecord, ServerError> {
         let url = self.endpoint_url(&["change-risk", "evaluations", evaluation_id])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_change_risk_evaluation_trace(
+        &self,
+        evaluation_id: &str,
+        query: &ChangeRiskEvaluationQuery,
+    ) -> Result<ChangeRiskEvaluationTraceResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "evaluations", evaluation_id, "trace"])?;
         let mut query_params: Vec<(String, String)> = Vec::new();
         if let Some(org_name) = &query.org_name {
             query_params.push(("org_name".to_string(), org_name.clone()));
