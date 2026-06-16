@@ -638,6 +638,7 @@ pub struct ExecutiveGovernanceSnapshotRecord {
 pub struct ExecutiveGovernanceSnapshotRequest {
     #[serde(default)]
     pub org_name: Option<String>,
+    #[serde(default)]
     pub name: String,
     #[serde(default)]
     pub filters: MultiRepoExecutiveGovernanceQuery,

@@ -1613,6 +1613,34 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
         Some(
             &json!({
                 "org_name": "executive-org",
+                "filters": {
+                    "repository": "payments",
+                    "limit": 10,
+                    "offset": 0
+                }
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "snapshot create without name must fail validation, not JSON deserialization: {response}"
+    );
+    assert!(
+        response.contains("name is required"),
+        "missing-name response should explain validation failure: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/executive/snapshots",
+        Some(
+            &json!({
+                "org_name": "executive-org",
                 "name": "KAN-131 production attention snapshot",
                 "filters": {
                     "environment": "production",
