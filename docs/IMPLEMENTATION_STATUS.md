@@ -5,7 +5,8 @@ Updated: 2026-06-16
 ## KAN-143 Native Terminal Provider Quick Commands Safety Registry MVP - 2026-06-16
 
 `KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` continues roadmap block
-`0.10 Developer Distribution Surfaces`. GitHub issue `#495` tracks the implementation.
+`0.10 Developer Distribution Surfaces`. GitHub issue `#495` tracks the implementation, and
+PR `#496` merged the product slice to `main` as `e0ee3f9b`.
 
 Product decision:
 
@@ -61,6 +62,10 @@ Validation:
 - `git diff --check` and publication guard passed.
 - Static product-code grep found no mutating/network/secret-exposing provider commands in
   `gitgov/src/components/cli`.
+- PR checks passed before merge: CI, Policy-as-Code, Quality Gate Policy Matrix, Security Guard,
+  SonarQube Governance, Public Naming Guard, and Vercel.
+- No Render/API deploy was required because the change is Desktop/frontend local and does not change
+  backend behavior.
 
 ## KAN-142 Fix stale terminal governance context snapshot - 2026-06-16
 

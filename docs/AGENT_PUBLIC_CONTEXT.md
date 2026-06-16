@@ -240,7 +240,8 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` continues
+`KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` is completed through
+PR `#496` as `e0ee3f9b`. It continues
 Desktop/Workspace terminal distribution by adding a safety-reviewed provider/tool command registry
 to the existing quick-command menu. It is exact-allowlist and insert-only: no newline, no auto-run,
 no backend call, no cloud/provider API call, no secrets, and no mutation.
