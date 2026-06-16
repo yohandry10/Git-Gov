@@ -1127,6 +1127,7 @@ describe('useControlPlaneStore', () => {
         release_id: ' KAN-121 ',
         environment: ' production ',
         deployment_gate_id: ' dga_123 ',
+        review_status: 'needs_review',
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_change_risk_evaluations', {
@@ -1141,6 +1142,7 @@ describe('useControlPlaneStore', () => {
           commit_sha: null,
           release_id: 'KAN-121',
           environment: 'production',
+          review_status: 'needs_review',
           limit: 10,
           offset: 0,
         },
@@ -1214,6 +1216,7 @@ describe('useControlPlaneStore', () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
         selectedOrgName: 'yohandry10',
+        changeRiskEvaluationsFilters: { limit: 10, offset: 0, review_status: 'needs_review' },
         changeRiskSelectedEvaluation: {
           evaluation_id: 'cra_review',
           org_id: 'org-1',
@@ -1334,7 +1337,7 @@ describe('useControlPlaneStore', () => {
       expect(updated?.agent_governance_used).toBe(false)
       expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.review_status).toBe('accepted_risk')
       expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.trace_hash).toBe('sha256:' + 'd'.repeat(64))
-      expect(useControlPlaneStore.getState().changeRiskEvaluations[0].decision_reason_safe).toBe('Business exception accepted manually.')
+      expect(useControlPlaneStore.getState().changeRiskEvaluations).toHaveLength(0)
     })
 
     it('creates change risk advisory records without AI, agent governance, or compliance claims', async () => {

@@ -410,6 +410,7 @@ pub struct ChangeRiskEvaluationQuery {
     pub change_id: Option<String>,
     pub deployment_gate_id: Option<String>,
     pub commit_sha: Option<String>,
+    pub review_status: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }

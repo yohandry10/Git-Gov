@@ -34,6 +34,17 @@ function reviewLabel(status: string): string {
   return status.replaceAll('_', ' ')
 }
 
+type ChangeRiskReviewQueueFilter = 'all' | ChangeRiskReviewStatus
+
+const REVIEW_QUEUE_FILTERS: Array<{ label: string; value: ChangeRiskReviewQueueFilter }> = [
+  { label: 'All reviews', value: 'all' },
+  { label: 'Needs review', value: 'needs_review' },
+  { label: 'Reviewed', value: 'reviewed' },
+  { label: 'Accepted risk', value: 'accepted_risk' },
+  { label: 'Needs mitigation', value: 'needs_mitigation' },
+  { label: 'Rejected', value: 'rejected' },
+]
+
 function shortValue(value?: string | null): string {
   if (!value) return 'Not set'
   return value.length > 14 ? value.slice(0, 14) : value
@@ -409,11 +420,21 @@ export function ChangeRiskPanel() {
   const [releaseId, setReleaseId] = useState('')
   const [environment, setEnvironment] = useState('production')
   const [changeId, setChangeId] = useState('')
+  const [reviewQueueFilter, setReviewQueueFilter] = useState<ChangeRiskReviewQueueFilter>('all')
 
   const selectedGate = useMemo(
     () => deploymentGateAuthorizations.find((gate) => gate.authorization_id === selectedGateId) ?? null,
     [deploymentGateAuthorizations, selectedGateId],
   )
+
+  const changeRiskListQuery = useMemo(() => ({
+    org_name: selectedOrgName || null,
+    repository_full_name: repositoryFullName.trim() || null,
+    branch: repositoryFullName.trim() ? branch.trim() || null : null,
+    review_status: reviewQueueFilter === 'all' ? null : reviewQueueFilter,
+    limit: 10,
+    offset: 0,
+  }), [branch, repositoryFullName, reviewQueueFilter, selectedOrgName])
 
   const applyGate = useCallback((gate: DeploymentGateAuthorizationRecord | null) => {
     if (!gate) return
@@ -435,19 +456,17 @@ export function ChangeRiskPanel() {
       offset: 0,
     })
     void loadEvaluations({
-      org_name: selectedOrgName || null,
-      repository_full_name: repositoryFullName.trim() || null,
-      branch: repositoryFullName.trim() ? branch.trim() || null : null,
+      ...changeRiskListQuery,
       limit: 10,
       offset: 0,
     })
     void loadRules()
-  }, [branch, loadDeploymentGateAuthorizations, loadEvaluations, loadRules, repositoryFullName, selectedOrgName])
+  }, [branch, changeRiskListQuery, loadDeploymentGateAuthorizations, loadEvaluations, loadRules, repositoryFullName, selectedOrgName])
 
   useEffect(() => {
-    void loadEvaluations({ org_name: selectedOrgName || null, limit: 10, offset: 0 })
+    void loadEvaluations(changeRiskListQuery)
     void loadRules()
-  }, [loadEvaluations, loadRules, selectedOrgName])
+  }, [changeRiskListQuery, loadEvaluations, loadRules])
 
   useEffect(() => {
     if (!selectedEvaluation?.evaluation_id) return
@@ -589,9 +608,23 @@ export function ChangeRiskPanel() {
             </div>
           )}
           <div className="rounded-lg border border-white/8 bg-surface-900/60">
-            <div className="flex items-center justify-between border-b border-white/6 px-3 py-2">
-              <span className="text-[11px] font-medium text-surface-300">Recent risk assessments</span>
-              <span className="text-[10px] text-surface-600">{isRulesLoading ? 'rules loading' : `${evaluationsTotal} total`}</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/6 px-3 py-2">
+              <div>
+                <span className="text-[11px] font-medium text-surface-300">Review queue</span>
+                <span className="ml-2 text-[10px] text-surface-600">{isRulesLoading ? 'rules loading' : `${evaluationsTotal} total`}</span>
+              </div>
+              <label className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-surface-500">
+                Status
+                <select
+                  value={reviewQueueFilter}
+                  onChange={(event) => setReviewQueueFilter(event.target.value as ChangeRiskReviewQueueFilter)}
+                  className="h-8 min-w-[150px] rounded border border-white/10 bg-surface-950/70 px-2 text-xs normal-case tracking-normal text-surface-100 outline-none transition-colors focus:border-brand-500/60"
+                >
+                  {REVIEW_QUEUE_FILTERS.map((filter) => (
+                    <option key={filter.value} value={filter.value}>{filter.label}</option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="max-h-[340px] overflow-auto divide-y divide-white/6">
               {evaluations.map((evaluation) => (
@@ -620,7 +653,7 @@ export function ChangeRiskPanel() {
               ))}
               {evaluations.length === 0 && (
                 <div className="p-6 text-center text-xs text-surface-600">
-                  No change risk assessments have been recorded for this tenant.
+                  No change risk assessments match this review queue.
                 </div>
               )}
             </div>

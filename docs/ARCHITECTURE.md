@@ -269,7 +269,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
 | `/change-risk/rules` | Bearer (admin/auditor) | Leer el catálogo determinístico `change_risk_rules.v1`; no usa AI, no muta proveedores/repos y no crea claims |
-| `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk |
+| `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk; el listado acepta filtro `review_status` para cola CAB/manual |
 | `/change-risk/evaluations/{evaluation_id}` | Bearer (admin/auditor) | Leer una evaluación Change Risk tenant-scoped |
 | `/change-risk/evaluations/{evaluation_id}/trace` | Bearer (admin/auditor) | Leer el trace versionado de reglas, reglas disparadas/no disparadas y hash de evaluación |
 | `/change-risk/evaluations/{evaluation_id}/review` | Bearer (admin/auditor para lectura; admin para actualización) | Leer o actualizar revisión manual, notas seguras y mitigación sin cambiar el trace ni ejecutar enforcement |

@@ -2,6 +2,60 @@
 
 Updated: 2026-06-16
 
+## KAN-124 Change Risk Review Queue And CAB Evidence Filter - 2026-06-16
+
+`KAN-124 - Change Risk Review Queue and CAB Evidence Filter` is in progress on branch
+`product/KAN-124-change-risk-review-queue` for GitHub issue `#432`.
+
+Product decision:
+
+- Extend KAN-123 manual review metadata into a CAB/operator review queue.
+- Let Admins and Auditors list Change Risk evaluations by `review_status`.
+- Keep review status as manual evidence only; do not convert it into release blocking.
+- Do not add scoring, enforcement, deploy execution, provider/repo mutation, AI/LLM, BYOM, MCP,
+  chatbot behavior, Agent Governance dependency, compliance/certification/legal/regulatory claim,
+  notifications, approval quorum, or multi-reviewer workflow.
+
+Implemented locally so far:
+
+- Optional `review_status` on backend/Tauri/frontend `ChangeRiskEvaluationQuery`.
+- Backend validation for allowed KAN-123 review states.
+- SQL filtering in `list_change_risk_evaluations`.
+- Tauri query-string support for `review_status`.
+- Control Plane store support for applying and explicitly clearing the review status filter.
+- Store behavior that removes an evaluation from the active review queue when a review update moves
+  it to a different status.
+- Governance > Releases `ChangeRiskPanel` `Review queue` selector.
+- Design and validation report docs.
+
+Validation so far:
+
+- Backend `cargo fmt --check`.
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Focused backend Change Risk tests with real Postgres passed (`2` tests), covering review queue
+  inclusion/exclusion, invalid review status rejection, Auditor read access, tenant isolation, and
+  no Deployment Gate or Agent Governance mutation.
+- Tauri `cargo check`.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri tests (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest (`377` passed).
+- Frontend `pnpm --dir gitgov build` passed with the pre-existing Vite large chunk warning.
+- Focused store test `pnpm --dir gitgov test src/test/useControlPlaneStore.test.ts` passed
+  (`43` tests).
+- `git diff --check` passed.
+- `scripts/security/publication_guard.ps1` passed.
+
+Remaining before merge:
+
+- PR checks, production deploy, and production smoke.
+
+Report: `docs/reports/change-risk-review-queue-cab-filter-2026-06-16.md`.
+
 ## KAN-123 Change Risk Manual Review & Mitigation Notes - 2026-06-16
 
 `KAN-123 - Change Risk Manual Review & Mitigation Notes` is completed. PR `#430` merged to

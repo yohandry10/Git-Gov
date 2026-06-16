@@ -595,6 +595,8 @@ pub struct ChangeRiskEvaluationQuery {
     #[serde(default)]
     pub commit_sha: Option<String>,
     #[serde(default)]
+    pub review_status: Option<String>,
+    #[serde(default)]
     pub limit: Option<i64>,
     #[serde(default)]
     pub offset: Option<i64>,

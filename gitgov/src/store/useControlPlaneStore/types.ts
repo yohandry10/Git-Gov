@@ -388,6 +388,7 @@ export interface ChangeRiskEvaluationQuery {
   environment?: string | null
   change_id?: string | null
   commit_sha?: string | null
+  review_status?: ChangeRiskReviewStatus | null
   limit?: number | null
   offset?: number | null
 }
