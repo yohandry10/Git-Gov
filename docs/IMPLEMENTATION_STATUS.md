@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-139 Correct OpenAPI Route-Source Technical Debt - 2026-06-16
 
-`KAN-139 - Correct OpenAPI route-source technical debt` is in progress. GitHub issue `#484`
-tracks the cleanup.
+`KAN-139 - Correct OpenAPI route-source technical debt` is completed. GitHub issue `#484`
+shipped through PR `#485`, merged to `main` as `34e6a540`.
 
 Product/technical decision:
 
@@ -36,7 +36,13 @@ Validation:
 - Local validation passed: focused OpenAPI unit test, backend `cargo fmt --check`, backend
   `cargo check`, `git diff --check`, publication guard, route-source stale grep, and route-count
   verification (`158`).
-- PR checks pending.
+- Required PR checks passed, including Workflow Lint, Security Guard, Server Clippy + Check,
+  Desktop Rust Clippy, Frontend Lint + Typecheck, Website Lint + Typecheck + Build,
+  Validate Policy-as-Code, Validate quality_gates warn/block matrix, Sonar Scan + Quality Gate,
+  Vercel, and internal marker guard.
+- Render deploy `dep-d8oo81k2m8qs73augv70` reached `live`; production `/api-docs/openapi.json`
+  returned HTTP `200`, contained `gitgov-server/src/server/routes.rs`, and no longer contained
+  `main.rs`.
 
 ## KAN-137 Remove External Editor Extension Direction - 2026-06-16
 
