@@ -15,7 +15,7 @@ Change Risk remains:
 - independent from Agent Governance;
 - non-mutating for providers, repositories, deployment gates, and release evidence.
 
-## Implemented Locally
+## Implemented
 
 - Supabase migration/postcheck `v64`.
 - Consolidated Supabase schema update.
@@ -65,9 +65,24 @@ Validation note:
   the extra `--run` option through `pnpm`; the correct full-suite command is `pnpm --dir gitgov
   test`, which passed.
 
-## Remaining
+## PR And Production Validation
 
-- PR checks.
-- Production `v64` migration/postcheck.
-- Render deploy.
-- Production smoke covering GET/PATCH review, audit evidence, immutable trace hash, no Deployment Gate mutation, no Agent Governance mutation, and no-claim flags.
+- PR `#430` merged to `main` as `3aa5f894`.
+- PR checks passed.
+- Production `v64` migration/postcheck passed.
+- Render deploy `dep-d8od0bt8nd3s73adtalg` for `3aa5f894` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `POST /change-risk/evaluations` created
+    `cra_4d59c84859a747789e577ca24945ec50` for `KAN-123-production-smoke`.
+  - `GET /change-risk/evaluations/{id}/review` returned default `needs_review` before updates
+    and final `accepted_risk` after updates.
+  - `PATCH /change-risk/evaluations/{id}/review` moved the same evaluation through
+    `reviewed`, `needs_mitigation`, and final `accepted_risk`.
+  - A secret-like note containing `Authorization: Bearer` was rejected with HTTP `400`.
+  - `GET /change-risk/evaluations/{id}/trace` preserved the same trace hash after review updates.
+  - `3` `change_risk_review_updated` audit events were recorded with `trace_changed=false`.
+  - Deployment Gate authorization and Agent Governance evaluation counts did not change.
+  - No-claim flags stayed false for LLM use, Agent Governance use, compliance claim, and
+    certification.

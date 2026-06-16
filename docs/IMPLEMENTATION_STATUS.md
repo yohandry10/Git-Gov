@@ -4,9 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-123 Change Risk Manual Review & Mitigation Notes - 2026-06-16
 
-`KAN-123 - Change Risk Manual Review & Mitigation Notes` is implemented locally on branch
-`product/KAN-123-change-risk-manual-review` for GitHub issue `#429`, pending PR checks,
-production migration, Render deploy, and production smoke.
+`KAN-123 - Change Risk Manual Review & Mitigation Notes` is completed. PR `#430` merged to
+`main` as `3aa5f894`.
 
 Product decision:
 
@@ -20,7 +19,7 @@ Product decision:
   mutation, AI/LLM, BYOM, MCP, chatbot behavior, compliance score, certification/legal/regulatory
   claim, notifications, approval quorum, or multi-reviewer workflow.
 
-Implemented locally so far:
+Implemented:
 
 - Supabase migration/postcheck `v64`.
 - Review metadata on `change_risk_evaluations`: `review_status`, `reviewed_by_user_id`,
@@ -58,9 +57,23 @@ Local validation:
 - `git diff --check` passed.
 - `scripts/security/publication_guard.ps1` passed.
 
-Remaining:
+Production validation:
 
-- PR checks, production `v64`, Render deploy, and production smoke.
+- PR checks passed.
+- Production `v64` migration/postcheck passed.
+- Render deploy `dep-d8od0bt8nd3s73adtalg` for `3aa5f894` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `POST /change-risk/evaluations` created
+    `cra_4d59c84859a747789e577ca24945ec50` for `KAN-123-production-smoke`.
+  - Review status moved through `reviewed`, `needs_mitigation`, and final `accepted_risk`.
+  - Secret-like review note containing `Authorization: Bearer` was rejected with HTTP `400`.
+  - `GET /change-risk/evaluations/{id}/review` returned final `accepted_risk`.
+  - `GET /change-risk/evaluations/{id}/trace` preserved the same trace hash after review updates.
+  - `3` `change_risk_review_updated` audit events were recorded with `trace_changed=false`.
+  - No-claim flags stayed false for LLM, Agent Governance, compliance claim, and certification.
+  - Deployment Gate authorization and Agent Governance evaluation counts did not change.
 
 Report: `docs/reports/change-risk-manual-review-mitigation-notes-2026-06-16.md`.
 
