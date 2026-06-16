@@ -4,8 +4,9 @@ Updated: 2026-06-16
 
 ## KAN-121 Change Risk Assessment Advisory MVP - 2026-06-16
 
-`KAN-121 - Change Risk Assessment Advisory MVP` is implemented locally on branch
-`product/KAN-121-change-risk-advisory`; PR/merge/deploy validation follows after review.
+`KAN-121 - Change Risk Assessment Advisory MVP` is completed. PR `#422` merged to `main` as
+`eb66480`; production `v62` migration/postcheck passed; Render deploy `dep-d8oanqmq1p3s73fc8u7g`
+reached `live`; production smoke passed.
 
 Product decision:
 
@@ -48,6 +49,26 @@ Validation completed locally:
   production build.
 
 Report: `docs/reports/change-risk-assessment-advisory-2026-06-16.md`.
+
+Post-merge and production validation:
+
+- PR checks passed, including Security Guard, Server Clippy + Check, Desktop Rust Clippy, Frontend
+  Lint + Typecheck, Website Lint + Typecheck + Build, Validate Policy-as-Code, quality gate matrix,
+  Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.
+- Production `v62` migration/postcheck returned `PASS` for table, no-claim constraints, and indexes.
+- Render deploy `dep-d8oanqmq1p3s73fc8u7g` for commit `eb66480` reached `live`.
+- Production smoke:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `GET /change-risk/evaluations?org_name=yohandry10&limit=1` succeeded.
+  - `POST /change-risk/evaluations` created `cra_9d53d9cd29a7439aa0485607edeae64e` for
+    `KAN-121`, repo `yohandry10/Git-Gov`, branch `main`, environment `production`, commit
+    `eb66480`.
+  - Created record returned `risk_level=medium`, `advisory_only=true`, `llm_used=false`,
+    `agent_governance_used=false`, `compliance_claim=false`, `certification=false`, and missing
+    evidence `deployment_gate_authorization, release_evidence_packet`.
+  - `GET /change-risk/evaluations/{evaluation_id}?org_name=yohandry10` returned the same
+    evaluation ID.
 
 ## KAN-120 First Governed Repo Integration Wizard - 2026-06-16
 
