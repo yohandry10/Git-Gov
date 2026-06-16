@@ -4,8 +4,9 @@ Updated: 2026-06-16
 
 ## KAN-131 Multi-Repo Executive Governance Snapshot Export - 2026-06-16
 
-`KAN-131 - Multi-Repo Executive Governance Snapshot Export` is in implementation on branch
-`product/KAN-131-executive-governance-snapshot-export` with GitHub issue `#459`.
+`KAN-131 - Multi-Repo Executive Governance Snapshot Export` is completed. GitHub issue `#459`
+shipped through PR `#460`, with production archive-contract hardening follow-ups PR `#461` and
+PR `#462`. Final `main` commit: `44e2a492`.
 
 Scope:
 
@@ -42,6 +43,28 @@ Implemented locally:
 - Updated Tauri DTOs, Control Plane store query types, and Governance > Releases executive panel
   filter controls.
 - Design and validation report docs.
+
+Validation and production:
+
+- Local backend fmt/check/clippy/no-run passed during implementation.
+- Focused real Postgres test
+  `multi_repo_executive_governance_view_is_read_only_and_tenant_scoped` passed with snapshot
+  create/list/get/download/archive, hash recomputation, RBAC, tenant isolation, missing-name
+  validation, archived download conflict, and no-mutation assertions.
+- Tauri fmt/check/clippy/tests passed.
+- Frontend typecheck/lint/full Vitest/focused store and panel tests passed.
+- Production `v68` migration/postcheck passed.
+- PR checks passed for PRs `#460`, `#461`, and `#462`.
+- Final Render deploy `dep-d8olc88jo6nc73b94n4g` for `44e2a492` reached `live`.
+- Final production smoke passed: `/health=ok`, filtered executive view returned
+  `yohandry10/Git-Gov` with posture `review`, snapshot
+  `egs_06f228f93f184aeeb182e5932b98f4cc` was created/downloaded/archived, artifact hash
+  `sha256:27e21be0854ecd8ad459551176f8de3aab6b487ec902896d7139923a9dcfb24c` recomputed
+  successfully, archived download returned HTTP `409`, and source governance counts stayed
+  unchanged at `2,6,8,6,7`.
+- Aggressive smoke found the archive route initially required `name` due to DTO reuse. PR `#461`
+  split the archive DTO, and PR `#462` hardened deserialization so missing create names return
+  controlled `400` validation while archive with only `org_name` is accepted.
 
 Local validation completed:
 

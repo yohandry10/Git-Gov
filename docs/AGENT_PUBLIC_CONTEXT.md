@@ -97,9 +97,12 @@ The repo already contains substantial product surface:
   decision, risk level, and review status. It keeps the KAN-129 no-claim posture and does not add a
   new evidence domain, enforcement, deploy execution, provider/repo mutation, AI/Agent Governance,
   compliance scoring, certification, or legal/regulatory claims.
-- KAN-131 is the active implementation slice. It adds a manual-first, hashable JSON snapshot export
-  for the filtered Executive Governance View. It persists snapshot metadata and artifact hashes but
-  does not mutate source evidence or create compliance/certification claims.
+- Multi-Repo Executive Governance Snapshot Export from KAN-131 is completed and
+  production-validated. It adds a manual-first, hashable JSON snapshot export for the filtered
+  Executive Governance View. It persists snapshot metadata and artifact hashes but does not mutate
+  source evidence or create compliance/certification claims. Final production validation created,
+  downloaded, hash-verified, archived, and blocked post-archive download of a snapshot while source
+  Deployment Gate, Change Risk, CAB, and Agent Governance evidence counts stayed unchanged.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
