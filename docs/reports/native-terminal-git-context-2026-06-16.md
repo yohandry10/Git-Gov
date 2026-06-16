@@ -4,6 +4,10 @@ Date: 2026-06-16
 
 GitHub issue: `#467`
 
+Pull request: `#468`
+
+Main commit: `5d45c2dd`
+
 ## Summary
 
 KAN-133 adds safe local Git context to the Desktop native terminal header. The header now shows a
@@ -63,3 +67,10 @@ Control Plane audit evidence.
   - passed.
 - `powershell -ExecutionPolicy Bypass -File scripts/security/publication_guard.ps1`
   - passed.
+- PR checks
+  - passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy + Check,
+    Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates warn/block
+    matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.
+- Production/backend deploy
+  - not required; KAN-133 changes only local Desktop/Tauri/frontend behavior and has no backend/API
+    migration.
