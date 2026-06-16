@@ -92,7 +92,7 @@ The repo already contains substantial product surface:
   `healthy`, and `unknown`. It does not approve or block deployments, execute deploys, mutate
   providers/repos, create artifacts, use AI/Agent Governance, or create compliance/certification
   claims.
-- Multi-Repo Executive Governance Filters from KAN-130 is in progress. It extends the same
+- Multi-Repo Executive Governance Filters from KAN-130 is completed and production-validated. It extends the same
   read-only `/executive/repositories` route with filters for repository, environment, posture, gate
   decision, risk level, and review status. It keeps the KAN-129 no-claim posture and does not add a
   new evidence domain, enforcement, deploy execution, provider/repo mutation, AI/Agent Governance,
