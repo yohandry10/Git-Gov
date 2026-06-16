@@ -2,6 +2,53 @@
 
 Updated: 2026-06-16
 
+## KAN-134 Native Terminal Safe Quick Commands - 2026-06-16
+
+`KAN-134 - Native Terminal Safe Quick Commands MVP` is in progress. GitHub issue `#470` tracks the
+slice.
+
+Product decision:
+
+- Add a local quick-command palette to the Desktop native terminal after KAN-132 session history and
+  KAN-133 repo/branch context.
+- Keep quick commands insert-only. The user must still press Enter manually.
+- Limit the MVP to read-only Git inspection commands. This is a developer convenience surface, not
+  automation, enforcement, release approval, policy evidence, or deploy execution.
+
+Implemented locally:
+
+- Added `terminalQuickCommands.ts` with a hardcoded read-only allowlist:
+  `git status --short`, `git branch --show-current`, `git log --oneline -5`, `git diff --stat`, and
+  `git remote -v`.
+- Added structural rejection for compound, redirected, non-git, and mutating commands.
+- Added `TerminalQuickCommandsMenu` with preview, disabled non-git state, and recent commands used
+  in the current session.
+- Updated `TerminalPanel` to insert selected quick commands into the native PTY without newline or
+  auto-execution, while updating the KAN-132 draft so manual Enter still records history.
+
+Guardrails:
+
+- No backend migration or Control Plane API.
+- No backend persistence or audit write.
+- No auto-run, command interception, command approval, or command blocking.
+- No mutating commands such as push, pull, fetch, merge, rebase, checkout, commit, reset, deploy, or
+  apply.
+- No provider/repo/deploy mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No VS Code extension or branch gate status.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused quick-command/history/git-context tests prove allowlist shape, mutating command rejection,
+  non-git disablement, no cwd exposure in labels, insert-only text with no newline, and KAN-132
+  manual submission capture after the user presses Enter (`14` passed).
+- Frontend typecheck, lint, build, and full Vitest passed (`400` frontend tests).
+- Tauri fmt/check/clippy/full tests passed (`52` Tauri tests).
+- `git diff --check` and publication guard passed.
+- PR checks remain pending before merge.
+- No Render/API deploy is expected because KAN-134 is local Desktop/frontend only.
+
 ## KAN-133 Native Terminal Repo/Branch Context - 2026-06-16
 
 `KAN-133 - Native Terminal Repo/Branch Context MVP` is completed. GitHub issue `#467` shipped

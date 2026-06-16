@@ -19,6 +19,11 @@ import {
   terminalGitContextTitle,
   type NativeTerminalGitContext,
 } from './terminalGitContext'
+import { TerminalQuickCommandsMenu } from './TerminalQuickCommandsMenu'
+import {
+  buildTerminalQuickCommandInsertInput,
+  type TerminalQuickCommand,
+} from './terminalQuickCommands'
 import '@xterm/xterm/css/xterm.css'
 
 interface CliNativeTerminalStartResult {
@@ -66,7 +71,9 @@ export function TerminalPanel() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [nativeTerminalDisabled, setNativeTerminalDisabled] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
+  const [showQuickCommands, setShowQuickCommands] = useState(false)
   const [sessionCommands, setSessionCommands] = useState<TerminalSessionCommand[]>([])
+  const [recentQuickCommands, setRecentQuickCommands] = useState<string[]>([])
   const [terminalGitContext, setTerminalGitContext] = useState<NativeTerminalGitContext | null>(null)
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -189,6 +196,33 @@ export function TerminalPanel() {
     [loadTerminalGitContext],
   )
 
+  const insertQuickCommand = useCallback(
+    async (quickCommand: TerminalQuickCommand) => {
+      const sid = sessionIdRef.current
+      if (!sid) return
+
+      try {
+        const data = buildTerminalQuickCommandInsertInput(quickCommand.command)
+        const result = applyNativeTerminalInputToDraft(commandDraftRef.current, data)
+        commandDraftRef.current = result.draft
+
+        await tauriInvoke('cmd_write_native_terminal', {
+          request: { session_id: sid, data },
+        })
+
+        setRecentQuickCommands((current) => {
+          const next = [data, ...current.filter((entry) => entry !== data)]
+          return next.slice(0, 5)
+        })
+        setShowQuickCommands(false)
+        terminalRef.current?.focus()
+      } catch (e) {
+        writeSystem(`Quick command was not inserted: ${String(e)}`, ANSI.warning)
+      }
+    },
+    [writeSystem],
+  )
+
   const startNativeSession = useCallback(
     async (forceRestart = false) => {
       const terminal = terminalRef.current
@@ -212,6 +246,7 @@ export function TerminalPanel() {
         terminalCwdRef.current = null
         setTerminalGitContext(null)
         setSessionCommands([])
+        setRecentQuickCommands([])
         if (mountedRef.current) {
           setIsConnecting(false)
         }
@@ -228,6 +263,7 @@ export function TerminalPanel() {
       }
       commandDraftRef.current = ''
       terminalCwdRef.current = repoPath
+      setRecentQuickCommands([])
 
       setIsConnecting(true)
       fitAddon.fit()
@@ -259,6 +295,7 @@ export function TerminalPanel() {
         setShellName(result.shell || 'shell')
         setNativeTerminalDisabled(false)
         setSessionCommands([])
+        setRecentQuickCommands([])
         void loadTerminalGitContext()
 
         terminal.focus()
@@ -394,6 +431,7 @@ export function TerminalPanel() {
         sessionCwdRef.current = null
         terminalCwdRef.current = null
         setTerminalGitContext(null)
+        setShowQuickCommands(false)
         if (mountedRef.current) {
           setSessionId(null)
         }
@@ -476,6 +514,14 @@ export function TerminalPanel() {
             <History size={10} />
             {sessionCommands.length}
           </button>
+          <TerminalQuickCommandsMenu
+            context={terminalGitContext}
+            disabled={!sessionId || isConnecting || nativeTerminalDisabled}
+            isOpen={showQuickCommands}
+            recentCommands={recentQuickCommands}
+            onToggle={() => setShowQuickCommands((current) => !current)}
+            onInsert={(quickCommand) => void insertQuickCommand(quickCommand)}
+          />
           <button
             type="button"
             onClick={() => void startNativeSession(true)}

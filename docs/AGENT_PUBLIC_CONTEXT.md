@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-133` Native Terminal Repo/Branch Context MVP
+Ticket: `KAN-134` Native Terminal Safe Quick Commands MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -113,6 +113,11 @@ The repo already contains substantial product surface:
   repo/branch, detached HEAD, pending, or non-git state. It does not execute Git commands, persist
   context to the backend, create audit evidence, block commands, mutate repositories, or create a
   second enforcement model.
+- Native Terminal Safe Quick Commands from KAN-134 continues Developer Distribution Surfaces 0.10.
+  It adds a local insert-only quick-command palette for read-only Git inspection commands. It does
+  not auto-run, intercept, approve, or block commands; it does not include mutating Git/provider/deploy
+  commands; and it does not call the backend, create audit evidence, mutate repositories, or create a
+  compliance/certification claim.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
