@@ -519,6 +519,9 @@ impl ControlPlaneClient {
         if let Some(commit_sha) = &query.commit_sha {
             query_params.push(("commit_sha".to_string(), commit_sha.clone()));
         }
+        if let Some(review_status) = &query.review_status {
+            query_params.push(("review_status".to_string(), review_status.clone()));
+        }
         if let Some(limit) = query.limit {
             query_params.push(("limit".to_string(), limit.to_string()));
         }

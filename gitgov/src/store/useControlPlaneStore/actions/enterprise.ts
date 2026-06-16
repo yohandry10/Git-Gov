@@ -96,6 +96,13 @@ function applyChangeRiskReviewToRecord(
   }
 }
 
+function matchesChangeRiskReviewFilter(
+  record: ChangeRiskEvaluationRecord,
+  reviewStatus?: ChangeRiskEvaluationQuery['review_status'],
+): boolean {
+  return !reviewStatus || record.review_status === reviewStatus
+}
+
 export function createEnterpriseActions(
   set: ControlPlaneSet,
   get: ControlPlaneGet,
@@ -522,6 +529,10 @@ export function createEnterpriseActions(
     const { serverConfig, selectedOrgName, changeRiskEvaluationsFilters } = get()
     if (!serverConfig) return null
     const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const hasReviewStatusFilter = Object.prototype.hasOwnProperty.call(query, 'review_status')
+    const reviewStatusFilter = hasReviewStatusFilter
+      ? (query.review_status?.trim() as ChangeRiskEvaluationQuery['review_status'] | undefined) || null
+      : changeRiskEvaluationsFilters.review_status || null
     const nextQuery: ChangeRiskEvaluationQuery = {
       ...changeRiskEvaluationsFilters,
       ...query,
@@ -543,6 +554,7 @@ export function createEnterpriseActions(
       commit_sha: query.commit_sha?.trim() || changeRiskEvaluationsFilters.commit_sha || null,
       release_id: query.release_id?.trim() || changeRiskEvaluationsFilters.release_id || null,
       environment: query.environment?.trim() || changeRiskEvaluationsFilters.environment || null,
+      review_status: reviewStatusFilter,
       limit: query.limit ?? changeRiskEvaluationsFilters.limit ?? 10,
       offset: query.offset ?? changeRiskEvaluationsFilters.offset ?? 0,
     }
@@ -732,9 +744,11 @@ export function createEnterpriseActions(
         changeRiskSelectedEvaluation: state.changeRiskSelectedEvaluation
           ? applyChangeRiskReviewToRecord(state.changeRiskSelectedEvaluation, response)
           : state.changeRiskSelectedEvaluation,
-        changeRiskEvaluations: state.changeRiskEvaluations.map((record) =>
-          applyChangeRiskReviewToRecord(record, response),
-        ),
+        changeRiskEvaluations: state.changeRiskEvaluations
+          .map((record) => applyChangeRiskReviewToRecord(record, response))
+          .filter((record) =>
+            matchesChangeRiskReviewFilter(record, state.changeRiskEvaluationsFilters.review_status),
+          ),
         isChangeRiskReviewUpdating: false,
         changeRiskError: null,
       }))
@@ -774,8 +788,12 @@ export function createEnterpriseActions(
         payload: request,
       })
       set((state) => ({
-        changeRiskEvaluations: [record, ...state.changeRiskEvaluations].slice(0, state.changeRiskEvaluationsFilters.limit ?? 10),
-        changeRiskEvaluationsTotal: state.changeRiskEvaluationsTotal + 1,
+        changeRiskEvaluations: matchesChangeRiskReviewFilter(record, state.changeRiskEvaluationsFilters.review_status)
+          ? [record, ...state.changeRiskEvaluations].slice(0, state.changeRiskEvaluationsFilters.limit ?? 10)
+          : state.changeRiskEvaluations,
+        changeRiskEvaluationsTotal: matchesChangeRiskReviewFilter(record, state.changeRiskEvaluationsFilters.review_status)
+          ? state.changeRiskEvaluationsTotal + 1
+          : state.changeRiskEvaluationsTotal,
         changeRiskSelectedEvaluation: record,
         changeRiskEvaluationTrace: {
           evaluation_id: record.evaluation_id,

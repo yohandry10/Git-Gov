@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-123` Change Risk Manual Review & Mitigation Notes
+Ticket: `KAN-124` Change Risk Review Queue and CAB Evidence Filter
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -56,6 +56,10 @@ The repo already contains substantial product surface:
   enforcement, release blocking, deployment execution, provider or repository mutation, AI/LLM,
   Agent Governance dependency, compliance scores, approval quorum, notifications, or
   certification/legal/regulatory claims.
+- Change Risk Review Queue and CAB Evidence Filter from KAN-124 is in progress. It adds
+  `review_status` filtering to existing Change Risk evaluation lists and a Desktop `Review queue`
+  selector so CAB/Admin/Auditor users can find pending manual review work. It is not a score, not
+  enforcement, and not an Agent Governance or AI feature.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

@@ -483,6 +483,27 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     assert_eq!(initial_review["compliance_claim"], false);
     assert_eq!(initial_review["certification"], false);
 
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/evaluations?review_status=needs_review&limit=20",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "list needs_review queue before review: {response}"
+    );
+    let needs_review_before: serde_json::Value =
+        serde_json::from_str(&response).expect("needs_review queue before JSON");
+    assert!(needs_review_before["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["evaluation_id"] == high_id));
+
     let review_payload = json!({
         "review_status": "reviewed",
         "review_notes": "CAB reviewed deterministic risk trace and rollback owner.",
@@ -537,6 +558,62 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         "Business exception accepted for KAN-123 validation."
     );
     assert_eq!(accepted["trace_hash"], high_trace_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/evaluations?review_status=needs_review&limit=20",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "list needs_review queue after accepted risk: {response}"
+    );
+    let needs_review_after: serde_json::Value =
+        serde_json::from_str(&response).expect("needs_review queue after JSON");
+    assert!(!needs_review_after["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["evaluation_id"] == high_id));
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/evaluations?review_status=accepted_risk&limit=20",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "list accepted_risk queue: {response}"
+    );
+    let accepted_queue: serde_json::Value =
+        serde_json::from_str(&response).expect("accepted_risk queue JSON");
+    assert!(accepted_queue["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["evaluation_id"] == high_id));
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/evaluations?review_status=approved",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "invalid review queue status must be rejected: {response}"
+    );
 
     let (status, response) = json_request(
         &app,
@@ -618,6 +695,7 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         format!("/change-risk/evaluations/{low_id}/trace"),
         format!("/change-risk/evaluations/{high_id}/review"),
         "/change-risk/evaluations?deployment_gate_id=dga_kan121_high".to_string(),
+        "/change-risk/evaluations?review_status=accepted_risk".to_string(),
     ] {
         let (status, response) = json_request(&app, "GET", &path, None, Some(&auditor_key)).await;
         assert_eq!(
@@ -820,6 +898,27 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
         StatusCode::NOT_FOUND,
         "tenant B auditor must not read tenant A review: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/evaluations?review_status=needs_review&limit=20",
+        None,
+        Some(&auditor_b),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "tenant B auditor can list its own empty review queue: {response}"
+    );
+    let tenant_b_queue: serde_json::Value =
+        serde_json::from_str(&response).expect("tenant B review queue JSON");
+    assert!(!tenant_b_queue["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["evaluation_id"] == eval_id));
+
     let tenant_b_review_payload = json!({
         "review_status": "reviewed",
         "review_notes": "Wrong tenant should not update this review."

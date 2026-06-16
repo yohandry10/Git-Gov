@@ -266,9 +266,10 @@ impl Database {
               AND ($7::TEXT IS NULL OR deployment_gate_id = $7)
               AND ($8::TEXT IS NULL OR release_id = $8)
               AND ($9::TEXT IS NULL OR commit_sha = $9)
+              AND ($10::TEXT IS NULL OR review_status = $10)
             ORDER BY created_at DESC
-            LIMIT $10
-            OFFSET $11
+            LIMIT $11
+            OFFSET $12
             "#,
         )
         .bind(org_id)
@@ -280,6 +281,7 @@ impl Database {
         .bind(query.deployment_gate_id.as_deref())
         .bind(query.release_id.as_deref())
         .bind(query.commit_sha.as_deref())
+        .bind(query.review_status.as_deref())
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)

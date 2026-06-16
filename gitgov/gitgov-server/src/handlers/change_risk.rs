@@ -107,6 +107,7 @@ fn normalize_change_risk_query(
     normalize_release_approval_optional_text(&mut query.deployment_gate_id);
     normalize_release_approval_optional_text(&mut query.release_id);
     normalize_release_approval_optional_text(&mut query.commit_sha);
+    normalize_release_approval_optional_text(&mut query.review_status);
 
     if let Some(repo) = query.repository_full_name.as_deref() {
         if !is_valid_release_approval_repo(repo) {
@@ -130,6 +131,23 @@ fn normalize_change_risk_query(
         } else {
             errors.push(
                 "commit_sha must be a full 40 or 64 character hexadecimal commit SHA."
+                    .to_string(),
+            );
+        }
+    }
+    if let Some(review_status) = query.review_status.as_mut() {
+        *review_status = review_status.to_ascii_lowercase();
+        if ![
+            CHANGE_RISK_REVIEW_NEEDS_REVIEW,
+            CHANGE_RISK_REVIEW_REVIEWED,
+            CHANGE_RISK_REVIEW_ACCEPTED_RISK,
+            CHANGE_RISK_REVIEW_NEEDS_MITIGATION,
+            CHANGE_RISK_REVIEW_REJECTED,
+        ]
+        .contains(&review_status.as_str())
+        {
+            errors.push(
+                "review_status must be needs_review, reviewed, accepted_risk, needs_mitigation, or rejected."
                     .to_string(),
             );
         }
