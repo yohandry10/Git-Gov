@@ -16,6 +16,7 @@ mod agent_governance_context;
 mod agent_governance_dry_run;
 mod alerts_exports_policy_requests;
 mod basic_auth;
+mod change_risk;
 mod compliance_evidence_exports;
 mod compliance_evidence_mappings;
 mod compliance_framework_packs;

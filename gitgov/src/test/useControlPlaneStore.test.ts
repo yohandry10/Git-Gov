@@ -74,6 +74,13 @@ describe('useControlPlaneStore', () => {
       deploymentGateAuthorizationsTotal: 0,
       deploymentGateAuthorizationsFilters: { limit: 10, offset: 0 },
       deploymentGateAuthorizationsUpdatedAt: null,
+      changeRiskEvaluations: [],
+      changeRiskEvaluationsTotal: 0,
+      changeRiskEvaluationsFilters: { limit: 10, offset: 0 },
+      changeRiskSelectedEvaluation: null,
+      isChangeRiskEvaluationsLoading: false,
+      isChangeRiskEvaluationCreating: false,
+      changeRiskError: null,
       complianceEvidenceSelectedDeploymentGateId: null,
       firstGovernedRepoSetup: null,
       firstGovernedRepoSetupUpdatedAt: null,
@@ -1066,6 +1073,145 @@ describe('useControlPlaneStore', () => {
       expect(response?.total).toBe(1)
       expect(useControlPlaneStore.getState().deploymentGateAuthorizations[0].authorization_id).toBe('dga_123')
       expect(useControlPlaneStore.getState().deploymentGateAuthorizationsUpdatedAt).toBeGreaterThan(0)
+    })
+
+    it('loads change risk advisory history with tenant scope and release filters', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        items: [{
+          evaluation_id: 'cra_123',
+          org_id: 'org-1',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          change_id: 'KAN-121',
+          deployment_gate_id: 'dga_123',
+          release_id: 'KAN-121',
+          commit_sha: 'abcdef1234567890abcdef1234567890abcdef12',
+          evidence_packet_hash: 'e'.repeat(64),
+          risk_level: 'medium',
+          risk_reasons: ['production_environment', 'deployment_gate_advisory'],
+          missing_evidence: [],
+          blocking_gaps: [],
+          recommended_manual_actions: ['Review Deployment Gate warnings before approving change.'],
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+          evaluation: { source: 'store-test' },
+          request_payload: { deployment_gate_id: 'dga_123' },
+          created_by: 'admin',
+          created_at: 4,
+        }],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      })
+
+      const response = await useControlPlaneStore.getState().loadChangeRiskEvaluations({
+        repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        release_id: ' KAN-121 ',
+        environment: ' production ',
+        deployment_gate_id: ' dga_123 ',
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_change_risk_evaluations', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          evaluation_id: null,
+          deployment_gate_id: 'dga_123',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          change_id: null,
+          commit_sha: null,
+          release_id: 'KAN-121',
+          environment: 'production',
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(response?.items[0].advisory_only).toBe(true)
+      expect(response?.items[0].llm_used).toBe(false)
+      expect(response?.items[0].agent_governance_used).toBe(false)
+      expect(response?.items[0].compliance_claim).toBe(false)
+      expect(response?.items[0].certification).toBe(false)
+      expect(useControlPlaneStore.getState().changeRiskEvaluationsTotal).toBe(1)
+    })
+
+    it('creates change risk advisory records without AI, agent governance, or compliance claims', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const record = {
+        evaluation_id: 'cra_456',
+        org_id: 'org-1',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+        environment: 'production',
+        change_id: 'CAB-7',
+        deployment_gate_id: 'dga_blocked',
+        release_id: 'KAN-121',
+        commit_sha: 'abcdef1234567890abcdef1234567890abcdef12',
+        evidence_packet_hash: 'e'.repeat(64),
+        risk_level: 'high',
+        risk_reasons: ['production_environment', 'deployment_gate_blocked'],
+        missing_evidence: ['release_approval'],
+        blocking_gaps: ['Deployment gate blocked by release governance.'],
+        recommended_manual_actions: ['Resolve blocking Deployment Gate gaps before approving deployment.'],
+        advisory_only: true,
+        llm_used: false,
+        agent_governance_used: false,
+        compliance_claim: false,
+        certification: false,
+        evaluation: { risk_level: 'high' },
+        request_payload: { deployment_gate_id: 'dga_blocked' },
+        created_by: 'admin',
+        created_at: 5,
+      }
+      mockInvoke.mockResolvedValueOnce(record)
+
+      const response = await useControlPlaneStore.getState().createChangeRiskEvaluation({
+        repository_full_name: ' yohandry10/Git-Gov ',
+        branch: ' main ',
+        environment: ' production ',
+        deployment_gate_id: ' dga_blocked ',
+        release_id: ' KAN-121 ',
+        commit_sha: ' abcdef1234567890abcdef1234567890abcdef12 ',
+        evidence_packet_hash: ' ' + 'e'.repeat(64) + ' ',
+        change_id: ' CAB-7 ',
+        evidence_refs: [' deployment_gate:dga_blocked ', '', ' evidence_packet_hash:' + 'e'.repeat(64) + ' '],
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_create_change_risk_evaluation', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          deployment_gate_id: 'dga_blocked',
+          release_id: 'KAN-121',
+          commit_sha: 'abcdef1234567890abcdef1234567890abcdef12',
+          evidence_packet_hash: 'e'.repeat(64),
+          change_id: 'CAB-7',
+          evidence_refs: ['deployment_gate:dga_blocked', 'evidence_packet_hash:' + 'e'.repeat(64)],
+        },
+      })
+      expect(response?.risk_level).toBe('high')
+      expect(response?.advisory_only).toBe(true)
+      expect(response?.llm_used).toBe(false)
+      expect(response?.agent_governance_used).toBe(false)
+      expect(response?.compliance_claim).toBe(false)
+      expect(response?.certification).toBe(false)
+      expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.evaluation_id).toBe('cra_456')
+      expect(useControlPlaneStore.getState().changeRiskEvaluations[0].blocking_gaps).toContain('Deployment gate blocked by release governance.')
     })
 
     it('creates the compliance evidence review chain with explicit manual-first payloads', async () => {

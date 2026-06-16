@@ -494,6 +494,101 @@ pub struct DeploymentGateAuthorizationListResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskEvaluationRecord {
+    pub evaluation_id: String,
+    pub org_id: String,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub environment: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deployment_gate_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit_sha: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evidence_packet_hash: Option<String>,
+    pub risk_level: String,
+    #[serde(default)]
+    pub risk_reasons: Vec<String>,
+    #[serde(default)]
+    pub missing_evidence: Vec<String>,
+    #[serde(default)]
+    pub blocking_gaps: Vec<String>,
+    #[serde(default)]
+    pub recommended_manual_actions: Vec<String>,
+    pub advisory_only: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
+    #[serde(default)]
+    pub evaluation: serde_json::Value,
+    #[serde(default)]
+    pub request_payload: serde_json::Value,
+    pub created_by: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskEvaluationRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub repository_full_name: String,
+    pub branch: String,
+    pub environment: String,
+    #[serde(default)]
+    pub change_id: Option<String>,
+    #[serde(default)]
+    pub deployment_gate_id: Option<String>,
+    #[serde(default)]
+    pub release_id: Option<String>,
+    #[serde(default)]
+    pub commit_sha: Option<String>,
+    #[serde(default)]
+    pub evidence_packet_hash: Option<String>,
+    #[serde(default)]
+    pub evidence_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskEvaluationQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub evaluation_id: Option<String>,
+    #[serde(default)]
+    pub repository_full_name: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub change_id: Option<String>,
+    #[serde(default)]
+    pub deployment_gate_id: Option<String>,
+    #[serde(default)]
+    pub release_id: Option<String>,
+    #[serde(default)]
+    pub commit_sha: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskEvaluationListResponse {
+    #[serde(default)]
+    pub items: Vec<ChangeRiskEvaluationRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentGovernanceEvaluationRecord {
     pub id: String,
     pub evaluation_id: String,

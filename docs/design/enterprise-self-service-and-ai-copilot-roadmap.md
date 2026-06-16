@@ -2,7 +2,7 @@
 
 Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP
 
 ## Decision
 
@@ -75,6 +75,12 @@ Current primitives:
   read state; Developers, unrelated tenants, and Agent Governance keys are denied. It does not store
   provider secrets, mutate provider state, mutate customer repositories, execute deployments, create a
   compliance/certification claim, or depend on Agent Governance/AI.
+- `KAN-121` adds Change Risk Assessment Advisory evidence beside Deployment Gates and release
+  governance. Admins can create/list/read deterministic advisory evaluations through
+  `/change-risk/evaluations`; Desktop Governance > Releases exposes a manual-first `ChangeRiskPanel`.
+  It returns qualitative `low|medium|high|unknown` risk, reasons, missing evidence, blocking gaps,
+  and recommended manual actions. It is not a deployment approval, not a blocking gate, not a score,
+  not a compliance/certification/legal claim, not AI, and not Agent Governance.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated
@@ -409,19 +415,25 @@ Future scope:
 - Recommended workflow/policy preset generated from selected tools.
 - Deep links into Action Center, Governance Evidence, and Settings/System.
 
-### 0.7 Change Risk Score
+### 0.7 Change Risk Advisory
 
-Future goal: each commit/release gets an operational risk score based on deterministic rules, not ML.
+Future goal: each commit/release gets deterministic operational risk context that release managers
+and CAB-style workflows can use before approval. Start with qualitative advisory evidence; only add
+numeric scoring or blocking thresholds if a customer explicitly selects that policy later.
 
 Why first:
 
 - Change advisory boards already do this manually in banks and regulated teams.
-- A deterministic score can become input to Deployment Gates and Release Governance.
+- Deterministic risk context can become input to Deployment Gates and Release Governance without
+  replacing manual approval.
 
 Current primitives:
 
 - Release readiness, ticket coverage, policy checks, branch/repo evidence, pipeline/Sonar evidence,
   risk outcomes helpers, and governance reporting exist.
+- `KAN-121` implements the first product slice as `Change Risk Assessment Advisory MVP`. It persists
+  qualitative risk levels plus reasons, missing evidence, blocking gaps, recommended manual actions,
+  and no-claim flags. It is Admin-only in the MVP, tenant-scoped, and denies Agent Governance keys.
 
 Future scope:
 
@@ -433,8 +445,10 @@ Future scope:
   - missing tests.
   - missing Jira ticket.
   - unusual deletion ratio.
-- Score `0-100` stored with audit evidence.
-- Optional policy threshold for advisory or blocking deployment gates.
+- Optional score `0-100` stored with audit evidence only after customer validation that a numeric
+  score improves the workflow.
+- Optional policy threshold for advisory or blocking deployment gates only as a customer-selected
+  policy, never as the default.
 
 ### 0.8 Multi-Repo Executive Governance View
 

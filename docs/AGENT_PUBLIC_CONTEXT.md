@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-120` First Governed Repo Setup Integration Wizard
+Ticket: `KAN-121` Change Risk Assessment Advisory MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -40,6 +40,10 @@ The repo already contains substantial product surface:
   orchestrates state, validation, baseline planning, and completion without storing provider secrets,
   mutating providers/customer repos, executing deploys, creating claims, or depending on Agent
   Governance.
+- Change Risk Assessment Advisory from KAN-121, which persists deterministic qualitative risk
+  context for changes/releases and Deployment Gate authorizations. It is manual-first, Admin-only in
+  the MVP, tenant-scoped, and constrained to `advisory_only=true`, `llm_used=false`,
+  `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
