@@ -3,6 +3,8 @@
 Date: 2026-06-16
 Ticket: KAN-135
 Issue: #473
+PR: #474
+Main commit: b9dbb57c
 
 ## Summary
 
@@ -58,9 +60,19 @@ Initial focused validation:
 - Static grep verified the new terminal governance panel does not call `cmd_write_native_terminal`
   and does not call create/update/archive/download/revoke/authorize/evaluate commands.
 
-Remaining before merge:
+PR checks passed:
 
-- PR checks.
+- Security Guard.
+- Frontend Lint + Typecheck.
+- Desktop Rust Clippy.
+- Server Clippy + Check.
+- Website Lint + Typecheck + Build.
+- Validate Policy-as-Code.
+- Validate quality_gates warn/block matrix.
+- Workflow Lint.
+- Sonar Scan + Quality Gate.
+- Vercel.
+- Block internal-assistant markers in branch/commits.
 
-No Render/API deploy is expected because KAN-135 is Desktop/frontend local and reuses existing read
+No Render/API deploy was required because KAN-135 is Desktop/frontend local and reuses existing read
 endpoints.
