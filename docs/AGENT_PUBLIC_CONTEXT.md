@@ -165,9 +165,9 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-125 - Change Risk CAB Review Packet` is completed through PR `#436` and main commit
-`92db41ac`. It follows KAN-121 through KAN-124 by turning reviewed/filterable Change Risk
-evaluations into a manual CAB packet artifact.
+`KAN-125 - Change Risk CAB Review Packet` is completed through PR `#436` plus hotfix PR `#437`;
+current main commit is `44c0744b`. It follows KAN-121 through KAN-124 by turning
+reviewed/filterable Change Risk evaluations into a manual CAB packet artifact.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a
