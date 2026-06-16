@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-129` Multi-Repo Executive Governance View MVP
+Ticket: `KAN-130` Multi-Repo Executive Governance Filters MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -92,6 +92,11 @@ The repo already contains substantial product surface:
   `healthy`, and `unknown`. It does not approve or block deployments, execute deploys, mutate
   providers/repos, create artifacts, use AI/Agent Governance, or create compliance/certification
   claims.
+- Multi-Repo Executive Governance Filters from KAN-130 is in progress. It extends the same
+  read-only `/executive/repositories` route with filters for repository, environment, posture, gate
+  decision, risk level, and review status. It keeps the KAN-129 no-claim posture and does not add a
+  new evidence domain, enforcement, deploy execution, provider/repo mutation, AI/Agent Governance,
+  compliance scoring, certification, or legal/regulatory claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

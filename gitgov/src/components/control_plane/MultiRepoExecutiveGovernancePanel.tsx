@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BarChart3, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
@@ -17,6 +17,28 @@ function shortHash(value: string | null | undefined): string {
   return value.length > 18 ? `${value.slice(0, 18)}...` : value
 }
 
+type ExecutiveGovernanceFilters = {
+  repository: string
+  environment: string
+  posture: string
+  gateDecision: string
+  riskLevel: string
+  reviewStatus: string
+}
+
+const emptyFilters: ExecutiveGovernanceFilters = {
+  repository: '',
+  environment: '',
+  posture: '',
+  gateDecision: '',
+  riskLevel: '',
+  reviewStatus: '',
+}
+
+function isFiltered(filters: ExecutiveGovernanceFilters): boolean {
+  return Object.values(filters).some((value) => value.trim().length > 0)
+}
+
 export function MultiRepoExecutiveGovernancePanel() {
   const selectedOrgName = useControlPlaneStore((state) => state.selectedOrgName)
   const executiveView = useControlPlaneStore((state) => state.multiRepoExecutiveGovernance)
@@ -25,14 +47,22 @@ export function MultiRepoExecutiveGovernancePanel() {
   const error = useControlPlaneStore((state) => state.multiRepoExecutiveGovernanceError)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const loadExecutiveView = useControlPlaneStore((state) => state.loadMultiRepoExecutiveGovernance)
+  const [draftFilters, setDraftFilters] = useState<ExecutiveGovernanceFilters>(emptyFilters)
+  const [appliedFilters, setAppliedFilters] = useState<ExecutiveGovernanceFilters>(emptyFilters)
 
   const refresh = useCallback(() => {
     void loadExecutiveView({
       org_name: selectedOrgName || null,
+      repository: appliedFilters.repository.trim() || null,
+      environment: appliedFilters.environment.trim() || null,
+      posture: appliedFilters.posture || null,
+      gate_decision: appliedFilters.gateDecision || null,
+      risk_level: appliedFilters.riskLevel || null,
+      review_status: appliedFilters.reviewStatus || null,
       limit: 25,
       offset: 0,
     })
-  }, [loadExecutiveView, selectedOrgName])
+  }, [appliedFilters, loadExecutiveView, selectedOrgName])
 
   useEffect(() => {
     void refresh()
@@ -51,6 +81,7 @@ export function MultiRepoExecutiveGovernancePanel() {
             <Badge variant={repositories.length > 0 ? 'success' : 'info'}>
               {repositories.length} repos
             </Badge>
+            {isFiltered(appliedFilters) && <Badge variant="warning">filtered</Badge>}
           </div>
           <p>Read-only repository posture from Deployment Gates, Change Risk, CAB packets, and manifests.</p>
         </div>
@@ -63,6 +94,97 @@ export function MultiRepoExecutiveGovernancePanel() {
         >
           <RefreshCw size={14} />
           Refresh
+        </Button>
+      </div>
+
+      <div className="mb-4 grid gap-2 rounded border border-white/8 bg-white/[0.03] p-3 md:grid-cols-[minmax(150px,1.4fr)_repeat(5,minmax(120px,1fr))_auto_auto]">
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Repository
+          <input
+            value={draftFilters.repository}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, repository: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+            placeholder="owner/repo"
+          />
+        </label>
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Environment
+          <input
+            value={draftFilters.environment}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, environment: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+            placeholder="production"
+          />
+        </label>
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Posture
+          <select
+            value={draftFilters.posture}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, posture: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+          >
+            <option value="">Any</option>
+            <option value="attention">Attention</option>
+            <option value="review">Review</option>
+            <option value="healthy">Healthy</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Gate
+          <select
+            value={draftFilters.gateDecision}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, gateDecision: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+          >
+            <option value="">Any</option>
+            <option value="approved">Approved</option>
+            <option value="advisory">Advisory</option>
+            <option value="blocked">Blocked</option>
+            <option value="break_glass">Break-glass</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Risk
+          <select
+            value={draftFilters.riskLevel}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, riskLevel: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+          >
+            <option value="">Any</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-[10px] text-surface-500">
+          Review
+          <select
+            value={draftFilters.reviewStatus}
+            onChange={(event) => setDraftFilters((filters) => ({ ...filters, reviewStatus: event.target.value }))}
+            className="rounded border border-surface-700 bg-surface-900 px-2 py-1.5 text-xs text-surface-200 focus:border-surface-400 focus:outline-none"
+          >
+            <option value="">Any</option>
+            <option value="needs_review">Needs review</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="accepted_risk">Accepted risk</option>
+            <option value="needs_mitigation">Needs mitigation</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </label>
+        <Button size="sm" variant="secondary" onClick={() => setAppliedFilters(draftFilters)}>
+          Apply
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setDraftFilters(emptyFilters)
+            setAppliedFilters(emptyFilters)
+          }}
+        >
+          Clear
         </Button>
       </div>
 

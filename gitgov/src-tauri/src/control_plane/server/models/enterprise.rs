@@ -347,6 +347,12 @@ pub struct DeploymentGateRiskContextResponse {
 #[serde(default)]
 pub struct MultiRepoExecutiveGovernanceQuery {
     pub org_name: Option<String>,
+    pub repository: Option<String>,
+    pub environment: Option<String>,
+    pub posture: Option<String>,
+    pub gate_decision: Option<String>,
+    pub risk_level: Option<String>,
+    pub review_status: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }

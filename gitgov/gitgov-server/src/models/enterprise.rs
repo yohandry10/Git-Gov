@@ -521,6 +521,18 @@ pub struct MultiRepoExecutiveGovernanceQuery {
     #[serde(default)]
     pub org_name: Option<String>,
     #[serde(default)]
+    pub repository: Option<String>,
+    #[serde(default)]
+    pub environment: Option<String>,
+    #[serde(default)]
+    pub posture: Option<String>,
+    #[serde(default)]
+    pub gate_decision: Option<String>,
+    #[serde(default)]
+    pub risk_level: Option<String>,
+    #[serde(default)]
+    pub review_status: Option<String>,
+    #[serde(default)]
     pub limit: Option<i64>,
     #[serde(default)]
     pub offset: Option<i64>,

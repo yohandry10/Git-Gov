@@ -2,6 +2,58 @@
 
 Updated: 2026-06-16
 
+## KAN-130 Multi-Repo Executive Governance Filters - 2026-06-16
+
+`KAN-130 - Multi-Repo Executive Governance Filters MVP` is in progress on issue `#456`.
+
+Product decision:
+
+- Extend the KAN-129 executive repository view with read-only filters over existing governance
+  evidence.
+- Keep the feature manual-first and advisory-only: filters are executive triage, not deployment
+  authorization, enforcement, compliance scoring, certification, or AI/Agent Governance.
+- Do not add a migration, provider mutation, repository mutation, deployment execution, release
+  blocking, automatic CAB artifact creation, risk recalculation, or legal/regulatory claims.
+
+Implemented locally:
+
+- Extended `GET /executive/repositories` query with `repository`, `environment`, `posture`,
+  `gate_decision`, `risk_level`, and `review_status`.
+- Added backend validation for filter enum values and safe text filters.
+- Updated DB aggregation to apply filters over existing Deployment Gate and Change Risk evidence,
+  with CAB packet/manifest counts derived through filtered evaluations.
+- Updated Tauri DTOs, Control Plane store query types, and Governance > Releases executive panel
+  filter controls.
+- Design and validation report docs.
+
+Local validation completed:
+
+- Backend `cargo fmt --check`.
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Focused backend real Postgres test
+  `multi_repo_executive_governance_view_is_read_only_and_tenant_scoped` passed with baseline,
+  posture/environment, gate decision, risk level, review status, repository search, conflicting
+  filter, invalid enum, RBAC, tenant isolation, and no-mutation assertions.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri tests (`49` passed).
+- Frontend `npm --prefix gitgov run typecheck`.
+- Frontend `npm --prefix gitgov run lint`.
+- Frontend full Vitest (`384` passed).
+- Focused frontend store/panel tests (`50` passed).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check`.
+- `scripts/security/publication_guard.ps1`.
+
+Production validation:
+
+- Pending until PR merge, Render deploy, and production smoke.
+
+Report: `docs/reports/multi-repo-executive-governance-filters-2026-06-16.md`.
+
 ## KAN-129 Multi-Repo Executive Governance View - 2026-06-16
 
 `KAN-129 - Multi-Repo Executive Governance View MVP` is completed. PR `#454` merged to `main` as
