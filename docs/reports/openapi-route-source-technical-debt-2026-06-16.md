@@ -35,3 +35,7 @@ moved into `gitgov/gitgov-server/src/server/routes.rs`.
 - `scripts/security/publication_guard.ps1` passed.
 - Stale route-source grep returned no matches for the old `main.rs`/`72` route-count contract.
 - Route-count verification returned `158`.
+- Required PR checks passed on PR `#485`.
+- Render deploy `dep-d8oo81k2m8qs73augv70` reached `live`.
+- Production `/api-docs/openapi.json` returned HTTP `200`, contained
+  `gitgov-server/src/server/routes.rs`, and no longer contained `main.rs`.
