@@ -3,6 +3,8 @@
 Date: 2026-06-16
 Ticket: KAN-136
 Issue: #476
+PR: #477
+Main commit: 23c8b551
 
 ## Summary
 
@@ -47,9 +49,20 @@ Local validation:
 - Static grep over extension source/tests/docs verified the only HTTP method used by the client is
   `GET`; mutating words appear only in documented no-goals or test assertions.
 
-Remaining before merge:
+PR checks passed:
 
-- PR checks.
+- Security Guard.
+- Frontend Lint + Typecheck.
+- Desktop Rust Clippy.
+- Server Clippy + Check.
+- VS Code Extension Lint + Typecheck + Test.
+- Website Lint + Typecheck + Build.
+- Validate Policy-as-Code.
+- Validate quality_gates warn/block matrix.
+- Workflow Lint.
+- Sonar Scan + Quality Gate.
+- Vercel.
+- Block internal-assistant markers in branch/commits.
 
-No Render/API deploy is expected because KAN-136 is a local VS Code extension and reuses existing
+No Render/API deploy was required because KAN-136 is a local VS Code extension and reuses existing
 read-only endpoints.
