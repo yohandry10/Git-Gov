@@ -324,6 +324,69 @@ export interface DeploymentGateAuthorizationListResponse {
   offset: number
 }
 
+export type ChangeRiskLevel = 'low' | 'medium' | 'high' | 'unknown' | string
+
+export interface ChangeRiskEvaluationRecord {
+  evaluation_id: string
+  org_id: string
+  repository_full_name: string
+  branch: string
+  environment: string
+  change_id?: string | null
+  deployment_gate_id?: string | null
+  release_id?: string | null
+  commit_sha?: string | null
+  evidence_packet_hash?: string | null
+  risk_level: ChangeRiskLevel
+  risk_reasons: string[]
+  missing_evidence: string[]
+  blocking_gaps: string[]
+  recommended_manual_actions: string[]
+  advisory_only: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
+  evaluation: Record<string, unknown>
+  request_payload: Record<string, unknown>
+  created_by: string
+  created_at: number
+}
+
+export interface ChangeRiskEvaluationRequest {
+  org_name?: string | null
+  repository_full_name: string
+  branch: string
+  environment: string
+  change_id?: string | null
+  deployment_gate_id?: string | null
+  release_id?: string | null
+  commit_sha?: string | null
+  evidence_packet_hash?: string | null
+  evidence_refs?: string[]
+}
+
+export interface ChangeRiskEvaluationQuery {
+  org_name?: string | null
+  evaluation_id?: string | null
+  deployment_gate_id?: string | null
+  release_id?: string | null
+  repository_full_name?: string | null
+  branch?: string | null
+  environment?: string | null
+  change_id?: string | null
+  commit_sha?: string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface ChangeRiskEvaluationListResponse {
+  items: ChangeRiskEvaluationRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface ComplianceEvidenceExportRequest {
   org_name?: string | null
   scope: string
@@ -1436,6 +1499,13 @@ export interface ControlPlaneState {
   deploymentGateAuthorizationsTotal: number
   deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
   deploymentGateAuthorizationsUpdatedAt: number | null
+  changeRiskEvaluations: ChangeRiskEvaluationRecord[]
+  changeRiskEvaluationsTotal: number
+  changeRiskEvaluationsFilters: ChangeRiskEvaluationQuery
+  changeRiskSelectedEvaluation: ChangeRiskEvaluationRecord | null
+  isChangeRiskEvaluationsLoading: boolean
+  isChangeRiskEvaluationCreating: boolean
+  changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
   complianceControlFrameworks: ComplianceControlFramework[]
   complianceFrameworkPacks: ComplianceFrameworkPackRecord[]
@@ -1594,6 +1664,9 @@ export interface ControlPlaneActions {
   completeFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
+  loadChangeRiskEvaluations: (query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationListResponse | null>
+  getChangeRiskEvaluation: (evaluationId: string, query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationRecord | null>
+  createChangeRiskEvaluation: (payload: ChangeRiskEvaluationRequest) => Promise<ChangeRiskEvaluationRecord | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
   reviewComplianceFrameworkPack: (

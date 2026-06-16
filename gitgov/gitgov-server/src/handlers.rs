@@ -20,6 +20,7 @@ include!("handlers/release_approvals.rs");
 include!("handlers/governance_decisions.rs");
 include!("handlers/deployment_gate_break_glass_approvals.rs");
 include!("handlers/deployment_gates.rs");
+include!("handlers/change_risk.rs");
 include!("handlers/compliance_evidence_exports.rs");
 include!("handlers/compliance_framework_packs.rs");
 include!("handlers/compliance_evidence_mappings.rs");

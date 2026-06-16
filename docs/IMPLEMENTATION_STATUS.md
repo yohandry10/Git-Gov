@@ -2,6 +2,53 @@
 
 Updated: 2026-06-16
 
+## KAN-121 Change Risk Assessment Advisory MVP - 2026-06-16
+
+`KAN-121 - Change Risk Assessment Advisory MVP` is implemented locally on branch
+`product/KAN-121-change-risk-advisory`; PR/merge/deploy validation follows after review.
+
+Product decision:
+
+- Implement Change Risk as deterministic advisory evidence, not a blocking deployment decision.
+- Reuse existing Deployment Gates, release governance, evidence packet, and first governed repo
+  context.
+- Keep the feature manual-first for regulated customers.
+- Allow Admins to create/list/read advisory evaluations in the MVP.
+- Deny Developers, unrelated tenants, and Agent Governance keys.
+- Do not use AI, call Agent Governance, mutate providers, mutate repositories, execute deploys,
+  create compliance scores, create certification/legal/regulatory claims, or replace manual CAB
+  judgment.
+
+Implemented surface:
+
+- Supabase migration/postcheck `v62` for `change_risk_evaluations`.
+- Backend routes:
+  - `POST /change-risk/evaluations`.
+  - `GET /change-risk/evaluations`.
+  - `GET /change-risk/evaluations/{evaluation_id}`.
+- Deterministic evaluator returning `risk_level`, `risk_reasons`, `missing_evidence`,
+  `blocking_gaps`, and `recommended_manual_actions`.
+- Database-enforced flags: `advisory_only=true`, `llm_used=false`,
+  `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- `ChangeRiskPanel` under Governance > Releases.
+
+Validation completed locally:
+
+- Backend `cargo fmt --check`, `cargo check`, and `cargo clippy -- -D warnings`.
+- Focused real Postgres KAN-121 tests covering approved/advisory gates, blocked gates,
+  break-glass, missing context, tenant isolation, Developer denial, Agent Governance key denial,
+  and no Agent Governance evaluation mutation.
+- Full backend real Postgres suite passed (`313` tests).
+- `v62` migration/postcheck passed in a real Postgres rollback transaction.
+- Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49`
+  passed).
+- Frontend typecheck, lint, focused store test (`41` passed), full Vitest suite (`375` passed), and
+  production build.
+
+Report: `docs/reports/change-risk-assessment-advisory-2026-06-16.md`.
+
 ## KAN-120 First Governed Repo Integration Wizard - 2026-06-16
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed. PR `#419` merged to `main`

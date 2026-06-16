@@ -1,6 +1,10 @@
 import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import type {
   ControlPlaneActions,
+  ChangeRiskEvaluationListResponse,
+  ChangeRiskEvaluationQuery,
+  ChangeRiskEvaluationRecord,
+  ChangeRiskEvaluationRequest,
   DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationQuery,
   EnterpriseAdoptionProfileRecord,
@@ -37,6 +41,9 @@ type EnterpriseActionKeys =
   | 'completeFirstGovernedRepoWizardRun'
   | 'loadEnterpriseReleaseApprovals'
   | 'loadDeploymentGateAuthorizations'
+  | 'loadChangeRiskEvaluations'
+  | 'getChangeRiskEvaluation'
+  | 'createChangeRiskEvaluation'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
   | 'exportAuditData'
@@ -481,6 +488,134 @@ export function createEnterpriseActions(
       set({
         releaseApprovalError: message,
         isDeploymentGateAuthorizationsLoading: false,
+      })
+      return null
+    }
+  },
+
+  loadChangeRiskEvaluations: async (query = {}) => {
+    const { serverConfig, selectedOrgName, changeRiskEvaluationsFilters } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskEvaluationQuery = {
+      ...changeRiskEvaluationsFilters,
+      ...query,
+      org_name: orgName ?? null,
+      evaluation_id:
+        query.evaluation_id?.trim() ||
+        changeRiskEvaluationsFilters.evaluation_id ||
+        null,
+      deployment_gate_id:
+        query.deployment_gate_id?.trim() ||
+        changeRiskEvaluationsFilters.deployment_gate_id ||
+        null,
+      repository_full_name:
+        query.repository_full_name?.trim() ||
+        changeRiskEvaluationsFilters.repository_full_name ||
+        null,
+      branch: query.branch?.trim() || changeRiskEvaluationsFilters.branch || null,
+      change_id: query.change_id?.trim() || changeRiskEvaluationsFilters.change_id || null,
+      commit_sha: query.commit_sha?.trim() || changeRiskEvaluationsFilters.commit_sha || null,
+      release_id: query.release_id?.trim() || changeRiskEvaluationsFilters.release_id || null,
+      environment: query.environment?.trim() || changeRiskEvaluationsFilters.environment || null,
+      limit: query.limit ?? changeRiskEvaluationsFilters.limit ?? 10,
+      offset: query.offset ?? changeRiskEvaluationsFilters.offset ?? 0,
+    }
+
+    set({
+      isChangeRiskEvaluationsLoading: true,
+      changeRiskError: null,
+      changeRiskEvaluationsFilters: nextQuery,
+    })
+    try {
+      const response = await tauriInvoke<ChangeRiskEvaluationListResponse>('cmd_server_list_change_risk_evaluations', {
+        config: serverConfig,
+        query: nextQuery,
+      })
+      set({
+        changeRiskEvaluations: response.items,
+        changeRiskEvaluationsTotal: response.total,
+        isChangeRiskEvaluationsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskEvaluationsLoading: false,
+      })
+      return null
+    }
+  },
+
+  getChangeRiskEvaluation: async (evaluationId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskEvaluationQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskEvaluationsLoading: true, changeRiskError: null })
+    try {
+      const record = await tauriInvoke<ChangeRiskEvaluationRecord>('cmd_server_get_change_risk_evaluation', {
+        config: serverConfig,
+        evaluationId: evaluationId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskSelectedEvaluation: record,
+        isChangeRiskEvaluationsLoading: false,
+      })
+      return record
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskEvaluationsLoading: false,
+      })
+      return null
+    }
+  },
+
+  createChangeRiskEvaluation: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const effectiveOrgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+    const request: ChangeRiskEvaluationRequest = {
+      ...payload,
+      org_name: effectiveOrgName ?? null,
+      repository_full_name: payload.repository_full_name.trim(),
+      branch: payload.branch.trim(),
+      environment: payload.environment.trim(),
+      deployment_gate_id: payload.deployment_gate_id?.trim() || null,
+      release_id: payload.release_id?.trim() || null,
+      commit_sha: payload.commit_sha?.trim() || null,
+      evidence_packet_hash: payload.evidence_packet_hash?.trim() || null,
+      change_id: payload.change_id?.trim() || null,
+      evidence_refs: (payload.evidence_refs ?? []).map((item) => item.trim()).filter(Boolean),
+    }
+
+    set({ isChangeRiskEvaluationCreating: true, changeRiskError: null })
+    try {
+      const record = await tauriInvoke<ChangeRiskEvaluationRecord>('cmd_server_create_change_risk_evaluation', {
+        config: serverConfig,
+        payload: request,
+      })
+      set((state) => ({
+        changeRiskEvaluations: [record, ...state.changeRiskEvaluations].slice(0, state.changeRiskEvaluationsFilters.limit ?? 10),
+        changeRiskEvaluationsTotal: state.changeRiskEvaluationsTotal + 1,
+        changeRiskSelectedEvaluation: record,
+        isChangeRiskEvaluationCreating: false,
+        changeRiskError: null,
+      }))
+      return record
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskEvaluationCreating: false,
       })
       return null
     }

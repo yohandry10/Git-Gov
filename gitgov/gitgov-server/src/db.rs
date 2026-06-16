@@ -504,6 +504,20 @@ pub struct CreateDeploymentGateAuthorizationInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateChangeRiskEvaluationInput {
+    pub evaluation_id: String,
+    pub payload: ChangeRiskEvaluationRequest,
+    pub risk_level: String,
+    pub risk_reasons: Vec<String>,
+    pub missing_evidence: Vec<String>,
+    pub blocking_gaps: Vec<String>,
+    pub recommended_manual_actions: Vec<String>,
+    pub evaluation: serde_json::Value,
+    pub request_payload: serde_json::Value,
+    pub created_by: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateAgentGovernanceEvaluationInput {
     pub evaluation_id: String,
     pub payload: AgentGovernanceEvaluationRequest,
@@ -607,6 +621,36 @@ fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthoriz
         details,
         request_payload: row.get("request_payload"),
         requested_by: row.get("requested_by"),
+        created_at: row.get("created_at_ms"),
+    }
+}
+
+fn change_risk_evaluation_from_row(row: &PgRow) -> ChangeRiskEvaluationRecord {
+    ChangeRiskEvaluationRecord {
+        evaluation_id: row.get("evaluation_id"),
+        org_id: row.get("org_id"),
+        repository_full_name: row.get("repository_full_name"),
+        branch: row.get("branch"),
+        environment: row.get("environment"),
+        change_id: row.get("change_id"),
+        deployment_gate_id: row.get("deployment_gate_id"),
+        release_id: row.get("release_id"),
+        commit_sha: row.get("commit_sha"),
+        evidence_packet_hash: row.get("evidence_packet_hash"),
+        risk_level: row.get("risk_level"),
+        risk_reasons: serde_json::from_value(row.get("risk_reasons")).unwrap_or_default(),
+        missing_evidence: serde_json::from_value(row.get("missing_evidence")).unwrap_or_default(),
+        blocking_gaps: serde_json::from_value(row.get("blocking_gaps")).unwrap_or_default(),
+        recommended_manual_actions: serde_json::from_value(row.get("recommended_manual_actions"))
+            .unwrap_or_default(),
+        advisory_only: row.get("advisory_only"),
+        llm_used: row.get("llm_used"),
+        agent_governance_used: row.get("agent_governance_used"),
+        compliance_claim: row.get("compliance_claim"),
+        certification: row.get("certification"),
+        evaluation: row.get("evaluation"),
+        request_payload: row.get("request_payload"),
+        created_by: row.get("created_by"),
         created_at: row.get("created_at_ms"),
     }
 }
@@ -918,6 +962,7 @@ pub struct AcceptedOrgInvitation {
 
 mod agent_governance;
 mod auth_api_keys;
+mod change_risk;
 mod chat_queries_core;
 mod chat_queries_quality;
 mod chat_queries_release;

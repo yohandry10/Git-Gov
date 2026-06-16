@@ -25,6 +25,7 @@ import { FirstGovernedRepoSetupPanel } from '@/components/control_plane/FirstGov
 import { ReleaseApprovalPanel } from '@/components/control_plane/ReleaseApprovalPanel'
 import { DeploymentGateHistoryPanel } from '@/components/control_plane/DeploymentGateHistoryPanel'
 import { ComplianceEvidenceFlowPanel } from '@/components/control_plane/ComplianceEvidenceFlowPanel'
+import { ChangeRiskPanel } from '@/components/control_plane/ChangeRiskPanel'
 import {
   appendGitHubEvidenceTrendPoint,
   buildGitHubEvidenceSummary,
@@ -366,6 +367,7 @@ export function GovernancePage() {
             />
           </div>
           <ReleaseApprovalPanel />
+          <ChangeRiskPanel />
           <ComplianceEvidenceFlowPanel />
           <DeploymentGateHistoryPanel />
         </div>
