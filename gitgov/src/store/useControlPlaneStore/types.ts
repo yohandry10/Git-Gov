@@ -343,6 +343,12 @@ export interface DeploymentGateRiskContextResponse {
 
 export interface MultiRepoExecutiveGovernanceQuery {
   org_name?: string | null
+  repository?: string | null
+  environment?: string | null
+  posture?: string | null
+  gate_decision?: string | null
+  risk_level?: string | null
+  review_status?: string | null
   limit?: number | null
   offset?: number | null
 }

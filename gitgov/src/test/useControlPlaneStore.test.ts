@@ -1290,11 +1290,13 @@ describe('useControlPlaneStore', () => {
 
       const response = await useControlPlaneStore.getState().loadMultiRepoExecutiveGovernance({
         limit: 25,
+        posture: 'attention',
+        environment: 'production',
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_multi_repo_executive_governance', {
         config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
-        query: { org_name: 'yohandry10', limit: 25 },
+        query: { org_name: 'yohandry10', limit: 25, posture: 'attention', environment: 'production' },
       })
       expect(response?.repositories[0].posture).toBe('attention')
       expect(response?.deployment_execution).toBe(false)

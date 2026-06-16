@@ -1264,21 +1264,6 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
     let portal_risk: serde_json::Value = serde_json::from_str(&response).expect("portal risk JSON");
     assert_eq!(portal_risk["risk_level"], "low");
 
-    let before_gate_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
-    )
-    .bind(&org_id)
-    .fetch_one(&pool)
-    .await
-    .expect("before executive gate count");
-    let before_agent_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
-    )
-    .bind(&org_id)
-    .fetch_one(&pool)
-    .await
-    .expect("before executive agent count");
-
     let (status, response) = json_request(
         &app,
         "POST",
@@ -1341,6 +1326,40 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
         .expect("manifest hash")
         .to_string();
 
+    let before_gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before executive gate count");
+    let before_risk_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM change_risk_evaluations WHERE org_id = $1::uuid")
+            .bind(&org_id)
+            .fetch_one(&pool)
+            .await
+            .expect("before executive risk count");
+    let before_packet_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM change_risk_cab_packets WHERE org_id = $1::uuid")
+            .bind(&org_id)
+            .fetch_one(&pool)
+            .await
+            .expect("before executive packet count");
+    let before_manifest_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM change_risk_cab_decision_manifests WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before executive manifest count");
+    let before_agent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before executive agent count");
+
     let (status, response) = json_request(
         &app,
         "GET",
@@ -1401,6 +1420,121 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
     assert_eq!(portal["latest_review_status"], "needs_review");
     assert_eq!(portal["cab_packet_count"], 0);
 
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&posture=attention&environment=production&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "attention production filter: {response}"
+    );
+    let filtered: serde_json::Value =
+        serde_json::from_str(&response).expect("attention filter JSON");
+    assert_eq!(filtered["totals"]["repositories"], 1);
+    assert_eq!(
+        filtered["repositories"][0]["repository_full_name"],
+        "executive-org/payments"
+    );
+    assert_eq!(filtered["repositories"][0]["posture"], "attention");
+    assert_eq!(
+        filtered["repositories"][0]["latest_gate_decision"],
+        "blocked"
+    );
+    assert_eq!(filtered["repositories"][0]["latest_risk_level"], "high");
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&environment=staging&review_status=needs_review&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "staging needs-review filter: {response}"
+    );
+    let staging: serde_json::Value = serde_json::from_str(&response).expect("staging filter JSON");
+    assert_eq!(staging["totals"]["repositories"], 1);
+    assert_eq!(
+        staging["repositories"][0]["repository_full_name"],
+        "executive-org/portal"
+    );
+    assert_eq!(staging["repositories"][0]["latest_risk_level"], "low");
+    assert_eq!(
+        staging["repositories"][0]["latest_review_status"],
+        "needs_review"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&gate_decision=blocked&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "blocked gate filter: {response}");
+    let blocked: serde_json::Value = serde_json::from_str(&response).expect("blocked filter JSON");
+    assert_eq!(blocked["totals"]["repositories"], 1);
+    assert_eq!(
+        blocked["repositories"][0]["repository_full_name"],
+        "executive-org/payments"
+    );
+    assert_eq!(blocked["repositories"][0]["gate_count"], 1);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&repository=portal&risk_level=low&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "repository/risk filter: {response}");
+    let low_risk: serde_json::Value =
+        serde_json::from_str(&response).expect("low risk filter JSON");
+    assert_eq!(low_risk["totals"]["repositories"], 1);
+    assert_eq!(
+        low_risk["repositories"][0]["repository_full_name"],
+        "executive-org/portal"
+    );
+    assert_eq!(low_risk["repositories"][0]["change_risk_count"], 1);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&gate_decision=blocked&risk_level=low&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "conflicting filters: {response}");
+    let empty_filter: serde_json::Value =
+        serde_json::from_str(&response).expect("empty filter JSON");
+    assert_eq!(empty_filter["totals"]["repositories"], 0);
+    assert!(empty_filter["repositories"].as_array().unwrap().is_empty());
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&posture=critical",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "invalid posture must fail closed: {response}"
+    );
+
     let after_gate_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
     )
@@ -1408,6 +1542,25 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
     .fetch_one(&pool)
     .await
     .expect("after executive gate count");
+    let after_risk_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM change_risk_evaluations WHERE org_id = $1::uuid")
+            .bind(&org_id)
+            .fetch_one(&pool)
+            .await
+            .expect("after executive risk count");
+    let after_packet_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM change_risk_cab_packets WHERE org_id = $1::uuid")
+            .bind(&org_id)
+            .fetch_one(&pool)
+            .await
+            .expect("after executive packet count");
+    let after_manifest_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM change_risk_cab_decision_manifests WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("after executive manifest count");
     let after_agent_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
     )
@@ -1416,6 +1569,9 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
     .await
     .expect("after executive agent count");
     assert_eq!(after_gate_count, before_gate_count);
+    assert_eq!(after_risk_count, before_risk_count);
+    assert_eq!(after_packet_count, before_packet_count);
+    assert_eq!(after_manifest_count, before_manifest_count);
     assert_eq!(after_agent_count, before_agent_count);
 
     let (status, response) = json_request(

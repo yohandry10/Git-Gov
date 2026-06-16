@@ -201,11 +201,77 @@ fn normalize_deployment_gate_authorization_query(
 
 fn normalize_multi_repo_executive_governance_query(
     query: &mut MultiRepoExecutiveGovernanceQuery,
-) -> (i64, i64) {
+) -> Result<(i64, i64), Vec<String>> {
+    let mut errors = Vec::new();
     normalize_release_approval_optional_text(&mut query.org_name);
+    normalize_release_approval_optional_text(&mut query.repository);
+    normalize_release_approval_optional_text(&mut query.environment);
+    normalize_release_approval_optional_text(&mut query.posture);
+    normalize_release_approval_optional_text(&mut query.gate_decision);
+    normalize_release_approval_optional_text(&mut query.risk_level);
+    normalize_release_approval_optional_text(&mut query.review_status);
+
+    if let Some(repository) = query.repository.as_ref() {
+        if repository.len() > 120 || has_control_chars(repository) {
+            errors.push("repository filter is invalid or too long.".to_string());
+        }
+    }
+
+    if let Some(environment) = query.environment.as_mut() {
+        *environment = environment.to_ascii_lowercase();
+        if environment.len() > 64 || has_control_chars(environment) {
+            errors.push("environment filter is invalid or too long.".to_string());
+        }
+    }
+
+    if let Some(posture) = query.posture.as_mut() {
+        *posture = posture.to_ascii_lowercase();
+        if !["attention", "review", "healthy", "unknown"].contains(&posture.as_str()) {
+            errors.push("posture must be attention, review, healthy, or unknown.".to_string());
+        }
+    }
+
+    if let Some(gate_decision) = query.gate_decision.as_mut() {
+        *gate_decision = gate_decision.to_ascii_lowercase();
+        if !["approved", "advisory", "blocked", "break_glass"].contains(&gate_decision.as_str()) {
+            errors.push(
+                "gate_decision must be approved, advisory, blocked, or break_glass.".to_string(),
+            );
+        }
+    }
+
+    if let Some(risk_level) = query.risk_level.as_mut() {
+        *risk_level = risk_level.to_ascii_lowercase();
+        if !["low", "medium", "high", "unknown"].contains(&risk_level.as_str()) {
+            errors.push("risk_level must be low, medium, high, or unknown.".to_string());
+        }
+    }
+
+    if let Some(review_status) = query.review_status.as_mut() {
+        *review_status = review_status.to_ascii_lowercase();
+        if ![
+            "needs_review",
+            "reviewed",
+            "accepted_risk",
+            "needs_mitigation",
+            "rejected",
+        ]
+        .contains(&review_status.as_str())
+        {
+            errors.push(
+                "review_status must be needs_review, reviewed, accepted_risk, needs_mitigation, or rejected."
+                    .to_string(),
+            );
+        }
+    }
+
     let limit = query.limit.unwrap_or(25).clamp(1, 100);
     let offset = query.offset.unwrap_or(0).max(0);
-    (limit, offset)
+    if errors.is_empty() {
+        Ok((limit, offset))
+    } else {
+        Err(errors)
+    }
 }
 
 fn deployment_gate_policy_checksum(evaluation: &EnterpriseReleaseGovernanceEvaluationResponse) -> String {
@@ -843,7 +909,16 @@ pub async fn get_multi_repo_executive_governance(
         return resp.into_response();
     }
 
-    let (limit, offset) = normalize_multi_repo_executive_governance_query(&mut query);
+    let (limit, offset) = match normalize_multi_repo_executive_governance_query(&mut query) {
+        Ok(values) => values,
+        Err(errors) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Invalid executive governance query", "details": errors })),
+            )
+                .into_response();
+        }
+    };
 
     let org_id = match resolve_and_check_org_scope(
         &state,
@@ -872,7 +947,7 @@ pub async fn get_multi_repo_executive_governance(
 
     match state
         .db
-        .get_multi_repo_executive_governance(&org_id, limit, offset)
+        .get_multi_repo_executive_governance(&org_id, &query, limit, offset)
         .await
     {
         Ok(repositories) => (

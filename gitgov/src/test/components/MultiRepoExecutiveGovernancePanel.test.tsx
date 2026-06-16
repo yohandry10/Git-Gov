@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MultiRepoExecutiveGovernancePanel } from '@/components/control_plane/MultiRepoExecutiveGovernancePanel'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 
@@ -75,6 +75,12 @@ describe('MultiRepoExecutiveGovernancePanel', () => {
 
     expect(loadMultiRepoExecutiveGovernance).toHaveBeenCalledWith({
       org_name: 'yohandry10',
+      repository: null,
+      environment: null,
+      posture: null,
+      gate_decision: null,
+      risk_level: null,
+      review_status: null,
       limit: 25,
       offset: 0,
     })
@@ -84,5 +90,32 @@ describe('MultiRepoExecutiveGovernancePanel', () => {
     expect(screen.getByText('1 repos')).toBeInTheDocument()
     expect(screen.getByText(/Does not approve, block, certify, deploy/)).toBeInTheDocument()
     expect(screen.getByText('Risk: high / accepted_risk')).toBeInTheDocument()
+  })
+
+  it('applies executive governance filters without changing the read-only contract', async () => {
+    render(<MultiRepoExecutiveGovernancePanel />)
+
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'Git-Gov' } })
+    fireEvent.change(screen.getByLabelText('Environment'), { target: { value: 'production' } })
+    fireEvent.change(screen.getByLabelText('Posture'), { target: { value: 'attention' } })
+    fireEvent.change(screen.getByLabelText('Gate'), { target: { value: 'blocked' } })
+    fireEvent.change(screen.getByLabelText('Risk'), { target: { value: 'high' } })
+    fireEvent.change(screen.getByLabelText('Review'), { target: { value: 'accepted_risk' } })
+    fireEvent.click(screen.getByText('Apply'))
+
+    await waitFor(() => {
+      expect(loadMultiRepoExecutiveGovernance).toHaveBeenLastCalledWith({
+        org_name: 'yohandry10',
+        repository: 'Git-Gov',
+        environment: 'production',
+        posture: 'attention',
+        gate_decision: 'blocked',
+        risk_level: 'high',
+        review_status: 'accepted_risk',
+        limit: 25,
+        offset: 0,
+      })
+    })
+    expect(screen.getByText('filtered')).toBeInTheDocument()
   })
 })
