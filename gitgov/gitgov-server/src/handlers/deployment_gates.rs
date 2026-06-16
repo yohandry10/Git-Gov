@@ -199,6 +199,15 @@ fn normalize_deployment_gate_authorization_query(
     }
 }
 
+fn normalize_multi_repo_executive_governance_query(
+    query: &mut MultiRepoExecutiveGovernanceQuery,
+) -> (i64, i64) {
+    normalize_release_approval_optional_text(&mut query.org_name);
+    let limit = query.limit.unwrap_or(25).clamp(1, 100);
+    let offset = query.offset.unwrap_or(0).max(0);
+    (limit, offset)
+}
+
 fn deployment_gate_policy_checksum(evaluation: &EnterpriseReleaseGovernanceEvaluationResponse) -> String {
     let canonical = json!({
         "mode": &evaluation.policy.mode,
@@ -358,6 +367,49 @@ fn build_deployment_gate_risk_context_response(
         triggered_rules_count: triggered_rules.len(),
         advisory_only: true,
         enforcement_used: false,
+        llm_used: false,
+        agent_governance_used: false,
+        compliance_claim: false,
+        certification: false,
+    }
+}
+
+fn build_multi_repo_executive_governance_response(
+    org_id: String,
+    repositories: Vec<MultiRepoExecutiveGovernanceRepository>,
+    limit: i64,
+    offset: i64,
+) -> MultiRepoExecutiveGovernanceResponse {
+    let totals = repositories
+        .iter()
+        .fold(MultiRepoExecutiveGovernanceTotals::default(), |mut totals, repo| {
+            totals.repositories += 1;
+            totals.gate_count += repo.gate_count;
+            totals.blocked_gate_count += repo.blocked_gate_count;
+            totals.advisory_gate_count += repo.advisory_gate_count;
+            totals.break_glass_count += repo.break_glass_count;
+            totals.change_risk_count += repo.change_risk_count;
+            totals.high_risk_count += repo.high_risk_count;
+            totals.needs_review_count += repo.needs_review_count;
+            totals.cab_packet_count += repo.cab_packet_count;
+            totals.cab_manifest_count += repo.cab_manifest_count;
+            totals.active_manifest_count += repo.active_manifest_count;
+            totals.revoked_manifest_count += repo.revoked_manifest_count;
+            totals
+        });
+
+    MultiRepoExecutiveGovernanceResponse {
+        org_id,
+        generated_at: chrono::Utc::now().timestamp_millis(),
+        repositories,
+        totals,
+        limit,
+        offset,
+        advisory_only: true,
+        enforcement_used: false,
+        deployment_execution: false,
+        provider_mutation: false,
+        repository_mutation: false,
         llm_used: false,
         agent_governance_used: false,
         compliance_claim: false,
@@ -773,6 +825,68 @@ pub async fn authorize_deployment_gate(
         }
         Err(e) => {
             tracing::error!(error = %e, org_id = %org_id, "Failed to persist deployment gate authorization");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn get_multi_repo_executive_governance(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Query(mut query): Query<MultiRepoExecutiveGovernanceQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+
+    let (limit, offset) = normalize_multi_repo_executive_governance_query(&mut query);
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        query.org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "org_name is required for global admin keys" })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(json!({ "error": release_approval_scope_error_message(err) })),
+            )
+                .into_response();
+        }
+    };
+
+    match state
+        .db
+        .get_multi_repo_executive_governance(&org_id, limit, offset)
+        .await
+    {
+        Ok(repositories) => (
+            StatusCode::OK,
+            Json(build_multi_repo_executive_governance_response(
+                org_id,
+                repositories,
+                limit,
+                offset,
+            )),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, "Failed to load multi-repo executive governance view");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Internal database error" })),

@@ -516,6 +516,87 @@ pub struct DeploymentGateRiskContextResponse {
     pub certification: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MultiRepoExecutiveGovernanceQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiRepoExecutiveGovernanceRepository {
+    pub repository_full_name: String,
+    pub posture: String,
+    pub gate_count: i64,
+    pub blocked_gate_count: i64,
+    pub advisory_gate_count: i64,
+    pub break_glass_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_gate_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_gate_decision: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_gate_created_at: Option<i64>,
+    pub change_risk_count: i64,
+    pub high_risk_count: i64,
+    pub needs_review_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_risk_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_review_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_risk_created_at: Option<i64>,
+    pub cab_packet_count: i64,
+    pub cab_manifest_count: i64,
+    pub active_manifest_count: i64,
+    pub revoked_manifest_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_manifest_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_manifest_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_manifest_created_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MultiRepoExecutiveGovernanceTotals {
+    pub repositories: i64,
+    pub gate_count: i64,
+    pub blocked_gate_count: i64,
+    pub advisory_gate_count: i64,
+    pub break_glass_count: i64,
+    pub change_risk_count: i64,
+    pub high_risk_count: i64,
+    pub needs_review_count: i64,
+    pub cab_packet_count: i64,
+    pub cab_manifest_count: i64,
+    pub active_manifest_count: i64,
+    pub revoked_manifest_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiRepoExecutiveGovernanceResponse {
+    pub org_id: String,
+    pub generated_at: i64,
+    #[serde(default)]
+    pub repositories: Vec<MultiRepoExecutiveGovernanceRepository>,
+    pub totals: MultiRepoExecutiveGovernanceTotals,
+    pub limit: i64,
+    pub offset: i64,
+    pub advisory_only: bool,
+    pub enforcement_used: bool,
+    pub deployment_execution: bool,
+    pub provider_mutation: bool,
+    pub repository_mutation: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChangeRiskEvaluationRecord {
     pub evaluation_id: String,

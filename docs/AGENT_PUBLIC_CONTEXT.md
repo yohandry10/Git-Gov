@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-128` Deployment Gate Risk & CAB Evidence Context
+Ticket: `KAN-129` Multi-Repo Executive Governance View MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -85,6 +85,13 @@ The repo already contains substantial product surface:
   section. It does not create a new table, recalculate risk, mutate gates/evaluations/packets/manifests,
   create CAB artifacts automatically, enforce releases, deploy, use AI/Agent Governance, or create
   compliance/certification/legal claims.
+- Multi-Repo Executive Governance View from KAN-129 is in progress. It adds read-only
+  `GET /executive/repositories` and a Desktop Governance > Releases panel that aggregates existing
+  Deployment Gate, Change Risk, CAB packet, and CAB decision manifest evidence by repository for the
+  resolved tenant. Posture values are executive triage labels only: `attention`, `review`,
+  `healthy`, and `unknown`. It does not approve or block deployments, execute deploys, mutate
+  providers/repos, create artifacts, use AI/Agent Governance, or create compliance/certification
+  claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

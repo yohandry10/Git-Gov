@@ -268,6 +268,7 @@ pub fn run() {
             commands::cmd_server_evaluate_enterprise_release_governance,
             commands::cmd_server_list_deployment_gate_authorizations,
             commands::cmd_server_get_deployment_gate_risk_context,
+            commands::cmd_server_get_multi_repo_executive_governance,
             commands::cmd_server_list_change_risk_evaluations,
             commands::cmd_server_get_change_risk_rules,
             commands::cmd_server_get_change_risk_evaluation,

@@ -2,6 +2,60 @@
 
 Updated: 2026-06-16
 
+## KAN-129 Multi-Repo Executive Governance View - 2026-06-16
+
+`KAN-129 - Multi-Repo Executive Governance View MVP` is in progress on issue `#453`.
+
+Product decision:
+
+- Add a tenant-scoped executive overview of repository governance posture using existing Deployment
+  Gate, Change Risk, CAB packet, and CAB decision manifest evidence.
+- Keep the feature manual-first and read-only: it is an executive triage view, not a deployment
+  approval, enforcement gate, compliance score, certification, or agent/AI workflow.
+- Do not add a migration, provider mutation, repository mutation, deployment execution, release
+  blocking, automatic CAB artifact creation, risk recalculation, or legal/regulatory claims.
+
+Implemented locally:
+
+- Backend route `GET /executive/repositories`.
+- No migration: the view is composed from `deployment_gate_authorizations`,
+  `change_risk_evaluations`, `change_risk_cab_packets.evaluation_ids_json`, and
+  `change_risk_cab_decision_manifests`.
+- Response includes repository summaries, posture, Deployment Gate counts, Change Risk counts, CAB
+  packet/manifest counts, latest evidence pointers, page totals, and explicit no-claim flags.
+- Tauri DTO/client method/command/invoke registration.
+- Control Plane store state/action `loadMultiRepoExecutiveGovernance`.
+- Governance > Releases `MultiRepoExecutiveGovernancePanel`.
+- Design and validation report docs.
+
+Local validation completed:
+
+- Backend `cargo fmt --check`.
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri tests (`49` passed).
+- Frontend `npm --prefix gitgov run typecheck`.
+- Frontend `npm --prefix gitgov run lint`.
+- Frontend full Vitest (`383` passed).
+- Focused frontend tests for store and panel (`49` passed).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- Focused backend real Postgres test
+  `multi_repo_executive_governance_view_is_read_only_and_tenant_scoped` passed with real
+  tenant-scoped Deployment Gate, Change Risk, CAB packet, CAB manifest, Auditor/Developer RBAC,
+  other-tenant isolation, no-claim flags, and no source mutation assertions.
+- `git diff --check`.
+- `scripts/security/publication_guard.ps1`.
+
+Production validation:
+
+- Pending until PR merge, Render deploy, and production smoke.
+
+Report: `docs/reports/multi-repo-executive-governance-view-2026-06-16.md`.
+
 ## KAN-128 Deployment Gate Risk & CAB Evidence Context - 2026-06-16
 
 `KAN-128 - Deployment Gate Risk & CAB Evidence Context` is completed. PR `#451` merged to `main` as

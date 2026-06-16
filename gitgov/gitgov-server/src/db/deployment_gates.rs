@@ -236,6 +236,165 @@ impl Database {
         Ok((items, total))
     }
 
+    pub async fn get_multi_repo_executive_governance(
+        &self,
+        org_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<MultiRepoExecutiveGovernanceRepository>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            WITH repo_names AS (
+                SELECT repository_full_name
+                FROM deployment_gate_authorizations
+                WHERE org_id = $1::uuid
+                UNION
+                SELECT repository_full_name
+                FROM change_risk_evaluations
+                WHERE org_id = $1::uuid
+            ),
+            gate_stats AS (
+                SELECT
+                    repository_full_name,
+                    COUNT(*)::BIGINT AS gate_count,
+                    COUNT(*) FILTER (WHERE decision = 'blocked' OR blocking = TRUE)::BIGINT AS blocked_gate_count,
+                    COUNT(*) FILTER (WHERE decision = 'advisory')::BIGINT AS advisory_gate_count,
+                    COUNT(*) FILTER (WHERE break_glass_used = TRUE)::BIGINT AS break_glass_count
+                FROM deployment_gate_authorizations
+                WHERE org_id = $1::uuid
+                GROUP BY repository_full_name
+            ),
+            latest_gate AS (
+                SELECT DISTINCT ON (repository_full_name)
+                    repository_full_name,
+                    authorization_id,
+                    decision,
+                    ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+                FROM deployment_gate_authorizations
+                WHERE org_id = $1::uuid
+                ORDER BY repository_full_name, created_at DESC, authorization_id DESC
+            ),
+            risk_stats AS (
+                SELECT
+                    repository_full_name,
+                    COUNT(*)::BIGINT AS change_risk_count,
+                    COUNT(*) FILTER (WHERE risk_level = 'high')::BIGINT AS high_risk_count,
+                    COUNT(*) FILTER (WHERE review_status = 'needs_review')::BIGINT AS needs_review_count
+                FROM change_risk_evaluations
+                WHERE org_id = $1::uuid
+                GROUP BY repository_full_name
+            ),
+            latest_risk AS (
+                SELECT DISTINCT ON (repository_full_name)
+                    repository_full_name,
+                    risk_level,
+                    review_status,
+                    ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+                FROM change_risk_evaluations
+                WHERE org_id = $1::uuid
+                ORDER BY repository_full_name, created_at DESC, evaluation_id DESC
+            ),
+            packet_repo AS (
+                SELECT DISTINCT
+                    packet.packet_id,
+                    eval.repository_full_name
+                FROM change_risk_cab_packets packet
+                JOIN LATERAL jsonb_array_elements_text(packet.evaluation_ids_json) AS packet_eval(evaluation_id)
+                    ON TRUE
+                JOIN change_risk_evaluations eval
+                    ON eval.org_id = packet.org_id
+                   AND eval.evaluation_id = packet_eval.evaluation_id
+                WHERE packet.org_id = $1::uuid
+            ),
+            packet_stats AS (
+                SELECT
+                    repository_full_name,
+                    COUNT(DISTINCT packet_id)::BIGINT AS cab_packet_count
+                FROM packet_repo
+                GROUP BY repository_full_name
+            ),
+            manifest_repo AS (
+                SELECT DISTINCT
+                    manifest.manifest_id,
+                    packet_repo.repository_full_name,
+                    manifest.manifest_hash,
+                    manifest.status,
+                    manifest.created_at
+                FROM change_risk_cab_decision_manifests manifest
+                JOIN packet_repo
+                    ON packet_repo.packet_id = manifest.cab_packet_id
+                WHERE manifest.org_id = $1::uuid
+            ),
+            manifest_stats AS (
+                SELECT
+                    repository_full_name,
+                    COUNT(*)::BIGINT AS cab_manifest_count,
+                    COUNT(*) FILTER (WHERE status = 'active')::BIGINT AS active_manifest_count,
+                    COUNT(*) FILTER (WHERE status = 'revoked')::BIGINT AS revoked_manifest_count
+                FROM manifest_repo
+                GROUP BY repository_full_name
+            ),
+            latest_manifest AS (
+                SELECT DISTINCT ON (repository_full_name)
+                    repository_full_name,
+                    manifest_hash,
+                    status,
+                    ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+                FROM manifest_repo
+                ORDER BY repository_full_name, created_at DESC, manifest_id DESC
+            )
+            SELECT
+                repos.repository_full_name,
+                COALESCE(gate_stats.gate_count, 0)::BIGINT AS gate_count,
+                COALESCE(gate_stats.blocked_gate_count, 0)::BIGINT AS blocked_gate_count,
+                COALESCE(gate_stats.advisory_gate_count, 0)::BIGINT AS advisory_gate_count,
+                COALESCE(gate_stats.break_glass_count, 0)::BIGINT AS break_glass_count,
+                latest_gate.authorization_id AS latest_gate_id,
+                latest_gate.decision AS latest_gate_decision,
+                latest_gate.created_at_ms AS latest_gate_created_at_ms,
+                COALESCE(risk_stats.change_risk_count, 0)::BIGINT AS change_risk_count,
+                COALESCE(risk_stats.high_risk_count, 0)::BIGINT AS high_risk_count,
+                COALESCE(risk_stats.needs_review_count, 0)::BIGINT AS needs_review_count,
+                latest_risk.risk_level AS latest_risk_level,
+                latest_risk.review_status AS latest_review_status,
+                latest_risk.created_at_ms AS latest_risk_created_at_ms,
+                COALESCE(packet_stats.cab_packet_count, 0)::BIGINT AS cab_packet_count,
+                COALESCE(manifest_stats.cab_manifest_count, 0)::BIGINT AS cab_manifest_count,
+                COALESCE(manifest_stats.active_manifest_count, 0)::BIGINT AS active_manifest_count,
+                COALESCE(manifest_stats.revoked_manifest_count, 0)::BIGINT AS revoked_manifest_count,
+                latest_manifest.manifest_hash AS latest_manifest_hash,
+                latest_manifest.status AS latest_manifest_status,
+                latest_manifest.created_at_ms AS latest_manifest_created_at_ms
+            FROM repo_names repos
+            LEFT JOIN gate_stats ON gate_stats.repository_full_name = repos.repository_full_name
+            LEFT JOIN latest_gate ON latest_gate.repository_full_name = repos.repository_full_name
+            LEFT JOIN risk_stats ON risk_stats.repository_full_name = repos.repository_full_name
+            LEFT JOIN latest_risk ON latest_risk.repository_full_name = repos.repository_full_name
+            LEFT JOIN packet_stats ON packet_stats.repository_full_name = repos.repository_full_name
+            LEFT JOIN manifest_stats ON manifest_stats.repository_full_name = repos.repository_full_name
+            LEFT JOIN latest_manifest ON latest_manifest.repository_full_name = repos.repository_full_name
+            ORDER BY
+                COALESCE(gate_stats.blocked_gate_count, 0) DESC,
+                COALESCE(risk_stats.high_risk_count, 0) DESC,
+                COALESCE(risk_stats.needs_review_count, 0) DESC,
+                repos.repository_full_name ASC
+            LIMIT $2
+            OFFSET $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(multi_repo_executive_governance_repository_from_row)
+            .collect())
+    }
+
     pub async fn create_deployment_gate_break_glass_approval(
         &self,
         org_id: &str,

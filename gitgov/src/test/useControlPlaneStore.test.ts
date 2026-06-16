@@ -1229,6 +1229,83 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().deploymentGateRiskContexts.dga_123.cab_decision_manifests[0].manifest_hash).toMatch(/^sha256:/)
     })
 
+    it('loads multi-repo executive governance view as read-only evidence', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        org_id: 'org-1',
+        generated_at: 10,
+        repositories: [{
+          repository_full_name: 'yohandry10/Git-Gov',
+          posture: 'attention',
+          gate_count: 2,
+          blocked_gate_count: 1,
+          advisory_gate_count: 1,
+          break_glass_count: 0,
+          latest_gate_id: 'dga_123',
+          latest_gate_decision: 'blocked',
+          latest_gate_created_at: 9,
+          change_risk_count: 1,
+          high_risk_count: 1,
+          needs_review_count: 0,
+          latest_risk_level: 'high',
+          latest_review_status: 'accepted_risk',
+          latest_risk_created_at: 8,
+          cab_packet_count: 1,
+          cab_manifest_count: 1,
+          active_manifest_count: 1,
+          revoked_manifest_count: 0,
+          latest_manifest_hash: 'sha256:' + 'd'.repeat(64),
+          latest_manifest_status: 'active',
+          latest_manifest_created_at: 7,
+        }],
+        totals: {
+          repositories: 1,
+          gate_count: 2,
+          blocked_gate_count: 1,
+          advisory_gate_count: 1,
+          break_glass_count: 0,
+          change_risk_count: 1,
+          high_risk_count: 1,
+          needs_review_count: 0,
+          cab_packet_count: 1,
+          cab_manifest_count: 1,
+          active_manifest_count: 1,
+          revoked_manifest_count: 0,
+        },
+        limit: 25,
+        offset: 0,
+        advisory_only: true,
+        enforcement_used: false,
+        deployment_execution: false,
+        provider_mutation: false,
+        repository_mutation: false,
+        llm_used: false,
+        agent_governance_used: false,
+        compliance_claim: false,
+        certification: false,
+      })
+
+      const response = await useControlPlaneStore.getState().loadMultiRepoExecutiveGovernance({
+        limit: 25,
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_multi_repo_executive_governance', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: { org_name: 'yohandry10', limit: 25 },
+      })
+      expect(response?.repositories[0].posture).toBe('attention')
+      expect(response?.deployment_execution).toBe(false)
+      expect(response?.provider_mutation).toBe(false)
+      expect(response?.repository_mutation).toBe(false)
+      expect(response?.agent_governance_used).toBe(false)
+      expect(response?.certification).toBe(false)
+      expect(useControlPlaneStore.getState().multiRepoExecutiveGovernance?.totals.repositories).toBe(1)
+      expect(useControlPlaneStore.getState().multiRepoExecutiveGovernanceUpdatedAt).toBe(10)
+    })
+
     it('loads change risk advisory history with tenant scope and release filters', async () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },

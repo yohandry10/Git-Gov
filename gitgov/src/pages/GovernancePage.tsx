@@ -24,6 +24,7 @@ import { EnterpriseAdoptionPanel } from '@/components/control_plane/EnterpriseAd
 import { FirstGovernedRepoSetupPanel } from '@/components/control_plane/FirstGovernedRepoSetupPanel'
 import { ReleaseApprovalPanel } from '@/components/control_plane/ReleaseApprovalPanel'
 import { DeploymentGateHistoryPanel } from '@/components/control_plane/DeploymentGateHistoryPanel'
+import { MultiRepoExecutiveGovernancePanel } from '@/components/control_plane/MultiRepoExecutiveGovernancePanel'
 import { ComplianceEvidenceFlowPanel } from '@/components/control_plane/ComplianceEvidenceFlowPanel'
 import { ChangeRiskPanel } from '@/components/control_plane/ChangeRiskPanel'
 import {
@@ -369,6 +370,7 @@ export function GovernancePage() {
           <ReleaseApprovalPanel />
           <ChangeRiskPanel />
           <ComplianceEvidenceFlowPanel />
+          <MultiRepoExecutiveGovernancePanel />
           <DeploymentGateHistoryPanel />
         </div>
       ) : <GovernanceAccessNotice />

@@ -105,6 +105,15 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             )),
         )
         .route(
+            "/executive/repositories",
+            get(handlers::get_multi_repo_executive_governance).layer(
+                middleware::from_fn_with_state(
+                    Arc::clone(&admin_rate_limit),
+                    rate_limit_middleware,
+                ),
+            ),
+        )
+        .route(
             "/integrations/jenkins",
             post(handlers::ingest_jenkins_pipeline_event)
                 .layer(DefaultBodyLimit::max(jenkins_body_limit_bytes))
