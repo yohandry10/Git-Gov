@@ -130,6 +130,7 @@ The focused store test verifies command payload normalization and state transiti
 create, download, and archive.
 
 Production validation on 2026-06-16 created, listed, read, downloaded, archived, and blocked
-download of an archived CAB packet against `https://gitgov-api.onrender.com`. The smoke also
-verified no-claim flags and confirmed Deployment Gate authorization plus Agent Governance
+download of an archived CAB packet against `https://gitgov-api.onrender.com` after hotfix PR `#437`
+and Render deploy `dep-d8oemvuq1p3s73fecrug`. The smoke also verified `download_count` is `bigint`,
+verified no-claim flags, and confirmed Deployment Gate authorization plus Agent Governance
 evaluation counts did not change.

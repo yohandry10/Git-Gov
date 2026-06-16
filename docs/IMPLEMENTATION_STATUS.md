@@ -5,7 +5,7 @@ Updated: 2026-06-16
 ## KAN-125 Change Risk CAB Review Packet - 2026-06-16
 
 `KAN-125 - Change Risk CAB Review Packet` is completed. PR `#436` merged to `main` as
-`92db41ac`.
+`92db41ac`, and hotfix PR `#437` merged as `44c0744b`.
 
 Product decision:
 
@@ -72,19 +72,19 @@ Known local validation limit:
 Production validation:
 
 - PR checks and post-merge `main` checks passed.
-- Render deploy `dep-d8oectv7f7vs73ak5e80` reached `live`.
+- Render deploy `dep-d8oemvuq1p3s73fecrug` for `44c0744b` reached `live`.
 - Production `v65` migration/postcheck passed.
 - Production initially returned HTTP `502` on `POST /change-risk/cab-packets` because an existing
   `download_count integer` column did not match the backend `bigint` model. Render logs confirmed
   the `ColumnDecode` panic. The corrected `v65` migration altered the column to `bigint`, and the
   postcheck now enforces the type.
-- Final production smoke passed: `/health=ok`, authenticated `/stats=200`, packet
-  `crcab_c67518a3f57f4e19aac2752c5ce36db3` was created from evaluation
-  `cra_4d59c84859a747789e577ca24945ec50`, list/get/download/archive succeeded, archived download
-  returned HTTP `409`, record hash
-  `sha256:81f0d202c024ac0592ad6d7630382ed326e360c3b84b5e07493e02411420ba8d` matched on read, no-claim
-  flags stayed false where required, and Deployment Gate authorization plus Agent Governance
-  evaluation counts stayed unchanged.
+- Final post-hotfix production smoke passed: `/health=ok`, authenticated `/stats=200`,
+  `download_count` type `bigint`, packet `crcab_d48e546c08b844189ec4fe6d7d4ed7b2` was created from
+  evaluation `cra_4d59c84859a747789e577ca24945ec50`, list/get/download/archive succeeded, archived
+  download returned HTTP `409`, record hash
+  `sha256:4a262e527c263a293e8d1febbb756b448bb4400ec63ee92959414e0309bf7199` matched on
+  read/download, no-claim flags stayed false where required, and Deployment Gate authorization plus
+  Agent Governance evaluation counts stayed unchanged.
 
 Report: `docs/reports/change-risk-cab-review-packet-2026-06-16.md`.
 

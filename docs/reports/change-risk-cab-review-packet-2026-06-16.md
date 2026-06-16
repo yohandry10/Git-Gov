@@ -118,16 +118,18 @@ Known local validation limit:
 ## Production Validation
 
 - PR `#436` merged to `main` as `92db41ac`.
-- Render deploy `dep-d8oectv7f7vs73ak5e80` reached `live`.
+- Hotfix PR `#437` merged to `main` as `44c0744b`.
+- Render deploy `dep-d8oemvuq1p3s73fecrug` for `44c0744b` reached `live`.
 - Production `v65` migration/postcheck passed after the `download_count` type repair.
 - Production smoke passed:
   - `/health=ok`.
   - authenticated `/stats=200`.
+  - `download_count` type is `bigint`.
   - `POST /change-risk/cab-packets` created packet
-    `crcab_c67518a3f57f4e19aac2752c5ce36db3` from accepted-risk evaluation
+    `crcab_d48e546c08b844189ec4fe6d7d4ed7b2` from accepted-risk evaluation
     `cra_4d59c84859a747789e577ca24945ec50`.
   - record hash verification returned
-    `sha256:81f0d202c024ac0592ad6d7630382ed326e360c3b84b5e07493e02411420ba8d`.
+    `sha256:4a262e527c263a293e8d1febbb756b448bb4400ec63ee92959414e0309bf7199`.
   - list, get, download, archive, and archived-download conflict paths passed.
   - archived packet download returned HTTP `409`.
   - no-claim flags stayed `advisory_only=true`, `llm_used=false`,
