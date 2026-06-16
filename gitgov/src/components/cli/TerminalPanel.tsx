@@ -24,6 +24,7 @@ import {
   buildTerminalQuickCommandInsertInput,
   type TerminalQuickCommand,
 } from './terminalQuickCommands'
+import { TerminalBranchGateStatusBadge } from './TerminalBranchGateStatusBadge'
 import { TerminalGovernanceContextPanel } from './TerminalGovernanceContextPanel'
 import { TerminalSessionHistoryDrawer } from './TerminalSessionHistoryDrawer'
 import '@xterm/xterm/css/xterm.css'
@@ -490,6 +491,13 @@ export function TerminalPanel() {
         >
           {formatTerminalGitContextLabel(terminalGitContext)}
         </span>
+        <TerminalBranchGateStatusBadge
+          context={terminalGitContext}
+          validation={validation}
+          currentBranch={currentBranch}
+          serverConfig={serverConfig}
+          selectedOrgName={selectedOrgName}
+        />
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
