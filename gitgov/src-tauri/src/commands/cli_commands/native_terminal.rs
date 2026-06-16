@@ -197,3 +197,15 @@ pub fn cmd_stop_native_terminal(
 
     Ok(CliNativeTerminalStopResult { stopped: false })
 }
+
+#[tauri::command]
+pub fn cmd_get_native_terminal_git_context(
+    request: CliNativeTerminalGitContextRequest,
+) -> Result<CliNativeTerminalGitContextResult, String> {
+    let cwd = request.cwd.trim();
+    if cwd.is_empty() {
+        return Err("cwd is required".to_string());
+    }
+
+    Ok(native_terminal_git_context(cwd, request.command.as_deref()))
+}

@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-132` Native Terminal Session History MVP
+Ticket: `KAN-133` Native Terminal Repo/Branch Context MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -108,6 +108,11 @@ The repo already contains substantial product surface:
   displays a compact local history with shell/repo/branch/timestamp metadata. It is a convenience
   surface only: no backend persistence, no audit evidence, no command blocking, no automatic rerun,
   no provider/repo/deploy mutation, and no compliance/certification claim.
+- Native Terminal Repo/Branch Context from KAN-133 continues Developer Distribution Surfaces 0.10.
+  It resolves local Git context through Tauri and displays a compact terminal header label for
+  repo/branch, detached HEAD, pending, or non-git state. It does not execute Git commands, persist
+  context to the backend, create audit evidence, block commands, mutate repositories, or create a
+  second enforcement model.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
@@ -206,10 +211,9 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-132 - Native Terminal Session History MVP` is the current product slice. It starts roadmap
-block `0.10 Developer Distribution Surfaces` with a local, session-scoped Desktop terminal history
-that preserves the non-intercepting native PTY behavior and does not create governance evidence or
-policy enforcement.
+`KAN-133 - Native Terminal Repo/Branch Context MVP` is the current product slice. It continues
+roadmap block `0.10 Developer Distribution Surfaces` by showing safe local Git context in the
+Desktop native terminal header while preserving non-intercepting native PTY behavior.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a
