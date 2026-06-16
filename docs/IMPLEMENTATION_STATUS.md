@@ -2,6 +2,55 @@
 
 Updated: 2026-06-16
 
+## KAN-140 Native Terminal Branch Gate Status Advisory - 2026-06-16
+
+`KAN-140 - Native Terminal Branch Gate Status Advisory` is implemented locally on branch
+`product/KAN-140-terminal-branch-gate-advisory` for GitHub issue `#487`.
+
+Product decision:
+
+- Add a compact branch gate status badge to the Desktop native terminal header.
+- Keep it advisory-only and visually quiet.
+- Do not block terminal commands, commits, pushes, PRs, deployments, or any other local/manual
+  workflow.
+- Reuse existing Deployment Gate evidence instead of adding a new enforcement model.
+
+Implemented:
+
+- Added `terminalBranchGateStatus.ts` for pure status mapping.
+- Added `TerminalBranchGateStatusBadge` beside the existing native terminal repo/branch label.
+- Reused `buildTerminalGovernanceTarget` so the badge uses the same safe GitHub `owner/repo` target
+  as KAN-135 Governance Context.
+- Reused existing read-only Tauri command `cmd_server_list_deployment_gate_authorizations` with
+  `limit=1`, `repository_full_name`, and `branch`.
+- Added focused tests in `gitgov/src/test/components/terminal-branch-gate-status.test.tsx`.
+- Added design/report docs for the advisory-only UX.
+
+Guardrails:
+
+- No backend/API route change.
+- No DB migration.
+- No Control Plane audit write.
+- No command interception, approval, blocking, or auto-run.
+- No commit/push/deploy enforcement.
+- No provider, repository, or deployment mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused branch gate test passed:
+  `npm --prefix gitgov run test -- --run src/test/components/terminal-branch-gate-status.test.tsx`
+  (`6` tests).
+- Focused terminal suite passed:
+  `npm --prefix gitgov run test -- --run src/test/components/terminal-branch-gate-status.test.tsx src/test/components/terminal-governance-context.test.ts src/test/components/terminal-git-context.test.ts src/test/components/terminal-quick-commands.test.ts`
+  (`18` tests).
+- Frontend typecheck and lint passed.
+- Full frontend Vitest passed (`410` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check`, publication guard, and static no-mutation grep passed.
+- PR checks are pending before merge.
+
 ## KAN-139 Correct OpenAPI Route-Source Technical Debt - 2026-06-16
 
 `KAN-139 - Correct OpenAPI route-source technical debt` is completed. GitHub issue `#484`
@@ -165,7 +214,8 @@ Guardrails:
   apply.
 - No provider/repo/deploy mutation.
 - No AI/Agent Governance/OPA/Rego/MCP dependency.
-- No branch gate status.
+- Branch gate status was intentionally out of scope for KAN-134; the advisory-only version is later
+  handled by KAN-140.
 - No compliance/certification/legal/regulatory claim.
 
 Validation:

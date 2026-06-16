@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-137` Remove external editor extension direction
+Ticket: `KAN-140` Native Terminal Branch Gate Status Advisory
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -121,6 +121,12 @@ The repo already contains substantial product surface:
 - Native Terminal Governance Context from KAN-135 continues Developer Distribution Surfaces 0.10.
   It adds a read-only Governance Context drawer to the native terminal and reuses existing
   Deployment Gate, Change Risk, and Executive Governance read models.
+- Native Terminal Branch Gate Status Advisory from KAN-140 continues Developer Distribution
+  Surfaces 0.10. It adds a compact, read-only badge beside the native terminal repo/branch label
+  and maps latest Deployment Gate evidence to `Gate ready`, `Gate review`, `No gate`, or
+  `Gate n/a`. It is advisory only: no command interception, no command blocking, no commit/push
+  blocking, no deployment authorization/execution, no provider/repo mutation, and no compliance or
+  certification claim.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -222,10 +228,14 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
+`KAN-140 - Native Terminal Branch Gate Status Advisory` adds the next Desktop/Workspace terminal
+surface: a small advisory-only badge that reads existing Deployment Gate evidence for the detected
+repo/branch. It is not a blocker, not a deploy authorizer, not a command gate, and not a compliance
+claim.
+
 `KAN-137 - Remove external editor extension product direction` is completed. The public context no
-longer treats the earlier native-terminal repo/branch slice as current work. The active product
-state after KAN-137 keeps roadmap block `0.10 Developer Distribution Surfaces` focused on
-Desktop/Workspace terminal surfaces, with no external editor extension path in the active roadmap.
+longer treats external editor plugins as active product work. The active product state keeps roadmap
+block `0.10 Developer Distribution Surfaces` focused on Desktop/Workspace terminal surfaces.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a

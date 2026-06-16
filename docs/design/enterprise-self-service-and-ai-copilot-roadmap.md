@@ -2,7 +2,7 @@
 
 Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter; KAN-125 Change Risk CAB Review Packet; KAN-126 Change Risk CAB Packet Manual Disposition; KAN-127 Change Risk CAB Decision Manifest; KAN-128 Deployment Gate Risk & CAB Evidence Context; KAN-129 Multi-Repo Executive Governance View; KAN-130 Multi-Repo Executive Governance Filters; KAN-131 Multi-Repo Executive Governance Snapshot Export; KAN-132 Native Terminal Session History; KAN-133 Native Terminal Repo/Branch Context
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter; KAN-125 Change Risk CAB Review Packet; KAN-126 Change Risk CAB Packet Manual Disposition; KAN-127 Change Risk CAB Decision Manifest; KAN-128 Deployment Gate Risk & CAB Evidence Context; KAN-129 Multi-Repo Executive Governance View; KAN-130 Multi-Repo Executive Governance Filters; KAN-131 Multi-Repo Executive Governance Snapshot Export; KAN-132 Native Terminal Session History; KAN-133 Native Terminal Repo/Branch Context; KAN-134 Native Terminal Safe Quick Commands; KAN-135 Native Terminal Governance Context; KAN-140 Native Terminal Branch Gate Status Advisory
 
 ## Decision
 
@@ -621,12 +621,18 @@ Current primitives:
   current repo/branch. It does not add backend endpoints, create evidence, execute commands,
   intercept/block commands, mutate providers/repos/deployments, or create compliance/certification
   claims.
+- `KAN-140` adds a compact branch gate status badge next to the native terminal repo/branch label.
+  It reads the latest Deployment Gate authorization for the detected repo/branch through the existing
+  read-only Tauri command and maps it to `Gate ready`, `Gate review`, `No gate`, or `Gate n/a`.
+  This is strictly advisory: it does not intercept terminal input, block commands, block commits,
+  block pushes, authorize deployments, execute deployments, mutate providers/repos, or create
+  compliance/certification claims.
 
 Future scope:
 
 - Embedded terminal improvements:
   - optional provider-specific read-only quick commands after additional safety review.
-  - explicit branch gate status after the Desktop gate context is stable enough for developer use.
+  - optional richer drill-down from the branch gate badge into existing read-only gate context.
   - no command interception by default.
 - External editor plugins are not part of the active roadmap. Keep developer distribution focused on
   the Desktop/Workspace surfaces until a new explicit product decision reopens that path.
