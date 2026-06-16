@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-128 Deployment Gate Risk & CAB Evidence Context - 2026-06-16
 
-`KAN-128 - Deployment Gate Risk & CAB Evidence Context` is in progress on branch
-`product/KAN-128-deployment-gate-risk-cab-context` for GitHub issue `#450`.
+`KAN-128 - Deployment Gate Risk & CAB Evidence Context` is completed. PR `#451` merged to `main` as
+`27b2b5d5`.
 
 Product decision:
 
@@ -54,9 +54,22 @@ Local validation completed:
 - `git diff --check`.
 - `scripts/security/publication_guard.ps1`.
 
-Remaining before completion:
+Production validation:
 
-- PR checks, merge, Render deploy, and production smoke.
+- No production migration was required.
+- Post-merge `main` CI and guard workflows passed.
+- Render deploy `dep-d8oi2p99rddc73d37320` for `27b2b5d5` reached `live`.
+- Production smoke passed with `/health=ok`, authenticated `/stats=200`, Deployment Gate total `2`,
+  Agent Governance evaluation total `7`, source gate `dga_6bbb0ce5200a4d36ae6dc9fac1146c7a`,
+  linked Change Risk evaluation `cra_b8408c9e4aa44989bd1146d5ff5d4c30`, `risk_level=medium`,
+  `review_status=accepted_risk`, trace hash
+  `sha256:5c1d4c8504c0a52c42176f525b8ea9a35a5c1f2826cb5a18af99311dd47b5f46`, CAB packet
+  `crcab_cf0af176f7674b16821d5cf61b5225b8`, packet hash
+  `sha256:78edf32af71d3d96872b08080dc4c009bac2a7b33fe61d078bf33a3eb4d2ad51`, CAB review
+  `needs_mitigation`, CAB decision manifest `crcabdm_8df5e6df7297acb8155730f48b5cc526`, manifest
+  hash `sha256:ea93d018394b141665b83698cadcb1a519aef602c82571bfcfb0a385fde1936f`,
+  `/deployment-gates/{gate}/risk-context` returning one linked evaluation, one CAB packet, one
+  manifest, safe no-claim flags, and manifest status `revoked` after revoke.
 
 Report: `docs/reports/deployment-gate-risk-cab-context-2026-06-16.md`.
 
