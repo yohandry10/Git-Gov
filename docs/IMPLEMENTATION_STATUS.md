@@ -2,6 +2,45 @@
 
 Updated: 2026-06-16
 
+## KAN-132 Native Terminal Session History - 2026-06-16
+
+`KAN-132 - Native Terminal Session History MVP` starts roadmap block `0.10 Developer Distribution
+Surfaces`. GitHub issue: `#464`.
+
+Product decision:
+
+- Add a local/session-scoped native terminal command history to Desktop Workspace.
+- Keep it as a developer convenience surface only. It is not policy, audit evidence, enforcement,
+  approval, release blocking, or compliance evidence.
+
+Implemented locally:
+
+- Added `terminalSessionHistory.ts` with pure native-terminal input parsing and capped history
+  helpers.
+- Updated `TerminalPanel` with a compact history button/drawer showing session command count,
+  command text, shell, repo, branch, and timestamp.
+- Added focused tests for Enter submission, pasted multi-command input, Backspace, Ctrl+C, ANSI
+  navigation sequences, newest-first retention, empty command rejection, and safe metadata defaults.
+
+Guardrails:
+
+- No backend migration.
+- No Render/API deploy requirement.
+- No command interception or automatic re-run.
+- No Control Plane audit write.
+- No provider/repo/deploy mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Local validation:
+
+- `pnpm --dir gitgov exec vitest run src/test/components/terminal-session-history.test.ts src/test/components/terminal-status.test.ts` (`9` tests passed).
+- `pnpm --dir gitgov typecheck`.
+- `pnpm --dir gitgov lint`.
+- `pnpm --dir gitgov build` passed with the pre-existing Vite chunk-size warning.
+
+Report: `docs/reports/native-terminal-session-history-2026-06-16.md`.
+
 ## KAN-131 Multi-Repo Executive Governance Snapshot Export - 2026-06-16
 
 `KAN-131 - Multi-Repo Executive Governance Snapshot Export` is completed. GitHub issue `#459`

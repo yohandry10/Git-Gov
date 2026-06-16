@@ -2,7 +2,7 @@
 
 Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter; KAN-125 Change Risk CAB Review Packet; KAN-126 Change Risk CAB Packet Manual Disposition; KAN-127 Change Risk CAB Decision Manifest; KAN-128 Deployment Gate Risk & CAB Evidence Context; KAN-129 Multi-Repo Executive Governance View; KAN-130 Multi-Repo Executive Governance Filters; KAN-131 Multi-Repo Executive Governance Snapshot Export
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter; KAN-125 Change Risk CAB Review Packet; KAN-126 Change Risk CAB Packet Manual Disposition; KAN-127 Change Risk CAB Decision Manifest; KAN-128 Deployment Gate Risk & CAB Evidence Context; KAN-129 Multi-Repo Executive Governance View; KAN-130 Multi-Repo Executive Governance Filters; KAN-131 Multi-Repo Executive Governance Snapshot Export; KAN-132 Native Terminal Session History
 
 ## Decision
 
@@ -596,6 +596,15 @@ Future scope:
 ### 0.10 Developer Distribution Surfaces
 
 Future goal: meet developers and agents where they work, while keeping GitGov as the policy source.
+
+Current primitives:
+
+- `KAN-132` starts the block with Desktop Workspace native terminal session history. It captures
+  commands typed into the current native terminal UI session, displays a compact local history with
+  shell/repo/branch/timestamp metadata, caps the list at 50 commands, and keeps the terminal
+  non-intercepting. It does not persist commands to the backend, create audit evidence, block
+  commands, approve releases, mutate providers/repos/deployments, or create compliance/certification
+  claims.
 
 Future scope:
 
