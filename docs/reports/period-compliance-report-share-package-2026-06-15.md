@@ -151,6 +151,48 @@ Known local validation limit:
 
 ## Production Validation
 
-Pending until the implementation PR is merged, Render deploys the new backend, production `v61`
-migration is applied, and a real production smoke creates, downloads, revokes, and re-download-blocks
-a share package.
+- Implementation PR `#416` merged to `main` as `1d1df77`.
+- PR checks passed:
+  - `Security Guard`.
+  - `Server Clippy + Check`.
+  - `Desktop Rust Clippy`.
+  - `Frontend Lint + Typecheck`.
+  - `Website Lint + Typecheck + Build`.
+  - `Validate Policy-as-Code`.
+  - `Validate quality_gates warn/block matrix`.
+  - `Workflow Lint`.
+  - `Sonar Scan + Quality Gate`.
+  - Vercel preview checks.
+- Post-merge `main` checks passed:
+  - `CI`.
+  - `Release Readiness Gate`.
+  - `Quality Gate Policy Matrix`.
+  - `Secret Scan`.
+  - `Public Naming Guard`.
+  - `Governance Correlation Smoke`.
+  - `Desktop Updater Readiness`.
+  - `SonarQube Governance`.
+- Render deploy `dep-d8o8t9u47okc738l7g7g` reached `live` for commit `1d1df77`.
+- Production `supabase_schema_v61.sql` and `supabase_schema_v61_postcheck.sql` passed.
+- `/health` returned `ok`.
+- Production smoke used Period Compliance Report
+  `cpr_9389010c74a34484a8e080942b56956e`.
+- The report was changed from `needs_review` to `reviewed` with reviewer `bootstrap-admin`.
+- Existing PDF export `cprpdf_0d2e6aad239125a198e64c1a307b158d` was found with hash
+  `sha256:0d2e6aad239125a198e64c1a307b158d54268612fcf8295550dda6c38ccf318e`.
+- A new provenance manifest was created:
+  - manifest id: `cprm_c3473263ece408fc12ca0bd5c7adc206`.
+  - manifest hash: `sha256:48bce2f7c8b36c0c72e7324f3d0f7535cb9a315a34a082aeefe525b7e0526ef9`.
+  - previous manifest hash:
+    `sha256:d380b0e66bb0bec0684c8a7adaa3ea10473f75e7d5fba49f99114647a072386f`.
+- Share package `cprsp_afaaed71cf684e63860915923722ce65` was created with:
+  - status: `active`.
+  - schema: `gitgov_period_compliance_report_share_package.v1`.
+  - artifact hash:
+    `sha256:49aa46f29c12a8a48286d099f171826c40584afc0094ad592344abd57b822e38`.
+- Download returned schema `gitgov_period_compliance_report_share_package.v1` and the same
+  package hash.
+- No-claim/manual flags stayed false for compliance claim, regulatory claim, certification,
+  compliance score, public link, email delivery, and Agent Governance usage.
+- Revoke changed package status to `revoked`.
+- A second download after revoke returned HTTP `409` with code `share_package_revoked`.
