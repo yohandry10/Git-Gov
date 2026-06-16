@@ -47,4 +47,14 @@ Local validation so far:
 - Diff grep confirmed KAN-141 did not add terminal write commands or mutating Control Plane
   commands.
 
-Full validation and PR checks are tracked before merge.
+PR validation:
+
+- PR `#491` passed required checks: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy,
+  Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate
+  quality_gates warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal
+  marker guard.
+- PR `#491` merged to `main` as `222e37ac`.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
+- No Render/API deploy was required because this was a Desktop/frontend read-only slice.

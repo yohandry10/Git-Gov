@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-141 Native Terminal Branch Gate Context Drilldown - 2026-06-16
 
-`KAN-141 - Native Terminal Branch Gate Context Drilldown` is implemented locally on branch
-`product/KAN-141-terminal-branch-gate-drilldown` for GitHub issue `#490`.
+`KAN-141 - Native Terminal Branch Gate Context Drilldown` is completed. GitHub issue `#490`
+shipped through PR `#491`, merged to `main` as `222e37ac`.
 
 Product decision:
 
@@ -43,7 +43,15 @@ Validation:
 - Frontend build passed with the pre-existing Vite large chunk warning.
 - `git diff --check`, publication guard, and diff grep for newly added terminal write/mutating
   Control Plane commands passed.
-- PR checks are pending before merge.
+- PR checks passed, including Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy,
+  Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate
+  quality_gates warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal
+  marker guard.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
+- No Render/API deploy was required because KAN-141 is Desktop/frontend local and reuses existing
+  read endpoints.
 
 ## KAN-140 Native Terminal Branch Gate Status Advisory - 2026-06-16
 
