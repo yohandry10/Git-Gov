@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-140 Native Terminal Branch Gate Status Advisory - 2026-06-16
 
-`KAN-140 - Native Terminal Branch Gate Status Advisory` is implemented locally on branch
-`product/KAN-140-terminal-branch-gate-advisory` for GitHub issue `#487`.
+`KAN-140 - Native Terminal Branch Gate Status Advisory` is completed. GitHub issue `#487`
+shipped through PR `#488`, merged to `main` as `b3b21f66`.
 
 Product decision:
 
@@ -49,7 +49,15 @@ Validation:
 - Full frontend Vitest passed (`410` tests).
 - Frontend build passed with the pre-existing Vite large chunk warning.
 - `git diff --check`, publication guard, and static no-mutation grep passed.
-- PR checks are pending before merge.
+- PR checks passed, including Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy,
+  Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate
+  quality_gates warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal
+  marker guard.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
+- No Render/API deploy was required because KAN-140 is Desktop/frontend local and reuses existing
+  read endpoints.
 
 ## KAN-139 Correct OpenAPI Route-Source Technical Debt - 2026-06-16
 
