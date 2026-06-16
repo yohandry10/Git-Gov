@@ -209,3 +209,15 @@ pub fn cmd_get_native_terminal_git_context(
 
     Ok(native_terminal_git_context(cwd, request.command.as_deref()))
 }
+
+#[tauri::command]
+pub fn cmd_get_native_terminal_tool_context(
+    request: CliNativeTerminalToolContextRequest,
+) -> Result<CliNativeTerminalToolContextResult, String> {
+    let cwd = request.cwd.trim();
+    if cwd.is_empty() {
+        return Err("cwd is required".to_string());
+    }
+
+    Ok(native_terminal_tool_context(cwd, request.command.as_deref()))
+}

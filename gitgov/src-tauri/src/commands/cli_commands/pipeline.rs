@@ -339,4 +339,142 @@ mod tests {
         let missing = resolve_terminal_cwd_after_command(temp.path(), Some("cd missing"));
         assert_eq!(missing, temp.path().canonicalize().expect("canonical temp"));
     }
+
+    fn detected_tool_names(context: &CliNativeTerminalToolContextResult) -> std::collections::BTreeSet<String> {
+        context
+            .tools
+            .iter()
+            .filter(|tool| tool.detected)
+            .map(|tool| tool.tool.clone())
+            .collect()
+    }
+
+    fn tool_detection<'a>(
+        context: &'a CliNativeTerminalToolContextResult,
+        name: &str,
+    ) -> &'a CliNativeTerminalToolDetection {
+        context
+            .tools
+            .iter()
+            .find(|tool| tool.tool == name)
+            .expect("tool detection")
+    }
+
+    #[test]
+    fn native_terminal_tool_context_detects_safe_local_tool_signals_only() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("main.tf"), "resource \"x\" \"y\" {}").expect("tf");
+        std::fs::write(temp.path().join("docker-compose.yml"), "services: {}").expect("compose");
+        std::fs::write(temp.path().join("Chart.yaml"), "apiVersion: v2").expect("chart");
+        std::fs::write(temp.path().join("kustomization.yaml"), "resources: []").expect("kustomize");
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), None);
+        let detected = detected_tool_names(&context);
+
+        assert_eq!(context.cwd_kind, "non_git");
+        assert!(detected.contains("terraform"));
+        assert!(detected.contains("docker-compose"));
+        assert!(detected.contains("helm"));
+        assert!(detected.contains("kubernetes"));
+        assert!(!context.scan_limited);
+        assert!(!context.secrets_read);
+        assert!(!context.network_used);
+        assert_eq!(
+            tool_detection(&context, "terraform").safe_command_ids,
+            vec!["terraform-fmt-check".to_string(), "terraform-validate".to_string()]
+        );
+        assert_eq!(
+            tool_detection(&context, "docker-compose").reason,
+            "docker_compose_file_present"
+        );
+    }
+
+    #[test]
+    fn native_terminal_tool_context_uses_lockfiles_and_safe_directory_names() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join(".terraform.lock.hcl"), "# lock").expect("lock");
+        std::fs::create_dir(temp.path().join("templates")).expect("templates");
+        std::fs::create_dir(temp.path().join("manifests")).expect("manifests");
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), None);
+        let detected = detected_tool_names(&context);
+
+        assert!(detected.contains("terraform"));
+        assert!(detected.contains("helm"));
+        assert!(detected.contains("kubernetes"));
+        assert_eq!(
+            tool_detection(&context, "terraform").reason,
+            "terraform_lockfile_present"
+        );
+        assert_eq!(
+            tool_detection(&context, "helm").reason,
+            "helm_templates_directory_present"
+        );
+    }
+
+    #[test]
+    fn native_terminal_tool_context_does_not_treat_secret_files_as_detection_or_output() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("prod.tfvars"), "token = \"secret\"").expect("tfvars");
+        std::fs::write(temp.path().join("terraform.tfstate"), "{\"secret\":\"value\"}").expect("tfstate");
+        std::fs::write(temp.path().join(".env"), "TOKEN=secret").expect("env");
+        std::fs::write(temp.path().join("secret-values.yaml"), "password: secret").expect("secret");
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), None);
+        let serialized = serde_json::to_string(&context).expect("serialize context");
+
+        assert!(detected_tool_names(&context).is_empty());
+        assert!(!context.secrets_read);
+        assert!(!serialized.contains(temp.path().to_string_lossy().as_ref()));
+        assert!(!serialized.contains("prod.tfvars"));
+        assert!(!serialized.contains("terraform.tfstate"));
+        assert!(!serialized.contains("secret-values.yaml"));
+        assert!(!serialized.contains("TOKEN"));
+        assert!(!serialized.contains("password"));
+    }
+
+    #[test]
+    fn native_terminal_tool_context_ignores_heavy_or_sensitive_directories() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        for dir in [".terraform", "node_modules", ".git", "target", "dist", "build", ".next"] {
+            let nested = temp.path().join(dir);
+            std::fs::create_dir(&nested).expect("ignored dir");
+            std::fs::write(nested.join("main.tf"), "resource \"x\" \"y\" {}").expect("ignored file");
+            std::fs::write(nested.join("docker-compose.yml"), "services: {}").expect("ignored compose");
+        }
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), None);
+
+        assert!(detected_tool_names(&context).is_empty());
+        assert!(!context.scan_limited);
+    }
+
+    #[test]
+    fn native_terminal_tool_context_limits_scanning_and_marks_limited() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        for index in 0..=TOOL_SCAN_MAX_ENTRIES {
+            std::fs::write(temp.path().join(format!("file-{index}.txt")), "x").expect("file");
+        }
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), None);
+
+        assert!(context.scan_limited);
+        assert!(!context.secrets_read);
+        assert!(!context.network_used);
+    }
+
+    #[test]
+    fn native_terminal_tool_context_resolves_simple_cd_without_exposing_paths() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let nested = temp.path().join("infra");
+        std::fs::create_dir(&nested).expect("nested");
+        std::fs::write(nested.join("main.tf"), "resource \"x\" \"y\" {}").expect("tf");
+
+        let context = native_terminal_tool_context(temp.path().to_str().unwrap(), Some("cd infra"));
+        let serialized = serde_json::to_string(&context).expect("serialize context");
+
+        assert!(detected_tool_names(&context).contains("terraform"));
+        assert!(!serialized.contains(temp.path().to_string_lossy().as_ref()));
+        assert!(!serialized.contains("infra"));
+    }
 }

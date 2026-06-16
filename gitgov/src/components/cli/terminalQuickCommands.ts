@@ -1,4 +1,8 @@
 import type { NativeTerminalGitContext } from './terminalGitContext'
+import {
+  terminalToolContextHasCommand,
+  type NativeTerminalToolContext,
+} from './terminalToolContext'
 
 export interface TerminalQuickCommand {
   id: string
@@ -15,6 +19,7 @@ export interface TerminalQuickCommand {
 }
 
 export interface TerminalQuickCommandView extends TerminalQuickCommand {
+  availableInWorkspace: boolean
   disabled: boolean
   disabledReason?: string
 }
@@ -199,11 +204,14 @@ export function isReadOnlyTerminalQuickCommand(command: string): boolean {
 
 export function buildTerminalQuickCommandViews(
   context: NativeTerminalGitContext | null,
+  toolContext?: NativeTerminalToolContext | null,
 ): TerminalQuickCommandView[] {
   const isGitRepo = context?.is_git_repo === true
 
   return SAFE_TERMINAL_QUICK_COMMANDS.map((quickCommand) => {
     const structurallySafe = isReadOnlyTerminalQuickCommand(quickCommand.command)
+    const availableInWorkspace = quickCommand.group === 'provider-tool' &&
+      terminalToolContextHasCommand(toolContext ?? null, quickCommand.tool, quickCommand.id)
     const disabled = !quickCommand.enabled ||
       quickCommand.requiresNetwork ||
       quickCommand.mayExposeSecrets ||
@@ -211,6 +219,7 @@ export function buildTerminalQuickCommandViews(
       (quickCommand.requiresGitRepo && !isGitRepo)
     return {
       ...quickCommand,
+      availableInWorkspace,
       disabled,
       disabledReason: !quickCommand.enabled
         ? 'Command is disabled pending safety review'

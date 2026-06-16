@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { NativeTerminalGitContext } from '@/components/cli/terminalGitContext'
+import type { NativeTerminalToolContext } from '@/components/cli/terminalToolContext'
 import { TerminalQuickCommandsMenu } from '@/components/cli/TerminalQuickCommandsMenu'
 
 const gitContext: NativeTerminalGitContext = {
@@ -9,6 +10,44 @@ const gitContext: NativeTerminalGitContext = {
   repo_name: 'GitGov',
   branch: 'main',
   commit_short: 'abc1234',
+  detected_at_ms: 1_700_000_000_000,
+}
+
+const terraformToolContext: NativeTerminalToolContext = {
+  cwd_kind: 'git_repo',
+  tools: [
+    {
+      tool: 'terraform',
+      detected: true,
+      confidence: 'high',
+      reason: 'terraform_files_present',
+      safe_command_ids: ['terraform-fmt-check', 'terraform-validate'],
+    },
+    {
+      tool: 'docker-compose',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['docker-compose-services', 'docker-compose-check'],
+    },
+    {
+      tool: 'helm',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['helm-lint-local'],
+    },
+    {
+      tool: 'kubernetes',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['kubectl-current-context', 'kubectl-list-contexts'],
+    },
+  ],
+  scan_limited: false,
+  secrets_read: false,
+  network_used: false,
   detected_at_ms: 1_700_000_000_000,
 }
 
@@ -58,6 +97,37 @@ describe('native terminal quick commands menu', () => {
       enabled: true,
       requiresNetwork: false,
       mayExposeSecrets: false,
+    })
+  })
+
+  it('surfaces detected local tool commands quietly without exposing cwd', () => {
+    const onInsert = vi.fn()
+
+    render(
+      <TerminalQuickCommandsMenu
+        context={gitContext}
+        toolContext={terraformToolContext}
+        disabled={false}
+        isOpen
+        recentCommands={[]}
+        onToggle={vi.fn()}
+        onInsert={onInsert}
+      />,
+    )
+
+    expect(screen.getByText('Terraform detected')).toBeInTheDocument()
+    expect(screen.getByText('Available in this workspace')).toBeInTheDocument()
+    expect(screen.getAllByText('Other safe commands')).toHaveLength(1)
+    expect(screen.queryByText(/C:\/work/)).not.toBeInTheDocument()
+
+    const commandButton = screen.getByText('terraform validate -no-color').closest('button')
+    expect(commandButton).not.toBeNull()
+    fireEvent.click(commandButton!)
+
+    expect(onInsert).toHaveBeenCalledTimes(1)
+    expect(onInsert.mock.calls[0][0]).toMatchObject({
+      command: 'terraform validate -no-color',
+      availableInWorkspace: true,
     })
   })
 

@@ -19,6 +19,7 @@ import {
   terminalGitContextTitle,
   type NativeTerminalGitContext,
 } from './terminalGitContext'
+import type { NativeTerminalToolContext } from './terminalToolContext'
 import { TerminalQuickCommandsMenu } from './TerminalQuickCommandsMenu'
 import {
   buildTerminalQuickCommandInsertInput,
@@ -64,6 +65,9 @@ export function TerminalPanel() {
   const [sessionCommands, setSessionCommands] = useState<TerminalSessionCommand[]>([])
   const [recentQuickCommands, setRecentQuickCommands] = useState<string[]>([])
   const [terminalGitContext, setTerminalGitContext] = useState<NativeTerminalGitContext | null>(null)
+  const [terminalToolContextBySession, setTerminalToolContextBySession] = useState<
+    Record<string, NativeTerminalToolContext>
+  >({})
 
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<XTerm | null>(null)
@@ -73,6 +77,7 @@ export function TerminalPanel() {
   const sessionCwdRef = useRef<string | null>(null)
   const mountedRef = useRef(false)
   const startRequestIdRef = useRef(0)
+  const contextRequestIdRef = useRef(0)
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve())
   const nativeTerminalDisabledRef = useRef(false)
   const commandDraftRef = useRef('')
@@ -138,8 +143,12 @@ export function TerminalPanel() {
   const loadTerminalGitContext = useCallback(
     async (command?: string) => {
       const cwd = terminalCwdRef.current
+      const requestId = contextRequestIdRef.current + 1
+      contextRequestIdRef.current = requestId
+      const sessionAtRequest = sessionIdRef.current
       if (!cwd) {
         setTerminalGitContext(null)
+        setTerminalToolContextBySession({})
         return
       }
 
@@ -150,10 +159,54 @@ export function TerminalPanel() {
             command: command ?? null,
           },
         })
+        if (
+          !mountedRef.current ||
+          contextRequestIdRef.current !== requestId ||
+          sessionIdRef.current !== sessionAtRequest
+        ) {
+          return
+        }
         terminalCwdRef.current = context.cwd
         setTerminalGitContext(context)
+        try {
+          const toolContext = await tauriInvoke<NativeTerminalToolContext>(
+            'cmd_get_native_terminal_tool_context',
+            {
+              request: {
+                session_id: sessionIdRef.current,
+                cwd: context.cwd,
+              },
+            },
+          )
+          if (
+            mountedRef.current &&
+            contextRequestIdRef.current === requestId &&
+            sessionIdRef.current === sessionAtRequest &&
+            sessionAtRequest
+          ) {
+            setTerminalToolContextBySession((current) => ({
+              ...current,
+              [sessionAtRequest]: toolContext,
+            }))
+          }
+        } catch {
+          if (
+            mountedRef.current &&
+            contextRequestIdRef.current === requestId &&
+            sessionAtRequest
+          ) {
+            setTerminalToolContextBySession((current) => {
+              const next = { ...current }
+              delete next[sessionAtRequest]
+              return next
+            })
+          }
+        }
       } catch {
-        setTerminalGitContext(null)
+        if (mountedRef.current && contextRequestIdRef.current === requestId) {
+          setTerminalGitContext(null)
+          setTerminalToolContextBySession({})
+        }
       }
     },
     [],
@@ -236,7 +289,9 @@ export function TerminalPanel() {
         terminal.clear()
         commandDraftRef.current = ''
         terminalCwdRef.current = null
+        contextRequestIdRef.current += 1
         setTerminalGitContext(null)
+        setTerminalToolContextBySession({})
         setSessionCommands([])
         setRecentQuickCommands([])
         if (mountedRef.current) {
@@ -256,6 +311,7 @@ export function TerminalPanel() {
       commandDraftRef.current = ''
       terminalCwdRef.current = repoPath
       setRecentQuickCommands([])
+      setTerminalToolContextBySession({})
 
       setIsConnecting(true)
       fitAddon.fit()
@@ -422,7 +478,9 @@ export function TerminalPanel() {
         sessionIdRef.current = null
         sessionCwdRef.current = null
         terminalCwdRef.current = null
+        contextRequestIdRef.current += 1
         setTerminalGitContext(null)
+        setTerminalToolContextBySession({})
         setShowQuickCommands(false)
         if (mountedRef.current) {
           setSessionId(null)
@@ -479,6 +537,8 @@ export function TerminalPanel() {
     statusClass = 'border-warning-500/30 bg-warning-500/10 text-warning-300'
   }
 
+  const terminalToolContext = sessionId ? terminalToolContextBySession[sessionId] ?? null : null
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-950">
       <div className="flex items-center gap-2 border-b border-surface-800 bg-surface-900/60 px-3 py-1.5">
@@ -516,6 +576,7 @@ export function TerminalPanel() {
           </button>
           <TerminalQuickCommandsMenu
             context={terminalGitContext}
+            toolContext={terminalToolContext}
             disabled={!sessionId || isConnecting || nativeTerminalDisabled}
             isOpen={showQuickCommands}
             recentCommands={recentQuickCommands}

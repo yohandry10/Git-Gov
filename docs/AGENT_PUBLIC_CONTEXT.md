@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-143` Native Terminal Provider Quick Commands Safety Registry MVP
+Ticket: `KAN-144` Native Terminal Local Provider/Tool Context Detection MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -139,6 +139,12 @@ The repo already contains substantial product surface:
   `git remote -v` so remote URLs are not printed. It does not auto-run commands, call the backend,
   require network access, expose secrets, mutate providers/repos/clusters/deployments, or create
   enforcement/compliance evidence.
+- KAN-144 adds local provider/tool context detection for the native terminal quick-command menu. It
+  detects Terraform, Docker Compose, Helm, and Kubernetes context from bounded local file/directory
+  names only, stores the result by terminal session, and quietly groups detected safe commands under
+  `Available in this workspace`. It does not read file contents, return absolute paths, call the
+  backend, execute commands, use tokens, mutate providers/repos/clusters/deployments, or create
+  enforcement/compliance evidence.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -239,6 +245,12 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` continues
+Desktop/Workspace terminal distribution by detecting local Terraform, Docker Compose, Helm, and
+Kubernetes context from safe bounded filesystem names only. It uses the KAN-143 registry to surface
+`Available in this workspace` commands without auto-run, backend calls, secret reads, path exposure,
+or mutation.
 
 `KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` is completed through
 PR `#496` as `e0ee3f9b`. It continues
