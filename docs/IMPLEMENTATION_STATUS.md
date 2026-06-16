@@ -4,8 +4,9 @@ Updated: 2026-06-16
 
 ## KAN-120 First Governed Repo Integration Wizard - 2026-06-16
 
-`KAN-120 - First Governed Repo Setup Integration Wizard` is implemented locally and pending PR,
-merge, Render deploy, and production smoke.
+`KAN-120 - First Governed Repo Setup Integration Wizard` is completed. PR `#419` merged to `main`
+as `e244c1c`; Render deploy `dep-d8o9t619rddc73cugjvg` reached `live`; no database migration was
+required; production smoke passed.
 
 Product decision:
 
@@ -43,6 +44,22 @@ Validation completed locally:
 - Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed).
 - Frontend typecheck, lint, focused store test, full Vitest suite (`373` passed), and production
   build.
+
+Post-merge and production validation:
+
+- PR checks passed.
+- Post-merge `main` CI and required guardrails passed for `e244c1c`.
+- Render deploy `dep-d8o9t619rddc73cugjvg` for `e244c1c` reached `live`.
+- Production smoke:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - Initial `GET /onboarding/first-governed-repo/state?org_name=yohandry10` returned `found=false`.
+  - `POST /onboarding/first-governed-repo/runs` created run
+    `71d55474-0833-4d15-b485-6281792841ae`.
+  - `validate` returned `stores_secret_values=false` and `providerHealthCount=3`.
+  - `plan` returned `provider_mutation=false` and `deployment_gate_mode=advisory`.
+  - `complete` returned `status=completed`, `release_blocking_default=false`,
+    `agent_governance_required=false`, and `compliance_claim=false`.
 
 Report: `docs/reports/first-governed-repo-integration-wizard-2026-06-16.md`.
 
