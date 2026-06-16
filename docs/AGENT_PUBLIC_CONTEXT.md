@@ -79,8 +79,9 @@ The repo already contains substantial product surface:
   stable route `/change-risk/cab-decision-manifests/{manifest_id}/detail`. It remains manual
   evidence only and does not enforce, block releases, deploy, mutate providers/repos, use AI/Agent
   Governance, or create legal/compliance/certification claims.
-- Deployment Gate Risk & CAB Evidence Context from KAN-128 is in progress. It reconnects the completed
-  Change Risk/CAB chain to Deployment Gate History through a read-only context endpoint and Desktop
+- Deployment Gate Risk & CAB Evidence Context from KAN-128 is completed and production-validated. It
+  reconnects the completed Change Risk/CAB chain to Deployment Gate History through read-only
+  `GET /deployment-gates/{deployment_gate_id}/risk-context` and a Desktop `Risk & CAB Context`
   section. It does not create a new table, recalculate risk, mutate gates/evaluations/packets/manifests,
   create CAB artifacts automatically, enforce releases, deploy, use AI/Agent Governance, or create
   compliance/certification/legal claims.
