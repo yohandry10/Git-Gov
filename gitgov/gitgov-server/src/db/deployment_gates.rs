@@ -457,6 +457,239 @@ impl Database {
             .collect())
     }
 
+    pub async fn create_executive_governance_snapshot(
+        &self,
+        input: &CreateExecutiveGovernanceSnapshotInput<'_>,
+    ) -> Result<ExecutiveGovernanceSnapshotRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO executive_governance_snapshots (
+                snapshot_id,
+                org_id,
+                name,
+                filters_json,
+                artifact_hash,
+                artifact_json,
+                repository_count,
+                created_by_user_id
+            )
+            VALUES ($1, $2::uuid, $3, $4::jsonb, $5, $6::jsonb, $7, $8)
+            RETURNING
+                snapshot_id,
+                org_id::text,
+                name,
+                filters_json,
+                artifact_hash,
+                repository_count,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(input.snapshot_id)
+        .bind(input.org_id)
+        .bind(input.name)
+        .bind(input.filters_json)
+        .bind(input.artifact_hash)
+        .bind(input.artifact_json)
+        .bind(input.repository_count)
+        .bind(input.created_by_user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(executive_governance_snapshot_from_row(&row))
+    }
+
+    pub async fn list_executive_governance_snapshots(
+        &self,
+        input: &ListExecutiveGovernanceSnapshotsInput<'_>,
+    ) -> Result<(Vec<ExecutiveGovernanceSnapshotRecord>, i64), DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                snapshot_id,
+                org_id::text,
+                name,
+                filters_json,
+                artifact_hash,
+                repository_count,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id,
+                COUNT(*) OVER() AS total_count
+            FROM executive_governance_snapshots
+            WHERE org_id = $1::uuid
+              AND ($2::TEXT IS NULL OR status = $2)
+            ORDER BY created_at DESC, snapshot_id DESC
+            LIMIT $3
+            OFFSET $4
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.status)
+        .bind(input.limit)
+        .bind(input.offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let total = rows
+            .first()
+            .map(|row| row.get::<i64, _>("total_count"))
+            .unwrap_or(0);
+        let items = rows
+            .iter()
+            .map(executive_governance_snapshot_from_row)
+            .collect();
+        Ok((items, total))
+    }
+
+    pub async fn get_executive_governance_snapshot(
+        &self,
+        org_id: &str,
+        snapshot_id: &str,
+    ) -> Result<Option<ExecutiveGovernanceSnapshotRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                snapshot_id,
+                org_id::text,
+                name,
+                filters_json,
+                artifact_hash,
+                repository_count,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            FROM executive_governance_snapshots
+            WHERE org_id = $1::uuid
+              AND snapshot_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(snapshot_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| executive_governance_snapshot_from_row(&row)))
+    }
+
+    pub async fn get_executive_governance_snapshot_artifact(
+        &self,
+        org_id: &str,
+        snapshot_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT artifact_json
+            FROM executive_governance_snapshots
+            WHERE org_id = $1::uuid
+              AND snapshot_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(snapshot_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("artifact_json")))
+    }
+
+    pub async fn download_executive_governance_snapshot(
+        &self,
+        org_id: &str,
+        snapshot_id: &str,
+    ) -> Result<Option<(ExecutiveGovernanceSnapshotRecord, serde_json::Value)>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE executive_governance_snapshots
+            SET download_count = download_count + 1,
+                downloaded_at = NOW()
+            WHERE org_id = $1::uuid
+              AND snapshot_id = $2
+              AND status = 'active'
+            RETURNING
+                snapshot_id,
+                org_id::text,
+                name,
+                filters_json,
+                artifact_hash,
+                artifact_json,
+                repository_count,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(org_id)
+        .bind(snapshot_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let artifact = row.get("artifact_json");
+            (executive_governance_snapshot_from_row(&row), artifact)
+        }))
+    }
+
+    pub async fn archive_executive_governance_snapshot(
+        &self,
+        input: &ArchiveExecutiveGovernanceSnapshotInput<'_>,
+    ) -> Result<Option<ExecutiveGovernanceSnapshotRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE executive_governance_snapshots
+            SET status = 'archived',
+                archived_at = COALESCE(archived_at, NOW()),
+                archived_by_user_id = COALESCE(archived_by_user_id, $3)
+            WHERE org_id = $1::uuid
+              AND snapshot_id = $2
+            RETURNING
+                snapshot_id,
+                org_id::text,
+                name,
+                filters_json,
+                artifact_hash,
+                repository_count,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.snapshot_id)
+        .bind(input.archived_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| executive_governance_snapshot_from_row(&row)))
+    }
+
     pub async fn create_deployment_gate_break_glass_approval(
         &self,
         org_id: &str,

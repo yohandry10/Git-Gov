@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { ExecutiveGovernanceSnapshotsPanel } from './ExecutiveGovernanceSnapshotsPanel'
 
 function postureVariant(posture: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
   if (posture === 'healthy') return 'success'
@@ -70,6 +71,17 @@ export function MultiRepoExecutiveGovernancePanel() {
 
   const totals = executiveView?.totals
   const repositories = executiveView?.repositories ?? []
+  const appliedQuery = {
+    org_name: selectedOrgName || null,
+    repository: appliedFilters.repository.trim() || null,
+    environment: appliedFilters.environment.trim() || null,
+    posture: appliedFilters.posture || null,
+    gate_decision: appliedFilters.gateDecision || null,
+    risk_level: appliedFilters.riskLevel || null,
+    review_status: appliedFilters.reviewStatus || null,
+    limit: 100,
+    offset: 0,
+  }
 
   return (
     <section id="multi-repo-executive-governance" className="glass-panel p-5 scroll-mt-4">
@@ -226,6 +238,8 @@ export function MultiRepoExecutiveGovernancePanel() {
           {error}
         </div>
       )}
+
+      <ExecutiveGovernanceSnapshotsPanel filters={appliedQuery} repositoryCount={repositories.length} />
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-white/8 bg-surface-900/60">
         <div className="grid min-w-[860px] grid-cols-[minmax(180px,2fr)_110px_90px_90px_90px_90px_minmax(140px,1fr)] gap-2 border-b border-white/6 px-3 py-2 text-[10px] font-medium uppercase text-surface-500">

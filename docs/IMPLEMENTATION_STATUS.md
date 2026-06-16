@@ -2,6 +2,22 @@
 
 Updated: 2026-06-16
 
+## KAN-131 Multi-Repo Executive Governance Snapshot Export - 2026-06-16
+
+`KAN-131 - Multi-Repo Executive Governance Snapshot Export` is in implementation on branch
+`product/KAN-131-executive-governance-snapshot-export` with GitHub issue `#459`.
+
+Scope:
+
+- Create/list/get/download/archive executive governance snapshots.
+- Persist `executive_governance_snapshots` through Supabase migration `v68`.
+- Reuse KAN-130 filtered `GET /executive/repositories` as the only source.
+- Add Tauri/store/Desktop controls and focused real tests.
+
+Guardrails: read-only, manual-first, advisory-only, no scoring, no enforcement, no deploy
+execution, no provider/repo mutation, no AI/Agent Governance dependency, and no
+compliance/certification/legal claim.
+
 ## KAN-130 Multi-Repo Executive Governance Filters - 2026-06-16
 
 `KAN-130 - Multi-Repo Executive Governance Filters MVP` is completed. PR `#457` merged to `main` as

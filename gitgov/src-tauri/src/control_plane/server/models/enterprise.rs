@@ -429,6 +429,62 @@ pub struct MultiRepoExecutiveGovernanceResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotRecord {
+    pub snapshot_id: String,
+    pub org_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub filters: serde_json::Value,
+    pub artifact_hash: String,
+    pub repository_count: i64,
+    pub status: String,
+    pub created_by_user_id: String,
+    pub created_at: i64,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+    pub download_count: i64,
+    #[serde(default)]
+    pub archived_at: Option<i64>,
+    #[serde(default)]
+    pub archived_by_user_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ExecutiveGovernanceSnapshotRequest {
+    pub org_name: Option<String>,
+    pub name: String,
+    pub filters: MultiRepoExecutiveGovernanceQuery,
+    pub include_repository_rows: bool,
+    pub include_summary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ExecutiveGovernanceSnapshotQuery {
+    pub org_name: Option<String>,
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotResponse {
+    pub snapshot: ExecutiveGovernanceSnapshotRecord,
+    #[serde(default)]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotListResponse {
+    #[serde(default)]
+    pub items: Vec<ExecutiveGovernanceSnapshotRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChangeRiskEvaluationRecord {
     pub evaluation_id: String,
     pub org_id: String,

@@ -1308,6 +1308,146 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().multiRepoExecutiveGovernanceUpdatedAt).toBe(10)
     })
 
+    it('manages executive governance snapshots with filtered hashable artifacts', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const snapshot = {
+        snapshot_id: 'egs_1234567890abcdef1234567890abcdef',
+        org_id: 'org-1',
+        name: 'Production risk snapshot',
+        filters: {
+          environment: 'production',
+          posture: 'attention',
+          risk_level: 'high',
+          limit: 100,
+          offset: 0,
+        },
+        artifact_hash: 'sha256:' + 'b'.repeat(64),
+        repository_count: 1,
+        status: 'active',
+        created_by_user_id: 'admin',
+        created_at: 10,
+        downloaded_at: null,
+        download_count: 0,
+        archived_at: null,
+        archived_by_user_id: null,
+      }
+      const artifact = {
+        schema_version: 'gitgov_executive_governance_snapshot.v1',
+        snapshot_id: snapshot.snapshot_id,
+        filters: snapshot.filters,
+        repository_count: 1,
+        repositories: [{ repository_full_name: 'yohandry10/Git-Gov', posture: 'attention' }],
+        artifact_hash: snapshot.artifact_hash,
+        flags: {
+          read_only: true,
+          manual_first: true,
+          advisory_only: true,
+          enforcement_used: false,
+          compliance_claim: false,
+          certification: false,
+        },
+      }
+      mockInvoke
+        .mockResolvedValueOnce({ items: [snapshot], total: 1, limit: 10, offset: 0 })
+        .mockResolvedValueOnce({ snapshot, artifact })
+        .mockResolvedValueOnce({ snapshot, artifact })
+        .mockResolvedValueOnce(artifact)
+        .mockResolvedValueOnce({
+          snapshot: {
+            ...snapshot,
+            status: 'archived',
+            archived_at: 20,
+            archived_by_user_id: 'admin',
+          },
+          artifact: null,
+        })
+
+      const listed = await useControlPlaneStore.getState().loadExecutiveGovernanceSnapshots({
+        status: 'active',
+      })
+      const created = await useControlPlaneStore.getState().createExecutiveGovernanceSnapshot({
+        name: ' Production risk snapshot ',
+        filters: {
+          environment: 'production',
+          posture: 'attention',
+          risk_level: 'high',
+          limit: 100,
+          offset: 0,
+        },
+      })
+      const fetched = await useControlPlaneStore
+        .getState()
+        .getExecutiveGovernanceSnapshot(` ${snapshot.snapshot_id} `)
+      const downloaded = await useControlPlaneStore
+        .getState()
+        .downloadExecutiveGovernanceSnapshot(` ${snapshot.snapshot_id} `)
+      const archived = await useControlPlaneStore
+        .getState()
+        .archiveExecutiveGovernanceSnapshot(` ${snapshot.snapshot_id} `)
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_list_executive_governance_snapshots', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        query: {
+          org_name: 'yohandry10',
+          status: 'active',
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_create_executive_governance_snapshot', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: {
+          org_name: 'yohandry10',
+          name: ' Production risk snapshot ',
+          filters: {
+            environment: 'production',
+            posture: 'attention',
+            risk_level: 'high',
+            limit: 100,
+            offset: 0,
+            org_name: null,
+          },
+          include_repository_rows: true,
+          include_summary: true,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_get_executive_governance_snapshot', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        snapshotId: snapshot.snapshot_id,
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_download_executive_governance_snapshot', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        snapshotId: snapshot.snapshot_id,
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(5, 'cmd_server_archive_executive_governance_snapshot', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        snapshotId: snapshot.snapshot_id,
+        payload: {
+          org_name: 'yohandry10',
+          name: 'archive executive governance snapshot',
+          filters: {},
+          include_repository_rows: true,
+          include_summary: true,
+        },
+      })
+      expect(listed?.total).toBe(1)
+      expect(created?.artifact?.flags).toEqual(expect.objectContaining({
+        read_only: true,
+        compliance_claim: false,
+        certification: false,
+      }))
+      expect(fetched?.snapshot.artifact_hash).toBe(snapshot.artifact_hash)
+      expect(downloaded?.artifact_hash).toBe(snapshot.artifact_hash)
+      expect(archived?.snapshot.status).toBe('archived')
+      expect(useControlPlaneStore.getState().executiveGovernanceSnapshotArtifact?.artifact_hash).toBe(snapshot.artifact_hash)
+      expect(useControlPlaneStore.getState().executiveGovernanceSnapshots[0].status).toBe('archived')
+    })
+
     it('loads change risk advisory history with tenant scope and release filters', async () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },

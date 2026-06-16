@@ -1535,6 +1535,281 @@ async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
         "invalid posture must fail closed: {response}"
     );
 
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/executive/snapshots",
+        Some(
+            &json!({
+                "org_name": "executive-org",
+                "name": "KAN-131 unfiltered executive snapshot",
+                "filters": {
+                    "limit": 10,
+                    "offset": 0
+                },
+                "include_repository_rows": true,
+                "include_summary": true
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "unfiltered executive snapshot create: {response}"
+    );
+    let unfiltered_snapshot: serde_json::Value =
+        serde_json::from_str(&response).expect("unfiltered snapshot JSON");
+    assert_eq!(unfiltered_snapshot["snapshot"]["repository_count"], 2);
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["schema_version"],
+        "gitgov_executive_governance_snapshot.v1"
+    );
+    assert_eq!(unfiltered_snapshot["artifact"]["flags"]["read_only"], true);
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["manual_first"],
+        true
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["advisory_only"],
+        true
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["enforcement_used"],
+        false
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["deployment_execution"],
+        false
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["provider_mutation"],
+        false
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["repository_mutation"],
+        false
+    );
+    assert_eq!(unfiltered_snapshot["artifact"]["flags"]["llm_used"], false);
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["agent_governance_used"],
+        false
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["compliance_claim"],
+        false
+    );
+    assert_eq!(
+        unfiltered_snapshot["artifact"]["flags"]["certification"],
+        false
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/executive/snapshots",
+        Some(
+            &json!({
+                "org_name": "executive-org",
+                "name": "KAN-131 production attention snapshot",
+                "filters": {
+                    "environment": "production",
+                    "posture": "attention",
+                    "gate_decision": "blocked",
+                    "risk_level": "high",
+                    "review_status": "accepted_risk",
+                    "limit": 10,
+                    "offset": 0
+                },
+                "include_repository_rows": true,
+                "include_summary": true
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "filtered executive snapshot create: {response}"
+    );
+    let filtered_snapshot: serde_json::Value =
+        serde_json::from_str(&response).expect("filtered snapshot JSON");
+    let snapshot_id = filtered_snapshot["snapshot"]["snapshot_id"]
+        .as_str()
+        .expect("snapshot id")
+        .to_string();
+    let snapshot_hash = filtered_snapshot["snapshot"]["artifact_hash"]
+        .as_str()
+        .expect("snapshot hash")
+        .to_string();
+    assert!(snapshot_id.starts_with("egs_"));
+    assert_eq!(filtered_snapshot["snapshot"]["repository_count"], 1);
+    assert_eq!(
+        filtered_snapshot["artifact"]["repositories"][0]["repository_full_name"],
+        "executive-org/payments"
+    );
+    assert_eq!(
+        filtered_snapshot["artifact"]["filters"]["environment"],
+        "production"
+    );
+    assert_eq!(
+        filtered_snapshot["artifact"]["filters"]["posture"],
+        "attention"
+    );
+    assert_eq!(filtered_snapshot["artifact"]["summary"]["repositories"], 1);
+
+    let mut snapshot_preimage = filtered_snapshot["artifact"].clone();
+    snapshot_preimage["artifact_hash"] = serde_json::Value::Null;
+    assert_eq!(canonical_json_hash(&snapshot_preimage), snapshot_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/snapshots?org_name=executive-org&status=active&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor list snapshots: {response}");
+    let snapshot_list: serde_json::Value =
+        serde_json::from_str(&response).expect("snapshot list JSON");
+    assert_eq!(snapshot_list["total"], 2);
+    assert!(snapshot_list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["snapshot_id"] == snapshot_id));
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/executive/snapshots/{snapshot_id}?org_name=executive-org"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor get snapshot: {response}");
+    let fetched_snapshot: serde_json::Value =
+        serde_json::from_str(&response).expect("fetched snapshot JSON");
+    assert_eq!(fetched_snapshot["snapshot"]["artifact_hash"], snapshot_hash);
+    assert_eq!(
+        fetched_snapshot["artifact"]["repositories"][0]["repository_full_name"],
+        "executive-org/payments"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/executive/snapshots/{snapshot_id}/download?org_name=executive-org"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor download snapshot: {response}"
+    );
+    let downloaded_snapshot: serde_json::Value =
+        serde_json::from_str(&response).expect("downloaded snapshot JSON");
+    assert_eq!(downloaded_snapshot["artifact_hash"], snapshot_hash);
+    let mut downloaded_preimage = downloaded_snapshot.clone();
+    downloaded_preimage["artifact_hash"] = serde_json::Value::Null;
+    assert_eq!(canonical_json_hash(&downloaded_preimage), snapshot_hash);
+    let download_count: i64 = sqlx::query_scalar(
+        "SELECT download_count FROM executive_governance_snapshots WHERE snapshot_id = $1",
+    )
+    .bind(&snapshot_id)
+    .fetch_one(&pool)
+    .await
+    .expect("snapshot download count");
+    assert_eq!(download_count, 1);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/executive/snapshots",
+        Some(
+            &json!({
+                "org_name": "executive-org",
+                "name": "Developer should not create executive snapshot",
+                "filters": {"limit": 10}
+            })
+            .to_string(),
+        ),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not create snapshot: {response}"
+    );
+
+    let agent_token = create_agent_key(&app, &admin_key).await;
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/snapshots?org_name=executive-org",
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not list executive snapshots: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/snapshots?org_name=executive-org",
+        None,
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "other tenant must not list executive snapshots: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/executive/snapshots/{snapshot_id}/archive"),
+        Some(r#"{"org_name":"executive-org","name":"archive"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "archive snapshot: {response}");
+    let archived_snapshot: serde_json::Value =
+        serde_json::from_str(&response).expect("archived snapshot JSON");
+    assert_eq!(archived_snapshot["snapshot"]["status"], "archived");
+    assert_eq!(
+        archived_snapshot["snapshot"]["artifact_hash"],
+        snapshot_hash
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/executive/snapshots/{snapshot_id}/download?org_name=executive-org"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "archived snapshot download must be blocked: {response}"
+    );
+
     let after_gate_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
     )

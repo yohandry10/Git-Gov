@@ -3,17 +3,40 @@ import { MultiRepoExecutiveGovernancePanel } from '@/components/control_plane/Mu
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 
 const loadMultiRepoExecutiveGovernance = vi.fn().mockResolvedValue(null)
+const loadExecutiveGovernanceSnapshots = vi.fn().mockResolvedValue(null)
+const createExecutiveGovernanceSnapshot = vi.fn().mockResolvedValue(null)
+const getExecutiveGovernanceSnapshot = vi.fn().mockResolvedValue(null)
+const downloadExecutiveGovernanceSnapshot = vi.fn().mockResolvedValue(null)
+const archiveExecutiveGovernanceSnapshot = vi.fn().mockResolvedValue(null)
 
 describe('MultiRepoExecutiveGovernancePanel', () => {
   beforeEach(() => {
     loadMultiRepoExecutiveGovernance.mockClear()
+    loadExecutiveGovernanceSnapshots.mockClear()
+    createExecutiveGovernanceSnapshot.mockClear()
+    getExecutiveGovernanceSnapshot.mockClear()
+    downloadExecutiveGovernanceSnapshot.mockClear()
+    archiveExecutiveGovernanceSnapshot.mockClear()
     useControlPlaneStore.setState({
       selectedOrgName: 'yohandry10',
       displayTimezone: 'UTC',
       multiRepoExecutiveGovernanceUpdatedAt: Date.UTC(2026, 5, 16, 10, 0, 0),
       isMultiRepoExecutiveGovernanceLoading: false,
       multiRepoExecutiveGovernanceError: null,
+      executiveGovernanceSnapshots: [],
+      executiveGovernanceSnapshotsTotal: 0,
+      executiveGovernanceSnapshotArtifact: null,
+      executiveGovernanceSnapshotError: null,
+      isExecutiveGovernanceSnapshotCreating: false,
+      isExecutiveGovernanceSnapshotsLoading: false,
+      isExecutiveGovernanceSnapshotDownloading: false,
+      isExecutiveGovernanceSnapshotArchiving: false,
       loadMultiRepoExecutiveGovernance,
+      loadExecutiveGovernanceSnapshots,
+      createExecutiveGovernanceSnapshot,
+      getExecutiveGovernanceSnapshot,
+      downloadExecutiveGovernanceSnapshot,
+      archiveExecutiveGovernanceSnapshot,
       multiRepoExecutiveGovernance: {
         org_id: 'org-1',
         generated_at: Date.UTC(2026, 5, 16, 10, 0, 0),
@@ -90,6 +113,12 @@ describe('MultiRepoExecutiveGovernancePanel', () => {
     expect(screen.getByText('1 repos')).toBeInTheDocument()
     expect(screen.getByText(/Does not approve, block, certify, deploy/)).toBeInTheDocument()
     expect(screen.getByText('Risk: high / accepted_risk')).toBeInTheDocument()
+    expect(loadExecutiveGovernanceSnapshots).toHaveBeenCalledWith({
+      org_name: 'yohandry10',
+      status: 'active',
+      limit: 10,
+      offset: 0,
+    })
   })
 
   it('applies executive governance filters without changing the read-only contract', async () => {
@@ -117,5 +146,41 @@ describe('MultiRepoExecutiveGovernancePanel', () => {
       })
     })
     expect(screen.getByText('filtered')).toBeInTheDocument()
+  })
+
+  it('creates a hashable snapshot from the applied executive filters', async () => {
+    render(<MultiRepoExecutiveGovernancePanel />)
+
+    fireEvent.change(screen.getByLabelText('Environment'), { target: { value: 'production' } })
+    fireEvent.change(screen.getByLabelText('Posture'), { target: { value: 'attention' } })
+    fireEvent.change(screen.getByLabelText('Gate'), { target: { value: 'blocked' } })
+    fireEvent.change(screen.getByLabelText('Risk'), { target: { value: 'high' } })
+    fireEvent.change(screen.getByLabelText('Review'), { target: { value: 'accepted_risk' } })
+    fireEvent.click(screen.getByText('Apply'))
+    fireEvent.change(screen.getByDisplayValue('Executive governance snapshot'), {
+      target: { value: 'Production risk snapshot' },
+    })
+    fireEvent.click(screen.getByText('Create Snapshot'))
+
+    await waitFor(() => {
+      expect(createExecutiveGovernanceSnapshot).toHaveBeenCalledWith({
+        org_name: 'yohandry10',
+        name: 'Production risk snapshot',
+        filters: {
+          org_name: null,
+          repository: null,
+          environment: 'production',
+          posture: 'attention',
+          gate_decision: 'blocked',
+          risk_level: 'high',
+          review_status: 'accepted_risk',
+          limit: 100,
+          offset: 0,
+        },
+        include_repository_rows: true,
+        include_summary: true,
+      })
+    })
+    expect(screen.getByText(/Hashable JSON artifact/)).toBeInTheDocument()
   })
 })

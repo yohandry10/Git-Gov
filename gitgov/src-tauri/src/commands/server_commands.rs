@@ -52,8 +52,10 @@ use crate::control_plane::{
     EnterpriseOnboardingChecklistTrackingResponse, EnterpriseReleaseApprovalListResponse,
     EnterpriseReleaseApprovalQuery, EnterpriseReleaseApprovalRecord,
     EnterpriseReleaseGovernanceEvaluationQuery, EnterpriseReleaseGovernanceEvaluationResponse,
-    EventPayload, EvidencePacketQuery, EvidencePacketResponse, ExportLogEntry, ExportResponse,
-    FeatureRequestCreated, FeatureRequestInput, FirstGovernedRepoSetupRecord,
+    EventPayload, EvidencePacketQuery, EvidencePacketResponse,
+    ExecutiveGovernanceSnapshotListResponse, ExecutiveGovernanceSnapshotQuery,
+    ExecutiveGovernanceSnapshotRequest, ExecutiveGovernanceSnapshotResponse, ExportLogEntry,
+    ExportResponse, FeatureRequestCreated, FeatureRequestInput, FirstGovernedRepoSetupRecord,
     FirstGovernedRepoSetupResponse, FirstGovernedRepoWizardActionRequest,
     FirstGovernedRepoWizardRunResponse, FirstGovernedRepoWizardStateResponse,
     JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
@@ -1013,6 +1015,94 @@ pub async fn cmd_server_get_multi_repo_executive_governance(
         });
         client
             .get_multi_repo_executive_governance(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_executive_governance_snapshot(
+    config: ServerConnectionConfig,
+    payload: ExecutiveGovernanceSnapshotRequest,
+) -> Result<ExecutiveGovernanceSnapshotResponse, String> {
+    run_blocking_command("CREATE_EXECUTIVE_GOVERNANCE_SNAPSHOT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_executive_governance_snapshot(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_executive_governance_snapshots(
+    config: ServerConnectionConfig,
+    query: ExecutiveGovernanceSnapshotQuery,
+) -> Result<ExecutiveGovernanceSnapshotListResponse, String> {
+    run_blocking_command("LIST_EXECUTIVE_GOVERNANCE_SNAPSHOTS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_executive_governance_snapshots(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_executive_governance_snapshot(
+    config: ServerConnectionConfig,
+    snapshot_id: String,
+    query: ExecutiveGovernanceSnapshotQuery,
+) -> Result<ExecutiveGovernanceSnapshotResponse, String> {
+    run_blocking_command("GET_EXECUTIVE_GOVERNANCE_SNAPSHOT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_executive_governance_snapshot(snapshot_id.trim(), &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_executive_governance_snapshot(
+    config: ServerConnectionConfig,
+    snapshot_id: String,
+    query: ExecutiveGovernanceSnapshotQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_EXECUTIVE_GOVERNANCE_SNAPSHOT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_executive_governance_snapshot(snapshot_id.trim(), &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_archive_executive_governance_snapshot(
+    config: ServerConnectionConfig,
+    snapshot_id: String,
+    payload: ExecutiveGovernanceSnapshotRequest,
+) -> Result<ExecutiveGovernanceSnapshotResponse, String> {
+    run_blocking_command("ARCHIVE_EXECUTIVE_GOVERNANCE_SNAPSHOT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .archive_executive_governance_snapshot(snapshot_id.trim(), &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
