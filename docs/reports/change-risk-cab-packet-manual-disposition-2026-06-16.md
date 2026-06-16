@@ -45,4 +45,22 @@ The focused backend test creates tenant-scoped Change Risk evaluations, updates 
 
 ## Production Status
 
-Not deployed yet in this branch. Apply `supabase_schema_v66.sql` plus `supabase_schema_v66_postcheck.sql` before production smoke after merge.
+PR `#440` merged to `main` as `b7bc9e81`.
+
+Production migration `v66` and postcheck passed against the configured Supabase database.
+
+Render deploy `dep-d8ofa167r5hc73c1nf5g` for commit `b7bc9e81` reached `live`.
+
+Production smoke passed:
+
+- `/health=ok`.
+- Authenticated `/stats=200`.
+- Created CAB packet `crcab_23d138be426a4967ae0895810e679a19`.
+- Packet artifact hash stayed `sha256:d314caf9c2e41886cdfcbd5e56c841ea84f6329b0c00c7f6f7398a3dbe3b1d9a` across review updates.
+- Review state moved through `pending_review`, `reviewed`, `accepted_risk`, and final `needs_mitigation`.
+- Final review required follow-up and recorded safe owner `release-owner`.
+- Secret-looking review note was rejected with HTTP `400`.
+- Final no-claim flags stayed safe: `manual_cab_disposition_only=true`, `advisory_only=true`, `release_blocking=false`, `deployment_execution=false`, `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+- Review audit rows were present: `2` view events and `3` update events for the packet.
+- Deployment Gate authorization count stayed `2`.
+- Agent Governance evaluation count stayed `7`.

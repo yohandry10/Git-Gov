@@ -67,7 +67,7 @@ The repo already contains substantial product surface:
   repository mutation, AI/LLM/BYOM/MCP/chatbot behavior, Agent Governance dependency, public links,
   email/scheduler, PDF/DOCX, compliance score, certification, legal attestation, or official
   regulatory claim.
-- Change Risk CAB Packet Manual Disposition from KAN-126 is being implemented. It records a human
+- Change Risk CAB Packet Manual Disposition from KAN-126 is completed. It records a human
   CAB disposition over a KAN-125 packet with status, reviewer, safe notes, mitigation, decision
   reason, and follow-up metadata. It deliberately does not approve deployments, block releases,
   mutate providers or repositories, mutate source evaluations, change the packet artifact hash, use
