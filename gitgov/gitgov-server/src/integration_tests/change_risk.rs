@@ -352,7 +352,14 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     .await;
     assert_eq!(status, StatusCode::CREATED, "high risk create: {response}");
     let high: serde_json::Value = serde_json::from_str(&response).expect("high risk JSON");
+    let high_id = high["evaluation_id"].as_str().expect("high eval id");
+    let high_trace_hash = high["trace_hash"]
+        .as_str()
+        .expect("high trace hash")
+        .to_string();
     assert_eq!(high["risk_level"], "high");
+    assert_eq!(high["review_status"], "needs_review");
+    assert_eq!(high["reviewed_by_user_id"], serde_json::Value::Null);
     assert_eq!(high["ruleset_version"], "change_risk_rules.v1");
     assert!(high["risk_reasons"]
         .as_array()
@@ -459,6 +466,143 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
     let (status, response) = json_request(
         &app,
         "GET",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "get high review: {response}");
+    let initial_review: serde_json::Value =
+        serde_json::from_str(&response).expect("initial review JSON");
+    assert_eq!(initial_review["review_status"], "needs_review");
+    assert_eq!(initial_review["risk_level"], "high");
+    assert_eq!(initial_review["trace_hash"], high_trace_hash);
+    assert_eq!(initial_review["advisory_only"], true);
+    assert_eq!(initial_review["llm_used"], false);
+    assert_eq!(initial_review["agent_governance_used"], false);
+    assert_eq!(initial_review["compliance_claim"], false);
+    assert_eq!(initial_review["certification"], false);
+
+    let review_payload = json!({
+        "review_status": "reviewed",
+        "review_notes": "CAB reviewed deterministic risk trace and rollback owner.",
+        "mitigation_notes": "Rollback plan confirmed for production release.",
+        "decision_reason": "Manual review completed without changing risk evidence."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&review_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "review high risk: {response}");
+    let reviewed: serde_json::Value = serde_json::from_str(&response).expect("reviewed JSON");
+    assert_eq!(reviewed["review_status"], "reviewed");
+    assert_eq!(reviewed["reviewed_by_user_id"], "kan-121-risk-admin");
+    assert_eq!(
+        reviewed["review_notes_safe"],
+        "CAB reviewed deterministic risk trace and rollback owner."
+    );
+    assert_eq!(reviewed["risk_level"], "high");
+    assert_eq!(reviewed["ruleset_version"], "change_risk_rules.v1");
+    assert_eq!(reviewed["trace_hash"], high_trace_hash);
+    assert_eq!(reviewed["advisory_only"], true);
+    assert_eq!(reviewed["agent_governance_used"], false);
+
+    let accepted_payload = json!({
+        "review_status": "accepted_risk",
+        "review_notes": "Risk accepted by release owner after manual review.",
+        "mitigation_notes": "Monitor deployment and keep rollback owner online.",
+        "decision_reason": "Business exception accepted for KAN-123 validation."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&accepted_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "accept high risk: {response}");
+    let accepted: serde_json::Value = serde_json::from_str(&response).expect("accepted JSON");
+    assert_eq!(accepted["review_status"], "accepted_risk");
+    assert_eq!(
+        accepted["mitigation_notes_safe"],
+        "Monitor deployment and keep rollback owner online."
+    );
+    assert_eq!(
+        accepted["decision_reason_safe"],
+        "Business exception accepted for KAN-123 validation."
+    );
+    assert_eq!(accepted["trace_hash"], high_trace_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{high_id}"),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "get reviewed high risk: {response}");
+    let fetched_high: serde_json::Value =
+        serde_json::from_str(&response).expect("fetched high JSON");
+    assert_eq!(fetched_high["risk_level"], "high");
+    assert_eq!(fetched_high["ruleset_version"], "change_risk_rules.v1");
+    assert_eq!(fetched_high["trace_hash"], high_trace_hash);
+    assert_eq!(fetched_high["review_status"], "accepted_risk");
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{high_id}/trace"),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "trace after review must load: {response}"
+    );
+    let high_trace_after_review: serde_json::Value =
+        serde_json::from_str(&response).expect("high trace after review JSON");
+    assert_eq!(high_trace_after_review["trace_hash"], high_trace_hash);
+
+    let unsafe_review_payload = json!({
+        "review_status": "reviewed",
+        "review_notes": "Authorization: Bearer should-not-store",
+        "mitigation_notes": "plain",
+        "decision_reason": "plain"
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&unsafe_review_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "secret-like review notes must be rejected: {response}"
+    );
+
+    let review_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_review_updated' AND target_id = $1",
+    )
+    .bind(high_id)
+    .fetch_one(&pool)
+    .await
+    .expect("change risk review audit count");
+    assert_eq!(review_audit_count, 2);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
         "/change-risk/evaluations?deployment_gate_id=dga_kan121_high",
         None,
         Some(&admin_key),
@@ -472,6 +616,7 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         "/change-risk/rules".to_string(),
         format!("/change-risk/evaluations/{low_id}"),
         format!("/change-risk/evaluations/{low_id}/trace"),
+        format!("/change-risk/evaluations/{high_id}/review"),
         "/change-risk/evaluations?deployment_gate_id=dga_kan121_high".to_string(),
     ] {
         let (status, response) = json_request(&app, "GET", &path, None, Some(&auditor_key)).await;
@@ -508,6 +653,32 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         StatusCode::FORBIDDEN,
         "developer must not read change risk trace: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&review_payload.to_string()),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not update change risk review: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&review_payload.to_string()),
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "auditor remains read-only for change risk review in KAN-123: {response}"
+    );
 
     let agent_token = create_agent_key(&app, &admin_key).await;
     let (status, response) = json_request(
@@ -529,6 +700,19 @@ async fn change_risk_evaluates_gate_context_without_ai_agents_or_claims() {
         status,
         StatusCode::FORBIDDEN,
         "agent key must not read change risk rules: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&review_payload.to_string()),
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not update change risk review: {response}"
     );
 
     let agent_eval_count: i64 = sqlx::query_scalar(
@@ -622,6 +806,36 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
         status,
         StatusCode::NOT_FOUND,
         "tenant B auditor must not read tenant A trace: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/evaluations/{eval_id}/review"),
+        None,
+        Some(&auditor_b),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "tenant B auditor must not read tenant A review: {response}"
+    );
+    let tenant_b_review_payload = json!({
+        "review_status": "reviewed",
+        "review_notes": "Wrong tenant should not update this review."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{eval_id}/review"),
+        Some(&tenant_b_review_payload.to_string()),
+        Some(&admin_b),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "tenant B admin must not update tenant A review: {response}"
     );
 
     let (status, response) = json_request(

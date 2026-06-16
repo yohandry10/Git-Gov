@@ -2,6 +2,68 @@
 
 Updated: 2026-06-16
 
+## KAN-123 Change Risk Manual Review & Mitigation Notes - 2026-06-16
+
+`KAN-123 - Change Risk Manual Review & Mitigation Notes` is implemented locally on branch
+`product/KAN-123-change-risk-manual-review` for GitHub issue `#429`, pending PR checks,
+production migration, Render deploy, and production smoke.
+
+Product decision:
+
+- Extend KAN-121/KAN-122 rather than creating a parallel review workflow.
+- Let a human reviewer record manual review status, safe notes, mitigation notes, and decision
+  reason over an already explained Change Risk evaluation.
+- Keep Change Risk advisory-only, qualitative, manual-first, non-mutating, and independent from
+  Agent Governance.
+- Keep update access Admin-only in this MVP; allow Admin/Auditor read access.
+- Do not add enforcement, release blocking, deploy execution, provider mutation, repository
+  mutation, AI/LLM, BYOM, MCP, chatbot behavior, compliance score, certification/legal/regulatory
+  claim, notifications, approval quorum, or multi-reviewer workflow.
+
+Implemented locally so far:
+
+- Supabase migration/postcheck `v64`.
+- Review metadata on `change_risk_evaluations`: `review_status`, `reviewed_by_user_id`,
+  `reviewed_at`, `review_notes_safe`, `mitigation_notes_safe`, `decision_reason_safe`, and
+  `review_updated_at`.
+- Backend routes:
+  - `GET /change-risk/evaluations/{evaluation_id}/review`.
+  - `PATCH /change-risk/evaluations/{evaluation_id}/review`.
+- Safe note validation and secret-like text rejection.
+- Dedicated review handler module `gitgov-server/src/handlers/change_risk_review.rs`, keeping the
+  base Change Risk handler focused on evaluation/catalog/trace behavior.
+- Admin audit action `change_risk_review_updated`.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- Governance > Releases `ChangeRiskPanel` `Manual Review` panel.
+- Architecture, roadmap, design, and validation report docs.
+
+Local validation:
+
+- Backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and
+  `cargo test --no-run`.
+- Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests
+  (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest `pnpm --dir gitgov test` (`377` passed).
+- Frontend `pnpm --dir gitgov build` passed with the pre-existing Vite large chunk warning.
+- Focused backend Change Risk tests with real Postgres passed (`2` tests), covering default
+  `needs_review`, Admin review updates, safe note rejection, Auditor read/Admin-only update,
+  Developer and Agent Governance key denial, tenant isolation, immutable risk/trace fields, audit
+  event creation, and no Deployment Gate or Agent Governance mutation.
+- `v64` migration/postcheck passed in a real Postgres rollback transaction.
+- Focused store test `pnpm --dir gitgov test src/test/useControlPlaneStore.test.ts` passed
+  (`43` tests).
+- `git diff --check` passed.
+- `scripts/security/publication_guard.ps1` passed.
+
+Remaining:
+
+- PR checks, production `v64`, Render deploy, and production smoke.
+
+Report: `docs/reports/change-risk-manual-review-mitigation-notes-2026-06-16.md`.
+
 ## KAN-122 Change Risk Rule Catalog & Evaluation Trace - 2026-06-16
 
 `KAN-122 - Change Risk Rule Catalog & Evaluation Trace` is completed. PR `#425` merged the

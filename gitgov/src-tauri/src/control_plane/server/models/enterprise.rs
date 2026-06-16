@@ -366,6 +366,20 @@ pub struct ChangeRiskEvaluationRecord {
     #[serde(default)]
     pub request_payload: serde_json::Value,
     pub created_by: String,
+    #[serde(default)]
+    pub review_status: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub mitigation_notes_safe: Option<String>,
+    #[serde(default)]
+    pub decision_reason_safe: Option<String>,
+    #[serde(default)]
+    pub review_updated_at: Option<i64>,
     pub created_at: i64,
 }
 
@@ -452,6 +466,43 @@ pub struct ChangeRiskEvaluationTraceResponse {
     pub compliance_claim: bool,
     pub certification: bool,
     pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskEvaluationReviewRequest {
+    pub org_name: Option<String>,
+    pub review_status: String,
+    pub review_notes: Option<String>,
+    pub mitigation_notes: Option<String>,
+    pub decision_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskEvaluationReviewResponse {
+    pub evaluation_id: String,
+    pub org_id: String,
+    pub risk_level: String,
+    pub ruleset_version: String,
+    pub trace_hash: String,
+    pub review_status: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub mitigation_notes_safe: Option<String>,
+    #[serde(default)]
+    pub decision_reason_safe: Option<String>,
+    #[serde(default)]
+    pub review_updated_at: Option<i64>,
+    pub advisory_only: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

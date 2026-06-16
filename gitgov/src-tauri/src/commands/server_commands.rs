@@ -1,7 +1,8 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
     AuditFilter, ChangeRiskEvaluationListResponse, ChangeRiskEvaluationQuery,
-    ChangeRiskEvaluationRecord, ChangeRiskEvaluationRequest, ChangeRiskEvaluationTraceResponse,
+    ChangeRiskEvaluationRecord, ChangeRiskEvaluationRequest, ChangeRiskEvaluationReviewRequest,
+    ChangeRiskEvaluationReviewResponse, ChangeRiskEvaluationTraceResponse,
     ChangeRiskRuleCatalogResponse, ChatAskRequest, ChatAskResponse, CliCommandInput,
     CliCommandListResponse, CliCommandResponse, CombinedEvent, CommitPipelineCorrelation,
     ComplianceControlFrameworkListResponse, ComplianceEvidenceExportQuery,
@@ -1041,6 +1042,42 @@ pub async fn cmd_server_get_change_risk_evaluation_trace(
         });
         client
             .get_change_risk_evaluation_trace(&evaluation_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_change_risk_evaluation_review(
+    config: ServerConnectionConfig,
+    evaluation_id: String,
+    query: ChangeRiskEvaluationQuery,
+) -> Result<ChangeRiskEvaluationReviewResponse, String> {
+    run_blocking_command("GET_CHANGE_RISK_EVALUATION_REVIEW", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_change_risk_evaluation_review(&evaluation_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_update_change_risk_evaluation_review(
+    config: ServerConnectionConfig,
+    evaluation_id: String,
+    payload: ChangeRiskEvaluationReviewRequest,
+) -> Result<ChangeRiskEvaluationReviewResponse, String> {
+    run_blocking_command("UPDATE_CHANGE_RISK_EVALUATION_REVIEW", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .update_change_risk_evaluation_review(&evaluation_id, &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

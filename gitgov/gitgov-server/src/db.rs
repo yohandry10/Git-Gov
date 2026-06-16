@@ -523,6 +523,17 @@ pub struct CreateChangeRiskEvaluationInput {
 }
 
 #[derive(Debug, Clone)]
+pub struct UpdateChangeRiskEvaluationReviewInput<'a> {
+    pub org_id: &'a str,
+    pub evaluation_id: &'a str,
+    pub review_status: &'a str,
+    pub reviewed_by_user_id: &'a str,
+    pub review_notes_safe: Option<&'a str>,
+    pub mitigation_notes_safe: Option<&'a str>,
+    pub decision_reason_safe: Option<&'a str>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateAgentGovernanceEvaluationInput {
     pub evaluation_id: String,
     pub payload: AgentGovernanceEvaluationRequest,
@@ -662,6 +673,13 @@ fn change_risk_evaluation_from_row(row: &PgRow) -> ChangeRiskEvaluationRecord {
         evaluation: row.get("evaluation"),
         request_payload: row.get("request_payload"),
         created_by: row.get("created_by"),
+        review_status: row.get("review_status"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        review_notes_safe: row.get("review_notes_safe"),
+        mitigation_notes_safe: row.get("mitigation_notes_safe"),
+        decision_reason_safe: row.get("decision_reason_safe"),
+        review_updated_at: row.get("review_updated_at_ms"),
         created_at: row.get("created_at_ms"),
     }
 }

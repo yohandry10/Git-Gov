@@ -26,6 +26,7 @@ use crate::db::{
     PrMergeEvidenceForTicketPacketQuery, ReviewComplianceFrameworkPackInput,
     RecordCompliancePeriodReportProfileRunInput,
     RevokeCompliancePeriodReportSharePackageInput,
+    UpdateChangeRiskEvaluationReviewInput,
     UpdateComplianceFrameworkReviewReportReviewInput, UpdateCompliancePeriodReportReviewInput,
     UpdateCompliancePeriodReportProfileInput,
     UpsertOrgUserInput,
