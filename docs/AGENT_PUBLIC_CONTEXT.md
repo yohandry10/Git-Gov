@@ -72,12 +72,13 @@ The repo already contains substantial product surface:
   reason, and follow-up metadata. It deliberately does not approve deployments, block releases,
   mutate providers or repositories, mutate source evaluations, change the packet artifact hash, use
   AI/agents, or create certification/compliance/legal claims.
-- Change Risk CAB Decision Manifest from KAN-127 is implemented locally and pending PR/production
-  validation. It creates append-only, hashable, downloadable, revocable JSON manifests for reviewed
-  CAB packets. The manifest binds the source packet hash, included evaluation trace hashes, final CAB
-  disposition, reviewer, safe notes, follow-up fields, and no-claim flags. It remains manual evidence
-  only and does not enforce, block releases, deploy, mutate providers/repos, use AI/Agent Governance,
-  or create legal/compliance/certification claims.
+- Change Risk CAB Decision Manifest from KAN-127 is completed and production-validated. It creates
+  append-only, hashable, downloadable, revocable JSON manifests for reviewed CAB packets. The
+  manifest binds the source packet hash, included evaluation trace hashes, final CAB disposition,
+  reviewer, safe notes, follow-up fields, and no-claim flags. Desktop/API read-without-download uses
+  stable route `/change-risk/cab-decision-manifests/{manifest_id}/detail`. It remains manual
+  evidence only and does not enforce, block releases, deploy, mutate providers/repos, use AI/Agent
+  Governance, or create legal/compliance/certification claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

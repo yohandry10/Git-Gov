@@ -49,7 +49,32 @@
 
 ## Pending
 
-- PR checks.
-- Merge to `main`.
-- Production `v67` migration/postcheck.
-- Render deploy and production smoke.
+- None for KAN-127.
+
+## Production Validation
+
+- PR `#444` merged as `12aff10d` with all required checks passing.
+- Production `v67` migration/postcheck passed against the Render/Supabase database.
+- Render deploy `dep-d8og45t7vvec73fsgk4g` for `12aff10d` reached `live`.
+- Production smoke found that the terminal detail route
+  `GET /change-risk/cab-decision-manifests/{manifest_id}?org_name=...` was not reliable for global
+  admin keys behind the deployed route/proxy path. Hotfix PRs `#445`, `#446`, and `#447` hardened ID
+  parsing; PR `#448` added stable read route
+  `GET /change-risk/cab-decision-manifests/{manifest_id}/detail` and moved the Desktop client to it.
+- Final Render deploy `dep-d8oh7gu7r5hc73c2tt40` for `9f1c5c9c` reached `live`.
+- Final production smoke passed:
+  - `/health=ok`.
+  - authenticated `/stats=200`.
+  - source CAB packet `crcab_23d138be426a4967ae0895810e679a19`.
+  - source packet hash stayed
+    `sha256:d314caf9c2e41886cdfcbd5e56c841ea84f6329b0c00c7f6f7398a3dbe3b1d9a`.
+  - source packet review stayed `needs_mitigation`.
+  - created decision manifest `crcabdm_841ddc3eda30a3b0fceffe27fa7e856a`.
+  - manifest hash
+    `sha256:45badc8d054d0ad3b8c58a0b2d64eb3e998bac2e27d4940123ce06d122c12733`.
+  - `/detail`, list, download, revoke, and revoked-download conflict all passed.
+  - final manifest status `revoked`, download count `1`, revoked download HTTP `409`.
+  - Deployment Gate authorization count stayed `2`.
+  - Agent Governance evaluation count stayed `7`.
+  - audit rows existed in `admin_audit_log` for `cab_decision_manifest_created`,
+    `cab_decision_manifest_downloaded`, and `cab_decision_manifest_revoked`.
