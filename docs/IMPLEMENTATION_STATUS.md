@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-135 Native Terminal Governance Context - 2026-06-16
 
-`KAN-135 - Native Terminal Governance Context Panel MVP` is in progress. GitHub issue `#473` tracks
-the slice.
+`KAN-135 - Native Terminal Governance Context Panel MVP` is completed. GitHub issue `#473` shipped
+through PR `#474`, merged to `main` as `b9dbb57c`.
 
 Product decision:
 
@@ -16,7 +16,7 @@ Product decision:
 - Keep the terminal as a convenience surface only. It does not approve, block, certify, deploy,
   execute commands, or create a second enforcement model.
 
-Implemented locally:
+Implemented:
 
 - Added `terminalGovernanceContext.ts` to derive a safe `owner/repo` target from KAN-133 Git context
   plus existing repo validation remote metadata.
@@ -52,8 +52,10 @@ Validation:
 - `git diff --check` and publication guard passed.
 - Static grep verified the new panel does not write to the terminal PTY and does not call mutating
   Control Plane commands.
-- PR checks remain pending before merge.
-- No Render/API deploy is expected because KAN-135 reuses existing read endpoints and changes
+- PR checks passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy +
+  Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates
+  warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.
+- No Render/API deploy was required because KAN-135 reuses existing read endpoints and changes
   Desktop/frontend only.
 
 ## KAN-134 Native Terminal Safe Quick Commands - 2026-06-16
