@@ -85,7 +85,7 @@ The repo already contains substantial product surface:
   section. It does not create a new table, recalculate risk, mutate gates/evaluations/packets/manifests,
   create CAB artifacts automatically, enforce releases, deploy, use AI/Agent Governance, or create
   compliance/certification/legal claims.
-- Multi-Repo Executive Governance View from KAN-129 is in progress. It adds read-only
+- Multi-Repo Executive Governance View from KAN-129 is completed and production-validated. It adds read-only
   `GET /executive/repositories` and a Desktop Governance > Releases panel that aggregates existing
   Deployment Gate, Change Risk, CAB packet, and CAB decision manifest evidence by repository for the
   resolved tenant. Posture values are executive triage labels only: `attention`, `review`,
