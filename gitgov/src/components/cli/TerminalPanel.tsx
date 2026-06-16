@@ -60,6 +60,7 @@ export function TerminalPanel() {
   const [nativeTerminalDisabled, setNativeTerminalDisabled] = useState(false)
   const [showSessionHistory, setShowSessionHistory] = useState(false)
   const [showQuickCommands, setShowQuickCommands] = useState(false)
+  const [showGovernanceContext, setShowGovernanceContext] = useState(false)
   const [sessionCommands, setSessionCommands] = useState<TerminalSessionCommand[]>([])
   const [recentQuickCommands, setRecentQuickCommands] = useState<string[]>([])
   const [terminalGitContext, setTerminalGitContext] = useState<NativeTerminalGitContext | null>(null)
@@ -497,6 +498,7 @@ export function TerminalPanel() {
           currentBranch={currentBranch}
           serverConfig={serverConfig}
           selectedOrgName={selectedOrgName}
+          onOpenContext={() => setShowGovernanceContext(true)}
         />
         <div className="ml-auto flex items-center gap-1">
           <button
@@ -527,6 +529,8 @@ export function TerminalPanel() {
             serverConfig={serverConfig}
             selectedOrgName={selectedOrgName}
             connectionStatus={connectionStatus}
+            isOpen={showGovernanceContext}
+            onOpenChange={setShowGovernanceContext}
           />
           <button
             type="button"

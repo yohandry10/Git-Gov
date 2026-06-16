@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BarChart3, RefreshCw, ShieldCheck } from 'lucide-react'
 import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import type { RepoValidation } from '@/lib/types'
@@ -23,6 +23,8 @@ interface TerminalGovernanceContextPanelProps {
   serverConfig: ServerConfig | null
   selectedOrgName: string
   connectionStatus: 'connected' | 'disconnected' | 'maintenance' | 'checking'
+  isOpen?: boolean
+  onOpenChange?: (isOpen: boolean) => void
 }
 
 function shortValue(value?: string | null, length = 10): string {
@@ -45,16 +47,27 @@ export function TerminalGovernanceContextPanel({
   serverConfig,
   selectedOrgName,
   connectionStatus,
+  isOpen: controlledIsOpen,
+  onOpenChange,
 }: TerminalGovernanceContextPanelProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [snapshot, setSnapshot] = useState<TerminalGovernanceSnapshot | null>(null)
+  const loadedKeyRef = useRef<string | null>(null)
+  const isOpen = controlledIsOpen ?? internalIsOpen
 
   const target = useMemo(
     () => buildTerminalGovernanceTarget(context, validation, currentBranch),
     [context, currentBranch, validation],
   )
   const emptyState = terminalGovernanceEmptyState(target)
+  const loadKey = [
+    serverConfig?.url ?? 'no-config',
+    selectedOrgName.trim(),
+    target.status,
+    target.repositoryFullName ?? '',
+    target.branch ?? '',
+  ].join('|')
 
   const loadContext = useCallback(async () => {
     if (!serverConfig) {
@@ -138,14 +151,24 @@ export function TerminalGovernanceContextPanel({
     }
   }, [connectionStatus, emptyState, selectedOrgName, serverConfig, target])
 
-  const toggle = () => {
-    setIsOpen((current) => {
-      const next = !current
-      if (next) {
-        void loadContext()
+  useEffect(() => {
+    if (!isOpen || loadedKeyRef.current === loadKey) return
+    loadedKeyRef.current = loadKey
+    void loadContext()
+  }, [isOpen, loadContext, loadKey])
+
+  const setPanelOpen = useCallback(
+    (next: boolean) => {
+      if (controlledIsOpen === undefined) {
+        setInternalIsOpen(next)
       }
-      return next
-    })
+      onOpenChange?.(next)
+    },
+    [controlledIsOpen, onOpenChange],
+  )
+
+  const toggle = () => {
+    setPanelOpen(!isOpen)
   }
 
   const loadedSnapshot =

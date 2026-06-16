@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { RepoValidation } from '@/lib/types'
 import type {
   DeploymentGateAuthorizationRecord,
@@ -7,6 +7,7 @@ import type {
 import type { NativeTerminalGitContext } from '@/components/cli/terminalGitContext'
 import { buildTerminalGovernanceTarget } from '@/components/cli/terminalGovernanceContext'
 import { TerminalBranchGateStatusBadge } from '@/components/cli/TerminalBranchGateStatusBadge'
+import { TerminalGovernanceContextPanel } from '@/components/cli/TerminalGovernanceContextPanel'
 import {
   summarizeTerminalBranchGateStatus,
   terminalBranchGateInitialStatus,
@@ -227,6 +228,110 @@ describe('native terminal branch gate status advisory', () => {
     })
     expect(screen.getByLabelText(/Advisory only/)).toHaveTextContent('Gate ready')
     expect(screen.getByLabelText(/Advisory only/).getAttribute('aria-label')).not.toContain('customer-secret-path')
+  })
+
+  it('opens the existing read-only governance context from the compact badge', async () => {
+    const onOpenContext = vi.fn()
+    mockInvoke.mockResolvedValue({
+      items: [authorization()],
+      total: 1,
+      limit: 1,
+      offset: 0,
+    })
+
+    render(
+      <TerminalBranchGateStatusBadge
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="yohandry10"
+        onOpenContext={onOpenContext}
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('Gate ready')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Open read-only governance context/ }))
+
+    expect(onOpenContext).toHaveBeenCalledTimes(1)
+    expect(mockInvoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads existing read-only gate, risk, and executive context when externally opened', async () => {
+    const onOpenChange = vi.fn()
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'cmd_server_list_deployment_gate_authorizations') {
+        return Promise.resolve({
+          items: [authorization()],
+          total: 1,
+          limit: 1,
+          offset: 0,
+        })
+      }
+      if (command === 'cmd_server_list_change_risk_evaluations') {
+        return Promise.resolve({
+          items: [
+            {
+              evaluation_id: 'cra_1',
+              risk_level: 'medium',
+              review_status: 'needs_review',
+            },
+          ],
+          total: 1,
+          limit: 1,
+          offset: 0,
+        })
+      }
+      if (command === 'cmd_server_get_multi_repo_executive_governance') {
+        return Promise.resolve({
+          repositories: [
+            {
+              repository_full_name: 'yohandry10/Git-Gov',
+              posture: 'review',
+            },
+          ],
+          total: 1,
+          limit: 1,
+          offset: 0,
+        })
+      }
+      return Promise.reject(new Error(`Unexpected command ${command}`))
+    })
+
+    render(
+      <TerminalGovernanceContextPanel
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="yohandry10"
+        connectionStatus="connected"
+        isOpen
+        onOpenChange={onOpenChange}
+      />,
+    )
+
+    expect(screen.getByText('Governance context')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('approved')).toBeInTheDocument())
+    expect(screen.getByText('medium')).toBeInTheDocument()
+    expect(screen.getByText('review')).toBeInTheDocument()
+
+    expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_deployment_gate_authorizations', {
+      config: serverConfig,
+      query: {
+        org_name: 'yohandry10',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+        limit: 1,
+        offset: 0,
+      },
+    })
+    expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_change_risk_evaluations', expect.any(Object))
+    expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_multi_repo_executive_governance', expect.any(Object))
+    expect(JSON.stringify(mockInvoke.mock.calls)).not.toContain('customer-secret-path')
+
+    fireEvent.click(screen.getByRole('button', { name: /Context/ }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('renders no badge and performs no API call outside a mapped Git repository', () => {

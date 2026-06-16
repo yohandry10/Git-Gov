@@ -22,6 +22,7 @@ interface TerminalBranchGateStatusBadgeProps {
   currentBranch: string | null
   serverConfig: ServerConfig | null
   selectedOrgName: string
+  onOpenContext?: () => void
 }
 
 const toneClass: Record<TerminalBranchGateStatusTone, string> = {
@@ -36,6 +37,7 @@ export function TerminalBranchGateStatusBadge({
   currentBranch,
   serverConfig,
   selectedOrgName,
+  onOpenContext,
 }: TerminalBranchGateStatusBadgeProps) {
   const target = useMemo(
     () => buildTerminalGovernanceTarget(context, validation, currentBranch),
@@ -106,12 +108,31 @@ export function TerminalBranchGateStatusBadge({
   }, [baseSummary.visible, requestKey, selectedOrgName, serverConfig, target])
 
   if (!summary.visible) return null
+  const className = `inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${toneClass[summary.tone]}`
+  const title = onOpenContext
+    ? `${summary.title} Open read-only governance context.`
+    : summary.title
+
+  if (onOpenContext) {
+    return (
+      <button
+        type="button"
+        onClick={onOpenContext}
+        className={`${className} transition-colors hover:text-surface-100 focus:outline-none focus:ring-1 focus:ring-brand-500/40`}
+        title={title}
+        aria-label={title}
+      >
+        <ShieldCheck size={10} />
+        {summary.label}
+      </button>
+    )
+  }
 
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${toneClass[summary.tone]}`}
-      title={summary.title}
-      aria-label={summary.title}
+      className={className}
+      title={title}
+      aria-label={title}
     >
       <ShieldCheck size={10} />
       {summary.label}

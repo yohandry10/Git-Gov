@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-140` Native Terminal Branch Gate Status Advisory
+Ticket: `KAN-141` Native Terminal Branch Gate Context Drilldown
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -127,6 +127,9 @@ The repo already contains substantial product surface:
   `Gate n/a`. It is advisory only: no command interception, no command blocking, no commit/push
   blocking, no deployment authorization/execution, no provider/repo mutation, and no compliance or
   certification claim.
+- Native Terminal Branch Gate Context Drilldown from KAN-141 lets that badge open the existing
+  read-only native terminal Governance Context drawer. It does not add a new backend endpoint, new
+  evidence write, command interception, enforcement, provider/repo mutation, or compliance claim.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -228,10 +231,13 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-140 - Native Terminal Branch Gate Status Advisory` adds the next Desktop/Workspace terminal
-surface: a small advisory-only badge that reads existing Deployment Gate evidence for the detected
-repo/branch. It is not a blocker, not a deploy authorizer, not a command gate, and not a compliance
-claim.
+`KAN-141 - Native Terminal Branch Gate Context Drilldown` continues the Desktop/Workspace terminal
+surface by letting the KAN-140 branch gate badge open the existing read-only Governance Context
+drawer. It remains advisory-only and does not create a second enforcement model.
+
+`KAN-140 - Native Terminal Branch Gate Status Advisory` adds a small advisory-only badge that reads
+existing Deployment Gate evidence for the detected repo/branch. It is not a blocker, not a deploy
+authorizer, not a command gate, and not a compliance claim.
 
 `KAN-137 - Remove external editor extension product direction` is completed. The public context no
 longer treats external editor plugins as active product work. The active product state keeps roadmap
