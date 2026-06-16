@@ -1,8 +1,8 @@
 # First Governed Repo Setup MVP
 
-Updated: 2026-06-13
+Updated: 2026-06-16
 
-Ticket: `KAN-80`
+Ticket: `KAN-80`; KAN-120 continuity note
 
 ## Product Decision
 
@@ -116,6 +116,25 @@ Governance > Adoption
 
 The panel shows readiness, unsaved state, run id, providers/modules, Action Center gaps, and a CTA
 to `Governance > Releases` for advisory gate simulation.
+
+## KAN-120 Continuity
+
+`KAN-120` keeps this KAN-80 table and baseline shape as the canonical source. It adds an
+orchestration layer rather than a new data model:
+
+```text
+GET /onboarding/first-governed-repo/state
+POST /onboarding/first-governed-repo/runs
+PATCH /onboarding/first-governed-repo/runs/{run_id}
+POST /onboarding/first-governed-repo/runs/{run_id}/validate
+POST /onboarding/first-governed-repo/runs/{run_id}/plan
+POST /onboarding/first-governed-repo/runs/{run_id}/complete
+```
+
+The continuity rule is important: KAN-120 is a manual-first Integration Wizard for state,
+evidence validation, baseline planning, and first-result completion. It is not provider OAuth, not
+repository mutation, not deploy execution, not a compliance/certification claim, and not an Agent
+Governance or AI dependency.
 
 ## Current Scope
 

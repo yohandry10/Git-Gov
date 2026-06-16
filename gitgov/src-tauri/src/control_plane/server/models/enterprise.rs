@@ -95,6 +95,37 @@ pub struct UpsertFirstGovernedRepoSetupRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FirstGovernedRepoWizardActionRequest {
+    pub org_name: Option<String>,
+    pub status: Option<String>,
+    pub goal: String,
+    pub repository_full_name: String,
+    pub default_branch: String,
+    pub selected_providers: Vec<String>,
+    pub selected_modules: Vec<String>,
+    pub policy_preset: String,
+    pub baseline: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoWizardStateResponse {
+    pub org_id: String,
+    pub found: bool,
+    #[serde(default)]
+    pub state: serde_json::Value,
+    #[serde(default)]
+    pub setup: Option<FirstGovernedRepoSetupRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoWizardRunResponse {
+    #[serde(default)]
+    pub state: serde_json::Value,
+    pub setup: FirstGovernedRepoSetupRecord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EnterpriseReleaseApprovalRecord {
     pub id: String,
     pub org_id: String,

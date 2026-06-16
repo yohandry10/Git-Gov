@@ -14,6 +14,8 @@ include!("handlers/platform_tenants.rs");
 include!("handlers/org_users_api_keys.rs");
 include!("handlers/adoption_profiles.rs");
 include!("handlers/first_governed_repo_setup.rs");
+include!("handlers/first_governed_repo_wizard_helpers.rs");
+include!("handlers/first_governed_repo_wizard.rs");
 include!("handlers/release_approvals.rs");
 include!("handlers/governance_decisions.rs");
 include!("handlers/deployment_gate_break_glass_approvals.rs");

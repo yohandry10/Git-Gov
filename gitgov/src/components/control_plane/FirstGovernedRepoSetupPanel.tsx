@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { CheckCircle2, ClipboardCheck, GitBranch, GitPullRequest, RefreshCw, Save, ShieldCheck, Workflow } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, GitBranch, GitPullRequest, ListChecks, PlayCircle, RefreshCw, Save, ShieldCheck, Workflow } from 'lucide-react'
 import clsx from 'clsx'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
@@ -54,8 +54,26 @@ function gapLabel(gap: string): string {
     policy_workflow_preview: 'Review policy/workflow preview',
     quality_gate_evidence: 'Add quality gate evidence',
     formal_approval_policy: 'Add formal approval policy',
+    provider_evidence: 'Validate provider evidence',
   }
   return labels[gap] ?? gap
+}
+
+function wizardString(state: Record<string, unknown> | null, key: string, fallback = 'not_started'): string {
+  const value = state?.[key]
+  return typeof value === 'string' ? value : fallback
+}
+
+function wizardArray(state: Record<string, unknown> | null, key: string): string[] {
+  const value = state?.[key]
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+}
+
+function wizardObjectArray(state: Record<string, unknown> | null, key: string): Array<Record<string, unknown>> {
+  const value = state?.[key]
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    : []
 }
 
 function nextDraft(
@@ -88,8 +106,17 @@ export function FirstGovernedRepoSetupPanel() {
   const isLoading = useControlPlaneStore((state) => state.isFirstGovernedRepoSetupLoading)
   const isSaving = useControlPlaneStore((state) => state.isFirstGovernedRepoSetupSaving)
   const setupError = useControlPlaneStore((state) => state.firstGovernedRepoSetupError)
+  const wizardState = useControlPlaneStore((state) => state.firstGovernedRepoWizardState)
+  const isWizardLoading = useControlPlaneStore((state) => state.isFirstGovernedRepoWizardLoading)
+  const isWizardActionRunning = useControlPlaneStore((state) => state.isFirstGovernedRepoWizardActionRunning)
+  const wizardError = useControlPlaneStore((state) => state.firstGovernedRepoWizardError)
   const loadSetup = useControlPlaneStore((state) => state.loadFirstGovernedRepoSetup)
   const saveSetup = useControlPlaneStore((state) => state.saveFirstGovernedRepoSetup)
+  const loadWizardState = useControlPlaneStore((state) => state.loadFirstGovernedRepoWizardState)
+  const createWizardRun = useControlPlaneStore((state) => state.createFirstGovernedRepoWizardRun)
+  const validateWizardRun = useControlPlaneStore((state) => state.validateFirstGovernedRepoWizardRun)
+  const planWizardRun = useControlPlaneStore((state) => state.planFirstGovernedRepoWizardRun)
+  const completeWizardRun = useControlPlaneStore((state) => state.completeFirstGovernedRepoWizardRun)
   const [draft, setDraft] = useState<FirstGovernedRepoSetupDraft>(() =>
     normalizeFirstGovernedRepoSetupDraft(DEFAULT_FIRST_GOVERNED_REPO_SETUP),
   )
@@ -100,16 +127,21 @@ export function FirstGovernedRepoSetupPanel() {
   useEffect(() => {
     if (!isConnected) return
     let cancelled = false
-    void loadSetup(selectedOrgName || undefined).then((record) => {
+    void loadWizardState(selectedOrgName || undefined).then((response) => {
       if (cancelled || dirtyRef.current) return
+      const record = response?.setup ?? null
       setDraft(normalizeFirstGovernedRepoSetupDraft(record ?? DEFAULT_FIRST_GOVERNED_REPO_SETUP))
     })
     return () => {
       cancelled = true
     }
-  }, [isConnected, loadSetup, selectedOrgName])
+  }, [isConnected, loadWizardState, selectedOrgName])
 
   const validation = useMemo(() => validateFirstGovernedRepoSetupDraft(draft), [draft])
+  const wizardCurrentStep = wizardString(wizardState, 'current_step')
+  const wizardStatus = wizardString(wizardState, 'status')
+  const wizardGaps = wizardArray(wizardState, 'gaps')
+  const providerHealth = wizardObjectArray(wizardState, 'provider_health')
   const updatedAtLabel = persistedSetupUpdatedAt
     ? new Date(persistedSetupUpdatedAt).toLocaleString()
     : 'Not saved'
@@ -149,10 +181,65 @@ export function FirstGovernedRepoSetupPanel() {
     }
   }
 
+  const wizardPayload = (status?: FirstGovernedRepoSetupDraft['status']) => ({
+    status: status ?? draft.status,
+    goal: draft.goal,
+    repository_full_name: draft.repository_full_name,
+    default_branch: draft.default_branch,
+    selected_providers: draft.selected_providers,
+    selected_modules: draft.selected_modules,
+    policy_preset: draft.policy_preset,
+    baseline: draft.baseline,
+  })
+
+  const applyWizardResponse = (record: typeof persistedSetup | null | undefined) => {
+    if (!record) return
+    setDraft(normalizeFirstGovernedRepoSetupDraft(record))
+    dirtyRef.current = false
+    setDirty(false)
+    setLocalError(null)
+  }
+
+  const startWizard = async () => {
+    const finalDraft = nextDraft(draft, {})
+    const finalValidation = validateFirstGovernedRepoSetupDraft(finalDraft)
+    if (finalValidation.errors.length > 0) {
+      setLocalError(finalValidation.errors.join(' '))
+      return
+    }
+    const response = await createWizardRun({
+      status: finalValidation.ready ? 'ready' : 'draft',
+      goal: finalDraft.goal,
+      repository_full_name: finalDraft.repository_full_name,
+      default_branch: finalDraft.default_branch,
+      selected_providers: finalDraft.selected_providers,
+      selected_modules: finalDraft.selected_modules,
+      policy_preset: finalDraft.policy_preset,
+      baseline: finalDraft.baseline,
+    }, selectedOrgName || undefined)
+    applyWizardResponse(response?.setup)
+  }
+
+  const runWizardStep = async (step: 'validate' | 'plan' | 'complete') => {
+    const runId = persistedSetup?.run_id
+    if (!runId) {
+      setLocalError('Save or start the wizard run before this step.')
+      return
+    }
+    const payload = wizardPayload(step === 'complete' ? 'completed' : undefined)
+    const response = step === 'validate'
+      ? await validateWizardRun(runId, payload, selectedOrgName || undefined)
+      : step === 'plan'
+        ? await planWizardRun(runId, payload, selectedOrgName || undefined)
+        : await completeWizardRun(runId, payload, selectedOrgName || undefined)
+    applyWizardResponse(response?.setup)
+  }
+
   const refresh = async () => {
     dirtyRef.current = false
     setDirty(false)
-    const record = await loadSetup(selectedOrgName || undefined)
+    const response = await loadWizardState(selectedOrgName || undefined)
+    const record = response?.setup ?? await loadSetup(selectedOrgName || undefined)
     setDraft(normalizeFirstGovernedRepoSetupDraft(record ?? DEFAULT_FIRST_GOVERNED_REPO_SETUP))
   }
 
@@ -178,7 +265,7 @@ export function FirstGovernedRepoSetupPanel() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={refresh} loading={isLoading}>
+          <Button variant="secondary" size="sm" onClick={refresh} loading={isLoading || isWizardLoading}>
             <RefreshCw size={14} />
             Refresh
           </Button>
@@ -196,9 +283,9 @@ export function FirstGovernedRepoSetupPanel() {
         </div>
       </div>
 
-      {(setupError || localError) && (
+      {(setupError || wizardError || localError) && (
         <div className="mt-4 rounded-lg border border-danger-500/20 bg-danger-500/8 p-3 text-xs leading-5 text-danger-200">
-          {localError ?? setupError}
+          {localError ?? wizardError ?? setupError}
         </div>
       )}
 
@@ -329,6 +416,77 @@ export function FirstGovernedRepoSetupPanel() {
         </div>
 
         <aside className="space-y-3">
+          <div className="rounded-lg border border-brand-500/20 bg-brand-500/8 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ListChecks size={15} className="text-brand-300" />
+                <h3 className="text-sm font-semibold text-surface-100">Integration wizard</h3>
+              </div>
+              <Badge variant={wizardStatus === 'completed' ? 'success' : 'info'}>{wizardCurrentStep}</Badge>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-md border border-white/8 bg-surface-950/40 p-2">
+                <p className="text-[10px] uppercase tracking-widest text-surface-500">Status</p>
+                <p className="mt-1 text-sm font-semibold text-surface-100">{wizardStatus}</p>
+              </div>
+              <div className="rounded-md border border-white/8 bg-surface-950/40 p-2">
+                <p className="text-[10px] uppercase tracking-widest text-surface-500">Backend gaps</p>
+                <p className="mono-data mt-1 text-lg font-semibold text-surface-100">{wizardGaps.length}</p>
+              </div>
+            </div>
+            {providerHealth.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {providerHealth.map((provider) => {
+                  const providerId = typeof provider.provider === 'string' ? provider.provider : 'provider'
+                  const status = typeof provider.status === 'string' ? provider.status : 'needs-evidence'
+                  return (
+                    <div key={providerId} className="flex items-center justify-between gap-2 rounded-md border border-white/8 bg-surface-950/40 px-2 py-1.5">
+                      <span className="text-xs font-medium text-surface-300">{providerId}</span>
+                      <Badge variant={status === 'ready' ? 'success' : status === 'needs-config' ? 'warning' : 'info'}>
+                        {status}
+                      </Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button variant="secondary" size="sm" onClick={startWizard} loading={isWizardActionRunning} disabled={!isConnected}>
+                <PlayCircle size={14} />
+                Start
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void runWizardStep('validate')}
+                loading={isWizardActionRunning}
+                disabled={!isConnected || !persistedSetup?.run_id}
+              >
+                <ShieldCheck size={14} />
+                Validate
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void runWizardStep('plan')}
+                loading={isWizardActionRunning}
+                disabled={!isConnected || !persistedSetup?.run_id}
+              >
+                <Workflow size={14} />
+                Plan
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => void runWizardStep('complete')}
+                loading={isWizardActionRunning}
+                disabled={!isConnected || !persistedSetup?.run_id || draft.baseline.gate_readiness !== 'baseline_ready'}
+              >
+                <CheckCircle2 size={14} />
+                Complete
+              </Button>
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={() =>

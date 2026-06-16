@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-15
-Ticket: `KAN-119` Period Compliance Report Share Packages
+Updated: 2026-06-16
+Ticket: `KAN-120` First Governed Repo Setup Integration Wizard
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -17,9 +17,8 @@ The current direction is product/UX consolidation plus auditor-ready compliance 
 - package existing capabilities into a guided experience.
 - tell the operator what to do next instead of showing another disconnected report.
 - use the completed `KAN-69 - Enterprise Action Center guided UX` as the first product consolidation surface.
-- continue the manual-first compliance report chain from evidence export through reviewed period
-  reports before adding scheduler, official regulatory wording, certification claims, or AI-driven
-  decisions.
+- turn the manual-first Deployment Gates setup into a coherent first-run path before adding broader
+  integration hubs, provider mutation, OAuth automation, or AI-driven decisions.
 
 The product should not become an "AWS 2.0" style maze of separate surfaces. The valuable work is to
 turn existing primitives into coherent operator and auditor workflows without creating unreviewed
@@ -37,6 +36,10 @@ The repo already contains substantial product surface:
   compliance reports, retention/custody history, period report provenance manifests, period report
   review/sign-off metadata, KAN-118 saved manual report profiles, and KAN-119 manual share
   packages/offline verification bundles for reviewed Period Compliance Reports.
+- First Governed Repo Setup from KAN-80 and the in-progress KAN-120 Integration Wizard that
+  orchestrates state, validation, baseline planning, and completion without storing provider secrets,
+  mutating providers/customer repos, executing deploys, creating claims, or depending on Agent
+  Governance.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
@@ -135,7 +138,13 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-69 - Enterprise Action Center guided UX` packages existing GitGov capabilities into a first-class guided surface. It merged through PR `#204` as main commit `aa7e352`.
+`KAN-120 - First Governed Repo Setup Integration Wizard` is the active product slice. It resumes
+`0.1 Deployment Gates` by turning KAN-80's persisted setup into a manual-first first-run wizard:
+state read, create/resume, validate, plan, and complete. It is not a provider OAuth/mutation wizard,
+not deploy execution, not compliance certification, and not an Agent Governance dependency.
+
+`KAN-69 - Enterprise Action Center guided UX` remains implemented and merged through PR `#204` as
+main commit `aa7e352`.
 
 Recommended product shape:
 

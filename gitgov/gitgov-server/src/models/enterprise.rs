@@ -116,6 +116,45 @@ pub struct UpsertFirstGovernedRepoSetupRequest {
     pub baseline: serde_json::Value,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoWizardActionRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub goal: String,
+    #[serde(default)]
+    pub repository_full_name: String,
+    #[serde(default)]
+    pub default_branch: String,
+    #[serde(default)]
+    pub selected_providers: Vec<String>,
+    #[serde(default)]
+    pub selected_modules: Vec<String>,
+    #[serde(default)]
+    pub policy_preset: String,
+    #[serde(default)]
+    pub baseline: serde_json::Value,
+    #[serde(default)]
+    pub current_step: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FirstGovernedRepoWizardStateResponse {
+    pub org_id: String,
+    pub found: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setup: Option<FirstGovernedRepoSetupRecord>,
+    pub state: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FirstGovernedRepoWizardRunResponse {
+    pub setup: FirstGovernedRepoSetupRecord,
+    pub state: serde_json::Value,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnterpriseReleaseApprovalRecord {
     pub id: String,
