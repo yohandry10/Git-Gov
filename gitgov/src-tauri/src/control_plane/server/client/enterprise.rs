@@ -973,7 +973,12 @@ impl ControlPlaneClient {
         manifest_id: &str,
         query: &ChangeRiskCabDecisionManifestQuery,
     ) -> Result<ChangeRiskCabDecisionManifestResponse, ServerError> {
-        let url = self.endpoint_url(&["change-risk", "cab-decision-manifests", manifest_id])?;
+        let url = self.endpoint_url(&[
+            "change-risk",
+            "cab-decision-manifests",
+            manifest_id,
+            "detail",
+        ])?;
         let mut query_params: Vec<(String, String)> = Vec::new();
         if let Some(org_name) = &query.org_name {
             query_params.push(("org_name".to_string(), org_name.clone()));

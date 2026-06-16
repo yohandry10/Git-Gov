@@ -1600,6 +1600,30 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
     let (status, response) = json_request(
         &app,
         "GET",
+        &format!("/change-risk/cab-decision-manifests/{manifest_id}/detail?org_name=risk-cab-org"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor manifest detail: {response}"
+    );
+    let fetched_manifest_detail: serde_json::Value =
+        serde_json::from_str(&response).expect("fetched manifest detail JSON");
+    assert_eq!(
+        fetched_manifest_detail["manifest"]["manifest_hash"],
+        manifest_hash
+    );
+    assert_eq!(
+        fetched_manifest_detail["artifact"]["hash_chain"]["manifest_hash"],
+        manifest_hash
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
         &format!(
             "/change-risk/cab-decision-manifests/{manifest_id}/download?org_name=risk-cab-org"
         ),
