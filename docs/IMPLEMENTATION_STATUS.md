@@ -2,54 +2,36 @@
 
 Updated: 2026-06-16
 
-## KAN-136 VS Code Extension Read-Only Governance Context - 2026-06-16
+## KAN-137 Remove External Editor Extension Direction - 2026-06-16
 
-`KAN-136 - VS Code Extension Read-Only Governance Context MVP` is completed. GitHub issue `#476`
-shipped through PR `#477`, merged to `main` as `23c8b551`.
+`KAN-137 - Remove external editor extension product direction` is in progress. GitHub issue `#479`
+tracks the cleanup.
 
 Product decision:
 
-- Continue `0.10 Developer Distribution Surfaces` after KAN-132 through KAN-135 completed the
-  native terminal surface.
-- Add a minimal VS Code extension that shows read-only GitGov governance context for the current
-  repo/branch.
-- Keep VS Code as a convenience surface only. It does not approve, block, certify, deploy, execute
-  Git commands, mutate providers/repos, or create a second enforcement model.
+- Remove the external editor extension path from the active roadmap/current repository.
+- Keep `0.10 Developer Distribution Surfaces` focused on Desktop/Workspace native terminal surfaces.
+- Reopen external editor plugins only through a future explicit product decision.
 
 Implemented:
 
-- Added `gitgov-vscode` package.
-- Added VS Code extension manifest, activity bar container, `GitGov Governance` tree view, and
-  configure/refresh/clear commands.
-- Added SecretStorage-backed API key handling; API keys are not stored in plain settings.
-- Added read-only Git context detection for workspace repo/branch and GitHub remote normalization.
-- Added GET-only GitGov client for existing Deployment Gate, Change Risk, and Executive Governance
-  endpoints.
-- Added CI job `VS Code Extension Lint + Typecheck + Test`.
+- Deleted the dedicated external editor package from the tracked repo.
+- Removed the dedicated extension CI job.
+- Removed the dedicated design/report docs for that direction.
+- Updated roadmap/context/status docs so the active direction is Desktop/Workspace terminal only.
 
 Guardrails:
 
 - No backend migration or new Control Plane API.
 - No Render/API deploy expected.
-- No command interception, enforcement, approvals, CAB updates, Change Risk creation, or deploy
-  execution.
-- No Git push/pull/fetch/checkout.
 - No provider/repo/deploy mutation.
-- No AI/Agent Governance/OPA/Rego/MCP dependency.
-- No compliance/certification/legal/regulatory claim.
-- No public links, aggressive polling, branch protection manipulation, plain-text API key storage,
-  or secret logging.
+- No product claim that external editor plugins are part of the active roadmap.
 
 Validation:
 
-- Extension `npm ci`, lint, typecheck, tests, and build pass locally.
-- Extension tests cover real Git repo detection, non-git safe state, SecretStorage-compatible key
-  store/read/delete, GET-only endpoint usage, 401/403 safe errors without token leakage, and no
-  GitGov calls when git/config/key prerequisites are absent.
-- `git diff --check`, publication guard, and static no-mutation grep pass locally.
-- PR checks passed, including the new `VS Code Extension Lint + Typecheck + Test` job.
-- No Render/API deploy was required because KAN-136 is a local extension and reuses existing read
-  endpoints.
+- Local `git diff --check`, publication guard, and repository grep for the removed direction passed.
+- Local `actionlint` could not run because this Windows environment has no working bash/Go runtime;
+  workflow syntax remains covered by the required PR check.
 
 ## KAN-135 Native Terminal Governance Context - 2026-06-16
 
@@ -85,7 +67,6 @@ Guardrails:
 - No mutating Git/provider/deploy command.
 - No provider/repo/deploy mutation.
 - No AI/Agent Governance/OPA/Rego/MCP dependency.
-- No VS Code extension.
 - No compliance/certification/legal/regulatory claim.
 - No absolute local path exposure in governance target labels.
 
@@ -140,7 +121,7 @@ Guardrails:
   apply.
 - No provider/repo/deploy mutation.
 - No AI/Agent Governance/OPA/Rego/MCP dependency.
-- No VS Code extension or branch gate status.
+- No branch gate status.
 - No compliance/certification/legal/regulatory claim.
 
 Validation:
@@ -186,7 +167,7 @@ Guardrails:
 - No command blocking, approval, interception, or automatic re-run.
 - No Git push/pull/fetch/checkout.
 - No provider/repo/deploy mutation.
-- No quick commands, VS Code extension, branch gate status, or policy preview.
+- No quick commands, branch gate status, or policy preview.
 - No AI/Agent Governance/OPA/Rego/MCP dependency.
 - No compliance/certification/legal/regulatory claim.
 

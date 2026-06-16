@@ -31,7 +31,7 @@ Control Plane evidence.
 - No command interception, blocking, approval, or enforcement.
 - No Git `push`, `pull`, `fetch`, checkout, or repository mutation.
 - No provider, deployment, branch-protection, or workflow mutation.
-- No quick commands, VS Code extension, branch gate status, or policy preview.
+- No quick commands, branch gate status, or policy preview.
 - No AI, Agent Governance, MCP, BYOM, chatbot, compliance, certification, legal, or regulatory claim.
 
 ## Validation
@@ -41,4 +41,3 @@ Control Plane evidence.
 - Frontend tests cover refresh trigger detection and safe label formatting without cwd leakage.
 - Full Tauri check/clippy/tests and frontend typecheck/lint/build/full tests are required before
   merge.
-
