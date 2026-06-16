@@ -509,6 +509,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::download_change_risk_cab_decision_manifest),
         )
         .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/detail",
+            get(handlers::get_change_risk_cab_decision_manifest),
+        )
+        .route(
             "/change-risk/cab-decision-manifests/{manifest_id}/revoke",
             patch(handlers::revoke_change_risk_cab_decision_manifest),
         )

@@ -2373,6 +2373,10 @@ pub(super) fn build_test_app_with_options(
             get(handlers::download_change_risk_cab_decision_manifest),
         )
         .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/detail",
+            get(handlers::get_change_risk_cab_decision_manifest),
+        )
+        .route(
             "/change-risk/cab-decision-manifests/{manifest_id}/revoke",
             patch(handlers::revoke_change_risk_cab_decision_manifest),
         )
