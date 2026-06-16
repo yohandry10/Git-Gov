@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-136 VS Code Extension Read-Only Governance Context - 2026-06-16
 
-`KAN-136 - VS Code Extension Read-Only Governance Context MVP` is in progress. GitHub issue `#476`
-tracks the slice.
+`KAN-136 - VS Code Extension Read-Only Governance Context MVP` is completed. GitHub issue `#476`
+shipped through PR `#477`, merged to `main` as `23c8b551`.
 
 Product decision:
 
@@ -16,7 +16,7 @@ Product decision:
 - Keep VS Code as a convenience surface only. It does not approve, block, certify, deploy, execute
   Git commands, mutate providers/repos, or create a second enforcement model.
 
-Implemented locally:
+Implemented:
 
 - Added `gitgov-vscode` package.
 - Added VS Code extension manifest, activity bar container, `GitGov Governance` tree view, and
@@ -47,7 +47,9 @@ Validation:
   store/read/delete, GET-only endpoint usage, 401/403 safe errors without token leakage, and no
   GitGov calls when git/config/key prerequisites are absent.
 - `git diff --check`, publication guard, and static no-mutation grep pass locally.
-- PR checks remain pending before merge.
+- PR checks passed, including the new `VS Code Extension Lint + Typecheck + Test` job.
+- No Render/API deploy was required because KAN-136 is a local extension and reuses existing read
+  endpoints.
 
 ## KAN-135 Native Terminal Governance Context - 2026-06-16
 
