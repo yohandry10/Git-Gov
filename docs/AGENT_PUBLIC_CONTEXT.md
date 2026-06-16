@@ -222,9 +222,9 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-137 - Remove external editor extension product direction` is the current cleanup slice. It
-removes the external editor extension path from the active product roadmap/current repo and keeps
-roadmap block `0.10 Developer Distribution Surfaces` focused on Desktop/Workspace terminal surfaces.
+`KAN-137 - Remove external editor extension product direction` is completed. It removed the
+external editor extension path from the active product roadmap/current repo and keeps roadmap block
+`0.10 Developer Distribution Surfaces` focused on Desktop/Workspace terminal surfaces.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a
