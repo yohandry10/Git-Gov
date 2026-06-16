@@ -839,6 +839,65 @@ pub struct ChangeRiskCabPacketReviewResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskCabDecisionManifestRecord {
+    pub manifest_id: String,
+    pub org_id: String,
+    pub cab_packet_id: String,
+    pub cab_packet_hash: String,
+    pub manifest_hash: String,
+    pub review_status_snapshot: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reviewed_at: Option<i64>,
+    pub created_by_user_id: String,
+    pub created_at: i64,
+    pub download_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub downloaded_at: Option<i64>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revoked_by_user_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskCabDecisionManifestResponse {
+    pub manifest: ChangeRiskCabDecisionManifestRecord,
+    pub download_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestListResponse {
+    #[serde(default)]
+    pub items: Vec<ChangeRiskCabDecisionManifestRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentGovernanceEvaluationRecord {
     pub id: String,
     pub evaluation_id: String,

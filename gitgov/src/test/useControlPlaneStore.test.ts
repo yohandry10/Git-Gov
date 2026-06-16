@@ -86,6 +86,11 @@ describe('useControlPlaneStore', () => {
       changeRiskCabPacketsFilters: { limit: 10, offset: 0 },
       changeRiskCabPacket: null,
       changeRiskCabPacketArtifact: null,
+      changeRiskCabPacketReview: null,
+      changeRiskCabDecisionManifests: [],
+      changeRiskCabDecisionManifestsTotal: 0,
+      changeRiskCabDecisionManifest: null,
+      changeRiskCabDecisionManifestArtifact: null,
       isChangeRiskEvaluationsLoading: false,
       isChangeRiskRulesLoading: false,
       isChangeRiskTraceLoading: false,
@@ -96,6 +101,12 @@ describe('useControlPlaneStore', () => {
       isChangeRiskCabPacketCreating: false,
       isChangeRiskCabPacketDownloading: false,
       isChangeRiskCabPacketArchiving: false,
+      isChangeRiskCabPacketReviewLoading: false,
+      isChangeRiskCabPacketReviewUpdating: false,
+      isChangeRiskCabDecisionManifestCreating: false,
+      isChangeRiskCabDecisionManifestsLoading: false,
+      isChangeRiskCabDecisionManifestDownloading: false,
+      isChangeRiskCabDecisionManifestRevoking: false,
       changeRiskError: null,
       complianceEvidenceSelectedDeploymentGateId: null,
       firstGovernedRepoSetup: null,
@@ -1679,6 +1690,131 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().changeRiskCabPackets[0].review_status).toBe('needs_mitigation')
       expect(useControlPlaneStore.getState().changeRiskCabPackets[0].artifact_hash).toBe('sha256:' + 'e'.repeat(64))
       expect(useControlPlaneStore.getState().changeRiskCabPackets[0].follow_up_required).toBe(true)
+    })
+
+    it('creates downloads and revokes change risk CAB decision manifests without changing source packet evidence', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const manifest = {
+        manifest_id: 'crcabdm_' + '3'.repeat(32),
+        org_id: 'org-1',
+        cab_packet_id: 'crcab_' + '2'.repeat(32),
+        cab_packet_hash: 'sha256:' + 'e'.repeat(64),
+        manifest_hash: 'sha256:' + 'f'.repeat(64),
+        review_status_snapshot: 'needs_mitigation',
+        reviewed_by_user_id: 'kan-126-admin',
+        reviewed_at: 30,
+        created_by_user_id: 'kan-127-admin',
+        created_at: 40,
+        download_count: 0,
+        downloaded_at: null,
+        status: 'active',
+        revoked_at: null,
+        revoked_by_user_id: null,
+      }
+      const artifact = {
+        schema_version: 'gitgov_change_risk_cab_decision_manifest.v1',
+        manifest_id: manifest.manifest_id,
+        cab_packet: {
+          packet_id: manifest.cab_packet_id,
+          cab_packet_hash: manifest.cab_packet_hash,
+        },
+        included_evaluations: {
+          count: 1,
+          trace_hashes: ['sha256:' + 'a'.repeat(64)],
+        },
+        claims: {
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+        },
+        audit_metadata: {
+          deployment_execution: false,
+          source_cab_packet_mutated: false,
+          source_evaluations_mutated: false,
+        },
+        hash_chain: {
+          cab_packet_hash: manifest.cab_packet_hash,
+          manifest_hash: manifest.manifest_hash,
+        },
+      }
+      mockInvoke
+        .mockResolvedValueOnce({ items: [manifest], total: 1, limit: 10, offset: 0 })
+        .mockResolvedValueOnce({
+          manifest,
+          download_url: `/change-risk/cab-decision-manifests/${manifest.manifest_id}/download`,
+          artifact,
+        })
+        .mockResolvedValueOnce(artifact)
+        .mockResolvedValueOnce({
+          manifest: {
+            ...manifest,
+            status: 'revoked',
+            revoked_at: 50,
+            revoked_by_user_id: 'kan-127-admin',
+          },
+          download_url: `/change-risk/cab-decision-manifests/${manifest.manifest_id}/download`,
+          artifact: null,
+        })
+
+      const listed = await useControlPlaneStore
+        .getState()
+        .loadChangeRiskCabDecisionManifests(` ${manifest.cab_packet_id} `)
+      const created = await useControlPlaneStore
+        .getState()
+        .createChangeRiskCabDecisionManifest(` ${manifest.cab_packet_id} `)
+      const downloaded = await useControlPlaneStore
+        .getState()
+        .downloadChangeRiskCabDecisionManifest(` ${manifest.manifest_id} `)
+      const revoked = await useControlPlaneStore
+        .getState()
+        .revokeChangeRiskCabDecisionManifest(` ${manifest.manifest_id} `)
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_list_change_risk_cab_decision_manifests', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId: manifest.cab_packet_id,
+        query: {
+          org_name: 'yohandry10',
+          status: null,
+          limit: 10,
+          offset: 0,
+        },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_create_change_risk_cab_decision_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        packetId: manifest.cab_packet_id,
+        payload: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_download_change_risk_cab_decision_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        manifestId: manifest.manifest_id,
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_revoke_change_risk_cab_decision_manifest', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        manifestId: manifest.manifest_id,
+        payload: { org_name: 'yohandry10' },
+      })
+      expect(listed?.total).toBe(1)
+      expect(created?.artifact?.claims).toEqual(expect.objectContaining({
+        advisory_only: true,
+        compliance_claim: false,
+        certification: false,
+      }))
+      expect(downloaded?.hash_chain).toEqual(expect.objectContaining({
+        cab_packet_hash: manifest.cab_packet_hash,
+        manifest_hash: manifest.manifest_hash,
+      }))
+      expect(revoked?.manifest.status).toBe('revoked')
+      expect(useControlPlaneStore.getState().changeRiskCabDecisionManifestArtifact?.included_evaluations).toEqual({
+        count: 1,
+        trace_hashes: ['sha256:' + 'a'.repeat(64)],
+      })
+      expect(useControlPlaneStore.getState().changeRiskCabDecisionManifests[0].status).toBe('revoked')
     })
 
     it('creates the compliance evidence review chain with explicit manual-first payloads', async () => {

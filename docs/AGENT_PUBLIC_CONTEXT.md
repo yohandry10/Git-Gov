@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-126` Change Risk CAB Packet Manual Disposition
+Ticket: `KAN-127` Change Risk CAB Decision Manifest
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -72,6 +72,12 @@ The repo already contains substantial product surface:
   reason, and follow-up metadata. It deliberately does not approve deployments, block releases,
   mutate providers or repositories, mutate source evaluations, change the packet artifact hash, use
   AI/agents, or create certification/compliance/legal claims.
+- Change Risk CAB Decision Manifest from KAN-127 is implemented locally and pending PR/production
+  validation. It creates append-only, hashable, downloadable, revocable JSON manifests for reviewed
+  CAB packets. The manifest binds the source packet hash, included evaluation trace hashes, final CAB
+  disposition, reviewer, safe notes, follow-up fields, and no-claim flags. It remains manual evidence
+  only and does not enforce, block releases, deploy, mutate providers/repos, use AI/Agent Governance,
+  or create legal/compliance/certification claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

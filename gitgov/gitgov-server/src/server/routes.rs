@@ -496,8 +496,25 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
                 .patch(handlers::update_change_risk_cab_packet_review),
         )
         .route(
+            "/change-risk/cab-packets/{packet_id}/decision-manifests",
+            get(handlers::list_change_risk_cab_decision_manifests)
+                .post(handlers::create_change_risk_cab_decision_manifest),
+        )
+        .route(
             "/change-risk/cab-packets/{packet_id}",
             get(handlers::get_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/download",
+            get(handlers::download_change_risk_cab_decision_manifest),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/revoke",
+            patch(handlers::revoke_change_risk_cab_decision_manifest),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}",
+            get(handlers::get_change_risk_cab_decision_manifest),
         )
         .route(
             "/agent-governance/evaluate",

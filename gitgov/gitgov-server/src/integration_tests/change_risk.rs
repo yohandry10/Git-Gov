@@ -2,12 +2,18 @@ use super::common::*;
 use crate::db::Database;
 use axum::http::StatusCode;
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
 const REPO_FULL_NAME: &str = "risk-org/repo";
 const BRANCH: &str = "main";
 const TARGET_SHA: &str = "abcdef1234567890abcdef1234567890abcdef12";
 const EVIDENCE_HASH: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+fn canonical_json_hash(value: &serde_json::Value) -> String {
+    let bytes = serde_json::to_vec(value).expect("canonical JSON serialization");
+    format!("sha256:{:x}", Sha256::digest(bytes))
+}
 
 async fn insert_repo_for_org(pool: &sqlx::PgPool, org_id: &str, full_name: &str) {
     let repo_id = uuid::Uuid::new_v4().to_string();
@@ -1472,6 +1478,189 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
 
     let (status, response) = json_request(
         &app,
+        "POST",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/decision-manifests"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "CAB decision manifest create: {response}"
+    );
+    let created_manifest: serde_json::Value =
+        serde_json::from_str(&response).expect("created CAB decision manifest JSON");
+    let manifest_id = created_manifest["manifest"]["manifest_id"]
+        .as_str()
+        .expect("manifest id")
+        .to_string();
+    let manifest_hash = created_manifest["manifest"]["manifest_hash"]
+        .as_str()
+        .expect("manifest hash")
+        .to_string();
+    assert!(manifest_id.starts_with("crcabdm_"));
+    assert!(manifest_hash.starts_with("sha256:"));
+    assert_eq!(
+        created_manifest["manifest"]["cab_packet_id"],
+        filter_packet_id
+    );
+    assert_eq!(created_manifest["manifest"]["cab_packet_hash"], filter_hash);
+    assert_eq!(
+        created_manifest["manifest"]["review_status_snapshot"],
+        "needs_mitigation"
+    );
+    assert_eq!(
+        created_manifest["artifact"]["schema_version"],
+        "gitgov_change_risk_cab_decision_manifest.v1"
+    );
+    assert_eq!(
+        created_manifest["artifact"]["cab_packet"]["cab_packet_hash"],
+        filter_hash
+    );
+    assert_eq!(
+        created_manifest["artifact"]["review"]["review_status"],
+        "needs_mitigation"
+    );
+    assert_eq!(
+        created_manifest["artifact"]["included_evaluations"]["count"],
+        1
+    );
+    assert_eq!(
+        created_manifest["artifact"]["included_evaluations"]["trace_hashes"][0],
+        high_trace_hash
+    );
+    assert_eq!(
+        created_manifest["artifact"]["claims"]["advisory_only"],
+        true
+    );
+    assert_eq!(created_manifest["artifact"]["claims"]["llm_used"], false);
+    assert_eq!(
+        created_manifest["artifact"]["claims"]["agent_governance_used"],
+        false
+    );
+    assert_eq!(
+        created_manifest["artifact"]["claims"]["compliance_claim"],
+        false
+    );
+    assert_eq!(
+        created_manifest["artifact"]["claims"]["certification"],
+        false
+    );
+    assert_eq!(
+        created_manifest["artifact"]["audit_metadata"]["deployment_execution"],
+        false
+    );
+    assert_eq!(
+        created_manifest["artifact"]["audit_metadata"]["source_cab_packet_mutated"],
+        false
+    );
+    assert_eq!(
+        created_manifest["artifact"]["audit_metadata"]["source_evaluations_mutated"],
+        false
+    );
+
+    let mut manifest_preimage = created_manifest["artifact"].clone();
+    manifest_preimage["hash_chain"]["manifest_hash"] = serde_json::Value::Null;
+    assert_eq!(canonical_json_hash(&manifest_preimage), manifest_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/change-risk/cab-packets/{filter_packet_id}/decision-manifests?org_name=risk-cab-org"
+        ),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor manifest list: {response}");
+    let listed_manifests: serde_json::Value =
+        serde_json::from_str(&response).expect("manifest list JSON");
+    assert_eq!(listed_manifests["total"], 1);
+    assert_eq!(listed_manifests["items"][0]["manifest_id"], manifest_id);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-decision-manifests/{manifest_id}?org_name=risk-cab-org"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor manifest get: {response}");
+    let fetched_manifest: serde_json::Value =
+        serde_json::from_str(&response).expect("fetched manifest JSON");
+    assert_eq!(fetched_manifest["manifest"]["manifest_hash"], manifest_hash);
+    assert_eq!(
+        fetched_manifest["artifact"]["included_evaluations"]["trace_hashes"][0],
+        high_trace_hash
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/change-risk/cab-decision-manifests/{manifest_id}/download?org_name=risk-cab-org"
+        ),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor manifest download: {response}"
+    );
+    let downloaded_manifest: serde_json::Value =
+        serde_json::from_str(&response).expect("downloaded manifest JSON");
+    assert_eq!(
+        downloaded_manifest["hash_chain"]["manifest_hash"],
+        manifest_hash
+    );
+    assert_eq!(
+        downloaded_manifest["hash_chain"]["cab_packet_hash"],
+        filter_hash
+    );
+    let manifest_download_count: i64 = sqlx::query_scalar(
+        "SELECT download_count FROM change_risk_cab_decision_manifests WHERE manifest_id = $1",
+    )
+    .bind(&manifest_id)
+    .fetch_one(&pool)
+    .await
+    .expect("manifest download count");
+    assert_eq!(manifest_download_count, 1);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/decision-manifests"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not create CAB decision manifest: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/decision-manifests?org_name=risk-cab-other"),
+        None,
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "other tenant must not list foreign CAB decision manifests: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
         "PATCH",
         &format!("/change-risk/cab-packets/{filter_packet_id}/review"),
         Some(
@@ -1663,6 +1852,20 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         1
     );
 
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        &format!("/change-risk/cab-packets/{selection_packet_id}/decision-manifests"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "pending review packet cannot create manifest: {response}"
+    );
+
     let cross_tenant_payload = json!({
         "name": "KAN-125 cross tenant should fail",
         "evaluation_ids": [other_eval_id]
@@ -1783,6 +1986,69 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
 
     let (status, response) = json_request(
         &app,
+        "POST",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/decision-manifests"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not create CAB decision manifests: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/change-risk/cab-decision-manifests/{manifest_id}/download?org_name=risk-cab-org"
+        ),
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not download CAB decision manifests: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-decision-manifests/{manifest_id}/revoke"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "admin revoke CAB decision manifest: {response}"
+    );
+    let revoked_manifest: serde_json::Value =
+        serde_json::from_str(&response).expect("revoked CAB decision manifest JSON");
+    assert_eq!(revoked_manifest["manifest"]["status"], "revoked");
+    assert_eq!(revoked_manifest["manifest"]["manifest_hash"], manifest_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!(
+            "/change-risk/cab-decision-manifests/{manifest_id}/download?org_name=risk-cab-org"
+        ),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "revoked CAB decision manifest download must be blocked: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
         "PATCH",
         &format!("/change-risk/cab-packets/{selection_packet_id}/archive"),
         Some(r#"{"org_name":"risk-cab-org"}"#),
@@ -1876,6 +2142,30 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
     .await
     .expect("CAB archived audit count");
     assert_eq!(archived_audit_count, 1);
+    let manifest_created_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'cab_decision_manifest_created' AND target_id = $1",
+    )
+    .bind(&manifest_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB decision manifest created audit count");
+    assert_eq!(manifest_created_audit_count, 1);
+    let manifest_downloaded_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'cab_decision_manifest_downloaded' AND target_id = $1",
+    )
+    .bind(&manifest_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB decision manifest downloaded audit count");
+    assert_eq!(manifest_downloaded_audit_count, 1);
+    let manifest_revoked_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'cab_decision_manifest_revoked' AND target_id = $1",
+    )
+    .bind(&manifest_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB decision manifest revoked audit count");
+    assert_eq!(manifest_revoked_audit_count, 1);
 
     teardown(&admin_pool, &schema).await;
 }

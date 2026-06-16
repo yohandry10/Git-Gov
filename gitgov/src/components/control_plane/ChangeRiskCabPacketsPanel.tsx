@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Archive, ClipboardCheck, Download, FileJson, PackageCheck, RefreshCw, Save } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
+import { ChangeRiskCabDecisionManifestPanel } from '@/components/control_plane/ChangeRiskCabDecisionManifestPanel'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type {
@@ -456,13 +457,20 @@ export function ChangeRiskCabPacketsPanel({
       )}
 
       {selectedReviewPacket && (
-        <CabPacketDispositionPanel
-          key={`${selectedReviewPacket.packet_id}-${selectedReviewPacket.review_updated_at ?? 'pending'}`}
-          selectedPacket={selectedReviewPacket}
-          displayTimezone={displayTimezone}
-          onSave={handleSaveReview}
-          isSaving={isReviewUpdating || isReviewLoading}
-        />
+        <>
+          <CabPacketDispositionPanel
+            key={`${selectedReviewPacket.packet_id}-${selectedReviewPacket.review_updated_at ?? 'pending'}`}
+            selectedPacket={selectedReviewPacket}
+            displayTimezone={displayTimezone}
+            onSave={handleSaveReview}
+            isSaving={isReviewUpdating || isReviewLoading}
+          />
+          <ChangeRiskCabDecisionManifestPanel
+            selectedPacket={selectedReviewPacket}
+            selectedOrgName={selectedOrgName}
+            displayTimezone={displayTimezone}
+          />
+        </>
       )}
       {cabPacketReview && selectedReviewPacket?.packet_id === cabPacketReview.packet_id && (
         <div className="border-b border-white/6 px-3 py-2 text-[11px] text-surface-500">

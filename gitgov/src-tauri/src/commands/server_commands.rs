@@ -1,7 +1,9 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
-    AuditFilter, ChangeRiskCabPacketListResponse, ChangeRiskCabPacketQuery,
-    ChangeRiskCabPacketRequest, ChangeRiskCabPacketResponse, ChangeRiskCabPacketReviewRequest,
+    AuditFilter, ChangeRiskCabDecisionManifestListResponse, ChangeRiskCabDecisionManifestQuery,
+    ChangeRiskCabDecisionManifestRequest, ChangeRiskCabDecisionManifestResponse,
+    ChangeRiskCabPacketListResponse, ChangeRiskCabPacketQuery, ChangeRiskCabPacketRequest,
+    ChangeRiskCabPacketResponse, ChangeRiskCabPacketReviewRequest,
     ChangeRiskCabPacketReviewResponse, ChangeRiskEvaluationListResponse, ChangeRiskEvaluationQuery,
     ChangeRiskEvaluationRecord, ChangeRiskEvaluationRequest, ChangeRiskEvaluationReviewRequest,
     ChangeRiskEvaluationReviewResponse, ChangeRiskEvaluationTraceResponse,
@@ -1221,6 +1223,96 @@ pub async fn cmd_server_archive_change_risk_cab_packet(
         });
         client
             .archive_change_risk_cab_packet(&packet_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_change_risk_cab_decision_manifest(
+    config: ServerConnectionConfig,
+    packet_id: String,
+    payload: ChangeRiskCabDecisionManifestRequest,
+) -> Result<ChangeRiskCabDecisionManifestResponse, String> {
+    run_blocking_command("CREATE_CHANGE_RISK_CAB_DECISION_MANIFEST", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_change_risk_cab_decision_manifest(&packet_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_list_change_risk_cab_decision_manifests(
+    config: ServerConnectionConfig,
+    packet_id: String,
+    query: ChangeRiskCabDecisionManifestQuery,
+) -> Result<ChangeRiskCabDecisionManifestListResponse, String> {
+    run_blocking_command("LIST_CHANGE_RISK_CAB_DECISION_MANIFESTS", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .list_change_risk_cab_decision_manifests(&packet_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_change_risk_cab_decision_manifest(
+    config: ServerConnectionConfig,
+    manifest_id: String,
+    query: ChangeRiskCabDecisionManifestQuery,
+) -> Result<ChangeRiskCabDecisionManifestResponse, String> {
+    run_blocking_command("GET_CHANGE_RISK_CAB_DECISION_MANIFEST", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_change_risk_cab_decision_manifest(&manifest_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_download_change_risk_cab_decision_manifest(
+    config: ServerConnectionConfig,
+    manifest_id: String,
+    query: ChangeRiskCabDecisionManifestQuery,
+) -> Result<serde_json::Value, String> {
+    run_blocking_command("DOWNLOAD_CHANGE_RISK_CAB_DECISION_MANIFEST", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .download_change_risk_cab_decision_manifest(&manifest_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_revoke_change_risk_cab_decision_manifest(
+    config: ServerConnectionConfig,
+    manifest_id: String,
+    payload: ChangeRiskCabDecisionManifestRequest,
+) -> Result<ChangeRiskCabDecisionManifestResponse, String> {
+    run_blocking_command("REVOKE_CHANGE_RISK_CAB_DECISION_MANIFEST", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .revoke_change_risk_cab_decision_manifest(&manifest_id, &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
