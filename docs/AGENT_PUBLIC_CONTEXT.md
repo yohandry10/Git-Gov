@@ -220,11 +220,12 @@ The external report is useful as directional product strategy, not as the source
 
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
-## Current Product Work
+## Latest Product State
 
-`KAN-137 - Remove external editor extension product direction` is completed. It removed the
-external editor extension path from the active product roadmap/current repo and keeps roadmap block
-`0.10 Developer Distribution Surfaces` focused on Desktop/Workspace terminal surfaces.
+`KAN-137 - Remove external editor extension product direction` is completed. The public context no
+longer treats the earlier native-terminal repo/branch slice as current work. The active product
+state after KAN-137 keeps roadmap block `0.10 Developer Distribution Surfaces` focused on
+Desktop/Workspace terminal surfaces, with no external editor extension path in the active roadmap.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a
