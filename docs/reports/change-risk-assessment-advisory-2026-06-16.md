@@ -72,17 +72,28 @@ Known warning:
 - Vite still reports the existing large base chunk warning after build. This warning predates KAN-121
   and does not block the advisory feature.
 
-## Production Follow-Up
+## Production Validation
 
-After merge:
+Completed after merge:
 
-1. Apply `gitgov/gitgov-server/supabase/supabase_schema_v62.sql` to production.
-2. Run `gitgov/gitgov-server/supabase/checks/v62_postcheck.sql`.
-3. Wait for Render to deploy the merged commit.
-4. Smoke:
-   - `/health`.
-   - authenticated `/stats`.
-   - `GET /change-risk/evaluations?org_name=yohandry10`.
-   - create one advisory evaluation from an existing Deployment Gate if production has suitable gate
-     evidence.
-   - verify the returned record keeps all advisory/no-AI/no-agent/no-claim flags.
+1. PR `#422` merged to `main` as `eb66480`.
+2. Production migration `gitgov/gitgov-server/supabase/supabase_schema_v62.sql` applied.
+3. Production postcheck `gitgov/gitgov-server/supabase/checks/v62_postcheck.sql` returned:
+   - `change_risk_evaluations.table = PASS`.
+   - `change_risk_evaluations.no_claim_constraints = PASS`.
+   - `change_risk_evaluations.indexes = PASS`.
+4. Render deploy `dep-d8oanqmq1p3s73fc8u7g` for `eb66480` reached `live`.
+5. Production smoke:
+   - `/health=ok`.
+   - authenticated `/stats=200`.
+   - `GET /change-risk/evaluations?org_name=yohandry10&limit=1` succeeded.
+   - `POST /change-risk/evaluations` created advisory record
+     `cra_9d53d9cd29a7439aa0485607edeae64e`.
+   - The record used repo `yohandry10/Git-Gov`, branch `main`, environment `production`,
+     change/release `KAN-121`, and commit `eb66480`.
+   - Response returned `risk_level=medium`, `advisory_only=true`, `llm_used=false`,
+     `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+   - Missing evidence was `deployment_gate_authorization, release_evidence_packet`, which is the
+     expected advisory result for this smoke because it intentionally did not bind an existing
+     Deployment Gate authorization.
+   - Fetch by evaluation ID returned the same record.
