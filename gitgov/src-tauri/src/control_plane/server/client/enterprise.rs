@@ -357,7 +357,6 @@ impl ControlPlaneClient {
         if let Some(offset) = query.offset {
             query_params.push(("offset".to_string(), offset.to_string()));
         }
-
         let mut request = self.client.get(url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
@@ -464,7 +463,6 @@ impl ControlPlaneClient {
         if let Some(offset) = query.offset {
             query_params.push(("offset".to_string(), offset.to_string()));
         }
-
         let mut request = self.client.get(url).query(&query_params);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
@@ -527,8 +525,165 @@ impl ControlPlaneClient {
         if let Some(offset) = query.offset {
             query_params.push(("offset".to_string(), offset.to_string()));
         }
+        if let Some(repository) = &query.repository {
+            query_params.push(("repository".to_string(), repository.clone()));
+        }
+        if let Some(environment) = &query.environment {
+            query_params.push(("environment".to_string(), environment.clone()));
+        }
+        if let Some(posture) = &query.posture {
+            query_params.push(("posture".to_string(), posture.clone()));
+        }
+        if let Some(gate_decision) = &query.gate_decision {
+            query_params.push(("gate_decision".to_string(), gate_decision.clone()));
+        }
+        if let Some(risk_level) = &query.risk_level {
+            query_params.push(("risk_level".to_string(), risk_level.clone()));
+        }
+        if let Some(review_status) = &query.review_status {
+            query_params.push(("review_status".to_string(), review_status.clone()));
+        }
 
         let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn create_executive_governance_snapshot(
+        &self,
+        payload: &ExecutiveGovernanceSnapshotRequest,
+    ) -> Result<ExecutiveGovernanceSnapshotResponse, ServerError> {
+        let url = self.endpoint_url(&["executive", "snapshots"])?;
+        let mut request = self.client.post(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn list_executive_governance_snapshots(
+        &self,
+        query: &ExecutiveGovernanceSnapshotQuery,
+    ) -> Result<ExecutiveGovernanceSnapshotListResponse, ServerError> {
+        let url = self.endpoint_url(&["executive", "snapshots"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        if let Some(status) = &query.status {
+            query_params.push(("status".to_string(), status.clone()));
+        }
+        if let Some(limit) = query.limit {
+            query_params.push(("limit".to_string(), limit.to_string()));
+        }
+        if let Some(offset) = query.offset {
+            query_params.push(("offset".to_string(), offset.to_string()));
+        }
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn get_executive_governance_snapshot(
+        &self,
+        snapshot_id: &str,
+        query: &ExecutiveGovernanceSnapshotQuery,
+    ) -> Result<ExecutiveGovernanceSnapshotResponse, ServerError> {
+        let url = self.endpoint_url(&["executive", "snapshots", snapshot_id])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn download_executive_governance_snapshot(
+        &self,
+        snapshot_id: &str,
+        query: &ExecutiveGovernanceSnapshotQuery,
+    ) -> Result<serde_json::Value, ServerError> {
+        let url = self.endpoint_url(&["executive", "snapshots", snapshot_id, "download"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn archive_executive_governance_snapshot(
+        &self,
+        snapshot_id: &str,
+        payload: &ExecutiveGovernanceSnapshotRequest,
+    ) -> Result<ExecutiveGovernanceSnapshotResponse, ServerError> {
+        let url = self.endpoint_url(&["executive", "snapshots", snapshot_id, "archive"])?;
+        let mut request = self.client.patch(url).json(payload);
         if let Some(ref api_key) = self.config.api_key {
             request = request.header("Authorization", format!("Bearer {}", api_key));
         }

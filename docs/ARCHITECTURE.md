@@ -269,6 +269,10 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/deployment-gates/{deployment_gate_id}/risk-context` | Bearer (admin/auditor) | Leer contexto read-only de Change Risk, CAB packets y CAB decision manifests relacionados con un Deployment Gate; no recalcula riesgo, no muta gates ni hace enforcement |
 | `/executive/repositories` | Bearer (admin/auditor) | Leer vista ejecutiva read-only por repositorio con evidencia agregada de Deployment Gates, Change Risk, CAB packets y CAB manifests; acepta filtros `repository`, `environment`, `posture`, `gate_decision`, `risk_level` y `review_status`; no autoriza deploys, no muta proveedores/repos y no crea claims |
+| `/executive/snapshots` | Bearer (admin/auditor) | Crear/listar snapshots JSON hashables de la vista ejecutiva filtrada; Admin crea, Admin/Auditor lee; no score, no enforcement, no deploy, no mutación, no AI/Agent Governance, no claims |
+| `/executive/snapshots/{snapshot_id}` | Bearer (admin/auditor) | Leer metadata y artifact del snapshot ejecutivo dentro del tenant |
+| `/executive/snapshots/{snapshot_id}/download` | Bearer (admin/auditor) | Descargar artifact JSON y registrar `download_count`; snapshots archivados devuelven conflicto |
+| `/executive/snapshots/{snapshot_id}/archive` | Bearer (admin) | Archivar snapshot ejecutivo sin borrar ni mutar evidencia fuente |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
 | `/change-risk/rules` | Bearer (admin/auditor) | Leer el catálogo determinístico `change_risk_rules.v1`; no usa AI, no muta proveedores/repos y no crea claims |
 | `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk; el listado acepta filtro `review_status` para cola CAB/manual |

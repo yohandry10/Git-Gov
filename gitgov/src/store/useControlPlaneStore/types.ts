@@ -411,6 +411,49 @@ export interface MultiRepoExecutiveGovernanceResponse {
   certification: boolean
 }
 
+export interface ExecutiveGovernanceSnapshotRecord {
+  snapshot_id: string
+  org_id: string
+  name: string
+  filters: Record<string, unknown>
+  artifact_hash: string
+  repository_count: number
+  status: 'active' | 'archived' | string
+  created_by_user_id: string
+  created_at: number
+  downloaded_at?: number | null
+  download_count: number
+  archived_at?: number | null
+  archived_by_user_id?: string | null
+}
+
+export interface ExecutiveGovernanceSnapshotRequest {
+  org_name?: string | null
+  name: string
+  filters?: MultiRepoExecutiveGovernanceQuery
+  include_repository_rows?: boolean
+  include_summary?: boolean
+}
+
+export interface ExecutiveGovernanceSnapshotQuery {
+  org_name?: string | null
+  status?: 'active' | 'archived' | string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface ExecutiveGovernanceSnapshotResponse {
+  snapshot: ExecutiveGovernanceSnapshotRecord
+  artifact?: Record<string, unknown> | null
+}
+
+export interface ExecutiveGovernanceSnapshotListResponse {
+  items: ExecutiveGovernanceSnapshotRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export type ChangeRiskLevel = 'low' | 'medium' | 'high' | 'unknown' | string
 
 export interface ChangeRiskEvaluationRecord {
@@ -1821,6 +1864,16 @@ export interface ControlPlaneState {
   multiRepoExecutiveGovernanceUpdatedAt: number | null
   isMultiRepoExecutiveGovernanceLoading: boolean
   multiRepoExecutiveGovernanceError: string | null
+  executiveGovernanceSnapshots: ExecutiveGovernanceSnapshotRecord[]
+  executiveGovernanceSnapshotsTotal: number
+  executiveGovernanceSnapshotsFilters: ExecutiveGovernanceSnapshotQuery
+  executiveGovernanceSnapshot: ExecutiveGovernanceSnapshotResponse | null
+  executiveGovernanceSnapshotArtifact: Record<string, unknown> | null
+  isExecutiveGovernanceSnapshotCreating: boolean
+  isExecutiveGovernanceSnapshotsLoading: boolean
+  isExecutiveGovernanceSnapshotDownloading: boolean
+  isExecutiveGovernanceSnapshotArchiving: boolean
+  executiveGovernanceSnapshotError: string | null
   changeRiskEvaluations: ChangeRiskEvaluationRecord[]
   changeRiskEvaluationsTotal: number
   changeRiskEvaluationsFilters: ChangeRiskEvaluationQuery
@@ -2017,6 +2070,11 @@ export interface ControlPlaneActions {
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   getDeploymentGateRiskContext: (deploymentGateId: string, query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateRiskContextResponse | null>
   loadMultiRepoExecutiveGovernance: (query?: MultiRepoExecutiveGovernanceQuery) => Promise<MultiRepoExecutiveGovernanceResponse | null>
+  createExecutiveGovernanceSnapshot: (payload: ExecutiveGovernanceSnapshotRequest) => Promise<ExecutiveGovernanceSnapshotResponse | null>
+  loadExecutiveGovernanceSnapshots: (query?: ExecutiveGovernanceSnapshotQuery) => Promise<ExecutiveGovernanceSnapshotListResponse | null>
+  getExecutiveGovernanceSnapshot: (snapshotId: string, query?: ExecutiveGovernanceSnapshotQuery) => Promise<ExecutiveGovernanceSnapshotResponse | null>
+  downloadExecutiveGovernanceSnapshot: (snapshotId: string, query?: ExecutiveGovernanceSnapshotQuery) => Promise<Record<string, unknown> | null>
+  archiveExecutiveGovernanceSnapshot: (snapshotId: string, orgName?: string | null) => Promise<ExecutiveGovernanceSnapshotResponse | null>
   loadChangeRiskEvaluations: (query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationListResponse | null>
   loadChangeRiskRules: () => Promise<ChangeRiskRuleCatalogResponse | null>
   getChangeRiskEvaluation: (evaluationId: string, query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationRecord | null>

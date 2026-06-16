@@ -575,6 +575,33 @@ pub struct ArchiveChangeRiskCabPacketInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateExecutiveGovernanceSnapshotInput<'a> {
+    pub snapshot_id: &'a str,
+    pub org_id: &'a str,
+    pub name: &'a str,
+    pub filters_json: &'a serde_json::Value,
+    pub artifact_hash: &'a str,
+    pub artifact_json: &'a serde_json::Value,
+    pub repository_count: i64,
+    pub created_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListExecutiveGovernanceSnapshotsInput<'a> {
+    pub org_id: &'a str,
+    pub status: Option<&'a str>,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArchiveExecutiveGovernanceSnapshotInput<'a> {
+    pub org_id: &'a str,
+    pub snapshot_id: &'a str,
+    pub archived_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
 pub struct UpdateChangeRiskCabPacketReviewInput<'a> {
     pub org_id: &'a str,
     pub packet_id: &'a str,
@@ -867,6 +894,24 @@ fn change_risk_cab_decision_manifest_from_row(row: &PgRow) -> ChangeRiskCabDecis
         status: row.get("status"),
         revoked_at: row.get("revoked_at_ms"),
         revoked_by_user_id: row.get("revoked_by_user_id"),
+    }
+}
+
+fn executive_governance_snapshot_from_row(row: &PgRow) -> ExecutiveGovernanceSnapshotRecord {
+    ExecutiveGovernanceSnapshotRecord {
+        snapshot_id: row.get("snapshot_id"),
+        org_id: row.get("org_id"),
+        name: row.get("name"),
+        filters: row.get("filters_json"),
+        artifact_hash: row.get("artifact_hash"),
+        repository_count: row.get("repository_count"),
+        status: row.get("status"),
+        created_by_user_id: row.get("created_by_user_id"),
+        created_at: row.get("created_at_ms"),
+        downloaded_at: row.get("downloaded_at_ms"),
+        download_count: row.get("download_count"),
+        archived_at: row.get("archived_at_ms"),
+        archived_by_user_id: row.get("archived_by_user_id"),
     }
 }
 

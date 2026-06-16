@@ -609,6 +609,72 @@ pub struct MultiRepoExecutiveGovernanceResponse {
     pub certification: bool,
 }
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutiveGovernanceSnapshotRecord {
+    pub snapshot_id: String,
+    pub org_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub filters: serde_json::Value,
+    pub artifact_hash: String,
+    pub repository_count: i64,
+    pub status: String,
+    pub created_by_user_id: String,
+    pub created_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub downloaded_at: Option<i64>,
+    pub download_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archived_by_user_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    pub name: String,
+    #[serde(default)]
+    pub filters: MultiRepoExecutiveGovernanceQuery,
+    #[serde(default = "default_true")]
+    pub include_repository_rows: bool,
+    #[serde(default = "default_true")]
+    pub include_summary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotQuery {
+    #[serde(default)]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutiveGovernanceSnapshotResponse {
+    pub snapshot: ExecutiveGovernanceSnapshotRecord,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutiveGovernanceSnapshotListResponse {
+    #[serde(default)]
+    pub items: Vec<ExecutiveGovernanceSnapshotRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChangeRiskEvaluationRecord {
     pub evaluation_id: String,

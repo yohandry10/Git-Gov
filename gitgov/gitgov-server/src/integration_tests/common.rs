@@ -389,6 +389,49 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_review
             ON change_risk_cab_packets(org_id, review_status, COALESCE(review_updated_at, created_at) DESC);
 
+        CREATE TABLE IF NOT EXISTS executive_governance_snapshots (
+            snapshot_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            filters_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+            artifact_hash TEXT NOT NULL,
+            artifact_json JSONB NOT NULL,
+            repository_count BIGINT NOT NULL DEFAULT 0 CHECK (repository_count >= 0),
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+            created_by_user_id TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            downloaded_at TIMESTAMPTZ,
+            download_count BIGINT NOT NULL DEFAULT 0 CHECK (download_count >= 0),
+            archived_at TIMESTAMPTZ,
+            archived_by_user_id TEXT,
+            CHECK (snapshot_id ~ '^egs_[a-f0-9]{32}$'),
+            CHECK (artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            CHECK (jsonb_typeof(filters_json) = 'object'),
+            CHECK (jsonb_typeof(artifact_json) = 'object'),
+            CHECK (artifact_json ->> 'schema_version' = 'gitgov_executive_governance_snapshot.v1'),
+            CHECK (COALESCE((artifact_json #>> '{flags,read_only}')::boolean, false) = true),
+            CHECK (COALESCE((artifact_json #>> '{flags,manual_first}')::boolean, false) = true),
+            CHECK (COALESCE((artifact_json #>> '{flags,advisory_only}')::boolean, false) = true),
+            CHECK (COALESCE((artifact_json #>> '{flags,enforcement_used}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,deployment_execution}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,provider_mutation}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,repository_mutation}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,llm_used}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,agent_governance_used}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,compliance_claim}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{flags,certification}')::boolean, true) = false),
+            CHECK ((status = 'archived' AND archived_at IS NOT NULL) OR status = 'active')
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_executive_governance_snapshots_org_created
+            ON executive_governance_snapshots(org_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_executive_governance_snapshots_org_status
+            ON executive_governance_snapshots(org_id, status, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_executive_governance_snapshots_org_hash
+            ON executive_governance_snapshots(org_id, artifact_hash);
+
         CREATE TABLE IF NOT EXISTS change_risk_cab_decision_manifests (
             manifest_id TEXT PRIMARY KEY,
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -2012,6 +2055,23 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/executive/repositories",
             get(handlers::get_multi_repo_executive_governance),
+        )
+        .route(
+            "/executive/snapshots",
+            post(handlers::create_executive_governance_snapshot)
+                .get(handlers::list_executive_governance_snapshots),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}",
+            get(handlers::get_executive_governance_snapshot),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}/download",
+            get(handlers::download_executive_governance_snapshot),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}/archive",
+            patch(handlers::archive_executive_governance_snapshot),
         )
         .route(
             "/compliance/{org_name}",

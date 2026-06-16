@@ -24,6 +24,10 @@ import type {
   DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationQuery,
   DeploymentGateRiskContextResponse,
+  ExecutiveGovernanceSnapshotListResponse,
+  ExecutiveGovernanceSnapshotQuery,
+  ExecutiveGovernanceSnapshotRequest,
+  ExecutiveGovernanceSnapshotResponse,
   MultiRepoExecutiveGovernanceQuery,
   MultiRepoExecutiveGovernanceResponse,
   EnterpriseAdoptionProfileRecord,
@@ -62,6 +66,11 @@ type EnterpriseActionKeys =
   | 'loadDeploymentGateAuthorizations'
   | 'getDeploymentGateRiskContext'
   | 'loadMultiRepoExecutiveGovernance'
+  | 'createExecutiveGovernanceSnapshot'
+  | 'loadExecutiveGovernanceSnapshots'
+  | 'getExecutiveGovernanceSnapshot'
+  | 'downloadExecutiveGovernanceSnapshot'
+  | 'archiveExecutiveGovernanceSnapshot'
   | 'loadChangeRiskEvaluations'
   | 'loadChangeRiskRules'
   | 'getChangeRiskEvaluation'
@@ -652,6 +661,186 @@ export function createEnterpriseActions(
       set({
         multiRepoExecutiveGovernanceError: message,
         isMultiRepoExecutiveGovernanceLoading: false,
+      })
+      return null
+    }
+  },
+
+  createExecutiveGovernanceSnapshot: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const scopedPayload: ExecutiveGovernanceSnapshotRequest = {
+      ...payload,
+      org_name: payload.org_name?.trim() || selectedOrgName.trim() || null,
+      filters: {
+        ...(payload.filters ?? {}),
+        org_name: null,
+      },
+      include_repository_rows: payload.include_repository_rows ?? true,
+      include_summary: payload.include_summary ?? true,
+    }
+
+    set({
+      isExecutiveGovernanceSnapshotCreating: true,
+      executiveGovernanceSnapshotError: null,
+    })
+    try {
+      const response = await tauriInvoke<ExecutiveGovernanceSnapshotResponse>('cmd_server_create_executive_governance_snapshot', {
+        config: serverConfig,
+        payload: scopedPayload,
+      })
+      set((state) => ({
+        executiveGovernanceSnapshot: response,
+        executiveGovernanceSnapshotArtifact: response.artifact ?? null,
+        executiveGovernanceSnapshots: [
+          response.snapshot,
+          ...state.executiveGovernanceSnapshots.filter((item) => item.snapshot_id !== response.snapshot.snapshot_id),
+        ],
+        executiveGovernanceSnapshotsTotal: state.executiveGovernanceSnapshotsTotal + 1,
+        isExecutiveGovernanceSnapshotCreating: false,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        executiveGovernanceSnapshotError: message,
+        isExecutiveGovernanceSnapshotCreating: false,
+      })
+      return null
+    }
+  },
+
+  loadExecutiveGovernanceSnapshots: async (query = {}) => {
+    const { serverConfig, selectedOrgName, executiveGovernanceSnapshotsFilters } = get()
+    if (!serverConfig) return null
+    const scopedQuery: ExecutiveGovernanceSnapshotQuery = {
+      ...executiveGovernanceSnapshotsFilters,
+      ...query,
+      org_name: query.org_name?.trim() || selectedOrgName.trim() || null,
+      limit: query.limit ?? executiveGovernanceSnapshotsFilters.limit ?? 10,
+      offset: query.offset ?? executiveGovernanceSnapshotsFilters.offset ?? 0,
+    }
+    set({
+      isExecutiveGovernanceSnapshotsLoading: true,
+      executiveGovernanceSnapshotError: null,
+    })
+    try {
+      const response = await tauriInvoke<ExecutiveGovernanceSnapshotListResponse>('cmd_server_list_executive_governance_snapshots', {
+        config: serverConfig,
+        query: scopedQuery,
+      })
+      set({
+        executiveGovernanceSnapshots: response.items,
+        executiveGovernanceSnapshotsTotal: response.total,
+        executiveGovernanceSnapshotsFilters: scopedQuery,
+        isExecutiveGovernanceSnapshotsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        executiveGovernanceSnapshotError: message,
+        isExecutiveGovernanceSnapshotsLoading: false,
+      })
+      return null
+    }
+  },
+
+  getExecutiveGovernanceSnapshot: async (snapshotId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const trimmedSnapshotId = snapshotId.trim()
+    if (!trimmedSnapshotId) return null
+    const scopedQuery: ExecutiveGovernanceSnapshotQuery = withSelectedOrg(query, selectedOrgName)
+    try {
+      const response = await tauriInvoke<ExecutiveGovernanceSnapshotResponse>('cmd_server_get_executive_governance_snapshot', {
+        config: serverConfig,
+        snapshotId: trimmedSnapshotId,
+        query: scopedQuery,
+      })
+      set({
+        executiveGovernanceSnapshot: response,
+        executiveGovernanceSnapshotArtifact: response.artifact ?? null,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ executiveGovernanceSnapshotError: message })
+      return null
+    }
+  },
+
+  downloadExecutiveGovernanceSnapshot: async (snapshotId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const trimmedSnapshotId = snapshotId.trim()
+    if (!trimmedSnapshotId) return null
+    const scopedQuery: ExecutiveGovernanceSnapshotQuery = withSelectedOrg(query, selectedOrgName)
+    set({
+      isExecutiveGovernanceSnapshotDownloading: true,
+      executiveGovernanceSnapshotError: null,
+    })
+    try {
+      const artifact = await tauriInvoke<Record<string, unknown>>('cmd_server_download_executive_governance_snapshot', {
+        config: serverConfig,
+        snapshotId: trimmedSnapshotId,
+        query: scopedQuery,
+      })
+      set((state) => ({
+        executiveGovernanceSnapshotArtifact: artifact,
+        executiveGovernanceSnapshots: state.executiveGovernanceSnapshots.map((item) =>
+          item.snapshot_id === trimmedSnapshotId
+            ? { ...item, download_count: item.download_count + 1, downloaded_at: Date.now() }
+            : item,
+        ),
+        isExecutiveGovernanceSnapshotDownloading: false,
+      }))
+      return artifact
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        executiveGovernanceSnapshotError: message,
+        isExecutiveGovernanceSnapshotDownloading: false,
+      })
+      return null
+    }
+  },
+
+  archiveExecutiveGovernanceSnapshot: async (snapshotId, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const trimmedSnapshotId = snapshotId.trim()
+    if (!trimmedSnapshotId) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || null
+    set({
+      isExecutiveGovernanceSnapshotArchiving: true,
+      executiveGovernanceSnapshotError: null,
+    })
+    try {
+      const response = await tauriInvoke<ExecutiveGovernanceSnapshotResponse>('cmd_server_archive_executive_governance_snapshot', {
+        config: serverConfig,
+        snapshotId: trimmedSnapshotId,
+        payload: {
+          org_name: orgName,
+          name: 'archive executive governance snapshot',
+          filters: {},
+          include_repository_rows: true,
+          include_summary: true,
+        },
+      })
+      set((state) => ({
+        executiveGovernanceSnapshot: response,
+        executiveGovernanceSnapshots: state.executiveGovernanceSnapshots.map((item) =>
+          item.snapshot_id === response.snapshot.snapshot_id ? response.snapshot : item,
+        ),
+        isExecutiveGovernanceSnapshotArchiving: false,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        executiveGovernanceSnapshotError: message,
+        isExecutiveGovernanceSnapshotArchiving: false,
       })
       return null
     }

@@ -114,6 +114,40 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             ),
         )
         .route(
+            "/executive/snapshots",
+            post(handlers::create_executive_governance_snapshot)
+                .get(handlers::list_executive_governance_snapshots)
+                .layer(middleware::from_fn_with_state(
+                    Arc::clone(&admin_rate_limit),
+                    rate_limit_middleware,
+                )),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}",
+            get(handlers::get_executive_governance_snapshot).layer(middleware::from_fn_with_state(
+                Arc::clone(&admin_rate_limit),
+                rate_limit_middleware,
+            )),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}/download",
+            get(handlers::download_executive_governance_snapshot).layer(
+                middleware::from_fn_with_state(
+                    Arc::clone(&admin_rate_limit),
+                    rate_limit_middleware,
+                ),
+            ),
+        )
+        .route(
+            "/executive/snapshots/{snapshot_id}/archive",
+            patch(handlers::archive_executive_governance_snapshot).layer(
+                middleware::from_fn_with_state(
+                    Arc::clone(&admin_rate_limit),
+                    rate_limit_middleware,
+                ),
+            ),
+        )
+        .route(
             "/integrations/jenkins",
             post(handlers::ingest_jenkins_pipeline_event)
                 .layer(DefaultBodyLimit::max(jenkins_body_limit_bytes))
