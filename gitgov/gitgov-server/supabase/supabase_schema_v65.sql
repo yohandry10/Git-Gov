@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS change_risk_cab_packets (
     created_by_user_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     downloaded_at TIMESTAMPTZ,
-    download_count INTEGER NOT NULL DEFAULT 0,
+    download_count BIGINT NOT NULL DEFAULT 0,
     archived_at TIMESTAMPTZ,
     archived_by_user_id TEXT,
     CHECK (packet_id ~ '^crcab_[a-f0-9]{32}$'),
@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS change_risk_cab_packets (
         AND COALESCE((artifact_json #>> '{audit_metadata,source_evaluations_mutated}')::boolean, true) = false
     )
 );
+
+ALTER TABLE change_risk_cab_packets
+    ALTER COLUMN download_count TYPE BIGINT USING download_count::BIGINT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_change_risk_cab_packets_org_hash
     ON change_risk_cab_packets(org_id, artifact_hash);

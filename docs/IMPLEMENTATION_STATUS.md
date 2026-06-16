@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-125 Change Risk CAB Review Packet - 2026-06-16
 
-`KAN-125 - Change Risk CAB Review Packet` is in local implementation on branch
-`product/KAN-125-change-risk-cab-packet`.
+`KAN-125 - Change Risk CAB Review Packet` is completed. PR `#436` merged to `main` as
+`92db41ac`.
 
 Product decision:
 
@@ -20,9 +20,10 @@ Product decision:
   scheduler, PDF/DOCX, compliance score, certification, legal attestation, or official regulatory
   claim.
 
-Implemented locally:
+Implemented:
 
-- Supabase migration/postcheck `v65`.
+- Supabase migration/postcheck `v65`, including a re-runnable `download_count` type repair for
+  existing tables.
 - `change_risk_cab_packets` with artifact hash, filters, selected evaluation IDs, lifecycle,
   download count, and no-claim JSON constraints.
 - Backend routes:
@@ -68,9 +69,22 @@ Known local validation limit:
   without returning useful failure output. Backend test compilation and the affected Change Risk
   real Postgres suite passed.
 
-Pending before completion:
+Production validation:
 
-- PR checks, merge, Render deploy, production migration, and production smoke.
+- PR checks and post-merge `main` checks passed.
+- Render deploy `dep-d8oectv7f7vs73ak5e80` reached `live`.
+- Production `v65` migration/postcheck passed.
+- Production initially returned HTTP `502` on `POST /change-risk/cab-packets` because an existing
+  `download_count integer` column did not match the backend `bigint` model. Render logs confirmed
+  the `ColumnDecode` panic. The corrected `v65` migration altered the column to `bigint`, and the
+  postcheck now enforces the type.
+- Final production smoke passed: `/health=ok`, authenticated `/stats=200`, packet
+  `crcab_c67518a3f57f4e19aac2752c5ce36db3` was created from evaluation
+  `cra_4d59c84859a747789e577ca24945ec50`, list/get/download/archive succeeded, archived download
+  returned HTTP `409`, record hash
+  `sha256:81f0d202c024ac0592ad6d7630382ed326e360c3b84b5e07493e02411420ba8d` matched on read, no-claim
+  flags stayed false where required, and Deployment Gate authorization plus Agent Governance
+  evaluation counts stayed unchanged.
 
 Report: `docs/reports/change-risk-cab-review-packet-2026-06-16.md`.
 

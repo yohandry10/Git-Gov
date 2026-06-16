@@ -38,7 +38,8 @@ Database:
 - Supabase migration/postcheck `v65`
 - Append-only packet artifact JSON with `artifact_hash`
 - Active/archived lifecycle
-- Download count and timestamp
+- Download count and timestamp. Existing installations are repaired to keep `download_count` as
+  `BIGINT`, and the `v65` postcheck enforces that type.
 
 Desktop/Tauri:
 
@@ -127,3 +128,8 @@ Governance evaluations are not mutated.
 
 The focused store test verifies command payload normalization and state transitions for list,
 create, download, and archive.
+
+Production validation on 2026-06-16 created, listed, read, downloaded, archived, and blocked
+download of an archived CAB packet against `https://gitgov-api.onrender.com`. The smoke also
+verified no-claim flags and confirmed Deployment Gate authorization plus Agent Governance
+evaluation counts did not change.

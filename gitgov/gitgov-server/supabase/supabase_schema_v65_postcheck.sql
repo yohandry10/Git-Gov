@@ -40,6 +40,17 @@ BEGIN
 
     IF NOT EXISTS (
         SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'change_risk_cab_packets'
+          AND column_name = 'download_count'
+          AND data_type = 'bigint'
+    ) THEN
+        RAISE EXCEPTION 'KAN-125 postcheck failed: change_risk_cab_packets.download_count must be bigint';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
         FROM pg_constraint
         WHERE conrelid = 'public.change_risk_cab_packets'::regclass
           AND pg_get_constraintdef(oid) LIKE '%gitgov_change_risk_cab_packet.v1%'

@@ -60,7 +60,7 @@ The repo already contains substantial product surface:
   `review_status` filtering to existing Change Risk evaluation lists and a Desktop `Review queue`
   selector so CAB/Admin/Auditor users can find pending manual review work. It is not a score, not
   enforcement, and not an Agent Governance or AI feature.
-- Change Risk CAB Review Packet from KAN-125 is in local implementation. It packages existing
+- Change Risk CAB Review Packet from KAN-125 is completed. It packages existing
   deterministic Change Risk evaluations into hashable `gitgov_change_risk_cab_packet.v1` JSON
   artifacts for manual CAB/internal-audit review. Admins create/archive; Admins and Auditors
   list/read/download. It is not release blocking, deploy execution, policy enforcement, provider or
@@ -165,10 +165,9 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-125 - Change Risk CAB Review Packet` is the current active implementation slice. It follows
-KAN-121 through KAN-124 by turning reviewed/filterable Change Risk evaluations into a manual CAB
-packet artifact. The current branch is `product/KAN-125-change-risk-cab-packet`; GitHub issue
-`#435` tracks it.
+`KAN-125 - Change Risk CAB Review Packet` is completed through PR `#436` and main commit
+`92db41ac`. It follows KAN-121 through KAN-124 by turning reviewed/filterable Change Risk
+evaluations into a manual CAB packet artifact.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a

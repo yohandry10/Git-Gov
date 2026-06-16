@@ -97,6 +97,12 @@ Migration validation:
 - `supabase_schema_v65.sql` plus `supabase_schema_v65_postcheck.sql` passed in a real Postgres
   transaction with rollback. The local `DATABASE_URL` was sanitized in memory for `psql` by removing
   the SQLx-only `pgbouncer` URI parameter; no secret values were printed.
+- Production initially exposed a schema drift from the first `v65` application:
+  `change_risk_cab_packets.download_count` existed as `integer` while the backend record model reads
+  it as `bigint`. Render logs showed a `ColumnDecode` panic at `src/db.rs:740`, producing HTTP `502`
+  on `POST /change-risk/cab-packets`. The migration is now explicitly re-runnable and alters
+  existing tables with `ALTER COLUMN download_count TYPE BIGINT`; the postcheck now fails if the
+  column is not `bigint`.
 
 Other guards:
 
@@ -109,6 +115,23 @@ Known local validation limit:
   without returning useful failure output. Backend test compilation passed, and the affected Change
   Risk real Postgres suite passed.
 
-## Pending Before Merge
+## Production Validation
 
-- PR checks, merge, Render deploy, production migration, and production smoke.
+- PR `#436` merged to `main` as `92db41ac`.
+- Render deploy `dep-d8oectv7f7vs73ak5e80` reached `live`.
+- Production `v65` migration/postcheck passed after the `download_count` type repair.
+- Production smoke passed:
+  - `/health=ok`.
+  - authenticated `/stats=200`.
+  - `POST /change-risk/cab-packets` created packet
+    `crcab_c67518a3f57f4e19aac2752c5ce36db3` from accepted-risk evaluation
+    `cra_4d59c84859a747789e577ca24945ec50`.
+  - record hash verification returned
+    `sha256:81f0d202c024ac0592ad6d7630382ed326e360c3b84b5e07493e02411420ba8d`.
+  - list, get, download, archive, and archived-download conflict paths passed.
+  - archived packet download returned HTTP `409`.
+  - no-claim flags stayed `advisory_only=true`, `llm_used=false`,
+    `agent_governance_used=false`, `enforcement=false`, `compliance_claim=false`, and
+    `certification=false`.
+  - `deployment_gate_authorizations` stayed `2`.
+  - `agent_governance_evaluations` stayed `7`.
