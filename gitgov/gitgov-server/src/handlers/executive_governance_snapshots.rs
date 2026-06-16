@@ -613,7 +613,7 @@ pub async fn archive_executive_governance_snapshot(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
     Path(snapshot_id): Path<String>,
-    Json(mut payload): Json<ExecutiveGovernanceSnapshotRequest>,
+    Json(mut payload): Json<ArchiveExecutiveGovernanceSnapshotRequest>,
 ) -> impl IntoResponse {
     if let Err(resp) = require_admin(&auth_user) {
         return resp.into_response();

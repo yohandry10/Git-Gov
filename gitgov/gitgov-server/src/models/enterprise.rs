@@ -659,6 +659,12 @@ pub struct ExecutiveGovernanceSnapshotQuery {
     pub offset: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ArchiveExecutiveGovernanceSnapshotRequest {
+    #[serde(default)]
+    pub org_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutiveGovernanceSnapshotResponse {
     pub snapshot: ExecutiveGovernanceSnapshotRecord,

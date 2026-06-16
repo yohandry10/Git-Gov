@@ -1,6 +1,7 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
-    AuditFilter, ChangeRiskCabDecisionManifestListResponse, ChangeRiskCabDecisionManifestQuery,
+    ArchiveExecutiveGovernanceSnapshotRequest, AuditFilter,
+    ChangeRiskCabDecisionManifestListResponse, ChangeRiskCabDecisionManifestQuery,
     ChangeRiskCabDecisionManifestRequest, ChangeRiskCabDecisionManifestResponse,
     ChangeRiskCabPacketListResponse, ChangeRiskCabPacketQuery, ChangeRiskCabPacketRequest,
     ChangeRiskCabPacketResponse, ChangeRiskCabPacketReviewRequest,
@@ -1094,7 +1095,7 @@ pub async fn cmd_server_download_executive_governance_snapshot(
 pub async fn cmd_server_archive_executive_governance_snapshot(
     config: ServerConnectionConfig,
     snapshot_id: String,
-    payload: ExecutiveGovernanceSnapshotRequest,
+    payload: ArchiveExecutiveGovernanceSnapshotRequest,
 ) -> Result<ExecutiveGovernanceSnapshotResponse, String> {
     run_blocking_command("ARCHIVE_EXECUTIVE_GOVERNANCE_SNAPSHOT", move || {
         let client = ControlPlaneClient::new(ServerConfig {

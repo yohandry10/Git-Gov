@@ -680,7 +680,7 @@ impl ControlPlaneClient {
     pub fn archive_executive_governance_snapshot(
         &self,
         snapshot_id: &str,
-        payload: &ExecutiveGovernanceSnapshotRequest,
+        payload: &ArchiveExecutiveGovernanceSnapshotRequest,
     ) -> Result<ExecutiveGovernanceSnapshotResponse, ServerError> {
         let url = self.endpoint_url(&["executive", "snapshots", snapshot_id, "archive"])?;
         let mut request = self.client.patch(url).json(payload);
