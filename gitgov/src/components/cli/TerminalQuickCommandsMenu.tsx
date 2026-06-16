@@ -2,7 +2,9 @@ import { Keyboard } from 'lucide-react'
 import type { NativeTerminalGitContext } from './terminalGitContext'
 import {
   buildTerminalQuickCommandViews,
+  terminalQuickCommandGroupLabel,
   type TerminalQuickCommand,
+  type TerminalQuickCommandView,
 } from './terminalQuickCommands'
 
 interface TerminalQuickCommandsMenuProps {
@@ -23,6 +25,18 @@ export function TerminalQuickCommandsMenu({
   onInsert,
 }: TerminalQuickCommandsMenuProps) {
   const quickCommands = buildTerminalQuickCommandViews(context)
+  const groupedQuickCommands = quickCommands.reduce<Array<{
+    group: TerminalQuickCommand['group']
+    commands: TerminalQuickCommandView[]
+  }>>((groups, quickCommand) => {
+    const existing = groups.find((group) => group.group === quickCommand.group)
+    if (existing) {
+      existing.commands.push(quickCommand)
+    } else {
+      groups.push({ group: quickCommand.group, commands: [quickCommand] })
+    }
+    return groups
+  }, [])
 
   return (
     <div className="relative">
@@ -52,28 +66,37 @@ export function TerminalQuickCommandsMenu({
             </span>
           </div>
 
-          <div className="space-y-1.5">
-            {quickCommands.map((quickCommand) => (
-              <button
-                key={quickCommand.id}
-                type="button"
-                disabled={quickCommand.disabled}
-                onClick={() => onInsert(quickCommand)}
-                className="block w-full rounded border border-surface-800 bg-surface-900/80 px-2 py-1.5 text-left transition-colors hover:border-surface-600 disabled:cursor-not-allowed disabled:opacity-50"
-                title={quickCommand.disabledReason ?? `Insert ${quickCommand.command}`}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="text-[10px] font-medium text-surface-200">
-                    {quickCommand.label}
-                  </span>
-                  <code className="ml-auto max-w-[190px] truncate font-mono text-[9px] text-brand-200">
-                    {quickCommand.command}
-                  </code>
+          <div className="space-y-2">
+            {groupedQuickCommands.map((group) => (
+              <section key={group.group}>
+                <div className="mb-1 text-[8px] uppercase tracking-wider text-surface-600">
+                  {terminalQuickCommandGroupLabel(group.group)}
                 </div>
-                <p className="mt-1 text-[9px] leading-snug text-surface-500">
-                  {quickCommand.disabledReason ?? quickCommand.description}
-                </p>
-              </button>
+                <div className="space-y-1.5">
+                  {group.commands.map((quickCommand) => (
+                    <button
+                      key={quickCommand.id}
+                      type="button"
+                      disabled={quickCommand.disabled}
+                      onClick={() => onInsert(quickCommand)}
+                      className="block w-full rounded border border-surface-800 bg-surface-900/80 px-2 py-1.5 text-left transition-colors hover:border-surface-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={quickCommand.disabledReason ?? `Insert ${quickCommand.command}`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-[10px] font-medium text-surface-200">
+                          {quickCommand.label}
+                        </span>
+                        <code className="ml-auto max-w-[190px] truncate font-mono text-[9px] text-brand-200">
+                          {quickCommand.command}
+                        </code>
+                      </div>
+                      <p className="mt-1 text-[9px] leading-snug text-surface-500">
+                        {quickCommand.disabledReason ?? quickCommand.description}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 

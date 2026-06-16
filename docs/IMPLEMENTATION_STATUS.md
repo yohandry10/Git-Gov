@@ -2,6 +2,66 @@
 
 Updated: 2026-06-16
 
+## KAN-143 Native Terminal Provider Quick Commands Safety Registry MVP - 2026-06-16
+
+`KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` continues roadmap block
+`0.10 Developer Distribution Surfaces`. GitHub issue `#495` tracks the implementation.
+
+Product decision:
+
+- Extend the existing KAN-134 native terminal quick-command menu with a provider/tool safety
+  registry.
+- Keep the surface local, manual-first, insert-only, and minimal.
+- Do not reopen external editor extensions; the active developer distribution direction remains
+  Desktop/Workspace native terminal.
+
+Implemented:
+
+- Added explicit safety metadata to every quick command:
+  - group and tool.
+  - enabled state.
+  - safety level.
+  - network requirement.
+  - secret-exposure risk.
+  - Git-repository requirement.
+- Changed command validation to an exact enabled allowlist rather than broad parsing.
+- Added provider/tool commands:
+  - `terraform fmt -check -recursive`.
+  - `terraform validate -no-color`.
+  - `kubectl config current-context`.
+  - `kubectl config get-contexts`.
+  - `docker compose config --services`.
+  - `docker compose config --quiet`.
+  - `helm lint .`.
+- Replaced the existing `git remote -v` quick command with `git remote` so the UI does not insert a
+  command that can print credential-bearing remote URLs.
+- Grouped the quick-command UI into `Git inspection` and `Provider / Tool context`.
+- Added focused helper and UI tests.
+
+Guardrails:
+
+- No backend/API route change.
+- No DB migration.
+- No Control Plane audit write.
+- No command interception, approval, blocking, or auto-run.
+- No provider, repository, cluster, deployment, or workflow mutation.
+- No cloud/provider API commands.
+- No secrets, `.env`, environment dumps, shell chaining, redirection, or command substitution.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Quick-command helper tests passed (`7` tests).
+- Quick-command helper + menu tests passed (`10` tests).
+- Focused terminal suite passed (`36` tests).
+- Frontend typecheck and lint passed.
+- Full frontend Vitest passed (`419` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` and publication guard passed.
+- Static product-code grep found no mutating/network/secret-exposing provider commands in
+  `gitgov/src/components/cli`.
+
 ## KAN-142 Fix stale terminal governance context snapshot - 2026-06-16
 
 `KAN-142 - Fix stale terminal governance context snapshot` hardens the KAN-141 drilldown after

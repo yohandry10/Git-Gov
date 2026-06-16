@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-142` Fix stale terminal governance context snapshot
+Ticket: `KAN-143` Native Terminal Provider Quick Commands Safety Registry MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -133,6 +133,12 @@ The repo already contains substantial product surface:
 - KAN-142 hardens that drawer so loaded governance evidence is scoped by Control Plane URL, org,
   target status, repository, and branch. The drawer ignores stale async responses and does not show
   evidence from a previous org/server context for the same repo/branch.
+- KAN-143 extends the native terminal quick-command menu with a local provider/tool safety registry.
+  It uses exact-allowlisted, insert-only commands for Terraform local validation, Kubernetes local
+  config, Docker Compose config, and Helm lint. It also uses `git remote` instead of
+  `git remote -v` so remote URLs are not printed. It does not auto-run commands, call the backend,
+  require network access, expose secrets, mutate providers/repos/clusters/deployments, or create
+  enforcement/compliance evidence.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -233,6 +239,11 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` continues
+Desktop/Workspace terminal distribution by adding a safety-reviewed provider/tool command registry
+to the existing quick-command menu. It is exact-allowlist and insert-only: no newline, no auto-run,
+no backend call, no cloud/provider API call, no secrets, and no mutation.
 
 `KAN-142 - Fix stale terminal governance context snapshot` hardens the KAN-141 drawer after review:
 loaded evidence is scoped to the full Control Plane/org/repo/branch context and stale async

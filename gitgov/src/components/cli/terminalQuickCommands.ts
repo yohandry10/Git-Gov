@@ -5,6 +5,12 @@ export interface TerminalQuickCommand {
   label: string
   command: string
   description: string
+  group: 'git' | 'provider-tool'
+  tool: 'git' | 'terraform' | 'kubernetes' | 'docker-compose' | 'helm'
+  enabled: boolean
+  safetyLevel: 'local-read-only'
+  requiresNetwork: boolean
+  mayExposeSecrets: boolean
   requiresGitRepo: boolean
 }
 
@@ -19,6 +25,12 @@ export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
     label: 'Status',
     command: 'git status --short',
     description: 'Show changed files without modifying the repository.',
+    group: 'git',
+    tool: 'git',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
     requiresGitRepo: true,
   },
   {
@@ -26,6 +38,12 @@ export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
     label: 'Branch',
     command: 'git branch --show-current',
     description: 'Print the current branch name.',
+    group: 'git',
+    tool: 'git',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
     requiresGitRepo: true,
   },
   {
@@ -33,6 +51,12 @@ export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
     label: 'Recent commits',
     command: 'git log --oneline -5',
     description: 'Show the last five commits in compact form.',
+    group: 'git',
+    tool: 'git',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
     requiresGitRepo: true,
   },
   {
@@ -40,27 +64,137 @@ export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
     label: 'Diff stat',
     command: 'git diff --stat',
     description: 'Summarize local diff size without printing file contents.',
+    group: 'git',
+    tool: 'git',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
     requiresGitRepo: true,
   },
   {
-    id: 'git-remote-verbose',
+    id: 'git-remote-names',
     label: 'Remotes',
-    command: 'git remote -v',
-    description: 'List configured remote URLs locally for inspection.',
+    command: 'git remote',
+    description: 'List configured remote names without printing remote URLs.',
+    group: 'git',
+    tool: 'git',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'terraform-fmt-check',
+    label: 'Terraform fmt',
+    command: 'terraform fmt -check -recursive',
+    description: 'Check Terraform formatting locally without rewriting files.',
+    group: 'provider-tool',
+    tool: 'terraform',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'terraform-validate',
+    label: 'Terraform validate',
+    command: 'terraform validate -no-color',
+    description: 'Validate initialized Terraform configuration without applying changes.',
+    group: 'provider-tool',
+    tool: 'terraform',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'kubectl-current-context',
+    label: 'Kube context',
+    command: 'kubectl config current-context',
+    description: 'Show the current local Kubernetes context without calling the cluster API.',
+    group: 'provider-tool',
+    tool: 'kubernetes',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'kubectl-list-contexts',
+    label: 'Kube contexts',
+    command: 'kubectl config get-contexts',
+    description: 'List local Kubernetes contexts without mutating cluster state.',
+    group: 'provider-tool',
+    tool: 'kubernetes',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'docker-compose-services',
+    label: 'Compose services',
+    command: 'docker compose config --services',
+    description: 'List services from Compose configuration without starting containers.',
+    group: 'provider-tool',
+    tool: 'docker-compose',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'docker-compose-check',
+    label: 'Compose check',
+    command: 'docker compose config --quiet',
+    description: 'Validate Compose configuration without starting or stopping services.',
+    group: 'provider-tool',
+    tool: 'docker-compose',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
+    requiresGitRepo: true,
+  },
+  {
+    id: 'helm-lint-local',
+    label: 'Helm lint',
+    command: 'helm lint .',
+    description: 'Lint the local Helm chart without installing or upgrading releases.',
+    group: 'provider-tool',
+    tool: 'helm',
+    enabled: true,
+    safetyLevel: 'local-read-only',
+    requiresNetwork: false,
+    mayExposeSecrets: false,
     requiresGitRepo: true,
   },
 ]
 
-const MUTATING_COMMAND_PATTERN =
-  /\b(push|pull|merge|rebase|commit|checkout|switch|reset|clean|apply|am|cherry-pick|revert|tag|fetch|deploy|destroy|delete|remove|rm|mv|kubectl|terraform|helm|gh)\b/i
+const enabledCommandRegistry = new Map(
+  SAFE_TERMINAL_QUICK_COMMANDS
+    .filter((command) => command.enabled && !command.requiresNetwork && !command.mayExposeSecrets)
+    .map((command) => [command.command, command]),
+)
+
+export function terminalQuickCommandGroupLabel(group: TerminalQuickCommand['group']): string {
+  if (group === 'provider-tool') return 'Provider / Tool context'
+  return 'Git inspection'
+}
 
 export function isReadOnlyTerminalQuickCommand(command: string): boolean {
   const normalized = command.trim()
   if (!normalized) return false
   if (/[\r\n]/.test(normalized)) return false
   if (/&&|\|\||[;|`$<>]/.test(normalized)) return false
-  if (!normalized.startsWith('git ')) return false
-  return !MUTATING_COMMAND_PATTERN.test(normalized)
+  return enabledCommandRegistry.has(normalized)
 }
 
 export function buildTerminalQuickCommandViews(
@@ -70,15 +204,25 @@ export function buildTerminalQuickCommandViews(
 
   return SAFE_TERMINAL_QUICK_COMMANDS.map((quickCommand) => {
     const structurallySafe = isReadOnlyTerminalQuickCommand(quickCommand.command)
-    const disabled = !structurallySafe || (quickCommand.requiresGitRepo && !isGitRepo)
+    const disabled = !quickCommand.enabled ||
+      quickCommand.requiresNetwork ||
+      quickCommand.mayExposeSecrets ||
+      !structurallySafe ||
+      (quickCommand.requiresGitRepo && !isGitRepo)
     return {
       ...quickCommand,
       disabled,
-      disabledReason: !structurallySafe
-        ? 'Command is not in the read-only allowlist'
-        : quickCommand.requiresGitRepo && !isGitRepo
-          ? 'Open a Git repository terminal to insert this command'
-          : undefined,
+      disabledReason: !quickCommand.enabled
+        ? 'Command is disabled pending safety review'
+        : quickCommand.requiresNetwork
+          ? 'Command requires network access and is disabled for this MVP'
+          : quickCommand.mayExposeSecrets
+            ? 'Command may expose secrets and is disabled'
+            : !structurallySafe
+              ? 'Command is not in the read-only safety registry'
+              : quickCommand.requiresGitRepo && !isGitRepo
+                ? 'Open a Git repository terminal to insert this command'
+                : undefined,
     }
   })
 }
