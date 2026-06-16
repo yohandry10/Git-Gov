@@ -692,13 +692,60 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
     assert_eq!(missing["compliance_claim"], false);
     assert_eq!(missing["certification"], false);
 
+    let ci_review_context = json!({
+        "repository_full_name": "risk-tenant-b/repo",
+        "branch": "main",
+        "environment": "production",
+        "change_id": "KAN-122-ci-ref",
+        "release_id": "KAN-122-ci-ref",
+        "commit_sha": TARGET_SHA,
+        "evidence_refs": [
+            "https://github.com/yohandry10/Git-Gov/actions/runs/27591470098",
+            "https://github.com/yohandry10/Git-Gov/pull/426"
+        ]
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&ci_review_context.to_string()),
+        Some(&admin_b),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "ci/review referenced risk: {response}"
+    );
+    let ci_review: serde_json::Value =
+        serde_json::from_str(&response).expect("ci/review context JSON");
+    for absent_rule in [
+        "missing_ci_evidence",
+        "missing_code_review",
+        "missing_change_link",
+    ] {
+        assert!(
+            !ci_review["triggered_rules"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == absent_rule),
+            "real CI/PR evidence should avoid {absent_rule}: {ci_review:?}"
+        );
+    }
+    assert!(ci_review["triggered_rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|value| value == "production_environment"));
+
     let tenant_b_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM change_risk_evaluations WHERE org_id = $1::uuid")
             .bind(&org_b)
             .fetch_one(&pool)
             .await
             .expect("tenant B risk count");
-    assert_eq!(tenant_b_count, 1);
+    assert_eq!(tenant_b_count, 2);
 
     teardown(&admin_pool, &schema).await;
 }
