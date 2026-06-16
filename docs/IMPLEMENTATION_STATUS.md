@@ -2,6 +2,47 @@
 
 Updated: 2026-06-16
 
+## KAN-142 Fix stale terminal governance context snapshot - 2026-06-16
+
+`KAN-142 - Fix stale terminal governance context snapshot` hardens the KAN-141 drilldown after
+review. GitHub issue `#493` tracks the fix.
+
+Review finding:
+
+- The native terminal Governance Context drawer reused loaded evidence by repository and branch only.
+- If the operator changed org/server while the drawer was open for the same repo/branch, the UI could
+  briefly show evidence from the previous Control Plane context.
+- A slower previous async response could also overwrite newer context.
+
+Implemented:
+
+- Scoped drawer snapshots by Control Plane URL, org, target status, repository, and branch.
+- Added request-id protection so stale async responses cannot overwrite the current drawer state.
+- Cleared loading state when the target becomes non-loadable while a previous request is pending.
+- Displayed the current connection status instead of a frozen snapshot value.
+- Added focused regression tests for org changes and out-of-order responses.
+
+Guardrails:
+
+- No backend/API route change.
+- No DB migration.
+- No Control Plane audit write.
+- No command interception, approval, blocking, or auto-run.
+- No provider, repository, or deployment mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused KAN-142/KAN-141 test passed:
+  `npm --prefix gitgov run test -- --run src/test/components/terminal-branch-gate-status.test.tsx`
+  (`10` tests).
+- Frontend typecheck and lint passed.
+- Focused terminal suite passed (`22` tests).
+- Full frontend Vitest passed (`414` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` and publication guard passed.
+
 ## KAN-141 Native Terminal Branch Gate Context Drilldown - 2026-06-16
 
 `KAN-141 - Native Terminal Branch Gate Context Drilldown` is completed. GitHub issue `#490`

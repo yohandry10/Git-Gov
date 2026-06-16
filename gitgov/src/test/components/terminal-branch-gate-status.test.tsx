@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { RepoValidation } from '@/lib/types'
 import type {
+  DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationRecord,
   ServerConfig,
 } from '@/store/useControlPlaneStore/types'
@@ -332,6 +333,164 @@ describe('native terminal branch gate status advisory', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Context/ }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('does not show a previously loaded governance snapshot after the org changes', async () => {
+    mockInvoke.mockImplementation((command: string, payload?: { query?: { org_name?: string } }) => {
+      if (command === 'cmd_server_list_deployment_gate_authorizations') {
+        return Promise.resolve({
+          items: [
+            payload?.query?.org_name === 'enterprise-b'
+              ? authorization({
+                  authorization_id: 'dga_enterprise_b',
+                  decision: 'blocked',
+                  approved: false,
+                  blocking: true,
+                  would_block: true,
+                  reason: 'Enterprise B needs manual approval.',
+                })
+              : authorization({
+                  authorization_id: 'dga_enterprise_a',
+                  decision: 'approved',
+                  approved: true,
+                  blocking: false,
+                  would_block: false,
+                }),
+          ],
+          total: 1,
+          limit: 1,
+          offset: 0,
+        })
+      }
+      if (command === 'cmd_server_list_change_risk_evaluations') {
+        return Promise.resolve({ items: [], total: 0, limit: 1, offset: 0 })
+      }
+      if (command === 'cmd_server_get_multi_repo_executive_governance') {
+        return Promise.resolve({ repositories: [], total: 0, limit: 1, offset: 0 })
+      }
+      return Promise.reject(new Error(`Unexpected command ${command}`))
+    })
+
+    const { rerender } = render(
+      <TerminalGovernanceContextPanel
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="enterprise-a"
+        connectionStatus="connected"
+        isOpen
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('approved')).toBeInTheDocument())
+
+    rerender(
+      <TerminalGovernanceContextPanel
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="enterprise-b"
+        connectionStatus="connected"
+        isOpen
+      />,
+    )
+
+    expect(screen.queryByText('approved')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('blocked')).toBeInTheDocument())
+    expect(mockInvoke).toHaveBeenCalledWith('cmd_server_list_deployment_gate_authorizations', {
+      config: serverConfig,
+      query: expect.objectContaining({
+        org_name: 'enterprise-b',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+      }),
+    })
+  })
+
+  it('ignores out-of-order governance context responses from a stale org', async () => {
+    let resolveEnterpriseA: ((response: DeploymentGateAuthorizationListResponse) => void) | null = null
+    const enterpriseAGate = new Promise<DeploymentGateAuthorizationListResponse>((resolve) => {
+      resolveEnterpriseA = resolve
+    })
+
+    mockInvoke.mockImplementation((command: string, payload?: { query?: { org_name?: string } }) => {
+      if (command === 'cmd_server_list_deployment_gate_authorizations') {
+        if (payload?.query?.org_name === 'enterprise-a') {
+          return enterpriseAGate
+        }
+        return Promise.resolve({
+          items: [
+            authorization({
+              authorization_id: 'dga_enterprise_b',
+              decision: 'blocked',
+              approved: false,
+              blocking: true,
+              would_block: true,
+              reason: 'Enterprise B needs manual approval.',
+            }),
+          ],
+          total: 1,
+          limit: 1,
+          offset: 0,
+        })
+      }
+      if (command === 'cmd_server_list_change_risk_evaluations') {
+        return Promise.resolve({ items: [], total: 0, limit: 1, offset: 0 })
+      }
+      if (command === 'cmd_server_get_multi_repo_executive_governance') {
+        return Promise.resolve({ repositories: [], total: 0, limit: 1, offset: 0 })
+      }
+      return Promise.reject(new Error(`Unexpected command ${command}`))
+    })
+
+    const { rerender } = render(
+      <TerminalGovernanceContextPanel
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="enterprise-a"
+        connectionStatus="connected"
+        isOpen
+      />,
+    )
+
+    rerender(
+      <TerminalGovernanceContextPanel
+        context={gitContext}
+        validation={validation}
+        currentBranch="main"
+        serverConfig={serverConfig}
+        selectedOrgName="enterprise-b"
+        connectionStatus="connected"
+        isOpen
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('blocked')).toBeInTheDocument())
+
+    await act(async () => {
+      resolveEnterpriseA?.({
+        items: [
+          authorization({
+            authorization_id: 'dga_enterprise_a',
+            decision: 'approved',
+            approved: true,
+            blocking: false,
+            would_block: false,
+          }),
+        ],
+        total: 1,
+        limit: 1,
+        offset: 0,
+      })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('blocked')).toBeInTheDocument()
+    expect(screen.queryByText('approved')).not.toBeInTheDocument()
   })
 
   it('renders no badge and performs no API call outside a mapped Git repository', () => {

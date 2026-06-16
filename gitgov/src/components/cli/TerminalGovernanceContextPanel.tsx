@@ -52,8 +52,13 @@ export function TerminalGovernanceContextPanel({
 }: TerminalGovernanceContextPanelProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [snapshot, setSnapshot] = useState<TerminalGovernanceSnapshot | null>(null)
+  const [snapshotRecord, setSnapshotRecord] = useState<{
+    key: string
+    snapshot: TerminalGovernanceSnapshot
+  } | null>(null)
   const loadedKeyRef = useRef<string | null>(null)
+  const currentLoadKeyRef = useRef<string | null>(null)
+  const loadRequestIdRef = useRef(0)
   const isOpen = controlledIsOpen ?? internalIsOpen
 
   const target = useMemo(
@@ -68,10 +73,20 @@ export function TerminalGovernanceContextPanel({
     target.repositoryFullName ?? '',
     target.branch ?? '',
   ].join('|')
+  currentLoadKeyRef.current = loadKey
 
   const loadContext = useCallback(async () => {
+    const requestKey = loadKey
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
+    const setCurrentSnapshot = (snapshot: TerminalGovernanceSnapshot) => {
+      if (loadRequestIdRef.current !== requestId || currentLoadKeyRef.current !== requestKey) return
+      setSnapshotRecord({ key: requestKey, snapshot })
+    }
+
     if (!serverConfig) {
-      setSnapshot({
+      setIsLoading(false)
+      setCurrentSnapshot({
         target,
         latestGate: null,
         latestRisk: null,
@@ -83,7 +98,8 @@ export function TerminalGovernanceContextPanel({
     }
 
     if (target.status !== 'ready' || !target.repositoryFullName) {
-      setSnapshot({
+      setIsLoading(false)
+      setCurrentSnapshot({
         target,
         latestGate: null,
         latestRisk: null,
@@ -129,7 +145,7 @@ export function TerminalGovernanceContextPanel({
         }),
       ])
 
-      setSnapshot({
+      setCurrentSnapshot({
         target,
         latestGate: gateResponse.items[0] ?? null,
         latestRisk: riskResponse.items[0] ?? null,
@@ -138,7 +154,7 @@ export function TerminalGovernanceContextPanel({
         error: null,
       })
     } catch (error) {
-      setSnapshot({
+      setCurrentSnapshot({
         target,
         latestGate: null,
         latestRisk: null,
@@ -147,9 +163,11 @@ export function TerminalGovernanceContextPanel({
         error: classifyError(String(error)),
       })
     } finally {
-      setIsLoading(false)
+      if (loadRequestIdRef.current === requestId) {
+        setIsLoading(false)
+      }
     }
-  }, [connectionStatus, emptyState, selectedOrgName, serverConfig, target])
+  }, [connectionStatus, emptyState, loadKey, selectedOrgName, serverConfig, target])
 
   useEffect(() => {
     if (!isOpen || loadedKeyRef.current === loadKey) return
@@ -172,8 +190,10 @@ export function TerminalGovernanceContextPanel({
   }
 
   const loadedSnapshot =
-    snapshot?.target.repositoryFullName === target.repositoryFullName && snapshot?.target.branch === target.branch
-      ? snapshot
+    snapshotRecord?.key === loadKey &&
+    snapshotRecord.snapshot.target.repositoryFullName === target.repositoryFullName &&
+    snapshotRecord.snapshot.target.branch === target.branch
+      ? snapshotRecord.snapshot
       : null
   const hasEvidence = loadedSnapshot ? terminalGovernanceHasEvidence(loadedSnapshot) : false
 
@@ -261,7 +281,7 @@ export function TerminalGovernanceContextPanel({
                     {loadedSnapshot.executiveRepository?.posture ?? 'No posture'}
                   </div>
                   <div className="mt-1 truncate text-[9px] text-surface-500">
-                    {loadedSnapshot.providerHealth}
+                    {connectionStatus}
                   </div>
                 </div>
               </div>
