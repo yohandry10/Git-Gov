@@ -56,7 +56,7 @@ The repo already contains substantial product surface:
   enforcement, release blocking, deployment execution, provider or repository mutation, AI/LLM,
   Agent Governance dependency, compliance scores, approval quorum, notifications, or
   certification/legal/regulatory claims.
-- Change Risk Review Queue and CAB Evidence Filter from KAN-124 is in progress. It adds
+- Change Risk Review Queue and CAB Evidence Filter from KAN-124 is completed. It adds
   `review_status` filtering to existing Change Risk evaluation lists and a Desktop `Review queue`
   selector so CAB/Admin/Auditor users can find pending manual review work. It is not a score, not
   enforcement, and not an Agent Governance or AI feature.
