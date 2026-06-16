@@ -1,5 +1,6 @@
 import { applyNativeTerminalInputToDraft } from '@/components/cli/terminalSessionHistory'
 import type { NativeTerminalGitContext } from '@/components/cli/terminalGitContext'
+import type { NativeTerminalToolContext } from '@/components/cli/terminalToolContext'
 import {
   SAFE_TERMINAL_QUICK_COMMANDS,
   buildTerminalQuickCommandInsertInput,
@@ -15,6 +16,44 @@ const gitContext: NativeTerminalGitContext = {
   repo_name: 'GitGov',
   branch: 'main',
   commit_short: 'abc1234',
+  detected_at_ms: 1_700_000_000_000,
+}
+
+const terraformToolContext: NativeTerminalToolContext = {
+  cwd_kind: 'git_repo',
+  tools: [
+    {
+      tool: 'terraform',
+      detected: true,
+      confidence: 'high',
+      reason: 'terraform_files_present',
+      safe_command_ids: ['terraform-fmt-check', 'terraform-validate'],
+    },
+    {
+      tool: 'docker-compose',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['docker-compose-services', 'docker-compose-check'],
+    },
+    {
+      tool: 'helm',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['helm-lint-local'],
+    },
+    {
+      tool: 'kubernetes',
+      detected: false,
+      confidence: 'none',
+      reason: 'not_detected',
+      safe_command_ids: ['kubectl-current-context', 'kubectl-list-contexts'],
+    },
+  ],
+  scan_limited: false,
+  secrets_read: false,
+  network_used: false,
   detected_at_ms: 1_700_000_000_000,
 }
 
@@ -118,6 +157,7 @@ describe('native terminal quick command helpers', () => {
     const views = buildTerminalQuickCommandViews(gitContext)
 
     expect(views.every((entry) => !entry.disabled)).toBe(true)
+    expect(views.every((entry) => !entry.availableInWorkspace)).toBe(true)
     expect(views.filter((entry) => entry.group === 'provider-tool')).toHaveLength(7)
     expect(views.find((entry) => entry.command === 'terraform fmt -check -recursive')).toMatchObject({
       tool: 'terraform',
@@ -131,6 +171,30 @@ describe('native terminal quick command helpers', () => {
       mayExposeSecrets: false,
       disabled: false,
     })
+  })
+
+  it('marks detected provider/tool commands as available without disabling other safe commands', () => {
+    const views = buildTerminalQuickCommandViews(gitContext, terraformToolContext)
+    const terraformViews = views.filter((entry) => entry.tool === 'terraform')
+    const dockerViews = views.filter((entry) => entry.tool === 'docker-compose')
+
+    expect(terraformViews).toHaveLength(2)
+    expect(terraformViews.every((entry) => entry.availableInWorkspace)).toBe(true)
+    expect(terraformViews.every((entry) => !entry.disabled)).toBe(true)
+    expect(dockerViews.every((entry) => !entry.availableInWorkspace)).toBe(true)
+    expect(dockerViews.every((entry) => !entry.disabled)).toBe(true)
+  })
+
+  it('does not trust tool context that reports secret or network usage', () => {
+    const unsafeContext: NativeTerminalToolContext = {
+      ...terraformToolContext,
+      secrets_read: true,
+      network_used: true,
+    }
+    const views = buildTerminalQuickCommandViews(gitContext, unsafeContext)
+
+    expect(views.every((entry) => !entry.availableInWorkspace)).toBe(true)
+    expect(views.every((entry) => !entry.disabled)).toBe(true)
   })
 
   it('builds insert-only text without newline so the command is not auto-run', () => {

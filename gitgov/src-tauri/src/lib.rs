@@ -377,6 +377,7 @@ pub fn run() {
             commands::cmd_resize_native_terminal,
             commands::cmd_stop_native_terminal,
             commands::cmd_get_native_terminal_git_context,
+            commands::cmd_get_native_terminal_tool_context,
             commands::cmd_start_shell_session,
             commands::cmd_send_shell_input,
             commands::cmd_stop_shell_session,

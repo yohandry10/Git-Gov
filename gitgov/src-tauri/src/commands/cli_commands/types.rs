@@ -162,6 +162,34 @@ pub struct CliNativeTerminalGitContextResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CliNativeTerminalToolContextRequest {
+    #[serde(default)]
+    pub session_id: Option<String>,
+    pub cwd: String,
+    #[serde(default)]
+    pub command: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CliNativeTerminalToolDetection {
+    pub tool: String,
+    pub detected: bool,
+    pub confidence: String,
+    pub reason: String,
+    pub safe_command_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CliNativeTerminalToolContextResult {
+    pub cwd_kind: String,
+    pub tools: Vec<CliNativeTerminalToolDetection>,
+    pub scan_limited: bool,
+    pub secrets_read: bool,
+    pub network_used: bool,
+    pub detected_at_ms: u128,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliNativeTerminalOutputEvent {
     pub session_id: String,
     pub data: String,

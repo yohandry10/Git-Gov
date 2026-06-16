@@ -2,6 +2,58 @@
 
 Updated: 2026-06-16
 
+## KAN-144 Native Terminal Local Provider/Tool Context Detection MVP - 2026-06-16
+
+`KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` continues roadmap block
+`0.10 Developer Distribution Surfaces`. GitHub issue `#498` tracks the implementation.
+
+Product decision:
+
+- Reuse the KAN-143 safe provider/tool quick-command registry.
+- Add local, bounded provider/tool context detection so the quick menu can show commands that appear
+  relevant to the current workspace.
+- Keep the feature Desktop/Tauri local, manual-first, insert-only, and quiet.
+
+Implemented:
+
+- Added local Tauri command `cmd_get_native_terminal_tool_context`.
+- Detects Terraform, Docker Compose, Helm, and Kubernetes context from safe file/directory names
+  only.
+- Limits scan depth and entry count, and ignores heavy/sensitive directories.
+- Returns generic metadata only: tool, detection state, confidence, reason, safe command IDs,
+  `scan_limited`, `secrets_read=false`, and `network_used=false`.
+- Stores tool context by native terminal session and protects async loads with request-id checks.
+- Adds `Available in this workspace` and `Other safe commands` sections to the quick-command menu.
+
+Guardrails:
+
+- No backend/API route change.
+- No DB migration.
+- No Render deploy requirement.
+- No Control Plane audit write.
+- No file-content reads.
+- No absolute path return or UI display.
+- No command interception, approval, blocking, auto-run, or newline insertion.
+- No provider, repository, cluster, deployment, or workflow mutation.
+- No cloud/provider API commands or token/API key usage.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Rust tool-context tests passed (`6` tests).
+- Focused quick-command/menu tests passed (`13` tests).
+- Full frontend Vitest passed (`422` tests).
+- Frontend typecheck and lint passed.
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- Tauri `cargo fmt --check`, `cargo check`, and `cargo clippy -- -D warnings` passed.
+- Full Tauri `cargo test` passed (`58` tests).
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed.
+- Static dangerous-command/read grep found no mutating provider commands, backend command execution,
+  or file-content reads in the new tool-context path.
+- PR checks remain required before merge.
+
 ## KAN-143 Native Terminal Provider Quick Commands Safety Registry MVP - 2026-06-16
 
 `KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` continues roadmap block
