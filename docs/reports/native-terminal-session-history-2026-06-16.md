@@ -4,6 +4,10 @@ Date: 2026-06-16
 
 GitHub issue: `#464`
 
+Pull request: `#465`
+
+Main commit: `86d70861`
+
 ## Summary
 
 KAN-132 adds a local, session-scoped native terminal command history to the Desktop Workspace.
@@ -49,4 +53,7 @@ not create audit evidence, does not block commands, and does not change the nati
   - passed.
 - `pnpm --dir gitgov build`
   - passed with the pre-existing Vite large chunk warning.
-
+- PR checks
+  - passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy + Check,
+    Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates warn/block
+    matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.

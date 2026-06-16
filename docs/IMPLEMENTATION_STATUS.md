@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-132 Native Terminal Session History - 2026-06-16
 
-`KAN-132 - Native Terminal Session History MVP` starts roadmap block `0.10 Developer Distribution
-Surfaces`. GitHub issue: `#464`.
+`KAN-132 - Native Terminal Session History MVP` is completed. GitHub issue `#464` shipped through
+PR `#465`, merged to `main` as `86d70861`.
 
 Product decision:
 
@@ -38,6 +38,9 @@ Local validation:
 - `pnpm --dir gitgov typecheck`.
 - `pnpm --dir gitgov lint`.
 - `pnpm --dir gitgov build` passed with the pre-existing Vite chunk-size warning.
+- PR checks passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy +
+  Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates
+  warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.
 
 Report: `docs/reports/native-terminal-session-history-2026-06-16.md`.
 
