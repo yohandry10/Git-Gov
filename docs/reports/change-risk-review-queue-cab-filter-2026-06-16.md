@@ -52,7 +52,30 @@ The selected slice is `KAN-124 - Change Risk Review Queue and CAB Evidence Filte
 - `git diff --check` passed.
 - `scripts/security/publication_guard.ps1` passed.
 
-## Remaining
+## PR And Production Validation
 
-- PR checks.
-- Production deploy and smoke.
+- PR `#433` merged to `main` as `d145d6fe`.
+- PR checks passed, including Security Guard, Server Clippy + Check, Desktop Rust Clippy, Frontend
+  Lint + Typecheck, Website Lint + Typecheck + Build, Validate Policy-as-Code, and the quality gate
+  matrix.
+- Post-merge `main` checks passed, including CI, Release Readiness Gate, Secret Scan, Public Naming
+  Guard, Governance Correlation Smoke, Desktop Updater Readiness, Quality Gate Policy Matrix, and
+  SonarQube Governance.
+- Render deploy `dep-d8odh5c2m8qs73amf7p0` for commit `d145d6fe` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `GET /change-risk/evaluations?review_status=accepted_risk` returned KAN-123 smoke evaluation
+    `cra_4d59c84859a747789e577ca24945ec50`.
+  - `GET /change-risk/evaluations?review_status=needs_review` excluded that accepted-risk
+    evaluation.
+  - Invalid `review_status=approved` returned HTTP `400`.
+  - The accepted-risk record retained `advisory_only=true`, `llm_used=false`,
+    `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+  - Deployment Gate and Agent Governance counts stayed unchanged before and after read-only smoke:
+    `deployment_gate_authorizations=2;agent_governance_evaluations=7`.
+
+## Result
+
+KAN-124 is complete and production-smoked. The feature gives CAB/Admin/Auditor users a real manual
+review queue without turning Change Risk into an enforcement gate or agentic workflow.

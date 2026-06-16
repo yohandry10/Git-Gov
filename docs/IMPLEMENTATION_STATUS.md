@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-124 Change Risk Review Queue And CAB Evidence Filter - 2026-06-16
 
-`KAN-124 - Change Risk Review Queue and CAB Evidence Filter` is in progress on branch
-`product/KAN-124-change-risk-review-queue` for GitHub issue `#432`.
+`KAN-124 - Change Risk Review Queue and CAB Evidence Filter` is completed. PR `#433` merged to
+`main` as `d145d6fe`.
 
 Product decision:
 
@@ -16,7 +16,7 @@ Product decision:
   chatbot behavior, Agent Governance dependency, compliance/certification/legal/regulatory claim,
   notifications, approval quorum, or multi-reviewer workflow.
 
-Implemented locally so far:
+Implemented:
 
 - Optional `review_status` on backend/Tauri/frontend `ChangeRiskEvaluationQuery`.
 - Backend validation for allowed KAN-123 review states.
@@ -28,7 +28,7 @@ Implemented locally so far:
 - Governance > Releases `ChangeRiskPanel` `Review queue` selector.
 - Design and validation report docs.
 
-Validation so far:
+Local validation:
 
 - Backend `cargo fmt --check`.
 - Backend `cargo check`.
@@ -50,9 +50,27 @@ Validation so far:
 - `git diff --check` passed.
 - `scripts/security/publication_guard.ps1` passed.
 
-Remaining before merge:
+PR and production validation:
 
-- PR checks, production deploy, and production smoke.
+- PR `#433` checks passed, including Security Guard, Server Clippy + Check, Desktop Rust Clippy,
+  Frontend Lint + Typecheck, Website Lint + Typecheck + Build, Validate Policy-as-Code, and the
+  quality gate matrix.
+- Post-merge `main` checks passed, including CI, Release Readiness Gate, Secret Scan, Public Naming
+  Guard, Governance Correlation Smoke, Desktop Updater Readiness, Quality Gate Policy Matrix, and
+  SonarQube Governance.
+- Render deploy `dep-d8odh5c2m8qs73amf7p0` for commit `d145d6fe` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `GET /change-risk/evaluations?review_status=accepted_risk` returned KAN-123 smoke evaluation
+    `cra_4d59c84859a747789e577ca24945ec50`.
+  - `GET /change-risk/evaluations?review_status=needs_review` excluded that accepted-risk
+    evaluation.
+  - Invalid `review_status=approved` returned HTTP `400`.
+  - No-claim/manual flags remained `advisory_only=true`, `llm_used=false`,
+    `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+  - Read-only smoke left counts unchanged:
+    `deployment_gate_authorizations=2;agent_governance_evaluations=7`.
 
 Report: `docs/reports/change-risk-review-queue-cab-filter-2026-06-16.md`.
 
