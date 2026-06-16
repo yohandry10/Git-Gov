@@ -341,6 +341,70 @@ export interface DeploymentGateRiskContextResponse {
   certification: boolean
 }
 
+export interface MultiRepoExecutiveGovernanceQuery {
+  org_name?: string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface MultiRepoExecutiveGovernanceRepository {
+  repository_full_name: string
+  posture: 'attention' | 'review' | 'healthy' | 'unknown' | string
+  gate_count: number
+  blocked_gate_count: number
+  advisory_gate_count: number
+  break_glass_count: number
+  latest_gate_id?: string | null
+  latest_gate_decision?: string | null
+  latest_gate_created_at?: number | null
+  change_risk_count: number
+  high_risk_count: number
+  needs_review_count: number
+  latest_risk_level?: string | null
+  latest_review_status?: string | null
+  latest_risk_created_at?: number | null
+  cab_packet_count: number
+  cab_manifest_count: number
+  active_manifest_count: number
+  revoked_manifest_count: number
+  latest_manifest_hash?: string | null
+  latest_manifest_status?: string | null
+  latest_manifest_created_at?: number | null
+}
+
+export interface MultiRepoExecutiveGovernanceTotals {
+  repositories: number
+  gate_count: number
+  blocked_gate_count: number
+  advisory_gate_count: number
+  break_glass_count: number
+  change_risk_count: number
+  high_risk_count: number
+  needs_review_count: number
+  cab_packet_count: number
+  cab_manifest_count: number
+  active_manifest_count: number
+  revoked_manifest_count: number
+}
+
+export interface MultiRepoExecutiveGovernanceResponse {
+  org_id: string
+  generated_at: number
+  repositories: MultiRepoExecutiveGovernanceRepository[]
+  totals: MultiRepoExecutiveGovernanceTotals
+  limit: number
+  offset: number
+  advisory_only: boolean
+  enforcement_used: boolean
+  deployment_execution: boolean
+  provider_mutation: boolean
+  repository_mutation: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
+}
+
 export type ChangeRiskLevel = 'low' | 'medium' | 'high' | 'unknown' | string
 
 export interface ChangeRiskEvaluationRecord {
@@ -1747,6 +1811,10 @@ export interface ControlPlaneState {
   deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
   deploymentGateAuthorizationsUpdatedAt: number | null
   deploymentGateRiskContexts: Record<string, DeploymentGateRiskContextResponse>
+  multiRepoExecutiveGovernance: MultiRepoExecutiveGovernanceResponse | null
+  multiRepoExecutiveGovernanceUpdatedAt: number | null
+  isMultiRepoExecutiveGovernanceLoading: boolean
+  multiRepoExecutiveGovernanceError: string | null
   changeRiskEvaluations: ChangeRiskEvaluationRecord[]
   changeRiskEvaluationsTotal: number
   changeRiskEvaluationsFilters: ChangeRiskEvaluationQuery
@@ -1942,6 +2010,7 @@ export interface ControlPlaneActions {
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   getDeploymentGateRiskContext: (deploymentGateId: string, query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateRiskContextResponse | null>
+  loadMultiRepoExecutiveGovernance: (query?: MultiRepoExecutiveGovernanceQuery) => Promise<MultiRepoExecutiveGovernanceResponse | null>
   loadChangeRiskEvaluations: (query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationListResponse | null>
   loadChangeRiskRules: () => Promise<ChangeRiskRuleCatalogResponse | null>
   getChangeRiskEvaluation: (evaluationId: string, query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationRecord | null>

@@ -725,6 +725,61 @@ fn deployment_gate_authorization_from_row(row: &PgRow) -> DeploymentGateAuthoriz
     }
 }
 
+fn multi_repo_executive_governance_repository_from_row(
+    row: &PgRow,
+) -> MultiRepoExecutiveGovernanceRepository {
+    let gate_count = row.get::<i64, _>("gate_count");
+    let blocked_gate_count = row.get::<i64, _>("blocked_gate_count");
+    let advisory_gate_count = row.get::<i64, _>("advisory_gate_count");
+    let break_glass_count = row.get::<i64, _>("break_glass_count");
+    let change_risk_count = row.get::<i64, _>("change_risk_count");
+    let high_risk_count = row.get::<i64, _>("high_risk_count");
+    let needs_review_count = row.get::<i64, _>("needs_review_count");
+    let cab_packet_count = row.get::<i64, _>("cab_packet_count");
+    let cab_manifest_count = row.get::<i64, _>("cab_manifest_count");
+    let active_manifest_count = row.get::<i64, _>("active_manifest_count");
+    let revoked_manifest_count = row.get::<i64, _>("revoked_manifest_count");
+    let posture = if blocked_gate_count > 0 || high_risk_count > 0 {
+        "attention"
+    } else if needs_review_count > 0 || revoked_manifest_count > 0 || advisory_gate_count > 0 {
+        "review"
+    } else if gate_count > 0
+        || change_risk_count > 0
+        || cab_packet_count > 0
+        || cab_manifest_count > 0
+    {
+        "healthy"
+    } else {
+        "unknown"
+    }
+    .to_string();
+
+    MultiRepoExecutiveGovernanceRepository {
+        repository_full_name: row.get("repository_full_name"),
+        posture,
+        gate_count,
+        blocked_gate_count,
+        advisory_gate_count,
+        break_glass_count,
+        latest_gate_id: row.get("latest_gate_id"),
+        latest_gate_decision: row.get("latest_gate_decision"),
+        latest_gate_created_at: row.get("latest_gate_created_at_ms"),
+        change_risk_count,
+        high_risk_count,
+        needs_review_count,
+        latest_risk_level: row.get("latest_risk_level"),
+        latest_review_status: row.get("latest_review_status"),
+        latest_risk_created_at: row.get("latest_risk_created_at_ms"),
+        cab_packet_count,
+        cab_manifest_count,
+        active_manifest_count,
+        revoked_manifest_count,
+        latest_manifest_hash: row.get("latest_manifest_hash"),
+        latest_manifest_status: row.get("latest_manifest_status"),
+        latest_manifest_created_at: row.get("latest_manifest_created_at_ms"),
+    }
+}
+
 fn change_risk_evaluation_from_row(row: &PgRow) -> ChangeRiskEvaluationRecord {
     ChangeRiskEvaluationRecord {
         evaluation_id: row.get("evaluation_id"),

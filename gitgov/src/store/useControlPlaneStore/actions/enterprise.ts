@@ -24,6 +24,8 @@ import type {
   DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationQuery,
   DeploymentGateRiskContextResponse,
+  MultiRepoExecutiveGovernanceQuery,
+  MultiRepoExecutiveGovernanceResponse,
   EnterpriseAdoptionProfileRecord,
   EnterpriseAdoptionProfileResponse,
   FirstGovernedRepoWizardActionRequest,
@@ -59,6 +61,7 @@ type EnterpriseActionKeys =
   | 'loadEnterpriseReleaseApprovals'
   | 'loadDeploymentGateAuthorizations'
   | 'getDeploymentGateRiskContext'
+  | 'loadMultiRepoExecutiveGovernance'
   | 'loadChangeRiskEvaluations'
   | 'loadChangeRiskRules'
   | 'getChangeRiskEvaluation'
@@ -619,6 +622,36 @@ export function createEnterpriseActions(
       set({
         deploymentGateRiskContextError: message,
         isDeploymentGateRiskContextLoading: false,
+      })
+      return null
+    }
+  },
+
+  loadMultiRepoExecutiveGovernance: async (query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const scopedQuery: MultiRepoExecutiveGovernanceQuery = withSelectedOrg(query, selectedOrgName)
+
+    set({
+      isMultiRepoExecutiveGovernanceLoading: true,
+      multiRepoExecutiveGovernanceError: null,
+    })
+    try {
+      const response = await tauriInvoke<MultiRepoExecutiveGovernanceResponse>('cmd_server_get_multi_repo_executive_governance', {
+        config: serverConfig,
+        query: scopedQuery,
+      })
+      set({
+        multiRepoExecutiveGovernance: response,
+        multiRepoExecutiveGovernanceUpdatedAt: response.generated_at,
+        isMultiRepoExecutiveGovernanceLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        multiRepoExecutiveGovernanceError: message,
+        isMultiRepoExecutiveGovernanceLoading: false,
       })
       return null
     }

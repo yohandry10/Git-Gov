@@ -43,6 +43,36 @@ async fn insert_gate(
     decision: &str,
     break_glass_used: bool,
 ) {
+    insert_gate_for_repo(
+        pool,
+        org_id,
+        REPO_FULL_NAME,
+        BRANCH,
+        TARGET_SHA,
+        EVIDENCE_HASH,
+        authorization_id,
+        release_id,
+        environment,
+        decision,
+        break_glass_used,
+    )
+    .await;
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn insert_gate_for_repo(
+    pool: &sqlx::PgPool,
+    org_id: &str,
+    repository_full_name: &str,
+    branch: &str,
+    target_sha: &str,
+    evidence_hash: &str,
+    authorization_id: &str,
+    release_id: &str,
+    environment: &str,
+    decision: &str,
+    break_glass_used: bool,
+) {
     let (blocking, would_block, approved, blocked_by, warnings, required, valid, shared_decision) =
         match decision {
             "blocked" => (
@@ -78,7 +108,7 @@ async fn insert_gate(
             "required_evidence": ["deployment_context", "release_evidence_packet"],
             "available_evidence": ["deployment_context", "release_evidence_packet"],
             "missing_evidence": if required > valid { json!(["release_approval", "human_approval"]) } else { json!([]) },
-            "evidence_packet_hash": EVIDENCE_HASH,
+            "evidence_packet_hash": evidence_hash,
             "valid_approval_count": valid,
             "required_approval_count": required
         },
@@ -181,11 +211,11 @@ async fn insert_gate(
     .bind(authorization_id)
     .bind(org_id)
     .bind(release_id)
-    .bind(REPO_FULL_NAME)
-    .bind(BRANCH)
-    .bind(TARGET_SHA)
+    .bind(repository_full_name)
+    .bind(branch)
+    .bind(target_sha)
     .bind(environment)
-    .bind(EVIDENCE_HASH)
+    .bind(evidence_hash)
     .bind(decision)
     .bind(approved)
     .bind(blocking)
@@ -244,6 +274,27 @@ fn risk_payload(gate_id: Option<&str>, environment: &str) -> serde_json::Value {
         "release_id": "release-kan-121",
         "commit_sha": TARGET_SHA,
         "evidence_refs": ["/evidence/packets/tickets/KAN-121"]
+    })
+}
+
+fn risk_payload_for_repo(
+    repository_full_name: &str,
+    branch: &str,
+    target_sha: &str,
+    gate_id: Option<&str>,
+    change_id: &str,
+    release_id: &str,
+    environment: &str,
+) -> serde_json::Value {
+    json!({
+        "repository_full_name": repository_full_name,
+        "branch": branch,
+        "environment": environment,
+        "change_id": change_id,
+        "deployment_gate_id": gate_id,
+        "release_id": release_id,
+        "commit_sha": target_sha,
+        "evidence_refs": [format!("/evidence/packets/tickets/{change_id}")]
     })
 }
 
@@ -1065,6 +1116,343 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
             .await
             .expect("tenant B risk count");
     assert_eq!(tenant_b_count, 2);
+
+    teardown(&admin_pool, &schema).await;
+}
+
+#[tokio::test]
+async fn multi_repo_executive_governance_view_is_read_only_and_tenant_scoped() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "executive-org").await;
+    let other_org_id = insert_test_org(&pool, "executive-other").await;
+    let repo_a = "executive-org/payments";
+    let repo_b = "executive-org/portal";
+    let other_repo = "executive-other/repo";
+    insert_repo_for_org(&pool, &org_id, repo_a).await;
+    insert_repo_for_org(&pool, &org_id, repo_b).await;
+    insert_repo_for_org(&pool, &other_org_id, other_repo).await;
+
+    let admin_key =
+        insert_test_api_key_for_org(&pool, "kan-129-exec-admin", "Admin", &org_id).await;
+    let auditor_key =
+        insert_test_api_key_for_org(&pool, "kan-129-exec-auditor", "Auditor", &org_id).await;
+    let developer_key =
+        insert_test_api_key_for_org(&pool, "kan-129-exec-dev", "Developer", &org_id).await;
+    let other_admin_key =
+        insert_test_api_key_for_org(&pool, "kan-129-other-admin", "Admin", &other_org_id).await;
+
+    insert_gate_for_repo(
+        &pool,
+        &org_id,
+        repo_a,
+        "main",
+        "1111111111111111111111111111111111111111",
+        "1111111111111111111111111111111111111111111111111111111111111111",
+        "dga_kan129_payments",
+        "release-kan-129-payments",
+        "production",
+        "blocked",
+        false,
+    )
+    .await;
+    insert_gate_for_repo(
+        &pool,
+        &org_id,
+        repo_b,
+        "main",
+        "2222222222222222222222222222222222222222",
+        "2222222222222222222222222222222222222222222222222222222222222222",
+        "dga_kan129_portal",
+        "release-kan-129-portal",
+        "staging",
+        "approved",
+        false,
+    )
+    .await;
+    insert_gate_for_repo(
+        &pool,
+        &other_org_id,
+        other_repo,
+        "main",
+        "3333333333333333333333333333333333333333",
+        "3333333333333333333333333333333333333333333333333333333333333333",
+        "dga_kan129_other",
+        "release-kan-129-other",
+        "production",
+        "approved",
+        false,
+    )
+    .await;
+
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(
+            &risk_payload_for_repo(
+                repo_a,
+                "main",
+                "1111111111111111111111111111111111111111",
+                Some("dga_kan129_payments"),
+                "KAN-129-payments",
+                "release-kan-129-payments",
+                "production",
+            )
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "payments risk create: {response}"
+    );
+    let payments_risk: serde_json::Value =
+        serde_json::from_str(&response).expect("payments risk JSON");
+    let payments_eval_id = payments_risk["evaluation_id"]
+        .as_str()
+        .expect("payments eval id")
+        .to_string();
+    assert_eq!(payments_risk["risk_level"], "high");
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{payments_eval_id}/review"),
+        Some(
+            &json!({
+                "review_status": "accepted_risk",
+                "review_notes": "Executive review accepts the production risk manually.",
+                "mitigation_notes": "Release manager keeps rollback owner online.",
+                "decision_reason": "Business owner accepted residual risk."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "payments risk review: {response}");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(
+            &risk_payload_for_repo(
+                repo_b,
+                "main",
+                "2222222222222222222222222222222222222222",
+                Some("dga_kan129_portal"),
+                "KAN-129-portal",
+                "release-kan-129-portal",
+                "staging",
+            )
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "portal risk create: {response}"
+    );
+    let portal_risk: serde_json::Value = serde_json::from_str(&response).expect("portal risk JSON");
+    assert_eq!(portal_risk["risk_level"], "low");
+
+    let before_gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before executive gate count");
+    let before_agent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before executive agent count");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(
+            &json!({
+                "name": "KAN-129 executive payments CAB",
+                "evaluation_ids": [payments_eval_id]
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "executive CAB packet: {response}"
+    );
+    let packet: serde_json::Value = serde_json::from_str(&response).expect("packet JSON");
+    let packet_id = packet["packet"]["packet_id"]
+        .as_str()
+        .expect("packet id")
+        .to_string();
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{packet_id}/review"),
+        Some(
+            &json!({
+                "review_status": "reviewed",
+                "review_notes": "CAB reviewed the payments risk packet.",
+                "mitigation_notes": "No additional mitigation requested.",
+                "decision_reason": "Ready for executive visibility."
+            })
+            .to_string(),
+        ),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "executive CAB review: {response}");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        &format!("/change-risk/cab-packets/{packet_id}/decision-manifests"),
+        Some(r#"{"org_name":"executive-org"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "executive CAB manifest: {response}"
+    );
+    let manifest: serde_json::Value = serde_json::from_str(&response).expect("manifest JSON");
+    let manifest_hash = manifest["manifest"]["manifest_hash"]
+        .as_str()
+        .expect("manifest hash")
+        .to_string();
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org&limit=10",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor executive repo view: {response}"
+    );
+    let executive: serde_json::Value =
+        serde_json::from_str(&response).expect("executive repo JSON");
+    assert_eq!(executive["advisory_only"], true);
+    assert_eq!(executive["enforcement_used"], false);
+    assert_eq!(executive["deployment_execution"], false);
+    assert_eq!(executive["provider_mutation"], false);
+    assert_eq!(executive["repository_mutation"], false);
+    assert_eq!(executive["llm_used"], false);
+    assert_eq!(executive["agent_governance_used"], false);
+    assert_eq!(executive["compliance_claim"], false);
+    assert_eq!(executive["certification"], false);
+    assert_eq!(executive["totals"]["repositories"], 2);
+    assert_eq!(executive["totals"]["gate_count"], 2);
+    assert_eq!(executive["totals"]["change_risk_count"], 2);
+    assert_eq!(executive["totals"]["cab_packet_count"], 1);
+    assert_eq!(executive["totals"]["cab_manifest_count"], 1);
+
+    let repos = executive["repositories"].as_array().expect("repo array");
+    let payments = repos
+        .iter()
+        .find(|repo| repo["repository_full_name"] == repo_a)
+        .expect("payments repo summary");
+    assert_eq!(payments["posture"], "attention");
+    assert_eq!(payments["gate_count"], 1);
+    assert_eq!(payments["blocked_gate_count"], 1);
+    assert_eq!(payments["change_risk_count"], 1);
+    assert_eq!(payments["high_risk_count"], 1);
+    assert_eq!(payments["cab_packet_count"], 1);
+    assert_eq!(payments["cab_manifest_count"], 1);
+    assert_eq!(payments["active_manifest_count"], 1);
+    assert_eq!(payments["latest_gate_id"], "dga_kan129_payments");
+    assert_eq!(payments["latest_risk_level"], "high");
+    assert_eq!(payments["latest_review_status"], "accepted_risk");
+    assert_eq!(payments["latest_manifest_hash"], manifest_hash);
+    let portal = repos
+        .iter()
+        .find(|repo| repo["repository_full_name"] == repo_b)
+        .expect("portal repo summary");
+    assert_eq!(portal["posture"], "review");
+    assert_eq!(portal["gate_count"], 1);
+    assert_eq!(portal["blocked_gate_count"], 0);
+    assert_eq!(portal["advisory_gate_count"], 0);
+    assert_eq!(portal["high_risk_count"], 0);
+    assert_eq!(portal["needs_review_count"], 1);
+    assert_eq!(portal["latest_review_status"], "needs_review");
+    assert_eq!(portal["cab_packet_count"], 0);
+
+    let after_gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("after executive gate count");
+    let after_agent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("after executive agent count");
+    assert_eq!(after_gate_count, before_gate_count);
+    assert_eq!(after_agent_count, before_agent_count);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-org",
+        None,
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not read executive governance view: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/executive/repositories?org_name=executive-other",
+        None,
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "other tenant executive view: {response}"
+    );
+    let other_view: serde_json::Value =
+        serde_json::from_str(&response).expect("other executive JSON");
+    assert_eq!(other_view["totals"]["repositories"], 1);
+    assert!(other_view["repositories"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|repo| repo["repository_full_name"] != repo_a));
 
     teardown(&admin_pool, &schema).await;
 }

@@ -2010,6 +2010,10 @@ pub(super) fn build_test_app_with_options(
         .route("/stats/daily", get(handlers::get_daily_activity))
         .route("/dashboard", get(handlers::get_dashboard))
         .route(
+            "/executive/repositories",
+            get(handlers::get_multi_repo_executive_governance),
+        )
+        .route(
             "/compliance/{org_name}",
             get(handlers::get_compliance_dashboard),
         )

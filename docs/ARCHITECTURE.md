@@ -268,6 +268,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
 | `/deployment-gates/{deployment_gate_id}/risk-context` | Bearer (admin/auditor) | Leer contexto read-only de Change Risk, CAB packets y CAB decision manifests relacionados con un Deployment Gate; no recalcula riesgo, no muta gates ni hace enforcement |
+| `/executive/repositories` | Bearer (admin/auditor) | Leer vista ejecutiva read-only por repositorio con evidencia agregada de Deployment Gates, Change Risk, CAB packets y CAB manifests; no autoriza deploys, no muta proveedores/repos y no crea claims |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
 | `/change-risk/rules` | Bearer (admin/auditor) | Leer el catálogo determinístico `change_risk_rules.v1`; no usa AI, no muta proveedores/repos y no crea claims |
 | `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk; el listado acepta filtro `review_status` para cola CAB/manual |

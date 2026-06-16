@@ -57,7 +57,8 @@ use crate::control_plane::{
     FirstGovernedRepoSetupResponse, FirstGovernedRepoWizardActionRequest,
     FirstGovernedRepoWizardRunResponse, FirstGovernedRepoWizardStateResponse,
     JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
-    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
+    JiraTicketDetailResponse, MeResponse, MultiRepoExecutiveGovernanceQuery,
+    MultiRepoExecutiveGovernanceResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
     OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
     PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
     ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
@@ -995,6 +996,23 @@ pub async fn cmd_server_get_deployment_gate_risk_context(
         });
         client
             .get_deployment_gate_risk_context(deployment_gate_id.trim(), &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_multi_repo_executive_governance(
+    config: ServerConnectionConfig,
+    query: MultiRepoExecutiveGovernanceQuery,
+) -> Result<MultiRepoExecutiveGovernanceResponse, String> {
+    run_blocking_command("GET_MULTI_REPO_EXECUTIVE_GOVERNANCE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_multi_repo_executive_governance(&query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
