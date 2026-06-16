@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-131` Multi-Repo Executive Governance Snapshot Export
+Ticket: `KAN-132` Native Terminal Session History MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -103,6 +103,11 @@ The repo already contains substantial product surface:
   source evidence or create compliance/certification claims. Final production validation created,
   downloaded, hash-verified, archived, and blocked post-archive download of a snapshot while source
   Deployment Gate, Change Risk, CAB, and Agent Governance evidence counts stayed unchanged.
+- Native Terminal Session History from KAN-132 starts Developer Distribution Surfaces 0.10 in the
+  Desktop Workspace. It captures commands typed into the current native terminal UI session and
+  displays a compact local history with shell/repo/branch/timestamp metadata. It is a convenience
+  surface only: no backend persistence, no audit evidence, no command blocking, no automatic rerun,
+  no provider/repo/deploy mutation, and no compliance/certification claim.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
@@ -201,9 +206,10 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-125 - Change Risk CAB Review Packet` is completed through PR `#436` plus hotfix PR `#437`;
-current main commit is `44c0744b`. It follows KAN-121 through KAN-124 by turning
-reviewed/filterable Change Risk evaluations into a manual CAB packet artifact.
+`KAN-132 - Native Terminal Session History MVP` is the current product slice. It starts roadmap
+block `0.10 Developer Distribution Surfaces` with a local, session-scoped Desktop terminal history
+that preserves the non-intercepting native PTY behavior and does not create governance evidence or
+policy enforcement.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a

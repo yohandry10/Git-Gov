@@ -4,10 +4,15 @@ import { useRepoStore } from '@/store/useRepoStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import { onCliLine } from '@/lib/cliEvents'
-import { Terminal } from 'lucide-react'
+import { History, Terminal } from 'lucide-react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { isNativeTerminalDisabledError, nativeTerminalDisabledMessage } from './terminalStatus'
+import {
+  appendTerminalSessionCommand,
+  applyNativeTerminalInputToDraft,
+  type TerminalSessionCommand,
+} from './terminalSessionHistory'
 import '@xterm/xterm/css/xterm.css'
 
 interface CliNativeTerminalStartResult {
@@ -34,11 +39,28 @@ const ANSI = {
   command: '\x1b[38;5;111m',
 }
 
+function formatSessionCommandTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+function shortRepoPath(repoPath: string): string {
+  const normalized = repoPath.replace(/\\/g, '/')
+  const parts = normalized.split('/').filter(Boolean)
+  return parts[parts.length - 1] ?? repoPath
+}
+
 export function TerminalPanel() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [shellName, setShellName] = useState('shell')
   const [isConnecting, setIsConnecting] = useState(false)
   const [nativeTerminalDisabled, setNativeTerminalDisabled] = useState(false)
+  const [showSessionHistory, setShowSessionHistory] = useState(false)
+  const [sessionCommands, setSessionCommands] = useState<TerminalSessionCommand[]>([])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<XTerm | null>(null)
@@ -50,11 +72,19 @@ export function TerminalPanel() {
   const startRequestIdRef = useRef(0)
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve())
   const nativeTerminalDisabledRef = useRef(false)
+  const commandDraftRef = useRef('')
+  const repoPathRef = useRef<string | null>(null)
+  const currentBranchRef = useRef<string | null>(null)
+  const shellNameRef = useRef('shell')
 
   const repoPath = useRepoStore((s) => s.repoPath)
   const currentBranch = useRepoStore((s) => s.currentBranch)
   const user = useAuthStore((s) => s.user)
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
+
+  repoPathRef.current = repoPath
+  currentBranchRef.current = currentBranch
+  shellNameRef.current = shellName
 
   const writeSystem = useCallback((text: string, color: string = ANSI.muted) => {
     const terminal = terminalRef.current
@@ -98,6 +128,29 @@ export function TerminalPanel() {
     }
   }, [])
 
+  const captureSessionCommands = useCallback(
+    (data: string) => {
+      const result = applyNativeTerminalInputToDraft(commandDraftRef.current, data)
+      commandDraftRef.current = result.draft
+
+      if (result.submittedCommands.length === 0) return
+
+      setSessionCommands((current) =>
+        result.submittedCommands.reduce(
+          (history, command) =>
+            appendTerminalSessionCommand(history, {
+              command,
+              repoPath: repoPathRef.current,
+              branch: currentBranchRef.current,
+              shell: shellNameRef.current,
+            }),
+          current,
+        ),
+      )
+    },
+    [],
+  )
+
   const startNativeSession = useCallback(
     async (forceRestart = false) => {
       const terminal = terminalRef.current
@@ -117,6 +170,8 @@ export function TerminalPanel() {
       if (!repoPath) {
         await stopNativeSession()
         terminal.clear()
+        commandDraftRef.current = ''
+        setSessionCommands([])
         if (mountedRef.current) {
           setIsConnecting(false)
         }
@@ -131,6 +186,7 @@ export function TerminalPanel() {
       if (sessionIdRef.current) {
         await stopNativeSession(sessionIdRef.current)
       }
+      commandDraftRef.current = ''
 
       setIsConnecting(true)
       fitAddon.fit()
@@ -161,6 +217,7 @@ export function TerminalPanel() {
         setSessionId(result.session_id)
         setShellName(result.shell || 'shell')
         setNativeTerminalDisabled(false)
+        setSessionCommands([])
 
         terminal.focus()
         writeSystem(`[GitGov] Native terminal connected (${result.shell})`, ANSI.success)
@@ -232,6 +289,7 @@ export function TerminalPanel() {
     const dataDisposable = terminal.onData((data) => {
       const sid = sessionIdRef.current
       if (!sid) return
+      captureSessionCommands(data)
 
       writeQueueRef.current = writeQueueRef.current
         .then(async () => {
@@ -254,7 +312,7 @@ export function TerminalPanel() {
       terminalRef.current = null
       fitAddonRef.current = null
     }
-  }, [writeSystem])
+  }, [captureSessionCommands, writeSystem])
 
   useEffect(() => {
     const container = containerRef.current
@@ -289,6 +347,7 @@ export function TerminalPanel() {
       unlistenExit = await tauriListen<CliNativeTerminalExitEvent>('gitgov:pty-exit', (event) => {
         if (event.session_id !== sessionIdRef.current) return
         writeSystem(`[GitGov] Shell exited with code ${event.exit_code}`, ANSI.warning)
+        commandDraftRef.current = ''
         sessionIdRef.current = null
         sessionCwdRef.current = null
         if (mountedRef.current) {
@@ -356,6 +415,19 @@ export function TerminalPanel() {
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
+            onClick={() => setShowSessionHistory((current) => !current)}
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider transition-colors ${
+              showSessionHistory
+                ? 'border-brand-500/40 bg-brand-500/15 text-brand-300'
+                : 'border-surface-700 bg-surface-900 text-surface-400 hover:text-surface-200'
+            }`}
+            title="Show native terminal commands captured in this local session"
+          >
+            <History size={10} />
+            {sessionCommands.length}
+          </button>
+          <button
+            type="button"
             onClick={() => void startNativeSession(true)}
             className="rounded border border-surface-700 bg-surface-900 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-surface-400 transition-colors hover:text-surface-200"
             title="Reconnect native terminal session"
@@ -369,6 +441,40 @@ export function TerminalPanel() {
           </span>
         </div>
       </div>
+
+      {showSessionHistory && (
+        <div className="max-h-36 overflow-auto border-b border-surface-800 bg-surface-900/80 px-3 py-2">
+          {sessionCommands.length === 0 ? (
+            <div className="text-[10px] uppercase tracking-wider text-surface-600">
+              No native terminal commands in this session
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {sessionCommands.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded border border-surface-800 bg-surface-900/80 px-2 py-1.5"
+                >
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="rounded border border-surface-700 bg-surface-800 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-surface-400">
+                      {entry.shell}
+                    </span>
+                    <span className="truncate text-[9px] text-surface-500">
+                      {shortRepoPath(entry.repoPath)} · {entry.branch}
+                    </span>
+                    <span className="ml-auto shrink-0 text-[9px] text-surface-500">
+                      {formatSessionCommandTime(entry.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate font-mono text-[10px] text-surface-200">
+                    {entry.command}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 p-1.5">
         <div
