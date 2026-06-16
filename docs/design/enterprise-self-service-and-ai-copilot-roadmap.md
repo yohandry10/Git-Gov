@@ -2,7 +2,7 @@
 
 Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace
 
 ## Decision
 
@@ -434,6 +434,10 @@ Current primitives:
 - `KAN-121` implements the first product slice as `Change Risk Assessment Advisory MVP`. It persists
   qualitative risk levels plus reasons, missing evidence, blocking gaps, recommended manual actions,
   and no-claim flags. It is Admin-only in the MVP, tenant-scoped, and denies Agent Governance keys.
+- `KAN-122` adds rule-level explainability to that advisory: a deterministic
+  `change_risk_rules.v1` catalog, persisted triggered/non-triggered rules, evaluation trace,
+  trace hash, catalog/trace APIs, Auditor read access, and a Desktop `Why this risk?` view. It keeps
+  creation Admin-only and does not add enforcement, scoring, provider/repo mutation, AI, or claims.
 
 Future scope:
 

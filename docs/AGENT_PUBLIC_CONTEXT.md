@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-121` Change Risk Assessment Advisory MVP
+Ticket: `KAN-122` Change Risk Rule Catalog & Evaluation Trace
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -44,6 +44,11 @@ The repo already contains substantial product surface:
   context for changes/releases and Deployment Gate authorizations. It is manual-first, Admin-only in
   the MVP, tenant-scoped, and constrained to `advisory_only=true`, `llm_used=false`,
   `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+- KAN-122 is in progress on branch `product/KAN-122-change-risk-rule-trace` for issue `#424`.
+  It extends KAN-121 with deterministic ruleset `change_risk_rules.v1`, persisted triggered and
+  non-triggered rule trace, `trace_hash`, catalog/trace APIs, Auditor read access, and a Desktop
+  `Why this risk?` view. It does not add enforcement, AI, Agent Governance dependency, provider or
+  repository mutation, compliance scores, or certification/legal/regulatory claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

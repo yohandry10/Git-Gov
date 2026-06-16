@@ -338,10 +338,15 @@ export interface ChangeRiskEvaluationRecord {
   commit_sha?: string | null
   evidence_packet_hash?: string | null
   risk_level: ChangeRiskLevel
+  ruleset_version: string
   risk_reasons: string[]
   missing_evidence: string[]
   blocking_gaps: string[]
   recommended_manual_actions: string[]
+  triggered_rules: string[]
+  non_triggered_rules: string[]
+  evaluation_trace: Record<string, unknown>
+  trace_hash: string
   advisory_only: boolean
   llm_used: boolean
   agent_governance_used: boolean
@@ -385,6 +390,43 @@ export interface ChangeRiskEvaluationListResponse {
   total: number
   limit: number
   offset: number
+}
+
+export interface ChangeRiskRuleDefinition {
+  rule_id: string
+  title: string
+  description: string
+  severity: 'low' | 'medium' | 'high' | string
+  evidence_inputs: string[]
+  manual_action_hint: string
+  enabled: boolean
+}
+
+export interface ChangeRiskRuleCatalogResponse {
+  ruleset_version: string
+  catalog_hash: string
+  rules: ChangeRiskRuleDefinition[]
+  advisory_only: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
+}
+
+export interface ChangeRiskEvaluationTraceResponse {
+  evaluation_id: string
+  org_id: string
+  ruleset_version: string
+  triggered_rules: string[]
+  non_triggered_rules: string[]
+  evaluation_trace: Record<string, unknown>
+  trace_hash: string
+  advisory_only: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
+  created_at: number
 }
 
 export interface ComplianceEvidenceExportRequest {
@@ -1503,7 +1545,11 @@ export interface ControlPlaneState {
   changeRiskEvaluationsTotal: number
   changeRiskEvaluationsFilters: ChangeRiskEvaluationQuery
   changeRiskSelectedEvaluation: ChangeRiskEvaluationRecord | null
+  changeRiskRuleCatalog: ChangeRiskRuleCatalogResponse | null
+  changeRiskEvaluationTrace: ChangeRiskEvaluationTraceResponse | null
   isChangeRiskEvaluationsLoading: boolean
+  isChangeRiskRulesLoading: boolean
+  isChangeRiskTraceLoading: boolean
   isChangeRiskEvaluationCreating: boolean
   changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
@@ -1665,7 +1711,12 @@ export interface ControlPlaneActions {
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   loadChangeRiskEvaluations: (query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationListResponse | null>
+  loadChangeRiskRules: () => Promise<ChangeRiskRuleCatalogResponse | null>
   getChangeRiskEvaluation: (evaluationId: string, query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationRecord | null>
+  loadChangeRiskEvaluationTrace: (
+    evaluationId: string,
+    query?: ChangeRiskEvaluationQuery,
+  ) => Promise<ChangeRiskEvaluationTraceResponse | null>
   createChangeRiskEvaluation: (payload: ChangeRiskEvaluationRequest) => Promise<ChangeRiskEvaluationRecord | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>

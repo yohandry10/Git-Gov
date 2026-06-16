@@ -2,6 +2,60 @@
 
 Updated: 2026-06-16
 
+## KAN-122 Change Risk Rule Catalog & Evaluation Trace - 2026-06-16
+
+`KAN-122 - Change Risk Rule Catalog & Evaluation Trace` is in progress on branch
+`product/KAN-122-change-risk-rule-trace` for GitHub issue `#424`.
+
+Product decision:
+
+- Extend KAN-121 rather than creating a parallel risk engine.
+- Explain every Change Risk evaluation with deterministic, versioned rules.
+- Keep Change Risk advisory-only, qualitative, manual-first, and non-mutating.
+- Keep create access Admin-only; allow Admin/Auditor read access.
+- Do not add AI/LLM, BYOM, MCP, chatbot behavior, Agent Governance dependency, compliance score,
+  certification/legal/regulatory claim, provider mutation, repository mutation, or deployment
+  execution.
+
+Implemented on the branch:
+
+- Supabase migration/postcheck `v63`.
+- New persisted columns on `change_risk_evaluations`: `ruleset_version`, `triggered_rules`,
+  `non_triggered_rules`, `evaluation_trace`, and `trace_hash`.
+- Ruleset `change_risk_rules.v1` with 12 deterministic rules.
+- Backend routes:
+  - `GET /change-risk/rules`.
+  - `GET /change-risk/evaluations/{evaluation_id}/trace`.
+- `POST /change-risk/evaluations` persists rule trace metadata.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- Governance > Releases `ChangeRiskPanel` `Why this risk?` trace view.
+- Rule/trace helper split into `gitgov-server/src/handlers/change_risk_rules.rs` for
+  maintainability.
+
+Validation so far:
+
+- Backend `cargo fmt` and `cargo check`.
+- Tauri `cargo fmt` and `cargo check`.
+- Frontend focused ESLint on changed files.
+- Frontend `pnpm --dir gitgov typecheck`.
+- Focused store test `pnpm --dir gitgov test src/test/useControlPlaneStore.test.ts` passed
+  (`42` tests).
+- Focused backend Change Risk tests with real Postgres passed (`2` tests).
+- `v63` migration/postcheck passed in a real Postgres rollback transaction.
+- Backend `cargo clippy -- -D warnings` and `cargo test --no-run`.
+- Tauri `cargo clippy -- -D warnings` and `cargo test` (`49` tests).
+- Frontend `pnpm --dir gitgov lint`, full Vitest (`376` tests), and build.
+- `git diff --check` and publication guard.
+
+Known local validation limit:
+
+- Full backend `cargo test -- --test-threads=2` timed out twice locally after `10` and `15`
+  minutes without useful failure output. Focused real Change Risk tests and backend test compilation
+  passed; required CI must still prove the full backend suite before merge.
+
+Report: `docs/reports/change-risk-rule-catalog-evaluation-trace-2026-06-16.md`.
+
 ## KAN-121 Change Risk Assessment Advisory MVP - 2026-06-16
 
 `KAN-121 - Change Risk Assessment Advisory MVP` is completed. PR `#422` merged to `main` as

@@ -1,17 +1,17 @@
 use crate::control_plane::{
     AcceptOrgInvitationRequest, AcceptOrgInvitationResponse, ApiKeyInfo, ApiKeyResponse,
     AuditFilter, ChangeRiskEvaluationListResponse, ChangeRiskEvaluationQuery,
-    ChangeRiskEvaluationRecord, ChangeRiskEvaluationRequest, ChatAskRequest, ChatAskResponse,
-    CliCommandInput, CliCommandListResponse, CliCommandResponse, CombinedEvent,
-    CommitPipelineCorrelation, ComplianceControlFrameworkListResponse,
-    ComplianceEvidenceExportQuery, ComplianceEvidenceExportRequest,
-    ComplianceEvidenceExportResponse, ComplianceEvidenceMappingQuery,
-    ComplianceEvidenceMappingRequest, ComplianceEvidenceMappingResponse,
-    ComplianceFrameworkPackDiffQuery, ComplianceFrameworkPackDiffResponse,
-    ComplianceFrameworkPackImportRequest, ComplianceFrameworkPackImportResponse,
-    ComplianceFrameworkPackListResponse, ComplianceFrameworkPackQuery,
-    ComplianceFrameworkPackRecord, ComplianceFrameworkPackReviewRequest,
-    ComplianceFrameworkReviewReportAssignmentQuery,
+    ChangeRiskEvaluationRecord, ChangeRiskEvaluationRequest, ChangeRiskEvaluationTraceResponse,
+    ChangeRiskRuleCatalogResponse, ChatAskRequest, ChatAskResponse, CliCommandInput,
+    CliCommandListResponse, CliCommandResponse, CombinedEvent, CommitPipelineCorrelation,
+    ComplianceControlFrameworkListResponse, ComplianceEvidenceExportQuery,
+    ComplianceEvidenceExportRequest, ComplianceEvidenceExportResponse,
+    ComplianceEvidenceMappingQuery, ComplianceEvidenceMappingRequest,
+    ComplianceEvidenceMappingResponse, ComplianceFrameworkPackDiffQuery,
+    ComplianceFrameworkPackDiffResponse, ComplianceFrameworkPackImportRequest,
+    ComplianceFrameworkPackImportResponse, ComplianceFrameworkPackListResponse,
+    ComplianceFrameworkPackQuery, ComplianceFrameworkPackRecord,
+    ComplianceFrameworkPackReviewRequest, ComplianceFrameworkReviewReportAssignmentQuery,
     ComplianceFrameworkReviewReportAssignmentsRequest,
     ComplianceFrameworkReviewReportAssignmentsResponse,
     ComplianceFrameworkReviewReportCommentRecord, ComplianceFrameworkReviewReportCommentRequest,
@@ -995,6 +995,22 @@ pub async fn cmd_server_list_change_risk_evaluations(
 }
 
 #[tauri::command]
+pub async fn cmd_server_get_change_risk_rules(
+    config: ServerConnectionConfig,
+) -> Result<ChangeRiskRuleCatalogResponse, String> {
+    run_blocking_command("GET_CHANGE_RISK_RULES", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_change_risk_rules()
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn cmd_server_get_change_risk_evaluation(
     config: ServerConnectionConfig,
     evaluation_id: String,
@@ -1007,6 +1023,24 @@ pub async fn cmd_server_get_change_risk_evaluation(
         });
         client
             .get_change_risk_evaluation(&evaluation_id, &query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_change_risk_evaluation_trace(
+    config: ServerConnectionConfig,
+    evaluation_id: String,
+    query: ChangeRiskEvaluationQuery,
+) -> Result<ChangeRiskEvaluationTraceResponse, String> {
+    run_blocking_command("GET_CHANGE_RISK_EVALUATION_TRACE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_change_risk_evaluation_trace(&evaluation_id, &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

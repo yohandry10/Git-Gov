@@ -511,6 +511,7 @@ pub struct ChangeRiskEvaluationRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub evidence_packet_hash: Option<String>,
     pub risk_level: String,
+    pub ruleset_version: String,
     #[serde(default)]
     pub risk_reasons: Vec<String>,
     #[serde(default)]
@@ -519,6 +520,13 @@ pub struct ChangeRiskEvaluationRecord {
     pub blocking_gaps: Vec<String>,
     #[serde(default)]
     pub recommended_manual_actions: Vec<String>,
+    #[serde(default)]
+    pub triggered_rules: Vec<String>,
+    #[serde(default)]
+    pub non_triggered_rules: Vec<String>,
+    #[serde(default)]
+    pub evaluation_trace: serde_json::Value,
+    pub trace_hash: String,
     pub advisory_only: bool,
     pub llm_used: bool,
     pub agent_governance_used: bool,
@@ -586,6 +594,51 @@ pub struct ChangeRiskEvaluationListResponse {
     pub total: i64,
     pub limit: i64,
     pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskRuleDefinition {
+    pub rule_id: String,
+    pub title: String,
+    pub description: String,
+    pub severity: String,
+    #[serde(default)]
+    pub evidence_inputs: Vec<String>,
+    pub manual_action_hint: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskRuleCatalogResponse {
+    pub ruleset_version: String,
+    pub catalog_hash: String,
+    #[serde(default)]
+    pub rules: Vec<ChangeRiskRuleDefinition>,
+    pub advisory_only: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangeRiskEvaluationTraceResponse {
+    pub evaluation_id: String,
+    pub org_id: String,
+    pub ruleset_version: String,
+    #[serde(default)]
+    pub triggered_rules: Vec<String>,
+    #[serde(default)]
+    pub non_triggered_rules: Vec<String>,
+    #[serde(default)]
+    pub evaluation_trace: serde_json::Value,
+    pub trace_hash: String,
+    pub advisory_only: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
