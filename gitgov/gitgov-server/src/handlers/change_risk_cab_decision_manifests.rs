@@ -18,12 +18,12 @@ fn normalize_change_risk_cab_decision_manifest_id(
     value: &str,
 ) -> Result<String, &'static str> {
     let trimmed = value.trim();
-    let without_query = trimmed.split_once('?').map(|(path, _)| path).unwrap_or(trimmed);
-    let without_fragment = without_query
-        .split_once('#')
-        .map(|(path, _)| path)
-        .unwrap_or(without_query);
-    let normalized = without_fragment.trim_end_matches('/').to_string();
+    let cutoff = ["?", "#", "%3F", "%3f", "%23"]
+        .iter()
+        .filter_map(|marker| trimmed.find(marker))
+        .min()
+        .unwrap_or(trimmed.len());
+    let normalized = trimmed[..cutoff].trim_end_matches('/').to_string();
     if normalized.starts_with("crcabdm_") && normalized.len() == 40 {
         Ok(normalized)
     } else {
@@ -733,6 +733,13 @@ mod change_risk_cab_decision_manifest_tests {
         assert_eq!(
             normalize_change_risk_cab_decision_manifest_id(&format!(
                 "{manifest_id}?org_name=yohandry10"
+            ))
+            .unwrap(),
+            manifest_id
+        );
+        assert_eq!(
+            normalize_change_risk_cab_decision_manifest_id(&format!(
+                "{manifest_id}%3Forg_name=yohandry10"
             ))
             .unwrap(),
             manifest_id
