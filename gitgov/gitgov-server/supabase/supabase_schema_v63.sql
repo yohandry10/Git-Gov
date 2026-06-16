@@ -16,6 +16,7 @@ BEGIN
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'change_risk_evaluations_ruleset_version_check'
+          AND conrelid = 'public.change_risk_evaluations'::regclass
     ) THEN
         ALTER TABLE change_risk_evaluations
             ADD CONSTRAINT change_risk_evaluations_ruleset_version_check
@@ -26,6 +27,7 @@ BEGIN
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'change_risk_evaluations_triggered_rules_check'
+          AND conrelid = 'public.change_risk_evaluations'::regclass
     ) THEN
         ALTER TABLE change_risk_evaluations
             ADD CONSTRAINT change_risk_evaluations_triggered_rules_check
@@ -36,6 +38,7 @@ BEGIN
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'change_risk_evaluations_non_triggered_rules_check'
+          AND conrelid = 'public.change_risk_evaluations'::regclass
     ) THEN
         ALTER TABLE change_risk_evaluations
             ADD CONSTRAINT change_risk_evaluations_non_triggered_rules_check
@@ -46,6 +49,7 @@ BEGIN
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'change_risk_evaluations_trace_json_check'
+          AND conrelid = 'public.change_risk_evaluations'::regclass
     ) THEN
         ALTER TABLE change_risk_evaluations
             ADD CONSTRAINT change_risk_evaluations_trace_json_check
@@ -56,6 +60,7 @@ BEGIN
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'change_risk_evaluations_trace_hash_check'
+          AND conrelid = 'public.change_risk_evaluations'::regclass
     ) THEN
         ALTER TABLE change_risk_evaluations
             ADD CONSTRAINT change_risk_evaluations_trace_hash_check

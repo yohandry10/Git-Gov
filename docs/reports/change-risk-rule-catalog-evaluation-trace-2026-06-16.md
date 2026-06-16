@@ -74,6 +74,13 @@ Rules:
   - `supabase/supabase_schema_v63.sql`.
   - `supabase/supabase_schema_v63_postcheck.sql`.
   - `ROLLBACK`.
+- Production migration attempt after PR `#425` initially applied columns/indexes but postcheck failed
+  because the migration checked `pg_constraint.conname` without scoping to
+  `public.change_risk_evaluations`. The follow-up fix scopes every idempotency check to
+  `conrelid = 'public.change_risk_evaluations'::regclass` before reapplying the same `v63`
+  migration/postcheck.
+- After the fix, production `v63` was re-applied idempotently and
+  `supabase_schema_v63_postcheck.sql` passed.
 - Backend `cargo clippy -- -D warnings`.
 - Backend `cargo test --no-run`.
 - Tauri `cargo clippy -- -D warnings`.
