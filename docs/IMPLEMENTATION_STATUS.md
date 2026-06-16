@@ -1,6 +1,50 @@
 # GitGov Implementation Status
 
-Updated: 2026-06-15
+Updated: 2026-06-16
+
+## KAN-120 First Governed Repo Integration Wizard - 2026-06-16
+
+`KAN-120 - First Governed Repo Setup Integration Wizard` is implemented locally and pending PR,
+merge, Render deploy, and production smoke.
+
+Product decision:
+
+- Resume the `0.1 Deployment Gates` activation path after KAN-119 instead of adding another
+  compliance artifact.
+- Reuse KAN-80 `enterprise_first_governed_repo_setups` as the canonical store; no duplicate
+  onboarding table.
+- Keep the path manual-first for regulated customers.
+- Allow Admins to create/resume, update, validate, plan, and complete the first governed repo run.
+- Allow Auditors to read state only.
+- Deny Developers, unrelated tenants, and Agent Governance keys.
+- Do not store provider secrets, mutate providers, mutate customer repositories, execute deploys,
+  create compliance/certification/legal claims, or depend on Agent Governance/AI.
+
+Implemented surface:
+
+- Backend routes:
+  - `GET /onboarding/first-governed-repo/state`.
+  - `POST /onboarding/first-governed-repo/runs`.
+  - `PATCH /onboarding/first-governed-repo/runs/{run_id}`.
+  - `POST /onboarding/first-governed-repo/runs/{run_id}/validate`.
+  - `POST /onboarding/first-governed-repo/runs/{run_id}/plan`.
+  - `POST /onboarding/first-governed-repo/runs/{run_id}/complete`.
+- Backend wizard helpers split from the base setup handler for maintainability.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- `FirstGovernedRepoSetupPanel` wizard controls for Start, Validate, Plan, and Complete.
+
+Validation completed locally:
+
+- Backend `cargo fmt --check`, `cargo check`, and `cargo clippy -- -D warnings`.
+- Focused real Postgres KAN-120 test using local `TEST_DATABASE_URL` on `127.0.0.1:5433`.
+- Full backend test suite with local Postgres `TEST_DATABASE_URL` and `--test-threads=2`:
+  `311` passed.
+- Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed).
+- Frontend typecheck, lint, focused store test, full Vitest suite (`373` passed), and production
+  build.
+
+Report: `docs/reports/first-governed-repo-integration-wizard-2026-06-16.md`.
 
 ## KAN-119 Period Compliance Report Share Packages - 2026-06-15
 

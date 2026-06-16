@@ -47,13 +47,15 @@ use crate::control_plane::{
     EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
     EvidencePacketResponse, ExportLogEntry, ExportResponse, FeatureRequestCreated,
     FeatureRequestInput, FirstGovernedRepoSetupRecord, FirstGovernedRepoSetupResponse,
-    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
-    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
-    OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
-    PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
-    ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
-    TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
-    UpsertEnterpriseOnboardingChecklistTrackingRequest, UpsertFirstGovernedRepoSetupRequest,
+    FirstGovernedRepoWizardActionRequest, FirstGovernedRepoWizardRunResponse,
+    FirstGovernedRepoWizardStateResponse, JenkinsCorrelationFilter, JiraCorrelateRequest,
+    JiraCorrelateResponse, JiraTicketDetailResponse, MeResponse, OrgInvitation,
+    OrgInvitationsResponse, OrgSummary, OrgUser, OrgUsersResponse, PolicyCheckResponse,
+    PolicyHistoryEntry, PolicyResponse, PrMergeEvidenceEntry, PrMergeEvidenceFilter,
+    ResendOrgInvitationRequest, RevokeApiKeyResponse, ServerConfig, ServerStats,
+    TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery, TicketCoverageResponse,
+    UpsertEnterpriseAdoptionProfileRequest, UpsertEnterpriseOnboardingChecklistTrackingRequest,
+    UpsertFirstGovernedRepoSetupRequest,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::{Outbox, OutboxStatus};
@@ -811,6 +813,112 @@ pub async fn cmd_server_upsert_first_governed_repo_setup(
         });
         client
             .upsert_first_governed_repo_setup(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_first_governed_repo_wizard_state(
+    config: ServerConnectionConfig,
+    org_name: Option<String>,
+) -> Result<FirstGovernedRepoWizardStateResponse, String> {
+    run_blocking_command("GET_FIRST_GOVERNED_REPO_WIZARD_STATE", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_first_governed_repo_wizard_state(org_name.as_deref())
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_create_first_governed_repo_wizard_run(
+    config: ServerConnectionConfig,
+    payload: FirstGovernedRepoWizardActionRequest,
+) -> Result<FirstGovernedRepoWizardRunResponse, String> {
+    run_blocking_command("CREATE_FIRST_GOVERNED_REPO_WIZARD_RUN", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .create_first_governed_repo_wizard_run(&payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_update_first_governed_repo_wizard_run(
+    config: ServerConnectionConfig,
+    run_id: String,
+    payload: FirstGovernedRepoWizardActionRequest,
+) -> Result<FirstGovernedRepoWizardRunResponse, String> {
+    run_blocking_command("UPDATE_FIRST_GOVERNED_REPO_WIZARD_RUN", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .update_first_governed_repo_wizard_run(&run_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_validate_first_governed_repo_wizard_run(
+    config: ServerConnectionConfig,
+    run_id: String,
+    payload: FirstGovernedRepoWizardActionRequest,
+) -> Result<FirstGovernedRepoWizardRunResponse, String> {
+    run_blocking_command("VALIDATE_FIRST_GOVERNED_REPO_WIZARD_RUN", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .validate_first_governed_repo_wizard_run(&run_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_plan_first_governed_repo_wizard_run(
+    config: ServerConnectionConfig,
+    run_id: String,
+    payload: FirstGovernedRepoWizardActionRequest,
+) -> Result<FirstGovernedRepoWizardRunResponse, String> {
+    run_blocking_command("PLAN_FIRST_GOVERNED_REPO_WIZARD_RUN", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .plan_first_governed_repo_wizard_run(&run_id, &payload)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_complete_first_governed_repo_wizard_run(
+    config: ServerConnectionConfig,
+    run_id: String,
+    payload: FirstGovernedRepoWizardActionRequest,
+) -> Result<FirstGovernedRepoWizardRunResponse, String> {
+    run_blocking_command("COMPLETE_FIRST_GOVERNED_REPO_WIZARD_RUN", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .complete_first_governed_repo_wizard_run(&run_id, &payload)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await

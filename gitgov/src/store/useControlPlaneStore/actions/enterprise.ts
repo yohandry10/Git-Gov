@@ -5,6 +5,9 @@ import type {
   DeploymentGateAuthorizationQuery,
   EnterpriseAdoptionProfileRecord,
   EnterpriseAdoptionProfileResponse,
+  FirstGovernedRepoWizardActionRequest,
+  FirstGovernedRepoWizardRunResponse,
+  FirstGovernedRepoWizardStateResponse,
   FirstGovernedRepoSetupRecord,
   FirstGovernedRepoSetupResponse,
   EnterpriseOnboardingChecklistTrackingRecord,
@@ -26,12 +29,40 @@ type EnterpriseActionKeys =
   | 'saveEnterpriseOnboardingChecklistTracking'
   | 'loadFirstGovernedRepoSetup'
   | 'saveFirstGovernedRepoSetup'
+  | 'loadFirstGovernedRepoWizardState'
+  | 'createFirstGovernedRepoWizardRun'
+  | 'updateFirstGovernedRepoWizardRun'
+  | 'validateFirstGovernedRepoWizardRun'
+  | 'planFirstGovernedRepoWizardRun'
+  | 'completeFirstGovernedRepoWizardRun'
   | 'loadEnterpriseReleaseApprovals'
   | 'loadDeploymentGateAuthorizations'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
   | 'exportAuditData'
   | 'loadExportLogs'
+
+function withSelectedOrg<T extends { org_name?: string | null }>(
+  payload: T,
+  orgName: string | undefined,
+): T {
+  return {
+    ...payload,
+    org_name: orgName ?? null,
+  }
+}
+
+function applyFirstGovernedRepoWizardRun(
+  set: ControlPlaneSet,
+  response: FirstGovernedRepoWizardRunResponse,
+) {
+  set({
+    firstGovernedRepoSetup: response.setup,
+    firstGovernedRepoSetupUpdatedAt: response.setup.updated_at,
+    firstGovernedRepoWizardState: response.state,
+    isFirstGovernedRepoWizardActionRunning: false,
+  })
+}
 
 export function createEnterpriseActions(
   set: ControlPlaneSet,
@@ -222,6 +253,147 @@ export function createEnterpriseActions(
         firstGovernedRepoSetupError: message,
         isFirstGovernedRepoSetupSaving: false,
       })
+      return null
+    }
+  },
+
+  loadFirstGovernedRepoWizardState: async (orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+
+    set({
+      isFirstGovernedRepoWizardLoading: true,
+      firstGovernedRepoWizardError: null,
+    })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardStateResponse>('cmd_server_get_first_governed_repo_wizard_state', {
+        config: serverConfig,
+        orgName,
+      })
+      const record = response.found ? response.setup ?? null : null
+      set({
+        firstGovernedRepoSetup: record,
+        firstGovernedRepoSetupUpdatedAt: record?.updated_at ?? null,
+        firstGovernedRepoWizardState: response.state,
+        isFirstGovernedRepoWizardLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        firstGovernedRepoWizardError: message,
+        isFirstGovernedRepoWizardLoading: false,
+      })
+      return null
+    }
+  },
+
+  createFirstGovernedRepoWizardRun: async (payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const request: FirstGovernedRepoWizardActionRequest = withSelectedOrg(payload, orgName)
+
+    set({ isFirstGovernedRepoWizardActionRunning: true, firstGovernedRepoWizardError: null })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardRunResponse>('cmd_server_create_first_governed_repo_wizard_run', {
+        config: serverConfig,
+        payload: request,
+      })
+      applyFirstGovernedRepoWizardRun(set, response)
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ firstGovernedRepoWizardError: message, isFirstGovernedRepoWizardActionRunning: false })
+      return null
+    }
+  },
+
+  updateFirstGovernedRepoWizardRun: async (runId, payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const request: FirstGovernedRepoWizardActionRequest = withSelectedOrg(payload, orgName)
+
+    set({ isFirstGovernedRepoWizardActionRunning: true, firstGovernedRepoWizardError: null })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardRunResponse>('cmd_server_update_first_governed_repo_wizard_run', {
+        config: serverConfig,
+        runId,
+        payload: request,
+      })
+      applyFirstGovernedRepoWizardRun(set, response)
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ firstGovernedRepoWizardError: message, isFirstGovernedRepoWizardActionRunning: false })
+      return null
+    }
+  },
+
+  validateFirstGovernedRepoWizardRun: async (runId, payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const request: FirstGovernedRepoWizardActionRequest = withSelectedOrg(payload, orgName)
+
+    set({ isFirstGovernedRepoWizardActionRunning: true, firstGovernedRepoWizardError: null })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardRunResponse>('cmd_server_validate_first_governed_repo_wizard_run', {
+        config: serverConfig,
+        runId,
+        payload: request,
+      })
+      applyFirstGovernedRepoWizardRun(set, response)
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ firstGovernedRepoWizardError: message, isFirstGovernedRepoWizardActionRunning: false })
+      return null
+    }
+  },
+
+  planFirstGovernedRepoWizardRun: async (runId, payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const request: FirstGovernedRepoWizardActionRequest = withSelectedOrg(payload, orgName)
+
+    set({ isFirstGovernedRepoWizardActionRunning: true, firstGovernedRepoWizardError: null })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardRunResponse>('cmd_server_plan_first_governed_repo_wizard_run', {
+        config: serverConfig,
+        runId,
+        payload: request,
+      })
+      applyFirstGovernedRepoWizardRun(set, response)
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ firstGovernedRepoWizardError: message, isFirstGovernedRepoWizardActionRunning: false })
+      return null
+    }
+  },
+
+  completeFirstGovernedRepoWizardRun: async (runId, payload, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const request: FirstGovernedRepoWizardActionRequest = withSelectedOrg(payload, orgName)
+
+    set({ isFirstGovernedRepoWizardActionRunning: true, firstGovernedRepoWizardError: null })
+    try {
+      const response = await tauriInvoke<FirstGovernedRepoWizardRunResponse>('cmd_server_complete_first_governed_repo_wizard_run', {
+        config: serverConfig,
+        runId,
+        payload: request,
+      })
+      applyFirstGovernedRepoWizardRun(set, response)
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({ firstGovernedRepoWizardError: message, isFirstGovernedRepoWizardActionRunning: false })
       return null
     }
   },

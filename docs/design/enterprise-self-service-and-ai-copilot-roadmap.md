@@ -1,8 +1,8 @@
 # Enterprise Self-Service And AI Copilot Roadmap
 
-Updated: 2026-06-15
+Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard
 
 ## Decision
 
@@ -69,6 +69,12 @@ Current primitives:
   selection, policy preset, policy/workflow preview acknowledgement, persisted baseline readiness,
   Action Center gaps, and a CTA into advisory gate simulation. It is deliberately not a broad
   integration wizard.
+- `KAN-120` turns the existing KAN-80 setup into a manual-first integration wizard. Admins can
+  load state, create/resume the run, validate provider evidence already visible to GitGov, generate a
+  baseline plan, and complete the first result using `/onboarding/first-governed-repo/*`. Auditors can
+  read state; Developers, unrelated tenants, and Agent Governance keys are denied. It does not store
+  provider secrets, mutate provider state, mutate customer repositories, execute deployments, create a
+  compliance/certification claim, or depend on Agent Governance/AI.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated

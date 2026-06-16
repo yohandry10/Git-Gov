@@ -221,6 +221,20 @@ export interface UpsertFirstGovernedRepoSetupRequest {
   baseline: FirstGovernedRepoSetupDraft['baseline']
 }
 
+export type FirstGovernedRepoWizardActionRequest = UpsertFirstGovernedRepoSetupRequest
+
+export interface FirstGovernedRepoWizardStateResponse {
+  org_id: string
+  found: boolean
+  state: Record<string, unknown>
+  setup?: FirstGovernedRepoSetupRecord | null
+}
+
+export interface FirstGovernedRepoWizardRunResponse {
+  state: Record<string, unknown>
+  setup: FirstGovernedRepoSetupRecord
+}
+
 export type EnterpriseReleaseApprovalDecision = 'approved' | 'rejected' | 'accepted-risk'
 export type EnterpriseReleaseApprovalRiskSeverity = 'none' | 'low' | 'medium' | 'high' | 'critical'
 
@@ -1411,6 +1425,10 @@ export interface ControlPlaneState {
   isFirstGovernedRepoSetupLoading: boolean
   isFirstGovernedRepoSetupSaving: boolean
   firstGovernedRepoSetupError: string | null
+  firstGovernedRepoWizardState: Record<string, unknown> | null
+  isFirstGovernedRepoWizardLoading: boolean
+  isFirstGovernedRepoWizardActionRunning: boolean
+  firstGovernedRepoWizardError: string | null
   releaseApprovals: EnterpriseReleaseApprovalRecord[]
   releaseApprovalsTotal: number
   releaseApprovalsFilters: EnterpriseReleaseApprovalQuery
@@ -1568,6 +1586,12 @@ export interface ControlPlaneActions {
   saveEnterpriseOnboardingChecklistTracking: (tracking: EnterpriseOnboardingChecklistTracking, orgName?: string) => Promise<boolean>
   loadFirstGovernedRepoSetup: (orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
   saveFirstGovernedRepoSetup: (payload: UpsertFirstGovernedRepoSetupRequest, orgName?: string) => Promise<FirstGovernedRepoSetupRecord | null>
+  loadFirstGovernedRepoWizardState: (orgName?: string) => Promise<FirstGovernedRepoWizardStateResponse | null>
+  createFirstGovernedRepoWizardRun: (payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
+  updateFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
+  validateFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
+  planFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
+  completeFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>

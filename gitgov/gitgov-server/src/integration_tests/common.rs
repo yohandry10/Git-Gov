@@ -2079,6 +2079,30 @@ pub(super) fn build_test_app_with_options(
                 .put(handlers::upsert_first_governed_repo_setup),
         )
         .route(
+            "/onboarding/first-governed-repo/state",
+            get(handlers::get_first_governed_repo_wizard_state),
+        )
+        .route(
+            "/onboarding/first-governed-repo/runs",
+            post(handlers::create_first_governed_repo_wizard_run),
+        )
+        .route(
+            "/onboarding/first-governed-repo/runs/{run_id}",
+            patch(handlers::update_first_governed_repo_wizard_run),
+        )
+        .route(
+            "/onboarding/first-governed-repo/runs/{run_id}/validate",
+            post(handlers::validate_first_governed_repo_wizard_run),
+        )
+        .route(
+            "/onboarding/first-governed-repo/runs/{run_id}/plan",
+            post(handlers::plan_first_governed_repo_wizard_run),
+        )
+        .route(
+            "/onboarding/first-governed-repo/runs/{run_id}/complete",
+            post(handlers::complete_first_governed_repo_wizard_run),
+        )
+        .route(
             "/enterprise/release-approvals",
             get(handlers::list_enterprise_release_approvals)
                 .post(handlers::create_enterprise_release_approval),

@@ -35,6 +35,7 @@ vi.mock('@/store/useAuthStore', () => ({
 }))
 
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import type { UpsertFirstGovernedRepoSetupRequest } from '@/store/useControlPlaneStore/types'
 
 describe('useControlPlaneStore', () => {
   beforeEach(() => {
@@ -74,6 +75,15 @@ describe('useControlPlaneStore', () => {
       deploymentGateAuthorizationsFilters: { limit: 10, offset: 0 },
       deploymentGateAuthorizationsUpdatedAt: null,
       complianceEvidenceSelectedDeploymentGateId: null,
+      firstGovernedRepoSetup: null,
+      firstGovernedRepoSetupUpdatedAt: null,
+      isFirstGovernedRepoSetupLoading: false,
+      isFirstGovernedRepoSetupSaving: false,
+      firstGovernedRepoSetupError: null,
+      firstGovernedRepoWizardState: null,
+      isFirstGovernedRepoWizardLoading: false,
+      isFirstGovernedRepoWizardActionRunning: false,
+      firstGovernedRepoWizardError: null,
       complianceControlFrameworks: [],
       complianceFrameworkPacks: [],
       selectedComplianceFrameworkId: 'gitgov_release_governance_baseline_v1',
@@ -649,6 +659,162 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().error).toBe('existing dashboard error')
       expect(useControlPlaneStore.getState().governanceCopilotError).toBe('Unauthorized')
       expect(useControlPlaneStore.getState().isGovernanceCopilotLoading).toBe(false)
+    })
+  })
+
+  describe('first governed repo wizard', () => {
+    const setupRecord = {
+      run_id: '7ac97ef2-9e76-4f35-9d74-39110f44e01e',
+      org_id: 'org-1',
+      status: 'ready',
+      goal: 'govern_release',
+      repository_full_name: 'yohandry10/Git-Gov',
+      default_branch: 'main',
+      selected_providers: ['github', 'jira', 'jenkins'],
+      selected_modules: ['traceability', 'release-readiness', 'evidence-packets', 'quality-gates'],
+      policy_preset: 'moderate',
+      baseline: {
+        gate_readiness: 'baseline_ready',
+        policy_workflow_preview_acknowledged: true,
+      },
+      created_by: 'admin',
+      updated_by: 'admin',
+      created_at: 1,
+      updated_at: 2,
+      completed_at: null,
+    }
+
+    it('loads wizard state with selected org scope', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      mockInvoke.mockResolvedValueOnce({
+        org_id: 'org-1',
+        found: true,
+        setup: setupRecord,
+        state: {
+          schema_version: 'gitgov_first_governed_repo_wizard_state.v1',
+          current_step: 'baseline_preview',
+          safety: {
+            stores_secret_values: false,
+            agent_governance_required: false,
+          },
+        },
+      })
+
+      const response = await useControlPlaneStore.getState().loadFirstGovernedRepoWizardState()
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_first_governed_repo_wizard_state', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        orgName: 'yohandry10',
+      })
+      expect(response?.state.current_step).toBe('baseline_preview')
+      expect(useControlPlaneStore.getState().firstGovernedRepoSetup?.run_id).toBe(setupRecord.run_id)
+      expect(useControlPlaneStore.getState().firstGovernedRepoWizardState?.safety).toEqual({
+        stores_secret_values: false,
+        agent_governance_required: false,
+      })
+    })
+
+    it('runs manual wizard steps without provider secrets or agent governance dependency', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const runResponse = {
+        setup: setupRecord,
+        state: {
+          current_step: 'first_result',
+          provider_health: [{ provider: 'github', status: 'ready' }],
+          safety: {
+            stores_secret_values: false,
+            mutates_provider_state: false,
+            agent_governance_required: false,
+            compliance_claim: false,
+          },
+        },
+      }
+      mockInvoke
+        .mockResolvedValueOnce(runResponse)
+        .mockResolvedValueOnce(runResponse)
+        .mockResolvedValueOnce(runResponse)
+        .mockResolvedValueOnce({
+          ...runResponse,
+          setup: { ...setupRecord, status: 'completed', completed_at: 3 },
+        })
+      const payload: UpsertFirstGovernedRepoSetupRequest = {
+        status: 'ready' as const,
+        goal: 'govern_release' as const,
+        repository_full_name: 'yohandry10/Git-Gov',
+        default_branch: 'main',
+        selected_providers: ['github', 'jira'],
+        selected_modules: ['traceability', 'release-readiness', 'evidence-packets'],
+        policy_preset: 'moderate' as const,
+        baseline: {
+          version: 1,
+          gate_readiness: 'baseline_ready' as const,
+          policy_workflow_preview_acknowledged: true,
+          setup_summary: {
+            repository_full_name: 'yohandry10/Git-Gov',
+            default_branch: 'main',
+            goal: 'govern_release',
+            policy_preset: 'moderate',
+            provider_count: 2,
+            module_count: 3,
+            github_selected: true,
+            policy_workflow_preview_acknowledged: true,
+          },
+          action_center_gaps: [],
+          first_result: {
+            status: 'ready_for_advisory_gate',
+            deployment_gate_mode: 'advisory',
+            cta: 'simulate_deployment_gate',
+            evidence_contract: {
+              repo: 'yohandry10/Git-Gov',
+              branch: 'main',
+              providers: ['github', 'jira'],
+              modules: ['traceability', 'release-readiness', 'evidence-packets'],
+            },
+          },
+        },
+      }
+
+      await useControlPlaneStore.getState().createFirstGovernedRepoWizardRun(payload)
+      await useControlPlaneStore.getState().validateFirstGovernedRepoWizardRun(setupRecord.run_id, payload)
+      await useControlPlaneStore.getState().planFirstGovernedRepoWizardRun(setupRecord.run_id, payload)
+      const completed = await useControlPlaneStore.getState().completeFirstGovernedRepoWizardRun(setupRecord.run_id, {
+        ...payload,
+        status: 'completed',
+      })
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_create_first_governed_repo_wizard_run', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        payload: { ...payload, org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_validate_first_governed_repo_wizard_run', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        runId: setupRecord.run_id,
+        payload: { ...payload, org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(3, 'cmd_server_plan_first_governed_repo_wizard_run', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        runId: setupRecord.run_id,
+        payload: { ...payload, org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(4, 'cmd_server_complete_first_governed_repo_wizard_run', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        runId: setupRecord.run_id,
+        payload: { ...payload, status: 'completed', org_name: 'yohandry10' },
+      })
+      expect(completed?.state.safety).toMatchObject({
+        stores_secret_values: false,
+        mutates_provider_state: false,
+        agent_governance_required: false,
+        compliance_claim: false,
+      })
+      expect(useControlPlaneStore.getState().firstGovernedRepoSetup?.status).toBe('completed')
+      expect(useControlPlaneStore.getState().isFirstGovernedRepoWizardActionRunning).toBe(false)
     })
   })
 

@@ -256,6 +256,13 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/org-users/{id}/api-key` | Bearer (admin) | Crear API key para usuario |
 | `/enterprise/adoption-profile` | Bearer | Obtener/actualizar perfil de adopción enterprise |
 | `/enterprise/onboarding-checklist-tracking` | Bearer | Obtener/actualizar tracking de checklist de onboarding |
+| `/enterprise/first-governed-repo-setup` | Bearer (admin) | Obtener/actualizar el setup base KAN-80 del primer repo gobernado |
+| `/onboarding/first-governed-repo/state` | Bearer (admin/auditor) | Leer estado orquestado del wizard KAN-120 para el primer repo gobernado; no lee secretos ni muta proveedores |
+| `/onboarding/first-governed-repo/runs` | Bearer (admin) | Crear o reanudar el run manual-first del primer repo gobernado |
+| `/onboarding/first-governed-repo/runs/{run_id}` | Bearer (admin) | Actualizar el run existente del wizard, validando run_id y tenant |
+| `/onboarding/first-governed-repo/runs/{run_id}/validate` | Bearer (admin) | Persistir validación de evidencia ya visible en GitGov para proveedores seleccionados; no conecta ni guarda credenciales externas |
+| `/onboarding/first-governed-repo/runs/{run_id}/plan` | Bearer (admin) | Persistir plan de baseline/advisory gate sin mutar repositorios ni proveedores |
+| `/onboarding/first-governed-repo/runs/{run_id}/complete` | Bearer (admin) | Completar el primer resultado del wizard cuando el baseline está listo; no bloquea releases por defecto ni crea claims |
 | `/enterprise/release-approvals` | Bearer | Listar/crear aprobaciones de release enterprise |
 | `/enterprise/release-governance/evaluate` | Bearer | Evaluar governance de release enterprise |
 | `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
