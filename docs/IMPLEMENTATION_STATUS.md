@@ -4,8 +4,9 @@ Updated: 2026-06-15
 
 ## KAN-119 Period Compliance Report Share Packages - 2026-06-15
 
-`KAN-119 - Period Compliance Report Share Packages` is implemented locally on branch
-`product/KAN-119-period-report-share-package` and tracked by GitHub issue `#415`.
+`KAN-119 - Period Compliance Report Share Packages` is completed. PR `#416` merged to `main` as
+`1d1df77`; Render deploy `dep-d8o8t9u47okc738l7g7g` reached `live`; production `v61`
+migration/postcheck and production smoke passed.
 
 Product decision:
 
@@ -43,7 +44,7 @@ Explicitly not included:
 - No official regulatory mapping.
 - No AI summary, BYOM/MCP/chatbot behavior, or Agent Governance dependency.
 
-Local validation completed:
+Validation completed:
 
 - Backend `cargo fmt --check`, `cargo check`, and `cargo clippy -- -D warnings`.
 - Focused real Postgres period-report integration test covering create preconditions, real
@@ -59,14 +60,26 @@ Local validation completed:
   production build.
 - `v61` migration/postcheck passed in a real rollback transaction against the configured Postgres
   connection.
+- PR checks and post-merge `main` checks passed, including `CI`, `Release Readiness Gate`, `Quality
+  Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`,
+  `Desktop Updater Readiness`, `SonarQube Governance`, `Security Guard`, `Server Clippy + Check`,
+  `Desktop Rust Clippy`, `Frontend Lint + Typecheck`, `Website Lint + Typecheck + Build`,
+  `Validate Policy-as-Code`, and `Workflow Lint`.
+- Production `v61` migration/postcheck passed.
+- Production smoke reviewed Period Compliance Report `cpr_9389010c74a34484a8e080942b56956e`,
+  verified existing PDF export `cprpdf_0d2e6aad239125a198e64c1a307b158d`, created manifest
+  `cprm_c3473263ece408fc12ca0bd5c7adc206`, created share package
+  `cprsp_afaaed71cf684e63860915923722ce65`, downloaded it with package hash
+  `sha256:49aa46f29c12a8a48286d099f171826c40584afc0094ad592344abd57b822e38`, revoked it, and
+  confirmed revoked download returns HTTP `409` with code `share_package_revoked`.
 
 Known local validation limit:
 
 - A full parallel backend suite hit local Supabase/Postgres session exhaustion
   (`EMAXCONNSESSION max clients reached`).
 - A full serial backend retry timed out after 15 minutes.
-- The affected real KAN-119 integration chain and adjacent backend modules passed; CI remains the
-  final full-suite authority for the branch.
+- The affected real KAN-119 integration chain, adjacent backend modules, PR checks, and post-merge
+  CI passed.
 
 Report: `docs/reports/period-compliance-report-share-package-2026-06-15.md`.
 
