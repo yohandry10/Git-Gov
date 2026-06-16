@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, CheckCircle2, PlayCircle, RefreshCw } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, ClipboardCheck, PlayCircle, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
 import type {
   ChangeRiskEvaluationRecord,
+  ChangeRiskEvaluationReviewResponse,
+  ChangeRiskReviewStatus,
   ChangeRiskEvaluationTraceResponse,
   ChangeRiskRuleCatalogResponse,
   DeploymentGateAuthorizationRecord,
@@ -17,6 +19,19 @@ function riskVariant(level: string): 'success' | 'warning' | 'danger' | 'info' |
   if (level === 'high') return 'danger'
   if (level === 'unknown') return 'info'
   return 'neutral'
+}
+
+function reviewVariant(status: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (status === 'reviewed') return 'success'
+  if (status === 'accepted_risk') return 'warning'
+  if (status === 'needs_mitigation') return 'info'
+  if (status === 'rejected') return 'danger'
+  if (status === 'needs_review') return 'neutral'
+  return 'neutral'
+}
+
+function reviewLabel(status: string): string {
+  return status.replaceAll('_', ' ')
 }
 
 function shortValue(value?: string | null): string {
@@ -149,18 +164,152 @@ function WhyThisRisk({
   )
 }
 
+function ManualReview({
+  evaluation,
+  review,
+  isLoading,
+  isUpdating,
+  displayTimezone,
+  onReload,
+  onSubmit,
+}: {
+  evaluation: ChangeRiskEvaluationRecord
+  review: ChangeRiskEvaluationReviewResponse | null
+  isLoading: boolean
+  isUpdating: boolean
+  displayTimezone: string
+  onReload: () => void
+  onSubmit: (payload: {
+    review_status: ChangeRiskReviewStatus
+    review_notes: string
+    mitigation_notes: string
+    decision_reason: string
+  }) => void
+}) {
+  const effectiveReview = review?.evaluation_id === evaluation.evaluation_id ? review : null
+  const [reviewStatus, setReviewStatus] = useState<ChangeRiskReviewStatus>(evaluation.review_status || 'needs_review')
+  const [reviewNotes, setReviewNotes] = useState(effectiveReview?.review_notes_safe ?? evaluation.review_notes_safe ?? '')
+  const [mitigationNotes, setMitigationNotes] = useState(effectiveReview?.mitigation_notes_safe ?? evaluation.mitigation_notes_safe ?? '')
+  const [decisionReason, setDecisionReason] = useState(effectiveReview?.decision_reason_safe ?? evaluation.decision_reason_safe ?? '')
+
+  const reviewer = effectiveReview?.reviewed_by_user_id ?? evaluation.reviewed_by_user_id
+  const reviewedAt = effectiveReview?.reviewed_at ?? evaluation.reviewed_at
+  const updatedAt = effectiveReview?.review_updated_at ?? evaluation.review_updated_at
+
+  return (
+    <div className="mt-3 rounded border border-white/8 bg-surface-950/35 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <ClipboardCheck size={14} className="text-brand-300" />
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-surface-500">Manual Review</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-surface-400">
+              <Badge variant={reviewVariant(effectiveReview?.review_status || evaluation.review_status || 'needs_review')}>
+                {reviewLabel(effectiveReview?.review_status || evaluation.review_status || 'needs_review')}
+              </Badge>
+              <span>{reviewer || 'No reviewer'}</span>
+              <span>{reviewedAt ? formatTs(reviewedAt, displayTimezone) : 'Not reviewed'}</span>
+            </div>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" loading={isLoading} onClick={onReload} title="Reload manual review">
+          <RefreshCw size={13} />
+          Review
+        </Button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+        {(['needs_review', 'reviewed', 'accepted_risk', 'needs_mitigation', 'rejected'] as ChangeRiskReviewStatus[]).map((status) => (
+          <button
+            key={status}
+            type="button"
+            onClick={() => setReviewStatus(status)}
+            className={`rounded border px-2 py-2 text-left text-[11px] transition-colors ${
+              reviewStatus === status
+                ? 'border-brand-500/60 bg-brand-500/15 text-brand-50'
+                : 'border-white/8 bg-surface-900/60 text-surface-300 hover:bg-white/5'
+            }`}
+          >
+            {reviewLabel(status)}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-widest text-surface-500">Review notes</span>
+          <textarea
+            value={reviewNotes}
+            onChange={(event) => setReviewNotes(event.target.value)}
+            rows={2}
+            maxLength={1000}
+            className="mt-1 w-full rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-widest text-surface-500">Mitigation notes</span>
+          <textarea
+            value={mitigationNotes}
+            onChange={(event) => setMitigationNotes(event.target.value)}
+            rows={2}
+            maxLength={1000}
+            className="mt-1 w-full rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-widest text-surface-500">Decision reason</span>
+          <textarea
+            value={decisionReason}
+            onChange={(event) => setDecisionReason(event.target.value)}
+            rows={2}
+            maxLength={1000}
+            className="mt-1 w-full rounded border border-white/10 bg-surface-950/70 px-2 py-2 text-xs text-surface-100 outline-none transition-colors placeholder:text-surface-600 focus:border-brand-500/60"
+          />
+        </label>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          loading={isUpdating}
+          onClick={() => onSubmit({ review_status: reviewStatus, review_notes: reviewNotes, mitigation_notes: mitigationNotes, decision_reason: decisionReason })}
+          title="Save manual review"
+        >
+          <ClipboardCheck size={14} />
+          Save review
+        </Button>
+        <span className="text-[11px] text-surface-500">
+          {updatedAt ? `Updated ${formatTs(updatedAt, displayTimezone)}` : 'Advisory only; no deployment action is taken.'}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function EvaluationSummary({
   evaluation,
   trace,
   catalog,
   isTraceLoading,
+  review,
+  isReviewLoading,
+  isReviewUpdating,
+  displayTimezone,
   onReloadTrace,
+  onReloadReview,
+  onSubmitReview,
 }: {
   evaluation: ChangeRiskEvaluationRecord
   trace: ChangeRiskEvaluationTraceResponse | null
   catalog: ChangeRiskRuleCatalogResponse | null
   isTraceLoading: boolean
+  review: ChangeRiskEvaluationReviewResponse | null
+  isReviewLoading: boolean
+  isReviewUpdating: boolean
+  displayTimezone: string
   onReloadTrace: () => void
+  onReloadReview: () => void
+  onSubmitReview: Parameters<typeof ManualReview>[0]['onSubmit']
 }) {
   return (
     <div className="rounded-lg border border-white/8 bg-surface-900/70 p-3 text-xs">
@@ -212,6 +361,16 @@ function EvaluationSummary({
         isLoading={isTraceLoading}
         onReload={onReloadTrace}
       />
+      <ManualReview
+        key={`${evaluation.evaluation_id}:${review?.review_updated_at ?? evaluation.review_updated_at ?? 0}:${review?.review_status ?? evaluation.review_status ?? 'needs_review'}`}
+        evaluation={evaluation}
+        review={review}
+        isLoading={isReviewLoading}
+        isUpdating={isReviewUpdating}
+        displayTimezone={displayTimezone}
+        onReload={onReloadReview}
+        onSubmit={onSubmitReview}
+      />
     </div>
   )
 }
@@ -225,16 +384,21 @@ export function ChangeRiskPanel() {
   const selectedEvaluation = useControlPlaneStore((state) => state.changeRiskSelectedEvaluation)
   const ruleCatalog = useControlPlaneStore((state) => state.changeRiskRuleCatalog)
   const evaluationTrace = useControlPlaneStore((state) => state.changeRiskEvaluationTrace)
+  const evaluationReview = useControlPlaneStore((state) => state.changeRiskEvaluationReview)
   const isLoading = useControlPlaneStore((state) => state.isChangeRiskEvaluationsLoading)
   const isRulesLoading = useControlPlaneStore((state) => state.isChangeRiskRulesLoading)
   const isTraceLoading = useControlPlaneStore((state) => state.isChangeRiskTraceLoading)
   const isCreating = useControlPlaneStore((state) => state.isChangeRiskEvaluationCreating)
+  const isReviewLoading = useControlPlaneStore((state) => state.isChangeRiskReviewLoading)
+  const isReviewUpdating = useControlPlaneStore((state) => state.isChangeRiskReviewUpdating)
   const error = useControlPlaneStore((state) => state.changeRiskError)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const loadEvaluations = useControlPlaneStore((state) => state.loadChangeRiskEvaluations)
   const loadRules = useControlPlaneStore((state) => state.loadChangeRiskRules)
   const getEvaluation = useControlPlaneStore((state) => state.getChangeRiskEvaluation)
   const loadTrace = useControlPlaneStore((state) => state.loadChangeRiskEvaluationTrace)
+  const loadReview = useControlPlaneStore((state) => state.loadChangeRiskEvaluationReview)
+  const updateReview = useControlPlaneStore((state) => state.updateChangeRiskEvaluationReview)
   const createEvaluation = useControlPlaneStore((state) => state.createChangeRiskEvaluation)
 
   const latestGate = firstGate(deploymentGateAuthorizations)
@@ -288,7 +452,8 @@ export function ChangeRiskPanel() {
   useEffect(() => {
     if (!selectedEvaluation?.evaluation_id) return
     void loadTrace(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })
-  }, [loadTrace, selectedEvaluation?.evaluation_id, selectedOrgName])
+    void loadReview(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })
+  }, [loadReview, loadTrace, selectedEvaluation?.evaluation_id, selectedOrgName])
 
   const canEvaluate =
     repositoryFullName.trim() &&
@@ -407,7 +572,16 @@ export function ChangeRiskPanel() {
               trace={evaluationTrace}
               catalog={ruleCatalog}
               isTraceLoading={isTraceLoading}
+              review={evaluationReview}
+              isReviewLoading={isReviewLoading}
+              isReviewUpdating={isReviewUpdating}
+              displayTimezone={displayTimezone}
               onReloadTrace={() => void loadTrace(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })}
+              onReloadReview={() => void loadReview(selectedEvaluation.evaluation_id, { org_name: selectedOrgName || null })}
+              onSubmitReview={(payload) => void updateReview(selectedEvaluation.evaluation_id, {
+                org_name: selectedOrgName || null,
+                ...payload,
+              })}
             />
           ) : (
             <div className="rounded-lg border border-white/8 bg-surface-900/60 p-4 text-xs text-surface-500">
@@ -431,6 +605,7 @@ export function ChangeRiskPanel() {
                     <Badge variant={riskVariant(evaluation.risk_level)}>{evaluation.risk_level}</Badge>
                     <span className="font-medium text-surface-100">{evaluation.release_id || 'release not set'}</span>
                     <span className="text-surface-500">{evaluation.environment || 'environment not set'}</span>
+                    <Badge variant={reviewVariant(evaluation.review_status || 'needs_review')}>{reviewLabel(evaluation.review_status || 'needs_review')}</Badge>
                   </div>
                   <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-surface-400 md:grid-cols-2">
                     <span className="truncate">Repo: <span className="text-surface-200">{evaluation.repository_full_name || 'Not set'}</span></span>

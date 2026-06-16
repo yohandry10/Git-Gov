@@ -111,6 +111,13 @@ impl Database {
                 evaluation,
                 request_payload,
                 created_by,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             "#,
         )
@@ -180,6 +187,13 @@ impl Database {
                 evaluation,
                 request_payload,
                 created_by,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
             FROM change_risk_evaluations
             WHERE org_id = $1::uuid
@@ -233,6 +247,13 @@ impl Database {
                 evaluation,
                 request_payload,
                 created_by,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
                 ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
                 COUNT(*) OVER() AS total_count
             FROM change_risk_evaluations
@@ -272,5 +293,74 @@ impl Database {
         let items = rows.iter().map(change_risk_evaluation_from_row).collect();
 
         Ok((items, total))
+    }
+
+    pub async fn update_change_risk_evaluation_review(
+        &self,
+        input: &UpdateChangeRiskEvaluationReviewInput<'_>,
+    ) -> Result<Option<ChangeRiskEvaluationRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_evaluations
+            SET review_status = $3,
+                reviewed_by_user_id = $4,
+                reviewed_at = NOW(),
+                review_notes_safe = $5,
+                mitigation_notes_safe = $6,
+                decision_reason_safe = $7,
+                review_updated_at = NOW()
+            WHERE org_id = $1::uuid
+              AND evaluation_id = $2
+            RETURNING
+                evaluation_id,
+                org_id::text,
+                repository_full_name,
+                branch,
+                environment,
+                change_id,
+                deployment_gate_id,
+                release_id,
+                commit_sha,
+                evidence_packet_hash,
+                risk_level,
+                ruleset_version,
+                risk_reasons,
+                missing_evidence,
+                blocking_gaps,
+                recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
+                advisory_only,
+                llm_used,
+                agent_governance_used,
+                compliance_claim,
+                certification,
+                evaluation,
+                request_payload,
+                created_by,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.evaluation_id)
+        .bind(input.review_status)
+        .bind(input.reviewed_by_user_id)
+        .bind(input.review_notes_safe)
+        .bind(input.mitigation_notes_safe)
+        .bind(input.decision_reason_safe)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_evaluation_from_row(&row)))
     }
 }

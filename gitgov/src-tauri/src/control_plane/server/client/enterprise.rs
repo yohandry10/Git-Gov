@@ -622,6 +622,59 @@ impl ControlPlaneClient {
             .map_err(|e| ServerError::SerializationError(e.to_string()))
     }
 
+    pub fn get_change_risk_evaluation_review(
+        &self,
+        evaluation_id: &str,
+        query: &ChangeRiskEvaluationQuery,
+    ) -> Result<ChangeRiskEvaluationReviewResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "evaluations", evaluation_id, "review"])?;
+        let mut query_params: Vec<(String, String)> = Vec::new();
+        if let Some(org_name) = &query.org_name {
+            query_params.push(("org_name".to_string(), org_name.clone()));
+        }
+
+        let mut request = self.client.get(url).query(&query_params);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
+    pub fn update_change_risk_evaluation_review(
+        &self,
+        evaluation_id: &str,
+        payload: &ChangeRiskEvaluationReviewRequest,
+    ) -> Result<ChangeRiskEvaluationReviewResponse, ServerError> {
+        let url = self.endpoint_url(&["change-risk", "evaluations", evaluation_id, "review"])?;
+        let mut request = self.client.patch(url).json(payload);
+        if let Some(ref api_key) = self.config.api_key {
+            request = request.header("Authorization", format!("Bearer {}", api_key));
+        }
+
+        let response = request
+            .send()
+            .map_err(|e| ServerError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(server_error_from_response(response));
+        }
+
+        response
+            .json()
+            .map_err(|e| ServerError::SerializationError(e.to_string()))
+    }
+
     pub fn create_change_risk_evaluation(
         &self,
         payload: &ChangeRiskEvaluationRequest,

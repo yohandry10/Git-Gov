@@ -469,6 +469,11 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::get_change_risk_evaluation_trace),
         )
         .route(
+            "/change-risk/evaluations/{evaluation_id}/review",
+            get(handlers::get_change_risk_evaluation_review)
+                .patch(handlers::update_change_risk_evaluation_review),
+        )
+        .route(
             "/change-risk/evaluations/{evaluation_id}",
             get(handlers::get_change_risk_evaluation),
         )

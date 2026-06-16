@@ -1210,6 +1210,133 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().changeRiskEvaluationTrace?.triggered_rules).toContain('gate_blocked')
     })
 
+    it('loads and updates change risk manual review without changing risk trace state', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+        changeRiskSelectedEvaluation: {
+          evaluation_id: 'cra_review',
+          org_id: 'org-1',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          risk_level: 'high',
+          ruleset_version: 'change_risk_rules.v1',
+          risk_reasons: ['deployment_gate_blocked'],
+          missing_evidence: ['release_approval'],
+          blocking_gaps: ['gate blocked'],
+          recommended_manual_actions: ['Resolve blocking governance gaps.'],
+          triggered_rules: ['gate_blocked'],
+          non_triggered_rules: [],
+          evaluation_trace: { risk_level: 'high' },
+          trace_hash: 'sha256:' + 'd'.repeat(64),
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+          evaluation: {},
+          request_payload: {},
+          created_by: 'admin',
+          review_status: 'needs_review',
+          created_at: 7,
+        },
+        changeRiskEvaluations: [{
+          evaluation_id: 'cra_review',
+          org_id: 'org-1',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          risk_level: 'high',
+          ruleset_version: 'change_risk_rules.v1',
+          risk_reasons: ['deployment_gate_blocked'],
+          missing_evidence: ['release_approval'],
+          blocking_gaps: ['gate blocked'],
+          recommended_manual_actions: ['Resolve blocking governance gaps.'],
+          triggered_rules: ['gate_blocked'],
+          non_triggered_rules: [],
+          evaluation_trace: { risk_level: 'high' },
+          trace_hash: 'sha256:' + 'd'.repeat(64),
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+          evaluation: {},
+          request_payload: {},
+          created_by: 'admin',
+          review_status: 'needs_review',
+          created_at: 7,
+        }],
+      })
+      mockInvoke
+        .mockResolvedValueOnce({
+          evaluation_id: 'cra_review',
+          org_id: 'org-1',
+          risk_level: 'high',
+          ruleset_version: 'change_risk_rules.v1',
+          trace_hash: 'sha256:' + 'd'.repeat(64),
+          review_status: 'needs_review',
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+        })
+        .mockResolvedValueOnce({
+          evaluation_id: 'cra_review',
+          org_id: 'org-1',
+          risk_level: 'high',
+          ruleset_version: 'change_risk_rules.v1',
+          trace_hash: 'sha256:' + 'd'.repeat(64),
+          review_status: 'accepted_risk',
+          reviewed_by_user_id: 'admin',
+          reviewed_at: 8,
+          review_notes_safe: 'Manual CAB reviewed deterministic trace.',
+          mitigation_notes_safe: 'Rollback owner remains online.',
+          decision_reason_safe: 'Business exception accepted manually.',
+          review_updated_at: 9,
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+        })
+
+      const initial = await useControlPlaneStore.getState().loadChangeRiskEvaluationReview(' cra_review ')
+      const updated = await useControlPlaneStore.getState().updateChangeRiskEvaluationReview(' cra_review ', {
+        review_status: ' accepted_risk ',
+        review_notes: ' Manual CAB reviewed deterministic trace. ',
+        mitigation_notes: ' Rollback owner remains online. ',
+        decision_reason: ' Business exception accepted manually. ',
+      })
+
+      expect(mockInvoke).toHaveBeenNthCalledWith(1, 'cmd_server_get_change_risk_evaluation_review', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        evaluationId: 'cra_review',
+        query: { org_name: 'yohandry10' },
+      })
+      expect(mockInvoke).toHaveBeenNthCalledWith(2, 'cmd_server_update_change_risk_evaluation_review', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        evaluationId: 'cra_review',
+        payload: {
+          org_name: 'yohandry10',
+          review_status: 'accepted_risk',
+          review_notes: 'Manual CAB reviewed deterministic trace.',
+          mitigation_notes: 'Rollback owner remains online.',
+          decision_reason: 'Business exception accepted manually.',
+        },
+      })
+      expect(initial?.review_status).toBe('needs_review')
+      expect(updated?.review_status).toBe('accepted_risk')
+      expect(updated?.trace_hash).toBe('sha256:' + 'd'.repeat(64))
+      expect(updated?.llm_used).toBe(false)
+      expect(updated?.agent_governance_used).toBe(false)
+      expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.review_status).toBe('accepted_risk')
+      expect(useControlPlaneStore.getState().changeRiskSelectedEvaluation?.trace_hash).toBe('sha256:' + 'd'.repeat(64))
+      expect(useControlPlaneStore.getState().changeRiskEvaluations[0].decision_reason_safe).toBe('Business exception accepted manually.')
+    })
+
     it('creates change risk advisory records without AI, agent governance, or compliance claims', async () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },

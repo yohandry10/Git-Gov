@@ -271,6 +271,8 @@ pub fn run() {
             commands::cmd_server_get_change_risk_rules,
             commands::cmd_server_get_change_risk_evaluation,
             commands::cmd_server_get_change_risk_evaluation_trace,
+            commands::cmd_server_get_change_risk_evaluation_review,
+            commands::cmd_server_update_change_risk_evaluation_review,
             commands::cmd_server_create_change_risk_evaluation,
             commands::cmd_server_create_compliance_evidence_export,
             commands::cmd_server_get_compliance_evidence_export,

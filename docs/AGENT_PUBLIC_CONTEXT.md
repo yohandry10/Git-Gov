@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-122` Change Risk Rule Catalog & Evaluation Trace
+Ticket: `KAN-123` Change Risk Manual Review & Mitigation Notes
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -49,6 +49,13 @@ The repo already contains substantial product surface:
   `trace_hash`, catalog/trace APIs, Auditor read access, and a Desktop `Why this risk?` view. It
   does not add enforcement, AI, Agent Governance dependency, provider or repository mutation,
   compliance scores, or certification/legal/regulatory claims.
+- Change Risk Manual Review & Mitigation Notes from KAN-123 is in progress on branch
+  `product/KAN-123-change-risk-manual-review`. It adds human review metadata over an already
+  explained Change Risk evaluation: review status, safe review notes, mitigation notes, decision
+  reason, Admin-only update, Admin/Auditor read, audit evidence, and Desktop `Manual Review`
+  controls. It deliberately remains advisory-only and does not add enforcement, release blocking,
+  deployment execution, provider or repository mutation, AI/LLM, Agent Governance dependency,
+  compliance scores, approval quorum, notifications, or certification/legal/regulatory claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

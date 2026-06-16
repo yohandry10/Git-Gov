@@ -272,6 +272,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk |
 | `/change-risk/evaluations/{evaluation_id}` | Bearer (admin/auditor) | Leer una evaluación Change Risk tenant-scoped |
 | `/change-risk/evaluations/{evaluation_id}/trace` | Bearer (admin/auditor) | Leer el trace versionado de reglas, reglas disparadas/no disparadas y hash de evaluación |
+| `/change-risk/evaluations/{evaluation_id}/review` | Bearer (admin/auditor para lectura; admin para actualización) | Leer o actualizar revisión manual, notas seguras y mitigación sin cambiar el trace ni ejecutar enforcement |
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |
 | `/agent-governance/evaluations` | Bearer (admin) | Listar historial de evaluaciones agent governance con request payload minimizado |

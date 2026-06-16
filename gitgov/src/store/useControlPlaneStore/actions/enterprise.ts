@@ -5,6 +5,8 @@ import type {
   ChangeRiskEvaluationQuery,
   ChangeRiskEvaluationRecord,
   ChangeRiskEvaluationRequest,
+  ChangeRiskEvaluationReviewRequest,
+  ChangeRiskEvaluationReviewResponse,
   ChangeRiskEvaluationTraceResponse,
   ChangeRiskRuleCatalogResponse,
   DeploymentGateAuthorizationListResponse,
@@ -47,6 +49,8 @@ type EnterpriseActionKeys =
   | 'loadChangeRiskRules'
   | 'getChangeRiskEvaluation'
   | 'loadChangeRiskEvaluationTrace'
+  | 'loadChangeRiskEvaluationReview'
+  | 'updateChangeRiskEvaluationReview'
   | 'createChangeRiskEvaluation'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
@@ -73,6 +77,23 @@ function applyFirstGovernedRepoWizardRun(
     firstGovernedRepoWizardState: response.state,
     isFirstGovernedRepoWizardActionRunning: false,
   })
+}
+
+function applyChangeRiskReviewToRecord(
+  record: ChangeRiskEvaluationRecord,
+  review: ChangeRiskEvaluationReviewResponse,
+): ChangeRiskEvaluationRecord {
+  if (record.evaluation_id !== review.evaluation_id) return record
+  return {
+    ...record,
+    review_status: review.review_status,
+    reviewed_by_user_id: review.reviewed_by_user_id ?? null,
+    reviewed_at: review.reviewed_at ?? null,
+    review_notes_safe: review.review_notes_safe ?? null,
+    mitigation_notes_safe: review.mitigation_notes_safe ?? null,
+    decision_reason_safe: review.decision_reason_safe ?? null,
+    review_updated_at: review.review_updated_at ?? null,
+  }
 }
 
 export function createEnterpriseActions(
@@ -650,6 +671,79 @@ export function createEnterpriseActions(
       set({
         changeRiskError: message,
         isChangeRiskTraceLoading: false,
+      })
+      return null
+    }
+  },
+
+  loadChangeRiskEvaluationReview: async (evaluationId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskEvaluationQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskReviewLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskEvaluationReviewResponse>('cmd_server_get_change_risk_evaluation_review', {
+        config: serverConfig,
+        evaluationId: evaluationId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskEvaluationReview: response,
+        isChangeRiskReviewLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskReviewLoading: false,
+      })
+      return null
+    }
+  },
+
+  updateChangeRiskEvaluationReview: async (evaluationId, payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const effectiveOrgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+    const request: ChangeRiskEvaluationReviewRequest = {
+      ...payload,
+      org_name: effectiveOrgName ?? null,
+      review_status: payload.review_status.trim(),
+      review_notes: payload.review_notes?.trim() || null,
+      mitigation_notes: payload.mitigation_notes?.trim() || null,
+      decision_reason: payload.decision_reason?.trim() || null,
+    }
+
+    set({ isChangeRiskReviewUpdating: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskEvaluationReviewResponse>('cmd_server_update_change_risk_evaluation_review', {
+        config: serverConfig,
+        evaluationId: evaluationId.trim(),
+        payload: request,
+      })
+      set((state) => ({
+        changeRiskEvaluationReview: response,
+        changeRiskSelectedEvaluation: state.changeRiskSelectedEvaluation
+          ? applyChangeRiskReviewToRecord(state.changeRiskSelectedEvaluation, response)
+          : state.changeRiskSelectedEvaluation,
+        changeRiskEvaluations: state.changeRiskEvaluations.map((record) =>
+          applyChangeRiskReviewToRecord(record, response),
+        ),
+        isChangeRiskReviewUpdating: false,
+        changeRiskError: null,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskReviewUpdating: false,
       })
       return null
     }

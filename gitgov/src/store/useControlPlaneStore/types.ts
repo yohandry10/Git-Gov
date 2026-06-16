@@ -355,6 +355,13 @@ export interface ChangeRiskEvaluationRecord {
   evaluation: Record<string, unknown>
   request_payload: Record<string, unknown>
   created_by: string
+  review_status: ChangeRiskReviewStatus
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
+  mitigation_notes_safe?: string | null
+  decision_reason_safe?: string | null
+  review_updated_at?: number | null
   created_at: number
 }
 
@@ -427,6 +434,42 @@ export interface ChangeRiskEvaluationTraceResponse {
   compliance_claim: boolean
   certification: boolean
   created_at: number
+}
+
+export type ChangeRiskReviewStatus =
+  | 'needs_review'
+  | 'reviewed'
+  | 'accepted_risk'
+  | 'needs_mitigation'
+  | 'rejected'
+  | string
+
+export interface ChangeRiskEvaluationReviewRequest {
+  org_name?: string | null
+  review_status: ChangeRiskReviewStatus
+  review_notes?: string | null
+  mitigation_notes?: string | null
+  decision_reason?: string | null
+}
+
+export interface ChangeRiskEvaluationReviewResponse {
+  evaluation_id: string
+  org_id: string
+  risk_level: ChangeRiskLevel
+  ruleset_version: string
+  trace_hash: string
+  review_status: ChangeRiskReviewStatus
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  review_notes_safe?: string | null
+  mitigation_notes_safe?: string | null
+  decision_reason_safe?: string | null
+  review_updated_at?: number | null
+  advisory_only: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
 }
 
 export interface ComplianceEvidenceExportRequest {
@@ -1547,10 +1590,13 @@ export interface ControlPlaneState {
   changeRiskSelectedEvaluation: ChangeRiskEvaluationRecord | null
   changeRiskRuleCatalog: ChangeRiskRuleCatalogResponse | null
   changeRiskEvaluationTrace: ChangeRiskEvaluationTraceResponse | null
+  changeRiskEvaluationReview: ChangeRiskEvaluationReviewResponse | null
   isChangeRiskEvaluationsLoading: boolean
   isChangeRiskRulesLoading: boolean
   isChangeRiskTraceLoading: boolean
   isChangeRiskEvaluationCreating: boolean
+  isChangeRiskReviewLoading: boolean
+  isChangeRiskReviewUpdating: boolean
   changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
   complianceControlFrameworks: ComplianceControlFramework[]
@@ -1717,6 +1763,14 @@ export interface ControlPlaneActions {
     evaluationId: string,
     query?: ChangeRiskEvaluationQuery,
   ) => Promise<ChangeRiskEvaluationTraceResponse | null>
+  loadChangeRiskEvaluationReview: (
+    evaluationId: string,
+    query?: ChangeRiskEvaluationQuery,
+  ) => Promise<ChangeRiskEvaluationReviewResponse | null>
+  updateChangeRiskEvaluationReview: (
+    evaluationId: string,
+    payload: ChangeRiskEvaluationReviewRequest,
+  ) => Promise<ChangeRiskEvaluationReviewResponse | null>
   createChangeRiskEvaluation: (payload: ChangeRiskEvaluationRequest) => Promise<ChangeRiskEvaluationRecord | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
