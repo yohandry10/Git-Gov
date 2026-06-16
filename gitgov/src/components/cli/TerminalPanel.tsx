@@ -24,6 +24,8 @@ import {
   buildTerminalQuickCommandInsertInput,
   type TerminalQuickCommand,
 } from './terminalQuickCommands'
+import { TerminalGovernanceContextPanel } from './TerminalGovernanceContextPanel'
+import { TerminalSessionHistoryDrawer } from './TerminalSessionHistoryDrawer'
 import '@xterm/xterm/css/xterm.css'
 
 interface CliNativeTerminalStartResult {
@@ -48,21 +50,6 @@ const ANSI = {
   warning: '\x1b[38;5;220m',
   error: '\x1b[38;5;203m',
   command: '\x1b[38;5;111m',
-}
-
-function formatSessionCommandTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
-
-function shortRepoPath(repoPath: string): string {
-  const normalized = repoPath.replace(/\\/g, '/')
-  const parts = normalized.split('/').filter(Boolean)
-  return parts[parts.length - 1] ?? repoPath
 }
 
 export function TerminalPanel() {
@@ -93,9 +80,12 @@ export function TerminalPanel() {
   const terminalCwdRef = useRef<string | null>(null)
 
   const repoPath = useRepoStore((s) => s.repoPath)
+  const validation = useRepoStore((s) => s.validation)
   const currentBranch = useRepoStore((s) => s.currentBranch)
   const user = useAuthStore((s) => s.user)
   const serverConfig = useControlPlaneStore((s) => s.serverConfig)
+  const selectedOrgName = useControlPlaneStore((s) => s.selectedOrgName)
+  const connectionStatus = useControlPlaneStore((s) => s.connectionStatus)
 
   repoPathRef.current = repoPath
   currentBranchRef.current = currentBranch
@@ -522,6 +512,14 @@ export function TerminalPanel() {
             onToggle={() => setShowQuickCommands((current) => !current)}
             onInsert={(quickCommand) => void insertQuickCommand(quickCommand)}
           />
+          <TerminalGovernanceContextPanel
+            context={terminalGitContext}
+            validation={validation}
+            currentBranch={currentBranch}
+            serverConfig={serverConfig}
+            selectedOrgName={selectedOrgName}
+            connectionStatus={connectionStatus}
+          />
           <button
             type="button"
             onClick={() => void startNativeSession(true)}
@@ -538,39 +536,7 @@ export function TerminalPanel() {
         </div>
       </div>
 
-      {showSessionHistory && (
-        <div className="max-h-36 overflow-auto border-b border-surface-800 bg-surface-900/80 px-3 py-2">
-          {sessionCommands.length === 0 ? (
-            <div className="text-[10px] uppercase tracking-wider text-surface-600">
-              No native terminal commands in this session
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {sessionCommands.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded border border-surface-800 bg-surface-900/80 px-2 py-1.5"
-                >
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="rounded border border-surface-700 bg-surface-800 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-surface-400">
-                      {entry.shell}
-                    </span>
-                    <span className="truncate text-[9px] text-surface-500">
-                      {shortRepoPath(entry.repoPath)} · {entry.branch}
-                    </span>
-                    <span className="ml-auto shrink-0 text-[9px] text-surface-500">
-                      {formatSessionCommandTime(entry.createdAt)}
-                    </span>
-                  </div>
-                  <p className="mt-1 truncate font-mono text-[10px] text-surface-200">
-                    {entry.command}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {showSessionHistory && <TerminalSessionHistoryDrawer commands={sessionCommands} />}
 
       <div className="flex-1 min-h-0 p-1.5">
         <div

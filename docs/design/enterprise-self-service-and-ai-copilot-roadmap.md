@@ -615,6 +615,12 @@ Current primitives:
   `git log --oneline -5`, `git diff --stat`, and `git remote -v`). It does not auto-run commands,
   include mutating Git/provider/deploy commands, persist to the backend, intercept/block commands,
   mutate repositories, or create enforcement/compliance evidence.
+- `KAN-135` adds a read-only Governance Context drawer to the native terminal. It resolves the
+  detected local repository to a safe `owner/repo` target through existing repo validation metadata,
+  then loads existing Deployment Gate, Change Risk, and Executive Governance read models for the
+  current repo/branch. It does not add backend endpoints, create evidence, execute commands,
+  intercept/block commands, mutate providers/repos/deployments, or create compliance/certification
+  claims.
 
 Future scope:
 
