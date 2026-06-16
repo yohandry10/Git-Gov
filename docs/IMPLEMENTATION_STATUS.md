@@ -4,7 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-130 Multi-Repo Executive Governance Filters - 2026-06-16
 
-`KAN-130 - Multi-Repo Executive Governance Filters MVP` is in progress on issue `#456`.
+`KAN-130 - Multi-Repo Executive Governance Filters MVP` is completed. PR `#457` merged to `main` as
+`6d1bcf4f`.
 
 Product decision:
 
@@ -50,7 +51,21 @@ Local validation completed:
 
 Production validation:
 
-- Pending until PR merge, Render deploy, and production smoke.
+- No production migration was required.
+- Post-merge `main` checks passed for `6d1bcf4f`, including CI, Release Readiness Gate, Quality Gate
+  Policy Matrix, Secret Scan, Public Naming Guard, Governance Correlation Smoke, Desktop Updater
+  Readiness, and SonarQube Governance.
+- Render deploy `dep-d8ojmp58nd3s73ai40e0` for `6d1bcf4f` reached `live`.
+- Production smoke passed with `/health=ok`, authenticated
+  `GET /executive/repositories?org_name=yohandry10&limit=10` returning `repositories=1`, first
+  repository `yohandry10/Git-Gov`, first posture `review`, filtered
+  `environment=production&posture=review` returning `repositories=1`,
+  `repository=Git-Gov&risk_level=medium` returning `repositories=1`, conflicting
+  `gate_decision=blocked&risk_level=low` returning `repositories=0`, invalid `posture=critical`
+  returning HTTP `400`, and safe no-claim flags.
+- Production no-mutation check passed: Deployment Gate authorizations, Change Risk evaluations, CAB
+  packets, CAB decision manifests, and Agent Governance evaluations stayed `2,6,8,6,7` before and
+  after filtered executive reads.
 
 Report: `docs/reports/multi-repo-executive-governance-filters-2026-06-16.md`.
 

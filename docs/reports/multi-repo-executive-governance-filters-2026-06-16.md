@@ -4,9 +4,9 @@ Date: 2026-06-16
 
 Issue: `#456`
 
-PR: pending
+PR: `#457`
 
-Main commit: pending
+Main commit: `6d1bcf4f`
 
 ## Summary
 
@@ -80,4 +80,28 @@ The backend test now covers:
 
 ## Production Validation
 
-Pending until PR merge, Render deploy, and production smoke.
+- Post-merge `main` checks passed for `6d1bcf4f`, including CI, Release Readiness Gate, Quality
+  Gate Policy Matrix, Secret Scan, Public Naming Guard, Governance Correlation Smoke, Desktop
+  Updater Readiness, and SonarQube Governance.
+- No production migration was required.
+- Render deploy `dep-d8ojmp58nd3s73ai40e0` for `6d1bcf4f` reached `live`.
+- `/health` returned `ok`.
+- Authenticated `GET /executive/repositories?org_name=yohandry10&limit=10` returned HTTP `200`.
+
+Production filter smoke:
+
+- Base view returned `repositories=1`, first repository `yohandry10/Git-Gov`, first posture
+  `review`.
+- `environment=production&posture=review` returned `repositories=1`.
+- `repository=Git-Gov&risk_level=medium` returned `repositories=1`.
+- Conflicting `gate_decision=blocked&risk_level=low` returned `repositories=0`.
+- Invalid `posture=critical` returned HTTP `400`.
+- Safe no-claim flags remained true.
+
+Production no-mutation check:
+
+- Before reading filtered executive routes: Deployment Gates `2`, Change Risk evaluations `6`, CAB
+  packets `8`, CAB decision manifests `6`, Agent Governance evaluations `7`.
+- After reading filtered executive routes: Deployment Gates `2`, Change Risk evaluations `6`, CAB
+  packets `8`, CAB decision manifests `6`, Agent Governance evaluations `7`.
+- Counts unchanged: yes.
