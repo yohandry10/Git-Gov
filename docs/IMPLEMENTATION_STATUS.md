@@ -4,8 +4,9 @@ Updated: 2026-06-16
 
 ## KAN-122 Change Risk Rule Catalog & Evaluation Trace - 2026-06-16
 
-`KAN-122 - Change Risk Rule Catalog & Evaluation Trace` is in progress on branch
-`product/KAN-122-change-risk-rule-trace` for GitHub issue `#424`.
+`KAN-122 - Change Risk Rule Catalog & Evaluation Trace` is completed. PR `#425` merged the
+feature, PR `#426` fixed production migration constraint scoping, and PR `#427` fixed GitHub
+Actions CI evidence detection. Final production commit: `243b8998`.
 
 Product decision:
 
@@ -17,7 +18,7 @@ Product decision:
   certification/legal/regulatory claim, provider mutation, repository mutation, or deployment
   execution.
 
-Implemented on the branch:
+Implemented:
 
 - Supabase migration/postcheck `v63`.
 - New persisted columns on `change_risk_evaluations`: `ruleset_version`, `triggered_rules`,
@@ -33,7 +34,7 @@ Implemented on the branch:
 - Rule/trace helper split into `gitgov-server/src/handlers/change_risk_rules.rs` for
   maintainability.
 
-Validation so far:
+Validation:
 
 - Backend `cargo fmt` and `cargo check`.
 - Tauri `cargo fmt` and `cargo check`.
@@ -47,12 +48,30 @@ Validation so far:
 - Tauri `cargo clippy -- -D warnings` and `cargo test` (`49` tests).
 - Frontend `pnpm --dir gitgov lint`, full Vitest (`376` tests), and build.
 - `git diff --check` and publication guard.
+- PR `#425`, PR `#426`, and PR `#427` checks passed.
+- Post-merge `main` checks for `243b8998` passed: `CI`, `Release Readiness Gate`, `Quality Gate
+  Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance Correlation Smoke`, `Desktop
+  Updater Readiness`, and `SonarQube Governance`.
+- Production `v63` migration/postcheck passed after scoping constraint idempotency checks to
+  `public.change_risk_evaluations`.
+- Render deploy `dep-d8oc3r8jo6nc73b2s07g` for `243b8998` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `GET /change-risk/rules` returned `change_risk_rules.v1` and `12` rules.
+  - `POST /change-risk/evaluations` created `cra_e70a4dfbee3546cd8ae976ff3bcd4ee3`.
+  - Created evaluation returned `risk_level=medium`, trace hash
+    `sha256:ee2bb0714ce4e83117581f9ab8ea3c98979693d2ce8a7d7f46711ae274790410`, and `12` trace
+    rule entries.
+  - Real GitHub Actions and PR evidence no longer triggered `missing_ci_evidence`,
+    `missing_code_review`, or `missing_change_link`.
+  - Agent Governance and Deployment Gate authorization counts stayed unchanged.
 
 Known local validation limit:
 
 - Full backend `cargo test -- --test-threads=2` timed out twice locally after `10` and `15`
   minutes without useful failure output. Focused real Change Risk tests and backend test compilation
-  passed; required CI must still prove the full backend suite before merge.
+  passed; required GitHub CI passed before merge.
 
 Report: `docs/reports/change-risk-rule-catalog-evaluation-trace-2026-06-16.md`.
 
