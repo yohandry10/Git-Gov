@@ -54,7 +54,7 @@ Rules:
 - `gate_blocked`.
 - `insufficient_evidence`.
 
-## Local Validation So Far
+## Local, CI, and Production Validation
 
 - Backend `cargo fmt`.
 - Backend `cargo check`.
@@ -90,8 +90,39 @@ Rules:
 - Frontend `pnpm --dir gitgov build`; existing Vite chunk-size warning remains.
 - `git diff --check`.
 - `scripts/security/publication_guard.ps1`.
+- PR `#425` merged the KAN-122 feature.
+- PR `#426` fixed production `v63` migration constraint idempotency checks so they are scoped to
+  `public.change_risk_evaluations`.
+- PR `#427` fixed CI evidence detection so real GitHub Actions run URLs count as CI evidence.
+- PR checks passed for `#425`, `#426`, and `#427`.
+- Post-merge `main` checks passed for final commit `243b8998`, including `CI`, `Release Readiness
+  Gate`, `Quality Gate Policy Matrix`, `Secret Scan`, `Public Naming Guard`, `Governance
+  Correlation Smoke`, `Desktop Updater Readiness`, and `SonarQube Governance`.
+- Render deploy `dep-d8oc3r8jo6nc73b2s07g` for `243b8998` reached `live`.
+- Production smoke passed:
+  - `/health=ok`.
+  - Authenticated `/stats=200`.
+  - `GET /change-risk/rules` returned `change_risk_rules.v1` and `12` catalog rules.
+  - `POST /change-risk/evaluations` created
+    `cra_e70a4dfbee3546cd8ae976ff3bcd4ee3` for
+    `KAN-122-ci-ref-production-smoke-final`.
+  - Created evaluation returned `risk_level=medium` and triggered rules
+    `insufficient_evidence`, `production_environment`, and `stale_evidence`.
+  - Created evaluation returned trace hash
+    `sha256:ee2bb0714ce4e83117581f9ab8ea3c98979693d2ce8a7d7f46711ae274790410`.
+  - `GET /change-risk/evaluations/{evaluation_id}` with `org_name=yohandry10` returned the same
+    evaluation.
+  - `GET /change-risk/evaluations/{evaluation_id}/trace` returned the same trace hash and `12`
+    rule trace entries.
+  - Real GitHub Actions and PR evidence did not trigger `missing_ci_evidence`,
+    `missing_code_review`, or `missing_change_link`.
+  - No-claim flags stayed `advisory_only=true`, `llm_used=false`,
+    `agent_governance_used=false`, `compliance_claim=false`, and `certification=false`.
+  - Agent Governance and Deployment Gate authorization counts stayed unchanged.
 
-## Remaining Before Merge
+## Known Local Validation Limit
 
-- Full backend `cargo test -- --test-threads=2` was retried with `TEST_DATABASE_URL` mapped from the ignored backend DB URL, but timed out twice (`10` minutes, then `15` minutes) without useful failure output. Focused real Change Risk coverage and backend test compilation passed; CI still must run the required backend suite before merge.
-- Open PR `KAN-122`, wait for required checks, merge, apply production `v63`, deploy Render, and run production smoke.
+- Full backend `cargo test -- --test-threads=2` was retried with `TEST_DATABASE_URL` mapped from
+  the ignored backend DB URL, but timed out twice (`10` minutes, then `15` minutes) without useful
+  failure output. Focused real Change Risk coverage and backend test compilation passed locally.
+- Required GitHub CI passed before merge.
