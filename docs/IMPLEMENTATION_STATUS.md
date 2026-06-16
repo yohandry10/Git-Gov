@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-133 Native Terminal Repo/Branch Context - 2026-06-16
 
-`KAN-133 - Native Terminal Repo/Branch Context MVP` starts the next `0.10 Developer Distribution
-Surfaces` slice after KAN-132. GitHub issue: `#467`.
+`KAN-133 - Native Terminal Repo/Branch Context MVP` is completed. GitHub issue `#467` shipped
+through PR `#468`, merged to `main` as `5d45c2dd`.
 
 Product decision:
 
@@ -44,6 +44,10 @@ Local validation:
 - Frontend `typecheck`, `lint`, build with the pre-existing Vite chunk warning, and full Vitest
   (`395` passed).
 - `git diff --check` and publication guard.
+- PR checks passed: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy, Server Clippy +
+  Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate quality_gates
+  warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal marker guard.
+- No Render/API deploy was required because KAN-133 is local Desktop/Tauri/frontend only.
 
 Report: `docs/reports/native-terminal-git-context-2026-06-16.md`.
 
