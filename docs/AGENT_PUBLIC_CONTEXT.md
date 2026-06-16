@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-127` Change Risk CAB Decision Manifest
+Ticket: `KAN-128` Deployment Gate Risk & CAB Evidence Context
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -79,6 +79,11 @@ The repo already contains substantial product surface:
   stable route `/change-risk/cab-decision-manifests/{manifest_id}/detail`. It remains manual
   evidence only and does not enforce, block releases, deploy, mutate providers/repos, use AI/Agent
   Governance, or create legal/compliance/certification claims.
+- Deployment Gate Risk & CAB Evidence Context from KAN-128 is in progress. It reconnects the completed
+  Change Risk/CAB chain to Deployment Gate History through a read-only context endpoint and Desktop
+  section. It does not create a new table, recalculate risk, mutate gates/evaluations/packets/manifests,
+  create CAB artifacts automatically, enforce releases, deploy, use AI/Agent Governance, or create
+  compliance/certification/legal claims.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 

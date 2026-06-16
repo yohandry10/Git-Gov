@@ -96,6 +96,11 @@ Current primitives:
   status, reviewer, safe notes, follow-up fields, and no-claim flags. It remains manual evidence
   only: no enforcement, no release blocking, no deploy execution, no provider/repo mutation, no AI,
   no required Agent Governance, and no compliance/certification/legal/regulatory claim.
+- `KAN-128` reconnects Change Risk/CAB evidence to Deployment Gate History through read-only
+  `GET /deployment-gates/{deployment_gate_id}/risk-context` and Desktop `Risk & CAB Context`.
+  It composes existing evaluations, CAB packets, and CAB decision manifests without creating a new
+  table, recalculating risk, mutating source records, creating artifacts automatically, enforcing
+  deployments, using AI/Agent Governance, or creating claims.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated

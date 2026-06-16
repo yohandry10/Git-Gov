@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { AlertTriangle, History, RefreshCw, ShieldCheck, ShieldX } from 'lucide-react'
+import { AlertTriangle, Download, FileText, History, RefreshCw, ShieldCheck, ShieldX } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
@@ -11,6 +11,14 @@ function decisionVariant(decision: string): 'success' | 'warning' | 'danger' | '
   if (decision === 'advisory') return 'warning'
   if (decision === 'blocked') return 'danger'
   return 'neutral'
+}
+
+function riskVariant(risk: string | null | undefined): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (risk === 'low') return 'success'
+  if (risk === 'medium') return 'warning'
+  if (risk === 'high') return 'danger'
+  if (risk === 'unknown') return 'neutral'
+  return 'info'
 }
 
 function shortSha(value: string): string {
@@ -33,10 +41,15 @@ export function DeploymentGateHistoryPanel() {
   const jiraCoverageFilters = useControlPlaneStore((state) => state.jiraCoverageFilters)
   const authorizations = useControlPlaneStore((state) => state.deploymentGateAuthorizations)
   const authorizationsTotal = useControlPlaneStore((state) => state.deploymentGateAuthorizationsTotal)
+  const riskContexts = useControlPlaneStore((state) => state.deploymentGateRiskContexts)
   const updatedAt = useControlPlaneStore((state) => state.deploymentGateAuthorizationsUpdatedAt)
   const isLoading = useControlPlaneStore((state) => state.isDeploymentGateAuthorizationsLoading)
+  const isRiskContextLoading = useControlPlaneStore((state) => state.isDeploymentGateRiskContextLoading)
+  const riskContextError = useControlPlaneStore((state) => state.deploymentGateRiskContextError)
   const displayTimezone = useControlPlaneStore((state) => state.displayTimezone)
   const loadAuthorizations = useControlPlaneStore((state) => state.loadDeploymentGateAuthorizations)
+  const getRiskContext = useControlPlaneStore((state) => state.getDeploymentGateRiskContext)
+  const downloadManifest = useControlPlaneStore((state) => state.downloadChangeRiskCabDecisionManifest)
 
   const defaultRepository =
     enterpriseAdoptionProfile?.repository_full_name ||
@@ -58,6 +71,14 @@ export function DeploymentGateHistoryPanel() {
   useEffect(() => {
     void refreshHistory()
   }, [refreshHistory])
+
+  const loadRiskContext = useCallback((deploymentGateId: string) => {
+    void getRiskContext(deploymentGateId, { org_name: selectedOrgName || null })
+  }, [getRiskContext, selectedOrgName])
+
+  const downloadLatestManifest = useCallback((manifestId: string) => {
+    void downloadManifest(manifestId, { org_name: selectedOrgName || null })
+  }, [downloadManifest, selectedOrgName])
 
   return (
     <section id="deployment-gate-history" className="glass-panel p-5 scroll-mt-4">
@@ -115,6 +136,13 @@ export function DeploymentGateHistoryPanel() {
         <div className="max-h-[460px] overflow-auto divide-y divide-white/6">
           {authorizations.map((authorization) => (
             <div key={authorization.authorization_id} className="p-3 text-xs">
+              {(() => {
+                const riskContext = riskContexts[authorization.authorization_id]
+                const latestManifest = riskContext?.cab_decision_manifests[0]
+                const latestPacket = riskContext?.cab_packets[0]
+                const latestEvaluation = riskContext?.change_risk_evaluations[0]
+                return (
+                  <>
               <div className="flex flex-wrap items-center gap-2">
                 {authorization.approved ? (
                   <ShieldCheck size={14} className="text-success-300" />
@@ -148,6 +176,81 @@ export function DeploymentGateHistoryPanel() {
               </div>
 
               <div className="mt-2 text-[11px] text-surface-300">{authorization.reason}</div>
+              <div className="mt-3 rounded border border-white/8 bg-surface-950/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileText size={14} className="text-brand-300" />
+                    <span className="text-[11px] font-medium text-surface-200">Risk & CAB Context</span>
+                    {riskContext?.latest_risk_level && (
+                      <Badge variant={riskVariant(riskContext.latest_risk_level)}>
+                        {riskContext.latest_risk_level}
+                      </Badge>
+                    )}
+                    {riskContext?.latest_review_status && (
+                      <Badge variant="info">{riskContext.latest_review_status}</Badge>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    loading={isRiskContextLoading}
+                    onClick={() => loadRiskContext(authorization.authorization_id)}
+                    title="Load read-only Risk and CAB context"
+                  >
+                    <RefreshCw size={13} />
+                    Context
+                  </Button>
+                </div>
+                <div className="mt-2 rounded border border-warning-500/20 bg-warning-500/8 px-2 py-1 text-[10px] text-warning-100">
+                  Advisory only. Does not approve, block, certify, or deploy.
+                </div>
+                {riskContext ? (
+                  <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <div className="rounded border border-white/8 bg-white/[0.03] p-2">
+                      <div className="text-[10px] text-surface-500">Risk evaluations</div>
+                      <div className="mt-1 text-[11px] text-surface-200">{riskContext.change_risk_evaluations.length}</div>
+                      <div className="mt-1 truncate font-mono text-[10px] text-surface-500" title={latestEvaluation?.evaluation_id}>
+                        {latestEvaluation?.evaluation_id || 'No risk context yet'}
+                      </div>
+                      <div className="mt-1 text-[10px] text-surface-500">Rules: {riskContext.triggered_rules_count}</div>
+                    </div>
+                    <div className="rounded border border-white/8 bg-white/[0.03] p-2">
+                      <div className="text-[10px] text-surface-500">CAB packet</div>
+                      <div className="mt-1 truncate font-mono text-[10px] text-surface-300" title={latestPacket?.packet_id}>
+                        {latestPacket?.packet_id || 'No packet linked'}
+                      </div>
+                      <div className="mt-1 truncate font-mono text-[10px] text-surface-500" title={latestPacket?.artifact_hash}>
+                        {latestPacket?.artifact_hash ? shortSha(latestPacket.artifact_hash) : 'No packet hash'}
+                      </div>
+                    </div>
+                    <div className="rounded border border-white/8 bg-white/[0.03] p-2">
+                      <div className="text-[10px] text-surface-500">Decision manifest</div>
+                      <div className="mt-1 truncate font-mono text-[10px] text-surface-300" title={latestManifest?.manifest_id}>
+                        {latestManifest?.manifest_id || 'No manifest linked'}
+                      </div>
+                      <div className="mt-1 truncate font-mono text-[10px] text-surface-500" title={latestManifest?.manifest_hash}>
+                        {latestManifest?.manifest_hash ? shortSha(latestManifest.manifest_hash) : 'No manifest hash'}
+                      </div>
+                      {latestManifest && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2"
+                          onClick={() => downloadLatestManifest(latestManifest.manifest_id)}
+                          title="Download CAB decision manifest"
+                        >
+                          <Download size={13} />
+                          Download
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-[11px] text-surface-500">
+                    {riskContextError || 'No risk context loaded yet.'}
+                  </div>
+                )}
+              </div>
               {authorization.break_glass_used && (
                 <div className="mt-2 rounded border border-warning-500/20 bg-warning-500/8 p-2 text-[11px] text-warning-100">
                   <div className="flex items-center gap-1 font-medium">
@@ -181,6 +284,9 @@ export function DeploymentGateHistoryPanel() {
                 <span className="truncate" title={authorization.policy_checksum}>Policy checksum: <span className="font-mono text-surface-300">{authorization.policy_checksum.slice(0, 16)}</span></span>
                 <span className="truncate">Requested by: <span className="text-surface-300">{authorization.requested_by}</span></span>
               </div>
+                  </>
+                )
+              })()}
             </div>
           ))}
           {authorizations.length === 0 && (

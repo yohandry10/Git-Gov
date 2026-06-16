@@ -1102,6 +1102,133 @@ describe('useControlPlaneStore', () => {
       expect(useControlPlaneStore.getState().deploymentGateAuthorizationsUpdatedAt).toBeGreaterThan(0)
     })
 
+    it('loads Deployment Gate Risk and CAB context without mutating source records', async () => {
+      useControlPlaneStore.setState({
+        serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        selectedOrgName: 'yohandry10',
+      })
+      const authorization = {
+        id: 'row-1',
+        authorization_id: 'dga_123',
+        org_id: 'org-1',
+        release_id: 'KAN-128',
+        repository_full_name: 'yohandry10/Git-Gov',
+        branch: 'main',
+        target_sha: 'abcdef1234567890abcdef1234567890abcdef12',
+        environment: 'production',
+        deployer: 'github-actions',
+        evidence_packet_hash: 'e'.repeat(64),
+        decision: 'blocked',
+        approved: false,
+        blocking: true,
+        would_block: true,
+        reason: 'Manual-first deployment gate blocked.',
+        blocked_by: ['missing_approval'],
+        warnings: [],
+        policy_checksum: 'sha256:' + 'a'.repeat(64),
+        break_glass_eligible: false,
+        break_glass_used: false,
+        evaluation: {
+          mode: 'manual-first',
+          decision: 'blocked',
+          required_approval_count: 1,
+          valid_approval_count: 0,
+          required_approvers: [],
+          approvals: [],
+          issues: [],
+          next_steps: [],
+        },
+        governance_decision: { agent_governance_used: false },
+        details: {},
+        request_payload: {},
+        requested_by: 'admin',
+        created_at: 3,
+      }
+      mockInvoke.mockResolvedValueOnce({
+        deployment_gate_id: 'dga_123',
+        authorization,
+        change_risk_evaluations: [{
+          evaluation_id: 'cra_123',
+          org_id: 'org-1',
+          repository_full_name: 'yohandry10/Git-Gov',
+          branch: 'main',
+          environment: 'production',
+          deployment_gate_id: 'dga_123',
+          risk_level: 'high',
+          ruleset_version: 'change_risk_rules.v1',
+          risk_reasons: ['deployment_gate_blocked'],
+          missing_evidence: ['release_approval'],
+          blocking_gaps: ['missing_approval'],
+          recommended_manual_actions: ['Resolve blocking governance gaps.'],
+          triggered_rules: ['gate_blocked'],
+          non_triggered_rules: [],
+          evaluation_trace: { risk_level: 'high' },
+          trace_hash: 'sha256:' + '1'.repeat(64),
+          advisory_only: true,
+          llm_used: false,
+          agent_governance_used: false,
+          compliance_claim: false,
+          certification: false,
+          evaluation: {},
+          request_payload: { deployment_gate_id: 'dga_123' },
+          created_by: 'admin',
+          review_status: 'accepted_risk',
+          created_at: 4,
+        }],
+        cab_packets: [{
+          packet_id: 'crcab_123',
+          org_id: 'org-1',
+          name: 'KAN-128 CAB',
+          filters: { deployment_gate_ids: ['dga_123'] },
+          evaluation_ids: ['cra_123'],
+          artifact_hash: 'sha256:' + 'b'.repeat(64),
+          status: 'active',
+          created_by_user_id: 'admin',
+          created_at: 5,
+          download_count: 0,
+          review_status: 'needs_mitigation',
+          follow_up_required: true,
+        }],
+        cab_decision_manifests: [{
+          manifest_id: 'crcabdm_123',
+          org_id: 'org-1',
+          cab_packet_id: 'crcab_123',
+          cab_packet_hash: 'sha256:' + 'b'.repeat(64),
+          manifest_hash: 'sha256:' + 'c'.repeat(64),
+          review_status_snapshot: 'needs_mitigation',
+          created_by_user_id: 'admin',
+          created_at: 6,
+          download_count: 0,
+          status: 'active',
+        }],
+        latest_risk_level: 'high',
+        latest_review_status: 'accepted_risk',
+        triggered_rules_count: 1,
+        advisory_only: true,
+        enforcement_used: false,
+        llm_used: false,
+        agent_governance_used: false,
+        compliance_claim: false,
+        certification: false,
+      })
+
+      const response = await useControlPlaneStore.getState().getDeploymentGateRiskContext(' dga_123 ')
+
+      expect(mockInvoke).toHaveBeenCalledWith('cmd_server_get_deployment_gate_risk_context', {
+        config: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },
+        deploymentGateId: 'dga_123',
+        query: { org_name: 'yohandry10' },
+      })
+      expect(response?.deployment_gate_id).toBe('dga_123')
+      expect(response?.latest_risk_level).toBe('high')
+      expect(response?.enforcement_used).toBe(false)
+      expect(response?.llm_used).toBe(false)
+      expect(response?.agent_governance_used).toBe(false)
+      expect(response?.compliance_claim).toBe(false)
+      expect(response?.certification).toBe(false)
+      expect(useControlPlaneStore.getState().deploymentGateRiskContexts.dga_123.cab_decision_manifests[0].manifest_hash).toMatch(/^sha256:/)
+    })
+
     it('loads change risk advisory history with tenant scope and release filters', async () => {
       useControlPlaneStore.setState({
         serverConfig: { url: 'https://gitgov-api.onrender.com', api_key: 'key' },

@@ -324,6 +324,23 @@ export interface DeploymentGateAuthorizationListResponse {
   offset: number
 }
 
+export interface DeploymentGateRiskContextResponse {
+  deployment_gate_id: string
+  authorization: DeploymentGateAuthorizationRecord
+  change_risk_evaluations: ChangeRiskEvaluationRecord[]
+  cab_packets: ChangeRiskCabPacketRecord[]
+  cab_decision_manifests: ChangeRiskCabDecisionManifestRecord[]
+  latest_risk_level?: string | null
+  latest_review_status?: string | null
+  triggered_rules_count: number
+  advisory_only: boolean
+  enforcement_used: boolean
+  llm_used: boolean
+  agent_governance_used: boolean
+  compliance_claim: boolean
+  certification: boolean
+}
+
 export type ChangeRiskLevel = 'low' | 'medium' | 'high' | 'unknown' | string
 
 export interface ChangeRiskEvaluationRecord {
@@ -1729,6 +1746,7 @@ export interface ControlPlaneState {
   deploymentGateAuthorizationsTotal: number
   deploymentGateAuthorizationsFilters: DeploymentGateAuthorizationQuery
   deploymentGateAuthorizationsUpdatedAt: number | null
+  deploymentGateRiskContexts: Record<string, DeploymentGateRiskContextResponse>
   changeRiskEvaluations: ChangeRiskEvaluationRecord[]
   changeRiskEvaluationsTotal: number
   changeRiskEvaluationsFilters: ChangeRiskEvaluationQuery
@@ -1797,6 +1815,7 @@ export interface ControlPlaneState {
   isReleaseGovernanceEvaluating: boolean
   isReleaseApprovalsLoading: boolean
   isDeploymentGateAuthorizationsLoading: boolean
+  isDeploymentGateRiskContextLoading: boolean
   isComplianceFrameworksLoading: boolean
   isComplianceFrameworkPackImporting: boolean
   isComplianceFrameworkPackReviewing: boolean
@@ -1838,6 +1857,7 @@ export interface ControlPlaneState {
   isCompliancePeriodReportSharePackageRevoking: boolean
   isReleaseApprovalSubmitting: boolean
   releaseApprovalError: string | null
+  deploymentGateRiskContextError: string | null
   complianceEvidenceError: string | null
   userRole: string | null
   userClientId: string | null
@@ -1921,6 +1941,7 @@ export interface ControlPlaneActions {
   completeFirstGovernedRepoWizardRun: (runId: string, payload: FirstGovernedRepoWizardActionRequest, orgName?: string) => Promise<FirstGovernedRepoWizardRunResponse | null>
   loadEnterpriseReleaseApprovals: (query?: EnterpriseReleaseApprovalQuery) => Promise<EnterpriseReleaseApprovalListResponse | null>
   loadDeploymentGateAuthorizations: (query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateAuthorizationListResponse | null>
+  getDeploymentGateRiskContext: (deploymentGateId: string, query?: DeploymentGateAuthorizationQuery) => Promise<DeploymentGateRiskContextResponse | null>
   loadChangeRiskEvaluations: (query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationListResponse | null>
   loadChangeRiskRules: () => Promise<ChangeRiskRuleCatalogResponse | null>
   getChangeRiskEvaluation: (evaluationId: string, query?: ChangeRiskEvaluationQuery) => Promise<ChangeRiskEvaluationRecord | null>

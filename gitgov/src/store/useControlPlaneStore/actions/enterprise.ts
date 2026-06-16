@@ -23,6 +23,7 @@ import type {
   ChangeRiskRuleCatalogResponse,
   DeploymentGateAuthorizationListResponse,
   DeploymentGateAuthorizationQuery,
+  DeploymentGateRiskContextResponse,
   EnterpriseAdoptionProfileRecord,
   EnterpriseAdoptionProfileResponse,
   FirstGovernedRepoWizardActionRequest,
@@ -57,6 +58,7 @@ type EnterpriseActionKeys =
   | 'completeFirstGovernedRepoWizardRun'
   | 'loadEnterpriseReleaseApprovals'
   | 'loadDeploymentGateAuthorizations'
+  | 'getDeploymentGateRiskContext'
   | 'loadChangeRiskEvaluations'
   | 'loadChangeRiskRules'
   | 'getChangeRiskEvaluation'
@@ -579,6 +581,44 @@ export function createEnterpriseActions(
       set({
         releaseApprovalError: message,
         isDeploymentGateAuthorizationsLoading: false,
+      })
+      return null
+    }
+  },
+
+  getDeploymentGateRiskContext: async (deploymentGateId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const normalizedGateId = deploymentGateId.trim()
+    if (!normalizedGateId) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: DeploymentGateAuthorizationQuery = {
+      org_name: orgName ?? null,
+    }
+
+    set({
+      isDeploymentGateRiskContextLoading: true,
+      deploymentGateRiskContextError: null,
+    })
+    try {
+      const response = await tauriInvoke<DeploymentGateRiskContextResponse>('cmd_server_get_deployment_gate_risk_context', {
+        config: serverConfig,
+        deploymentGateId: normalizedGateId,
+        query: nextQuery,
+      })
+      set((state) => ({
+        deploymentGateRiskContexts: {
+          ...state.deploymentGateRiskContexts,
+          [normalizedGateId]: response,
+        },
+        isDeploymentGateRiskContextLoading: false,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        deploymentGateRiskContextError: message,
+        isDeploymentGateRiskContextLoading: false,
       })
       return null
     }

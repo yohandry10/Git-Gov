@@ -267,6 +267,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/enterprise/release-governance/evaluate` | Bearer | Evaluar governance de release enterprise |
 | `/deployment-gates/authorize` | Bearer | Autorizar, bloquear, registrar advisory o auditar break-glass para un deploy CI/CD |
 | `/deployment-gates/authorizations` | Bearer | Listar historial de autorizaciones de deploy |
+| `/deployment-gates/{deployment_gate_id}/risk-context` | Bearer (admin/auditor) | Leer contexto read-only de Change Risk, CAB packets y CAB decision manifests relacionados con un Deployment Gate; no recalcula riesgo, no muta gates ni hace enforcement |
 | `/deployment-gates/break-glass-approvals` | Bearer | Crear/listar aprobaciones break-glass preaprobadas para Deployment Gates |
 | `/change-risk/rules` | Bearer (admin/auditor) | Leer el catálogo determinístico `change_risk_rules.v1`; no usa AI, no muta proveedores/repos y no crea claims |
 | `/change-risk/evaluations` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear evaluaciones advisory-only de Change Risk; el listado acepta filtro `review_status` para cola CAB/manual |
@@ -277,7 +278,12 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/change-risk/cab-packets/{packet_id}` | Bearer (admin/auditor) | Leer metadatos y artifact JSON de un paquete CAB tenant-scoped |
 | `/change-risk/cab-packets/{packet_id}/download` | Bearer (admin/auditor) | Descargar artifact JSON hashable e incrementar contador de descarga; paquetes archivados devuelven conflicto |
 | `/change-risk/cab-packets/{packet_id}/review` | Bearer (admin/auditor lectura; admin escritura) | Leer o actualizar la disposición manual CAB sobre un paquete sin aprobar deploys, bloquear releases, mutar proveedores/repos, mutar evaluaciones fuente ni cambiar el hash del artifact |
+| `/change-risk/cab-packets/{packet_id}/decision-manifests` | Bearer (admin/auditor lectura; admin creación) | Listar o crear manifests CAB manuales, hashables y revocables para paquetes revisados |
 | `/change-risk/cab-packets/{packet_id}/archive` | Bearer (admin) | Archivar un paquete CAB activo sin mutar evaluaciones, gates, proveedores, repositorios ni resultados de release |
+| `/change-risk/cab-decision-manifests/{manifest_id}` | Bearer (admin/auditor) | Leer metadatos y artifact JSON de un CAB decision manifest tenant-scoped |
+| `/change-risk/cab-decision-manifests/{manifest_id}/detail` | Bearer (admin/auditor) | Leer un CAB decision manifest sin incrementar contador de descarga |
+| `/change-risk/cab-decision-manifests/{manifest_id}/download` | Bearer (admin/auditor) | Descargar artifact JSON hashable e incrementar contador de descarga; manifests revocados devuelven conflicto |
+| `/change-risk/cab-decision-manifests/{manifest_id}/revoke` | Bearer (admin) | Revocar un manifest CAB sin mutar el CAB packet, evaluaciones, gates, proveedores ni repositorios |
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |
 | `/agent-governance/evaluations` | Bearer (admin) | Listar historial de evaluaciones agent governance con request payload minimizado |

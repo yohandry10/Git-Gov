@@ -454,6 +454,10 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             get(handlers::list_deployment_gate_authorizations),
         )
         .route(
+            "/deployment-gates/{deployment_gate_id}/risk-context",
+            get(handlers::get_deployment_gate_risk_context),
+        )
+        .route(
             "/deployment-gates/break-glass-approvals",
             get(handlers::list_deployment_gate_break_glass_approvals)
                 .post(handlers::create_deployment_gate_break_glass_approval),

@@ -316,6 +316,55 @@ fn deployment_gate_reason(
     }
 }
 
+fn normalize_deployment_gate_risk_context_id(
+    deployment_gate_id: &str,
+) -> Result<String, String> {
+    let deployment_gate_id = deployment_gate_id.trim();
+    if deployment_gate_id.is_empty()
+        || deployment_gate_id.len() > 80
+        || has_control_chars(deployment_gate_id)
+    {
+        return Err("deployment_gate_id is invalid or too long.".to_string());
+    }
+    Ok(deployment_gate_id.to_string())
+}
+
+fn build_deployment_gate_risk_context_response(
+    deployment_gate_id: String,
+    authorization: DeploymentGateAuthorizationRecord,
+    change_risk_evaluations: Vec<ChangeRiskEvaluationRecord>,
+    cab_packets: Vec<ChangeRiskCabPacketRecord>,
+    cab_decision_manifests: Vec<ChangeRiskCabDecisionManifestRecord>,
+) -> DeploymentGateRiskContextResponse {
+    let latest_risk_level = change_risk_evaluations
+        .first()
+        .map(|record| record.risk_level.clone());
+    let latest_review_status = change_risk_evaluations
+        .first()
+        .map(|record| record.review_status.clone());
+    let triggered_rules: HashSet<String> = change_risk_evaluations
+        .iter()
+        .flat_map(|record| record.triggered_rules.iter().cloned())
+        .collect();
+
+    DeploymentGateRiskContextResponse {
+        deployment_gate_id,
+        authorization,
+        change_risk_evaluations,
+        cab_packets,
+        cab_decision_manifests,
+        latest_risk_level,
+        latest_review_status,
+        triggered_rules_count: triggered_rules.len(),
+        advisory_only: true,
+        enforcement_used: false,
+        llm_used: false,
+        agent_governance_used: false,
+        compliance_claim: false,
+        certification: false,
+    }
+}
+
 pub async fn authorize_deployment_gate(
     Extension(auth_user): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
@@ -731,6 +780,162 @@ pub async fn authorize_deployment_gate(
                 .into_response()
         }
     }
+}
+
+pub async fn get_deployment_gate_risk_context(
+    Extension(auth_user): Extension<AuthUser>,
+    State(state): State<Arc<AppState>>,
+    Path(deployment_gate_id): Path<String>,
+    Query(mut query): Query<DeploymentGateAuthorizationQuery>,
+) -> impl IntoResponse {
+    if let Err(resp) = require_compliance_reviewer(&auth_user) {
+        return resp.into_response();
+    }
+
+    let deployment_gate_id = match normalize_deployment_gate_risk_context_id(&deployment_gate_id) {
+        Ok(value) => value,
+        Err(error) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": error }))).into_response(),
+    };
+    normalize_release_approval_optional_text(&mut query.org_name);
+
+    let org_id = match resolve_and_check_org_scope(
+        &state,
+        auth_user.org_id.as_deref(),
+        query.org_name.as_deref(),
+        true,
+    )
+    .await
+    {
+        Ok(Some(org_id)) => org_id,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "org_name is required for global admin keys" })),
+            )
+                .into_response();
+        }
+        Err(err) => {
+            return (
+                org_scope_status(err),
+                Json(json!({ "error": release_approval_scope_error_message(err) })),
+            )
+                .into_response();
+        }
+    };
+
+    let gate_query = DeploymentGateAuthorizationQuery {
+        authorization_id: Some(deployment_gate_id.clone()),
+        limit: Some(1),
+        offset: Some(0),
+        ..DeploymentGateAuthorizationQuery::default()
+    };
+    let authorization = match state
+        .db
+        .list_deployment_gate_authorizations(&org_id, &gate_query, 1, 0)
+        .await
+    {
+        Ok((mut items, _)) => match items.pop() {
+            Some(record) => record,
+            None => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(json!({ "error": "Deployment Gate authorization not found" })),
+                )
+                    .into_response();
+            }
+        },
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, deployment_gate_id = %deployment_gate_id, "Failed to load Deployment Gate authorization for risk context");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let risk_query = ChangeRiskEvaluationQuery {
+        deployment_gate_id: Some(deployment_gate_id.clone()),
+        limit: Some(100),
+        offset: Some(0),
+        ..ChangeRiskEvaluationQuery::default()
+    };
+    let change_risk_evaluations = match state
+        .db
+        .list_change_risk_evaluations(&org_id, &risk_query, 100, 0)
+        .await
+    {
+        Ok((items, _)) => items,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, deployment_gate_id = %deployment_gate_id, "Failed to load Change Risk evaluations for Deployment Gate context");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let evaluation_ids: Vec<String> = change_risk_evaluations
+        .iter()
+        .map(|record| record.evaluation_id.clone())
+        .collect();
+    let cab_packets = match state
+        .db
+        .list_change_risk_cab_packets_for_gate_context(
+            &org_id,
+            &deployment_gate_id,
+            &evaluation_ids,
+            100,
+        )
+        .await
+    {
+        Ok(items) => items,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, deployment_gate_id = %deployment_gate_id, "Failed to load CAB packets for Deployment Gate risk context");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    let cab_packet_ids: Vec<String> = cab_packets
+        .iter()
+        .map(|packet| packet.packet_id.clone())
+        .collect();
+    let cab_decision_manifests = match state
+        .db
+        .list_change_risk_cab_decision_manifests_for_gate_context(
+            &org_id,
+            &cab_packet_ids,
+            100,
+        )
+        .await
+    {
+        Ok(items) => items,
+        Err(e) => {
+            tracing::error!(error = %e, org_id = %org_id, deployment_gate_id = %deployment_gate_id, "Failed to load CAB decision manifests for Deployment Gate risk context");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal database error" })),
+            )
+                .into_response();
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(build_deployment_gate_risk_context_response(
+            deployment_gate_id,
+            authorization,
+            change_risk_evaluations,
+            cab_packets,
+            cab_decision_manifests,
+        )),
+    )
+        .into_response()
 }
 
 pub async fn list_deployment_gate_authorizations(
