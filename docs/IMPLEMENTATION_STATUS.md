@@ -4,8 +4,8 @@ Updated: 2026-06-16
 
 ## KAN-134 Native Terminal Safe Quick Commands - 2026-06-16
 
-`KAN-134 - Native Terminal Safe Quick Commands MVP` is in progress. GitHub issue `#470` tracks the
-slice.
+`KAN-134 - Native Terminal Safe Quick Commands MVP` is completed. GitHub issue `#470` shipped
+through PR `#471`, merged to `main` as `6b8faef9`.
 
 Product decision:
 
@@ -46,7 +46,10 @@ Validation:
 - Frontend typecheck, lint, build, and full Vitest passed (`400` frontend tests).
 - Tauri fmt/check/clippy/full tests passed (`52` Tauri tests).
 - `git diff --check` and publication guard passed.
-- PR checks remain pending before merge.
+- PR checks passed.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
 - No Render/API deploy is expected because KAN-134 is local Desktop/frontend only.
 
 ## KAN-133 Native Terminal Repo/Branch Context - 2026-06-16
