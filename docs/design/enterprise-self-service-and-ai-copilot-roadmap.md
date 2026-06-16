@@ -621,20 +621,15 @@ Current primitives:
   current repo/branch. It does not add backend endpoints, create evidence, execute commands,
   intercept/block commands, mutate providers/repos/deployments, or create compliance/certification
   claims.
-- `KAN-136` starts the VS Code extension surface with a read-only `GitGov Governance` tree view. It
-  detects the current workspace Git repo/branch, stores the API key in VS Code SecretStorage, and
-  reads existing Deployment Gate, Change Risk, and Executive Governance endpoints. It does not add
-  backend endpoints, poll in the background, intercept commands, execute Git/deploy actions, mutate
-  providers/repos/deployments, use AI/Agent Governance, or create compliance/certification claims.
 
 Future scope:
 
-- VS Code extension follow-ups with policy preview, pipeline state, audit trail snippets, and safer
-  Desktop/Web deep links after the read-only MVP is stable.
 - Embedded terminal improvements:
   - optional provider-specific read-only quick commands after additional safety review.
   - explicit branch gate status after the Desktop gate context is stable enough for developer use.
   - no command interception by default.
+- External editor plugins are not part of the active roadmap. Keep developer distribution focused on
+  the Desktop/Workspace surfaces until a new explicit product decision reopens that path.
 
 Guardrail:
 

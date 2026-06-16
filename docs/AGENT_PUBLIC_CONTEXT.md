@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-136` VS Code Extension Read-Only Governance Context MVP
+Ticket: `KAN-137` Remove external editor extension direction
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -121,15 +121,9 @@ The repo already contains substantial product surface:
 - Native Terminal Governance Context from KAN-135 continues Developer Distribution Surfaces 0.10.
   It adds a read-only Governance Context drawer to the native terminal and reuses existing
   Deployment Gate, Change Risk, and Executive Governance read models.
-- VS Code Extension Read-Only Governance Context from KAN-136 is the active next Developer
-  Distribution Surfaces 0.10 slice. It adds a local `gitgov-vscode` package with a read-only tree
-  view, SecretStorage-backed API key handling, read-only Git workspace detection, and GET-only
-  GitGov context reads. It must not enforce policy, intercept commands, execute deploys, mutate
-  providers/repos, use AI/Agent Governance, or make compliance/certification claims.
-  It adds a read-only terminal drawer that maps the detected local Git repository to a safe GitHub
-  `owner/repo` target and loads existing Deployment Gate, Change Risk, and Executive Governance
-  read models. It does not add backend endpoints, execute/intercept/block commands, mutate providers
-  or repositories, create evidence, or make compliance/certification claims.
+- KAN-137 removes the external editor extension direction from the active product roadmap and repo.
+  Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
+  a future explicit product decision reopens external editor plugins.
 - Public web documentation, marketing/download content, and AI copilot route in `gitgov-web`.
 - CI guardrails for traceability, publication safety, workflows, server/frontend/desktop checks, website build, quality-gate matrix, release readiness, public naming, and local SonarQube governance.
 
@@ -228,9 +222,9 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Current Product Work
 
-`KAN-133 - Native Terminal Repo/Branch Context MVP` is the current product slice. It continues
-roadmap block `0.10 Developer Distribution Surfaces` by showing safe local Git context in the
-Desktop native terminal header while preserving non-intercepting native PTY behavior.
+`KAN-137 - Remove external editor extension product direction` is the current cleanup slice. It
+removes the external editor extension path from the active product roadmap/current repo and keeps
+roadmap block `0.10 Developer Distribution Surfaces` focused on Desktop/Workspace terminal surfaces.
 
 `KAN-120 - First Governed Repo Setup Integration Wizard` is completed through PR `#419` and main
 commit `e244c1c`. It resumes `0.1 Deployment Gates` by turning KAN-80's persisted setup into a
