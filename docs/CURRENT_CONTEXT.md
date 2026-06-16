@@ -1,7 +1,7 @@
 # GitGov Current Context Handoff
 
 Updated: 2026-06-16
-Ticket: `KAN-126` Change Risk CAB Packet Manual Disposition
+Ticket: `KAN-127` Change Risk CAB Decision Manifest
 
 Read this file first when resuming work. It is the compact operational handoff for the current GitGov state.
 
@@ -9,7 +9,9 @@ Read this file first when resuming work. It is the compact operational handoff f
 
 - Local workspace: `C:\Users\PC\Desktop\GitGov`.
 - Current planning source: GitHub Issues. The former Jira Cloud project is deactivated and should not block ongoing work.
-- Current implementation ticket: GitHub issue `#439`, `KAN-126 Change Risk CAB Packet Manual Disposition`, completed by PR `#440`, merged to `main` as `b7bc9e81`.
+- Current implementation ticket: GitHub issue `#443`, `KAN-127 Change Risk CAB Decision Manifest`, in progress on branch `product/KAN-127-cab-decision-manifest`.
+- KAN-127 current status on 2026-06-16: GPT/product-leader ordinance selected `Change Risk CAB Decision Manifest` after KAN-125/KAN-126. The local implementation adds Supabase migration/postcheck `v67`; append-only table `change_risk_cab_decision_manifests`; backend routes `POST/GET /change-risk/cab-packets/{packet_id}/decision-manifests`, `GET /change-risk/cab-decision-manifests/{manifest_id}`, `GET /change-risk/cab-decision-manifests/{manifest_id}/download`, and `PATCH /change-risk/cab-decision-manifests/{manifest_id}/revoke`; manifest schema `gitgov_change_risk_cab_decision_manifest.v1`; Admin create/revoke and Admin/Auditor read/download; Developer/Agent denial; tenant isolation; audit actions `cab_decision_manifest_created`, `cab_decision_manifest_downloaded`, and `cab_decision_manifest_revoked`; Tauri DTO/client/commands; Control Plane store state/actions; Governance > Releases `Decision Manifest` panel; and docs. Local validation passed: backend `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and `cargo test --no-run`; Tauri `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, and tests (`49` passed); frontend `typecheck`, `lint`, full Vitest (`380` passed), focused store test (`46` passed), and build with the pre-existing Vite large chunk warning; focused real Postgres backend test `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` with manifest create/list/get/download/revoke coverage; real Postgres `v67` migration/postcheck in rollback; `git diff --check`; and publication guard. Pending: PR, required checks, merge, production `v67`, Render deploy, production smoke, and final issue/PR documentation.
+- Previous implementation ticket: GitHub issue `#439`, `KAN-126 Change Risk CAB Packet Manual Disposition`, completed by PR `#440`, merged to `main` as `b7bc9e81`.
 - KAN-126 current status on 2026-06-16: GPT/product-leader ordinance selected `Change Risk CAB Packet Manual Disposition`. The feature records human CAB disposition over KAN-125 hashable packets without approving deployments, blocking releases, executing deploys, mutating providers/repos, mutating source evaluations, changing packet artifact hashes, using AI/LLM/Agent Governance, or creating compliance/certification/legal claims. Implementation adds Supabase migration/postcheck `v66`; backend routes `GET/PATCH /change-risk/cab-packets/{packet_id}/review`; review fields on `change_risk_cab_packets`; Admin update and Admin/Auditor read; safe note validation; audit actions `change_risk_cab_packet_review_viewed` and `change_risk_cab_packet_review_updated`; Tauri DTO/client/commands; Control Plane store state/actions; Governance > Releases CAB disposition UI; and docs. Local validation passed: backend `cargo check`, backend `cargo clippy -- -D warnings`, backend `cargo test --no-run`, Tauri `cargo check`, Tauri `cargo clippy -- -D warnings`, Tauri tests (`49` passed), frontend `typecheck`, frontend `lint`, frontend full Vitest (`379` passed), frontend build with the pre-existing Vite large chunk warning, focused store test (`45` passed), focused backend real Postgres test `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` with `TEST_DATABASE_URL` mapped from ignored local `DATABASE_URL`, real Postgres `v66` migration/postcheck in rollback, `git diff --check`, and publication guard. PR checks passed. Production `v66` migration/postcheck passed. Render deploy `dep-d8ofa167r5hc73c1nf5g` for `b7bc9e81` reached `live`. Final production smoke passed: `/health=ok`, authenticated `/stats=200`, packet `crcab_23d138be426a4967ae0895810e679a19`, artifact hash `sha256:d314caf9c2e41886cdfcbd5e56c841ea84f6329b0c00c7f6f7398a3dbe3b1d9a` unchanged across review updates, final review `needs_mitigation`, secret-like note rejected with HTTP `400`, no-claim flags safe, review audit rows present, Deployment Gate authorization count stayed `2`, and Agent Governance evaluation count stayed `7`.
 - Previous implementation ticket: GitHub issue `#435`, `KAN-125 Change Risk CAB Review Packet`, completed by PR `#436` plus hotfix PR `#437`.
 - KAN-125 product decision from GPT/product review: after KAN-121 deterministic advisory, KAN-122 rule-level explainability, KAN-123 manual review metadata, and KAN-124 review queue filtering, package selected or filtered Change Risk evaluations into a manual CAB/internal-audit artifact. The packet must be JSON-only, hashable, tenant-scoped, no-claim, and manual-first. Admins create/archive; Admins and Auditors list/read/download. Do not add release blocking, deployment execution, provider/repo mutation, policy enforcement, AI/LLM/BYOM/MCP/chatbot behavior, Agent Governance dependency, approval quorum, public links, email/Slack, scheduler, PDF/DOCX, compliance score, certification, legal attestation, or official regulatory claim.
@@ -958,13 +960,13 @@ Use `-Trigger` only when a real unauthenticated/manual URL build launch is inten
 
 ## Current Work Classification
 
-KAN-125 is complete on `main` commit `44c0744b` and production-smoked after the `download_count`
-type repair.
+KAN-127 is in progress on branch `product/KAN-127-cab-decision-manifest` after GPT/product-leader
+selection. Local implementation and focused real validations are complete; remaining work is full
+preflight, PR, required checks, merge, production migration/deploy, and production smoke.
 
 Current work types are:
 
-- Pick the next roadmap slice after KAN-125 through product review before opening the next
-  implementation branch.
+- Finish KAN-127 end-to-end before picking the next roadmap slice.
 - Keep compliance/reporting and deployment-governance work manual-first unless a customer explicitly
   opts into agentic features.
 - Do not add official regulatory wording, compliance scoring, certification claims, scheduler, AI

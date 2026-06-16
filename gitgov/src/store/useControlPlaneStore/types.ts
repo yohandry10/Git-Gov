@@ -575,6 +575,48 @@ export interface ChangeRiskCabPacketReviewResponse {
   certification: boolean
 }
 
+export interface ChangeRiskCabDecisionManifestRecord {
+  manifest_id: string
+  org_id: string
+  cab_packet_id: string
+  cab_packet_hash: string
+  manifest_hash: string
+  review_status_snapshot: ChangeRiskCabPacketReviewStatus
+  reviewed_by_user_id?: string | null
+  reviewed_at?: number | null
+  created_by_user_id: string
+  created_at: number
+  download_count: number
+  downloaded_at?: number | null
+  status: 'active' | 'revoked' | string
+  revoked_at?: number | null
+  revoked_by_user_id?: string | null
+}
+
+export interface ChangeRiskCabDecisionManifestRequest {
+  org_name?: string | null
+}
+
+export interface ChangeRiskCabDecisionManifestQuery {
+  org_name?: string | null
+  status?: 'active' | 'revoked' | string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface ChangeRiskCabDecisionManifestResponse {
+  manifest: ChangeRiskCabDecisionManifestRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
+export interface ChangeRiskCabDecisionManifestListResponse {
+  items: ChangeRiskCabDecisionManifestRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface ComplianceEvidenceExportRequest {
   org_name?: string | null
   scope: string
@@ -1700,6 +1742,10 @@ export interface ControlPlaneState {
   changeRiskCabPacket: ChangeRiskCabPacketResponse | null
   changeRiskCabPacketArtifact: Record<string, unknown> | null
   changeRiskCabPacketReview: ChangeRiskCabPacketReviewResponse | null
+  changeRiskCabDecisionManifests: ChangeRiskCabDecisionManifestRecord[]
+  changeRiskCabDecisionManifestsTotal: number
+  changeRiskCabDecisionManifest: ChangeRiskCabDecisionManifestResponse | null
+  changeRiskCabDecisionManifestArtifact: Record<string, unknown> | null
   isChangeRiskEvaluationsLoading: boolean
   isChangeRiskRulesLoading: boolean
   isChangeRiskTraceLoading: boolean
@@ -1712,6 +1758,10 @@ export interface ControlPlaneState {
   isChangeRiskCabPacketArchiving: boolean
   isChangeRiskCabPacketReviewLoading: boolean
   isChangeRiskCabPacketReviewUpdating: boolean
+  isChangeRiskCabDecisionManifestCreating: boolean
+  isChangeRiskCabDecisionManifestsLoading: boolean
+  isChangeRiskCabDecisionManifestDownloading: boolean
+  isChangeRiskCabDecisionManifestRevoking: boolean
   changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
   complianceControlFrameworks: ComplianceControlFramework[]
@@ -1894,6 +1944,11 @@ export interface ControlPlaneActions {
   updateChangeRiskCabPacketReview: (packetId: string, payload: ChangeRiskCabPacketReviewRequest) => Promise<ChangeRiskCabPacketReviewResponse | null>
   downloadChangeRiskCabPacket: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<Record<string, unknown> | null>
   archiveChangeRiskCabPacket: (packetId: string, orgName?: string | null) => Promise<ChangeRiskCabPacketResponse | null>
+  createChangeRiskCabDecisionManifest: (packetId: string, payload?: ChangeRiskCabDecisionManifestRequest) => Promise<ChangeRiskCabDecisionManifestResponse | null>
+  loadChangeRiskCabDecisionManifests: (packetId: string, query?: ChangeRiskCabDecisionManifestQuery) => Promise<ChangeRiskCabDecisionManifestListResponse | null>
+  getChangeRiskCabDecisionManifest: (manifestId: string, query?: ChangeRiskCabDecisionManifestQuery) => Promise<ChangeRiskCabDecisionManifestResponse | null>
+  downloadChangeRiskCabDecisionManifest: (manifestId: string, query?: ChangeRiskCabDecisionManifestQuery) => Promise<Record<string, unknown> | null>
+  revokeChangeRiskCabDecisionManifest: (manifestId: string, orgName?: string | null) => Promise<ChangeRiskCabDecisionManifestResponse | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
   reviewComplianceFrameworkPack: (

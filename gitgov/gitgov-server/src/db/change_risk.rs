@@ -776,4 +776,264 @@ impl Database {
 
         Ok(row.map(|row| change_risk_cab_packet_from_row(&row)))
     }
+
+    pub async fn create_change_risk_cab_decision_manifest(
+        &self,
+        input: &CreateChangeRiskCabDecisionManifestInput<'_>,
+    ) -> Result<ChangeRiskCabDecisionManifestRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO change_risk_cab_decision_manifests (
+                manifest_id,
+                org_id,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                manifest_json,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                reviewed_at,
+                created_by_user_id
+            )
+            VALUES (
+                $1,
+                $2::uuid,
+                $3,
+                $4,
+                $5,
+                $6::jsonb,
+                $7,
+                $8,
+                CASE WHEN $9::BIGINT IS NULL THEN NULL ELSE to_timestamp($9::DOUBLE PRECISION / 1000.0) END,
+                $10
+            )
+            RETURNING
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id
+            "#,
+        )
+        .bind(input.manifest_id)
+        .bind(input.org_id)
+        .bind(input.cab_packet_id)
+        .bind(input.cab_packet_hash)
+        .bind(input.manifest_hash)
+        .bind(input.manifest_json)
+        .bind(input.review_status_snapshot)
+        .bind(input.reviewed_by_user_id)
+        .bind(input.reviewed_at)
+        .bind(input.created_by_user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(change_risk_cab_decision_manifest_from_row(&row))
+    }
+
+    pub async fn list_change_risk_cab_decision_manifests(
+        &self,
+        input: &ListChangeRiskCabDecisionManifestsInput<'_>,
+    ) -> Result<(Vec<ChangeRiskCabDecisionManifestRecord>, i64), DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id,
+                COUNT(*) OVER() AS total_count
+            FROM change_risk_cab_decision_manifests
+            WHERE org_id = $1::uuid
+              AND cab_packet_id = $2
+              AND ($3::TEXT IS NULL OR status = $3)
+            ORDER BY created_at DESC, manifest_id DESC
+            LIMIT $4
+            OFFSET $5
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.cab_packet_id)
+        .bind(input.status)
+        .bind(input.limit)
+        .bind(input.offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let total = rows
+            .first()
+            .map(|row| row.get::<i64, _>("total_count"))
+            .unwrap_or(0);
+        let items = rows
+            .iter()
+            .map(change_risk_cab_decision_manifest_from_row)
+            .collect();
+        Ok((items, total))
+    }
+
+    pub async fn get_change_risk_cab_decision_manifest(
+        &self,
+        org_id: &str,
+        manifest_id: &str,
+    ) -> Result<Option<ChangeRiskCabDecisionManifestRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id
+            FROM change_risk_cab_decision_manifests
+            WHERE org_id = $1::uuid
+              AND manifest_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(manifest_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_cab_decision_manifest_from_row(&row)))
+    }
+
+    pub async fn get_change_risk_cab_decision_manifest_artifact(
+        &self,
+        org_id: &str,
+        manifest_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT manifest_json
+            FROM change_risk_cab_decision_manifests
+            WHERE org_id = $1::uuid
+              AND manifest_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(manifest_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("manifest_json")))
+    }
+
+    pub async fn download_change_risk_cab_decision_manifest(
+        &self,
+        org_id: &str,
+        manifest_id: &str,
+    ) -> Result<Option<(ChangeRiskCabDecisionManifestRecord, serde_json::Value)>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_cab_decision_manifests
+            SET download_count = download_count + 1,
+                downloaded_at = NOW()
+            WHERE org_id = $1::uuid
+              AND manifest_id = $2
+              AND status = 'active'
+            RETURNING
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                manifest_json,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id
+            "#,
+        )
+        .bind(org_id)
+        .bind(manifest_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let artifact = row.get("manifest_json");
+            (change_risk_cab_decision_manifest_from_row(&row), artifact)
+        }))
+    }
+
+    pub async fn revoke_change_risk_cab_decision_manifest(
+        &self,
+        input: &RevokeChangeRiskCabDecisionManifestInput<'_>,
+    ) -> Result<Option<ChangeRiskCabDecisionManifestRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_cab_decision_manifests
+            SET status = 'revoked',
+                revoked_at = COALESCE(revoked_at, NOW()),
+                revoked_by_user_id = COALESCE(revoked_by_user_id, $3)
+            WHERE org_id = $1::uuid
+              AND manifest_id = $2
+            RETURNING
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.manifest_id)
+        .bind(input.revoked_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_cab_decision_manifest_from_row(&row)))
+    }
 }

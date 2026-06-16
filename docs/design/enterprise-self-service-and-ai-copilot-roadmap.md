@@ -88,6 +88,14 @@ Current primitives:
   CAB/internal-audit review artifact only: no release blocking, no deployment execution, no provider
   or repository mutation, no AI/LLM, no Agent Governance dependency, no public link/email/scheduler,
   and no compliance/certification/legal/regulatory claim.
+- `KAN-126` records manual CAB disposition over a CAB Packet: status, reviewer, safe notes,
+  mitigation, decision reason, and follow-up metadata. It preserves packet artifact hashes and source
+  Change Risk evaluations.
+- `KAN-127` adds a hashable, downloadable, revocable Change Risk CAB Decision Manifest for a
+  reviewed packet. The manifest freezes packet hash, included evaluation trace hashes, final review
+  status, reviewer, safe notes, follow-up fields, and no-claim flags. It remains manual evidence
+  only: no enforcement, no release blocking, no deploy execution, no provider/repo mutation, no AI,
+  no required Agent Governance, and no compliance/certification/legal/regulatory claim.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated

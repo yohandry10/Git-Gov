@@ -1,6 +1,11 @@
 import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import type {
   ControlPlaneActions,
+  ChangeRiskCabDecisionManifestListResponse,
+  ChangeRiskCabDecisionManifestQuery,
+  ChangeRiskCabDecisionManifestRecord,
+  ChangeRiskCabDecisionManifestRequest,
+  ChangeRiskCabDecisionManifestResponse,
   ChangeRiskCabPacketListResponse,
   ChangeRiskCabPacketQuery,
   ChangeRiskCabPacketRecord,
@@ -66,6 +71,11 @@ type EnterpriseActionKeys =
   | 'updateChangeRiskCabPacketReview'
   | 'downloadChangeRiskCabPacket'
   | 'archiveChangeRiskCabPacket'
+  | 'createChangeRiskCabDecisionManifest'
+  | 'loadChangeRiskCabDecisionManifests'
+  | 'getChangeRiskCabDecisionManifest'
+  | 'downloadChangeRiskCabDecisionManifest'
+  | 'revokeChangeRiskCabDecisionManifest'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
   | 'exportAuditData'
@@ -142,6 +152,14 @@ function applyChangeRiskCabPacketReview(
     follow_up_owner_safe: review.follow_up_owner_safe ?? null,
     review_updated_at: review.review_updated_at ?? null,
   }
+}
+
+function applyChangeRiskCabDecisionManifestToList(
+  items: ChangeRiskCabDecisionManifestRecord[],
+  manifest: ChangeRiskCabDecisionManifestRecord,
+): ChangeRiskCabDecisionManifestRecord[] {
+  const next = items.filter((item) => item.manifest_id !== manifest.manifest_id)
+  return [manifest, ...next]
 }
 
 export function createEnterpriseActions(
@@ -1132,6 +1150,187 @@ export function createEnterpriseActions(
       set({
         changeRiskError: message,
         isChangeRiskCabPacketArchiving: false,
+      })
+      return null
+    }
+  },
+
+  createChangeRiskCabDecisionManifest: async (packetId, payload = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+    const request: ChangeRiskCabDecisionManifestRequest = {
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabDecisionManifestCreating: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabDecisionManifestResponse>('cmd_server_create_change_risk_cab_decision_manifest', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        payload: request,
+      })
+      set((state) => ({
+        changeRiskCabDecisionManifest: response,
+        changeRiskCabDecisionManifestArtifact: response.artifact ?? null,
+        changeRiskCabDecisionManifests: applyChangeRiskCabDecisionManifestToList(
+          state.changeRiskCabDecisionManifests,
+          response.manifest,
+        ),
+        changeRiskCabDecisionManifestsTotal: state.changeRiskCabDecisionManifestsTotal + 1,
+        isChangeRiskCabDecisionManifestCreating: false,
+        changeRiskError: null,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabDecisionManifestCreating: false,
+      })
+      return null
+    }
+  },
+
+  loadChangeRiskCabDecisionManifests: async (packetId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabDecisionManifestQuery = {
+      ...query,
+      org_name: orgName ?? null,
+      status: query.status?.trim() || null,
+      limit: query.limit ?? 10,
+      offset: query.offset ?? 0,
+    }
+
+    set({ isChangeRiskCabDecisionManifestsLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabDecisionManifestListResponse>('cmd_server_list_change_risk_cab_decision_manifests', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskCabDecisionManifests: response.items,
+        changeRiskCabDecisionManifestsTotal: response.total,
+        isChangeRiskCabDecisionManifestsLoading: false,
+        changeRiskError: null,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabDecisionManifestsLoading: false,
+      })
+      return null
+    }
+  },
+
+  getChangeRiskCabDecisionManifest: async (manifestId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabDecisionManifestQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabDecisionManifestsLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabDecisionManifestResponse>('cmd_server_get_change_risk_cab_decision_manifest', {
+        config: serverConfig,
+        manifestId: manifestId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskCabDecisionManifest: response,
+        changeRiskCabDecisionManifestArtifact: response.artifact ?? null,
+        isChangeRiskCabDecisionManifestsLoading: false,
+        changeRiskError: null,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabDecisionManifestsLoading: false,
+      })
+      return null
+    }
+  },
+
+  downloadChangeRiskCabDecisionManifest: async (manifestId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabDecisionManifestQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabDecisionManifestDownloading: true, changeRiskError: null })
+    try {
+      const artifact = await tauriInvoke<Record<string, unknown>>('cmd_server_download_change_risk_cab_decision_manifest', {
+        config: serverConfig,
+        manifestId: manifestId.trim(),
+        query: nextQuery,
+      })
+      set((state) => ({
+        changeRiskCabDecisionManifestArtifact: artifact,
+        changeRiskCabDecisionManifests: state.changeRiskCabDecisionManifests.map((manifest) =>
+          manifest.manifest_id === manifestId.trim()
+            ? {
+                ...manifest,
+                download_count: manifest.download_count + 1,
+                downloaded_at: Date.now(),
+              }
+            : manifest,
+        ),
+        isChangeRiskCabDecisionManifestDownloading: false,
+        changeRiskError: null,
+      }))
+      return artifact
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabDecisionManifestDownloading: false,
+      })
+      return null
+    }
+  },
+
+  revokeChangeRiskCabDecisionManifest: async (manifestId, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const payload: ChangeRiskCabDecisionManifestRequest = {
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabDecisionManifestRevoking: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabDecisionManifestResponse>('cmd_server_revoke_change_risk_cab_decision_manifest', {
+        config: serverConfig,
+        manifestId: manifestId.trim(),
+        payload,
+      })
+      set((state) => ({
+        changeRiskCabDecisionManifest: response,
+        changeRiskCabDecisionManifests: state.changeRiskCabDecisionManifests.map((manifest) =>
+          manifest.manifest_id === response.manifest.manifest_id ? response.manifest : manifest,
+        ),
+        isChangeRiskCabDecisionManifestRevoking: false,
+        changeRiskError: null,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabDecisionManifestRevoking: false,
       })
       return null
     }

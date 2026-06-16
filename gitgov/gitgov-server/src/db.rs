@@ -588,6 +588,36 @@ pub struct UpdateChangeRiskCabPacketReviewInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateChangeRiskCabDecisionManifestInput<'a> {
+    pub manifest_id: &'a str,
+    pub org_id: &'a str,
+    pub cab_packet_id: &'a str,
+    pub cab_packet_hash: &'a str,
+    pub manifest_hash: &'a str,
+    pub manifest_json: &'a serde_json::Value,
+    pub review_status_snapshot: &'a str,
+    pub reviewed_by_user_id: Option<&'a str>,
+    pub reviewed_at: Option<i64>,
+    pub created_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListChangeRiskCabDecisionManifestsInput<'a> {
+    pub org_id: &'a str,
+    pub cab_packet_id: &'a str,
+    pub status: Option<&'a str>,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct RevokeChangeRiskCabDecisionManifestInput<'a> {
+    pub org_id: &'a str,
+    pub manifest_id: &'a str,
+    pub revoked_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateAgentGovernanceEvaluationInput {
     pub evaluation_id: String,
     pub payload: AgentGovernanceEvaluationRequest,
@@ -762,6 +792,26 @@ fn change_risk_cab_packet_from_row(row: &PgRow) -> ChangeRiskCabPacketRecord {
         follow_up_required: row.get("follow_up_required"),
         follow_up_owner_safe: row.get("follow_up_owner_safe"),
         review_updated_at: row.get("review_updated_at_ms"),
+    }
+}
+
+fn change_risk_cab_decision_manifest_from_row(row: &PgRow) -> ChangeRiskCabDecisionManifestRecord {
+    ChangeRiskCabDecisionManifestRecord {
+        manifest_id: row.get("manifest_id"),
+        org_id: row.get("org_id"),
+        cab_packet_id: row.get("cab_packet_id"),
+        cab_packet_hash: row.get("cab_packet_hash"),
+        manifest_hash: row.get("manifest_hash"),
+        review_status_snapshot: row.get("review_status_snapshot"),
+        reviewed_by_user_id: row.get("reviewed_by_user_id"),
+        reviewed_at: row.get("reviewed_at_ms"),
+        created_by_user_id: row.get("created_by_user_id"),
+        created_at: row.get("created_at_ms"),
+        download_count: row.get("download_count"),
+        downloaded_at: row.get("downloaded_at_ms"),
+        status: row.get("status"),
+        revoked_at: row.get("revoked_at_ms"),
+        revoked_by_user_id: row.get("revoked_by_user_id"),
     }
 }
 

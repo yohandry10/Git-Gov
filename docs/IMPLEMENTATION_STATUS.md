@@ -2,6 +2,60 @@
 
 Updated: 2026-06-16
 
+## KAN-127 Change Risk CAB Decision Manifest - 2026-06-16
+
+`KAN-127 - Change Risk CAB Decision Manifest` is implemented locally on branch
+`product/KAN-127-cab-decision-manifest` and pending PR/merge/production validation.
+
+Product decision:
+
+- Freeze the final evidence of a reviewed KAN-125/KAN-126 CAB Packet into a portable, hashable JSON
+  manifest.
+- Keep the source CAB Packet artifact hash, source Change Risk evaluations, trace hashes, Deployment
+  Gates, providers, repos, and Agent Governance state unchanged.
+- Let Admins create/revoke manifests and Admins/Auditors read/download them.
+- Keep the feature manual-first, advisory-only, and no-claim.
+
+Implemented locally:
+
+- Supabase migration/postcheck `v67`.
+- New `change_risk_cab_decision_manifests` table.
+- Backend routes for create/list/get/download/revoke.
+- Manifest schema `gitgov_change_risk_cab_decision_manifest.v1`.
+- Audit actions `cab_decision_manifest_created`, `cab_decision_manifest_downloaded`, and
+  `cab_decision_manifest_revoked`.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- Governance > Releases CAB Packet detail `Decision Manifest` panel.
+- Design and validation report docs.
+
+Local validation completed:
+
+- Backend `cargo check`.
+- Backend `cargo fmt --check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Tauri `cargo check`.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri `cargo test` (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest `pnpm --dir gitgov test` (`380` passed).
+- Frontend build `pnpm --dir gitgov build` passed with the pre-existing Vite large chunk warning.
+- Focused store test `pnpm --dir gitgov exec vitest run src/test/useControlPlaneStore.test.ts`
+  passed (`46` tests).
+- Focused backend real Postgres test
+  `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` passed with the new
+  manifest create/list/get/download/revoke assertions.
+- Real Postgres `v67` migration/postcheck passed in a rollback transaction.
+- `git diff --check`.
+- `.\scripts\security\publication_guard.ps1`.
+
+Production validation: pending PR merge, Render deploy, and smoke.
+
+Report: `docs/reports/change-risk-cab-decision-manifest-2026-06-16.md`.
+
 ## KAN-126 Change Risk CAB Packet Manual Disposition - 2026-06-16
 
 `KAN-126 - Change Risk CAB Packet Manual Disposition` is completed. PR `#440` merged to `main` as

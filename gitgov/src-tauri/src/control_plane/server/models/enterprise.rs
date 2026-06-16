@@ -642,6 +642,62 @@ pub struct ChangeRiskCabPacketReviewResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestRecord {
+    pub manifest_id: String,
+    pub org_id: String,
+    pub cab_packet_id: String,
+    pub cab_packet_hash: String,
+    pub manifest_hash: String,
+    pub review_status_snapshot: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    pub created_by_user_id: String,
+    pub created_at: i64,
+    pub download_count: i64,
+    #[serde(default)]
+    pub downloaded_at: Option<i64>,
+    pub status: String,
+    #[serde(default)]
+    pub revoked_at: Option<i64>,
+    #[serde(default)]
+    pub revoked_by_user_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskCabDecisionManifestRequest {
+    pub org_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskCabDecisionManifestQuery {
+    pub org_name: Option<String>,
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestResponse {
+    pub manifest: ChangeRiskCabDecisionManifestRecord,
+    pub download_url: String,
+    #[serde(default)]
+    pub artifact: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabDecisionManifestListResponse {
+    #[serde(default)]
+    pub items: Vec<ChangeRiskCabDecisionManifestRecord>,
+    pub total: i64,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct CreateEnterpriseReleaseApprovalRequest {
     pub org_name: Option<String>,

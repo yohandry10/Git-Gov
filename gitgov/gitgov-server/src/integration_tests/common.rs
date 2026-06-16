@@ -389,6 +389,53 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_review
             ON change_risk_cab_packets(org_id, review_status, COALESCE(review_updated_at, created_at) DESC);
 
+        CREATE TABLE IF NOT EXISTS change_risk_cab_decision_manifests (
+            manifest_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            cab_packet_id TEXT NOT NULL REFERENCES change_risk_cab_packets(packet_id) ON DELETE CASCADE,
+            cab_packet_hash TEXT NOT NULL,
+            manifest_hash TEXT NOT NULL,
+            manifest_json JSONB NOT NULL,
+            review_status_snapshot TEXT NOT NULL CHECK (
+                review_status_snapshot IN (
+                    'reviewed',
+                    'accepted_risk',
+                    'needs_mitigation',
+                    'returned_to_owner',
+                    'rejected'
+                )
+            ),
+            reviewed_by_user_id TEXT,
+            reviewed_at TIMESTAMPTZ,
+            created_by_user_id TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            download_count BIGINT NOT NULL DEFAULT 0 CHECK (download_count >= 0),
+            downloaded_at TIMESTAMPTZ,
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked')),
+            revoked_at TIMESTAMPTZ,
+            revoked_by_user_id TEXT,
+            CHECK (manifest_id ~ '^crcabdm_[a-f0-9]{32}$'),
+            CHECK (cab_packet_id ~ '^crcab_[a-f0-9]{32}$'),
+            CHECK (cab_packet_hash ~ '^sha256:[a-f0-9]{64}$'),
+            CHECK (manifest_hash ~ '^sha256:[a-f0-9]{64}$'),
+            CHECK (jsonb_typeof(manifest_json) = 'object'),
+            CHECK (manifest_json ->> 'schema_version' = 'gitgov_change_risk_cab_decision_manifest.v1'),
+            CHECK (COALESCE((manifest_json #>> '{claims,advisory_only}')::boolean, false) = true),
+            CHECK (COALESCE((manifest_json #>> '{claims,llm_used}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{claims,agent_governance_used}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{claims,compliance_claim}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{claims,certification}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{audit_metadata,deployment_execution}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{audit_metadata,source_cab_packet_mutated}')::boolean, true) = false),
+            CHECK (COALESCE((manifest_json #>> '{audit_metadata,source_evaluations_mutated}')::boolean, true) = false)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_decision_manifests_packet
+            ON change_risk_cab_decision_manifests(org_id, cab_packet_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_decision_manifests_status
+            ON change_risk_cab_decision_manifests(org_id, status, created_at DESC);
+
         CREATE TABLE IF NOT EXISTS compliance_evidence_exports (
             export_id TEXT PRIMARY KEY,
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -2309,12 +2356,29 @@ pub(super) fn build_test_app_with_options(
                 .patch(handlers::update_change_risk_cab_packet_review),
         )
         .route(
+            "/change-risk/cab-packets/{packet_id}/decision-manifests",
+            get(handlers::list_change_risk_cab_decision_manifests)
+                .post(handlers::create_change_risk_cab_decision_manifest),
+        )
+        .route(
             "/change-risk/cab-packets/{packet_id}/archive",
             patch(handlers::archive_change_risk_cab_packet),
         )
         .route(
             "/change-risk/cab-packets/{packet_id}",
             get(handlers::get_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/download",
+            get(handlers::download_change_risk_cab_decision_manifest),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}/revoke",
+            patch(handlers::revoke_change_risk_cab_decision_manifest),
+        )
+        .route(
+            "/change-risk/cab-decision-manifests/{manifest_id}",
+            get(handlers::get_change_risk_cab_decision_manifest),
         )
         .route(
             "/agent-governance/evaluate",
