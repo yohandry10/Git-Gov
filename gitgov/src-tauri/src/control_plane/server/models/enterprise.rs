@@ -321,6 +321,29 @@ pub struct DeploymentGateAuthorizationListResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DeploymentGateRiskContextResponse {
+    pub deployment_gate_id: String,
+    pub authorization: DeploymentGateAuthorizationRecord,
+    #[serde(default)]
+    pub change_risk_evaluations: Vec<ChangeRiskEvaluationRecord>,
+    #[serde(default)]
+    pub cab_packets: Vec<ChangeRiskCabPacketRecord>,
+    #[serde(default)]
+    pub cab_decision_manifests: Vec<ChangeRiskCabDecisionManifestRecord>,
+    #[serde(default)]
+    pub latest_risk_level: Option<String>,
+    #[serde(default)]
+    pub latest_review_status: Option<String>,
+    pub triggered_rules_count: usize,
+    pub advisory_only: bool,
+    pub enforcement_used: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChangeRiskEvaluationRecord {
     pub evaluation_id: String,
     pub org_id: String,

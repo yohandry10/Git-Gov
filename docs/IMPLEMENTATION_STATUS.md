@@ -2,6 +2,64 @@
 
 Updated: 2026-06-16
 
+## KAN-128 Deployment Gate Risk & CAB Evidence Context - 2026-06-16
+
+`KAN-128 - Deployment Gate Risk & CAB Evidence Context` is in progress on branch
+`product/KAN-128-deployment-gate-risk-cab-context` for GitHub issue `#450`.
+
+Product decision:
+
+- Return the completed KAN-121 through KAN-127 Change Risk/CAB evidence chain to the main
+  Deployment Gates workflow.
+- Add read-only context from a Deployment Gate authorization to its related Change Risk evaluations,
+  CAB packets, and CAB decision manifests.
+- Do not change gate decisions, block releases, execute deploys, mutate providers/repos, recalculate
+  risk, create artifacts automatically, depend on AI/Agent Governance, or create compliance/legal
+  claims.
+
+Implemented locally:
+
+- Backend route `GET /deployment-gates/{deployment_gate_id}/risk-context`.
+- No migration: the context is composed from existing tenant-scoped relationships:
+  `change_risk_evaluations.deployment_gate_id`, CAB packet `evaluation_ids_json`/`filters_json`, and
+  CAB decision manifest `cab_packet_id`.
+- Response includes Deployment Gate authorization, Change Risk evaluations, CAB packets, CAB
+  decision manifests, latest risk/review status, triggered rule count, and no-claim flags.
+- Tauri DTO/client method/command/invoke registration.
+- Control Plane store cache/action `getDeploymentGateRiskContext`.
+- Governance > Releases Deployment Gate History `Risk & CAB Context` section with context loading and
+  CAB manifest download.
+- Design and validation report docs.
+
+Local validation completed:
+
+- Backend `cargo fmt --check`.
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Backend `cargo test --no-run`.
+- Tauri `cargo fmt --check`.
+- Tauri `cargo check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri tests (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest (`381` passed).
+- Focused store test `pnpm --dir gitgov test -- --run src/test/useControlPlaneStore.test.ts`
+  passed (`47` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- Focused backend real Postgres test
+  `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` passed with KAN-128
+  assertions for gate -> risk -> CAB packet -> disposition -> manifest, Admin/Auditor read,
+  Developer/tenant/agent denial, no source mutation, no AI, and no claims.
+- `git diff --check`.
+- `scripts/security/publication_guard.ps1`.
+
+Remaining before completion:
+
+- PR checks, merge, Render deploy, and production smoke.
+
+Report: `docs/reports/deployment-gate-risk-cab-context-2026-06-16.md`.
+
 ## KAN-127 Change Risk CAB Decision Manifest - 2026-06-16
 
 `KAN-127 - Change Risk CAB Decision Manifest` is completed. PR `#444` merged to `main` as

@@ -554,6 +554,70 @@ impl Database {
         Ok((items, total))
     }
 
+    pub async fn list_change_risk_cab_packets_for_gate_context(
+        &self,
+        org_id: &str,
+        deployment_gate_id: &str,
+        evaluation_ids: &[String],
+        limit: i64,
+    ) -> Result<Vec<ChangeRiskCabPacketRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                follow_up_required,
+                follow_up_owner_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms
+            FROM change_risk_cab_packets
+            WHERE org_id = $1::uuid
+              AND (
+                (
+                  cardinality($2::TEXT[]) > 0
+                  AND EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(evaluation_ids_json) AS packet_eval(evaluation_id)
+                    WHERE packet_eval.evaluation_id = ANY($2::TEXT[])
+                  )
+                )
+                OR EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements_text(COALESCE(filters_json->'deployment_gate_ids', '[]'::jsonb)) AS gate_filter(gate_id)
+                  WHERE gate_filter.gate_id = $3
+                )
+              )
+            ORDER BY created_at DESC, packet_id DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(org_id)
+        .bind(evaluation_ids)
+        .bind(deployment_gate_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows.iter().map(change_risk_cab_packet_from_row).collect())
+    }
+
     pub async fn get_change_risk_cab_packet(
         &self,
         org_id: &str,
@@ -929,6 +993,54 @@ impl Database {
         .map_err(|e| DbError::DatabaseError(e.to_string()))?;
 
         Ok(row.map(|row| change_risk_cab_decision_manifest_from_row(&row)))
+    }
+
+    pub async fn list_change_risk_cab_decision_manifests_for_gate_context(
+        &self,
+        org_id: &str,
+        cab_packet_ids: &[String],
+        limit: i64,
+    ) -> Result<Vec<ChangeRiskCabDecisionManifestRecord>, DbError> {
+        if cab_packet_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                manifest_id,
+                org_id::text,
+                cab_packet_id,
+                cab_packet_hash,
+                manifest_hash,
+                review_status_snapshot,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                status,
+                ROUND(EXTRACT(EPOCH FROM revoked_at) * 1000)::BIGINT AS revoked_at_ms,
+                revoked_by_user_id
+            FROM change_risk_cab_decision_manifests
+            WHERE org_id = $1::uuid
+              AND cab_packet_id = ANY($2::TEXT[])
+            ORDER BY created_at DESC, manifest_id DESC
+            LIMIT $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(cab_packet_ids)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows
+            .iter()
+            .map(change_risk_cab_decision_manifest_from_row)
+            .collect())
     }
 
     pub async fn get_change_risk_cab_decision_manifest_artifact(

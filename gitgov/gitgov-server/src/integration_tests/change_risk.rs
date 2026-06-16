@@ -1657,6 +1657,67 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
 
     let (status, response) = json_request(
         &app,
+        "GET",
+        "/deployment-gates/dga_kan125_high/risk-context?org_name=risk-cab-org",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "auditor Deployment Gate risk context: {response}"
+    );
+    let risk_context: serde_json::Value =
+        serde_json::from_str(&response).expect("Deployment Gate risk context JSON");
+    assert_eq!(risk_context["deployment_gate_id"], "dga_kan125_high");
+    assert_eq!(
+        risk_context["authorization"]["authorization_id"],
+        "dga_kan125_high"
+    );
+    assert_eq!(risk_context["latest_risk_level"], "high");
+    assert_eq!(risk_context["latest_review_status"], "accepted_risk");
+    assert_eq!(risk_context["advisory_only"], true);
+    assert_eq!(risk_context["enforcement_used"], false);
+    assert_eq!(risk_context["llm_used"], false);
+    assert_eq!(risk_context["agent_governance_used"], false);
+    assert_eq!(risk_context["compliance_claim"], false);
+    assert_eq!(risk_context["certification"], false);
+    assert!(risk_context["triggered_rules_count"].as_u64().unwrap() >= 1);
+    assert_eq!(
+        risk_context["change_risk_evaluations"][0]["evaluation_id"],
+        high_id
+    );
+    assert_eq!(
+        risk_context["change_risk_evaluations"][0]["trace_hash"],
+        high_trace_hash
+    );
+    assert!(risk_context["cab_packets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|packet| packet["packet_id"] == filter_packet_id
+            && packet["artifact_hash"] == filter_hash));
+    assert!(risk_context["cab_decision_manifests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|manifest| manifest["manifest_id"] == manifest_id
+            && manifest["manifest_hash"] == manifest_hash
+            && manifest["status"] == "active"));
+
+    let gate_after_context: (String, bool) = sqlx::query_as(
+        "SELECT decision, blocking FROM deployment_gate_authorizations WHERE authorization_id = $1",
+    )
+    .bind("dga_kan125_high")
+    .fetch_one(&pool)
+    .await
+    .expect("gate after risk context");
+    assert_eq!(gate_after_context.0, "blocked");
+    assert!(gate_after_context.1);
+
+    let (status, response) = json_request(
+        &app,
         "POST",
         &format!("/change-risk/cab-packets/{filter_packet_id}/decision-manifests"),
         Some(r#"{"org_name":"risk-cab-org"}"#),
@@ -1667,6 +1728,19 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         status,
         StatusCode::FORBIDDEN,
         "developer must not create CAB decision manifest: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/deployment-gates/dga_kan125_high/risk-context?org_name=risk-cab-org",
+        None,
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not read Deployment Gate risk context: {response}"
     );
 
     let (status, response) = json_request(
@@ -1681,6 +1755,19 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         status,
         StatusCode::NOT_FOUND,
         "other tenant must not list foreign CAB decision manifests: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/deployment-gates/dga_kan125_high/risk-context?org_name=risk-cab-other",
+        None,
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "other tenant must not read foreign Deployment Gate risk context: {response}"
     );
 
     let (status, response) = json_request(
@@ -2036,6 +2123,19 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         StatusCode::FORBIDDEN,
         "agent key must not download CAB decision manifests: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/deployment-gates/dga_kan125_high/risk-context?org_name=risk-cab-org",
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not read Deployment Gate risk context: {response}"
+    );
 
     let (status, response) = json_request(
         &app,
@@ -2070,6 +2170,28 @@ async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation(
         StatusCode::CONFLICT,
         "revoked CAB decision manifest download must be blocked: {response}"
     );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/deployment-gates/dga_kan125_high/risk-context?org_name=risk-cab-org",
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "admin Deployment Gate risk context after revoke: {response}"
+    );
+    let revoked_context: serde_json::Value =
+        serde_json::from_str(&response).expect("revoked risk context JSON");
+    assert!(revoked_context["cab_decision_manifests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|manifest| manifest["manifest_id"] == manifest_id
+            && manifest["manifest_hash"] == manifest_hash
+            && manifest["status"] == "revoked"));
 
     let (status, response) = json_request(
         &app,

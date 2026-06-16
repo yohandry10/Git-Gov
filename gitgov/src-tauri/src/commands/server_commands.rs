@@ -47,22 +47,22 @@ use crate::control_plane::{
     CreateOrgInvitationResponse, CreateOrgRequest, CreateOrgResponse, CreateOrgUserRequest,
     CreateOrgUserResponse, DailyActivityFilter, DailyActivityPoint,
     DeploymentGateAuthorizationListResponse, DeploymentGateAuthorizationQuery,
-    EnterpriseAdoptionProfileRecord, EnterpriseAdoptionProfileResponse,
-    EnterpriseOnboardingChecklistTrackingRecord, EnterpriseOnboardingChecklistTrackingResponse,
-    EnterpriseReleaseApprovalListResponse, EnterpriseReleaseApprovalQuery,
-    EnterpriseReleaseApprovalRecord, EnterpriseReleaseGovernanceEvaluationQuery,
-    EnterpriseReleaseGovernanceEvaluationResponse, EventPayload, EvidencePacketQuery,
-    EvidencePacketResponse, ExportLogEntry, ExportResponse, FeatureRequestCreated,
-    FeatureRequestInput, FirstGovernedRepoSetupRecord, FirstGovernedRepoSetupResponse,
-    FirstGovernedRepoWizardActionRequest, FirstGovernedRepoWizardRunResponse,
-    FirstGovernedRepoWizardStateResponse, JenkinsCorrelationFilter, JiraCorrelateRequest,
-    JiraCorrelateResponse, JiraTicketDetailResponse, MeResponse, OrgInvitation,
-    OrgInvitationsResponse, OrgSummary, OrgUser, OrgUsersResponse, PolicyCheckResponse,
-    PolicyHistoryEntry, PolicyResponse, PrMergeEvidenceEntry, PrMergeEvidenceFilter,
-    ResendOrgInvitationRequest, RevokeApiKeyResponse, ServerConfig, ServerStats,
-    TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery, TicketCoverageResponse,
-    UpsertEnterpriseAdoptionProfileRequest, UpsertEnterpriseOnboardingChecklistTrackingRequest,
-    UpsertFirstGovernedRepoSetupRequest,
+    DeploymentGateRiskContextResponse, EnterpriseAdoptionProfileRecord,
+    EnterpriseAdoptionProfileResponse, EnterpriseOnboardingChecklistTrackingRecord,
+    EnterpriseOnboardingChecklistTrackingResponse, EnterpriseReleaseApprovalListResponse,
+    EnterpriseReleaseApprovalQuery, EnterpriseReleaseApprovalRecord,
+    EnterpriseReleaseGovernanceEvaluationQuery, EnterpriseReleaseGovernanceEvaluationResponse,
+    EventPayload, EvidencePacketQuery, EvidencePacketResponse, ExportLogEntry, ExportResponse,
+    FeatureRequestCreated, FeatureRequestInput, FirstGovernedRepoSetupRecord,
+    FirstGovernedRepoSetupResponse, FirstGovernedRepoWizardActionRequest,
+    FirstGovernedRepoWizardRunResponse, FirstGovernedRepoWizardStateResponse,
+    JenkinsCorrelationFilter, JiraCorrelateRequest, JiraCorrelateResponse,
+    JiraTicketDetailResponse, MeResponse, OrgInvitation, OrgInvitationsResponse, OrgSummary,
+    OrgUser, OrgUsersResponse, PolicyCheckResponse, PolicyHistoryEntry, PolicyResponse,
+    PrMergeEvidenceEntry, PrMergeEvidenceFilter, ResendOrgInvitationRequest, RevokeApiKeyResponse,
+    ServerConfig, ServerStats, TeamOverviewResponse, TeamReposResponse, TicketCoverageQuery,
+    TicketCoverageResponse, UpsertEnterpriseAdoptionProfileRequest,
+    UpsertEnterpriseOnboardingChecklistTrackingRequest, UpsertFirstGovernedRepoSetupRequest,
 };
 use crate::models::GitGovConfig;
 use crate::outbox::{Outbox, OutboxStatus};
@@ -977,6 +977,24 @@ pub async fn cmd_server_list_deployment_gate_authorizations(
         });
         client
             .list_deployment_gate_authorizations(&query)
+            .map_err(|e| to_command_error(e, "SERVER_ERROR"))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn cmd_server_get_deployment_gate_risk_context(
+    config: ServerConnectionConfig,
+    deployment_gate_id: String,
+    query: DeploymentGateAuthorizationQuery,
+) -> Result<DeploymentGateRiskContextResponse, String> {
+    run_blocking_command("GET_DEPLOYMENT_GATE_RISK_CONTEXT", move || {
+        let client = ControlPlaneClient::new(ServerConfig {
+            url: config.url,
+            api_key: config.api_key,
+        });
+        client
+            .get_deployment_gate_risk_context(deployment_gate_id.trim(), &query)
             .map_err(|e| to_command_error(e, "SERVER_ERROR"))
     })
     .await
