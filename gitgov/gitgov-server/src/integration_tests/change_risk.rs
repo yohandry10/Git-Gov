@@ -1062,3 +1062,534 @@ async fn change_risk_is_tenant_scoped_and_handles_missing_context_advisory() {
 
     teardown(&admin_pool, &schema).await;
 }
+
+#[tokio::test]
+async fn change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation() {
+    let (pool, schema, admin_pool) = setup_or_skip!();
+    let org_id = insert_test_org(&pool, "risk-cab-org").await;
+    let other_org_id = insert_test_org(&pool, "risk-cab-other").await;
+    insert_repo_for_org(&pool, &org_id, REPO_FULL_NAME).await;
+    insert_repo_for_org(&pool, &other_org_id, "risk-cab-other/repo").await;
+    let admin_key = insert_test_api_key_for_org(&pool, "kan-125-cab-admin", "Admin", &org_id).await;
+    let auditor_key =
+        insert_test_api_key_for_org(&pool, "kan-125-cab-auditor", "Auditor", &org_id).await;
+    let developer_key =
+        insert_test_api_key_for_org(&pool, "kan-125-cab-dev", "Developer", &org_id).await;
+    let other_admin_key =
+        insert_test_api_key_for_org(&pool, "kan-125-other-admin", "Admin", &other_org_id).await;
+    insert_gate(
+        &pool,
+        &org_id,
+        "dga_kan125_low",
+        "release-kan-121",
+        "staging",
+        "approved",
+        false,
+    )
+    .await;
+    insert_gate(
+        &pool,
+        &org_id,
+        "dga_kan125_high",
+        "release-kan-121",
+        "production",
+        "blocked",
+        false,
+    )
+    .await;
+    let db = Arc::new(Database::from_pool(pool.clone()));
+    let app = build_test_app(db);
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&risk_payload(Some("dga_kan125_low"), "staging").to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "low eval create: {response}");
+    let low: serde_json::Value = serde_json::from_str(&response).expect("low eval JSON");
+    let low_id = low["evaluation_id"]
+        .as_str()
+        .expect("low eval id")
+        .to_string();
+    assert_eq!(low["risk_level"], "low");
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&risk_payload(Some("dga_kan125_high"), "production").to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "high eval create: {response}");
+    let high: serde_json::Value = serde_json::from_str(&response).expect("high eval JSON");
+    let high_id = high["evaluation_id"]
+        .as_str()
+        .expect("high eval id")
+        .to_string();
+    let high_trace_hash = high["trace_hash"]
+        .as_str()
+        .expect("high trace hash")
+        .to_string();
+    assert_eq!(high["risk_level"], "high");
+
+    let medium_payload = json!({
+        "repository_full_name": REPO_FULL_NAME,
+        "branch": BRANCH,
+        "environment": "production",
+        "change_id": "KAN-125-medium",
+        "release_id": "release-kan-125-medium",
+        "commit_sha": TARGET_SHA
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&medium_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "medium eval create: {response}"
+    );
+    let medium: serde_json::Value = serde_json::from_str(&response).expect("medium eval JSON");
+    let medium_id = medium["evaluation_id"]
+        .as_str()
+        .expect("medium eval id")
+        .to_string();
+    assert_eq!(medium["risk_level"], "medium");
+
+    let other_payload = json!({
+        "org_name": "risk-cab-other",
+        "repository_full_name": "risk-cab-other/repo",
+        "branch": BRANCH,
+        "environment": "production",
+        "change_id": "KAN-125-other"
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/evaluations",
+        Some(&other_payload.to_string()),
+        Some(&other_admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "other tenant eval create: {response}"
+    );
+    let other_eval: serde_json::Value =
+        serde_json::from_str(&response).expect("other tenant eval JSON");
+    let other_eval_id = other_eval["evaluation_id"]
+        .as_str()
+        .expect("other eval id")
+        .to_string();
+
+    let review_low = json!({
+        "review_status": "reviewed",
+        "review_notes": "Low risk checked for CAB packet coverage.",
+        "mitigation_notes": "No additional mitigation required.",
+        "decision_reason": "Manual review completed."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{low_id}/review"),
+        Some(&review_low.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "low review update: {response}");
+
+    let review_medium = json!({
+        "review_status": "needs_mitigation",
+        "review_notes": "Medium risk needs evidence cleanup before CAB.",
+        "mitigation_notes": "Attach missing deployment evidence.",
+        "decision_reason": "Manual mitigation requested."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{medium_id}/review"),
+        Some(&review_medium.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "medium review update: {response}");
+
+    let review_high = json!({
+        "review_status": "accepted_risk",
+        "review_notes": "CAB accepts production risk after trace review.",
+        "mitigation_notes": "Rollback owner remains online through release.",
+        "decision_reason": "Business exception accepted manually."
+    });
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/evaluations/{high_id}/review"),
+        Some(&review_high.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "high review update: {response}");
+
+    let before_gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before gate count");
+    let before_agent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("before agent count");
+
+    let filter_packet_payload = json!({
+        "name": "KAN-125 accepted risk CAB",
+        "repository_full_name": REPO_FULL_NAME,
+        "review_status": "accepted_risk"
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(&filter_packet_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "CAB packet by filter create: {response}"
+    );
+    let filter_packet: serde_json::Value =
+        serde_json::from_str(&response).expect("filter CAB packet JSON");
+    let filter_packet_id = filter_packet["packet"]["packet_id"]
+        .as_str()
+        .expect("filter packet id")
+        .to_string();
+    let filter_hash = filter_packet["packet"]["artifact_hash"]
+        .as_str()
+        .expect("filter packet hash");
+    assert!(filter_hash.starts_with("sha256:"));
+    assert_eq!(
+        filter_packet["artifact"]["schema_version"],
+        "gitgov_change_risk_cab_packet.v1"
+    );
+    assert_eq!(filter_packet["artifact"]["summary"]["total_evaluations"], 1);
+    assert_eq!(
+        filter_packet["artifact"]["evaluations"][0]["evaluation_id"],
+        high_id
+    );
+    assert_eq!(
+        filter_packet["artifact"]["evaluations"][0]["trace_hash"],
+        high_trace_hash
+    );
+    assert_eq!(
+        filter_packet["artifact"]["verification"]["packet_hash"],
+        filter_hash
+    );
+    assert_eq!(filter_packet["artifact"]["claims"]["advisory_only"], true);
+    assert_eq!(
+        filter_packet["artifact"]["claims"]["manual_review_packet"],
+        true
+    );
+    assert_eq!(
+        filter_packet["artifact"]["claims"]["compliance_claim"],
+        false
+    );
+    assert_eq!(filter_packet["artifact"]["claims"]["certification"], false);
+    assert_eq!(
+        filter_packet["artifact"]["audit_metadata"]["source_evaluations_mutated"],
+        false
+    );
+    assert_eq!(
+        filter_packet["artifact"]["audit_metadata"]["agent_governance_used"],
+        false
+    );
+    assert_eq!(
+        filter_packet["artifact"]["audit_metadata"]["deployment_execution"],
+        false
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/cab-packets?status=active&limit=20",
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor CAB list: {response}");
+    let listed: serde_json::Value = serde_json::from_str(&response).expect("CAB list JSON");
+    assert!(listed["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["packet_id"] == filter_packet_id));
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor CAB get: {response}");
+    let fetched_filter: serde_json::Value =
+        serde_json::from_str(&response).expect("fetched filter packet JSON");
+    assert_eq!(fetched_filter["packet"]["artifact_hash"], filter_hash);
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{filter_packet_id}/download"),
+        None,
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "auditor CAB download: {response}");
+    let downloaded: serde_json::Value =
+        serde_json::from_str(&response).expect("downloaded CAB artifact JSON");
+    assert_eq!(downloaded["packet_id"], filter_packet_id);
+    assert_eq!(downloaded["verification"]["packet_hash"], filter_hash);
+    let download_count: i64 = sqlx::query_scalar(
+        "SELECT download_count FROM change_risk_cab_packets WHERE packet_id = $1",
+    )
+    .bind(&filter_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB download count");
+    assert_eq!(download_count, 1);
+
+    let selection_packet_payload = json!({
+        "name": "KAN-125 mixed CAB selection",
+        "evaluation_ids": [low_id.clone(), medium_id.clone(), high_id.clone()]
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(&selection_packet_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "CAB packet by explicit selection: {response}"
+    );
+    let selection_packet: serde_json::Value =
+        serde_json::from_str(&response).expect("selection packet JSON");
+    let selection_packet_id = selection_packet["packet"]["packet_id"]
+        .as_str()
+        .expect("selection packet id")
+        .to_string();
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["total_evaluations"],
+        3
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["risk_level_counts"]["low"],
+        1
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["risk_level_counts"]["medium"],
+        1
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["risk_level_counts"]["high"],
+        1
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["review_status_counts"]["reviewed"],
+        1
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["review_status_counts"]["needs_mitigation"],
+        1
+    );
+    assert_eq!(
+        selection_packet["artifact"]["summary"]["review_status_counts"]["accepted_risk"],
+        1
+    );
+
+    let cross_tenant_payload = json!({
+        "name": "KAN-125 cross tenant should fail",
+        "evaluation_ids": [other_eval_id]
+    });
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(&cross_tenant_payload.to_string()),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "cross tenant selection must not package foreign evidence: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(&selection_packet_payload.to_string()),
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not create CAB packets: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/cab-packets",
+        None,
+        Some(&developer_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "developer must not list CAB packets: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{selection_packet_id}/archive"),
+        Some("{}"),
+        Some(&auditor_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "auditor must not archive CAB packets: {response}"
+    );
+
+    let agent_token = create_agent_key(&app, &admin_key).await;
+    let (status, response) = json_request(
+        &app,
+        "POST",
+        "/change-risk/cab-packets",
+        Some(&selection_packet_payload.to_string()),
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not create CAB packets: {response}"
+    );
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        "/change-risk/cab-packets",
+        None,
+        Some(&agent_token),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "agent key must not list CAB packets: {response}"
+    );
+
+    let (status, response) = json_request(
+        &app,
+        "PATCH",
+        &format!("/change-risk/cab-packets/{selection_packet_id}/archive"),
+        Some(r#"{"org_name":"risk-cab-org"}"#),
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "admin archive CAB: {response}");
+    let archived: serde_json::Value =
+        serde_json::from_str(&response).expect("archived CAB packet JSON");
+    assert_eq!(archived["packet"]["status"], "archived");
+
+    let (status, response) = json_request(
+        &app,
+        "GET",
+        &format!("/change-risk/cab-packets/{selection_packet_id}/download"),
+        None,
+        Some(&admin_key),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "archived CAB packet download must be blocked: {response}"
+    );
+
+    let high_after: (String, String) = sqlx::query_as(
+        "SELECT review_status, trace_hash FROM change_risk_evaluations WHERE evaluation_id = $1",
+    )
+    .bind(&high_id)
+    .fetch_one(&pool)
+    .await
+    .expect("high evaluation after CAB packet");
+    assert_eq!(high_after.0, "accepted_risk");
+    assert_eq!(high_after.1, high_trace_hash);
+
+    let after_gate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM deployment_gate_authorizations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("after gate count");
+    let after_agent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM agent_governance_evaluations WHERE org_id = $1::uuid",
+    )
+    .bind(&org_id)
+    .fetch_one(&pool)
+    .await
+    .expect("after agent count");
+    assert_eq!(after_gate_count, before_gate_count);
+    assert_eq!(after_agent_count, before_agent_count);
+
+    let created_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_created' AND target_id IN ($1, $2)",
+    )
+    .bind(&filter_packet_id)
+    .bind(&selection_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB created audit count");
+    assert_eq!(created_audit_count, 2);
+    let downloaded_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_downloaded' AND target_id = $1",
+    )
+    .bind(&filter_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB downloaded audit count");
+    assert_eq!(downloaded_audit_count, 1);
+    let archived_audit_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'change_risk_cab_packet_archived' AND target_id = $1",
+    )
+    .bind(&selection_packet_id)
+    .fetch_one(&pool)
+    .await
+    .expect("CAB archived audit count");
+    assert_eq!(archived_audit_count, 1);
+
+    teardown(&admin_pool, &schema).await;
+}

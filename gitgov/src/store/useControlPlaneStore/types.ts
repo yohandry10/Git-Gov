@@ -473,6 +473,56 @@ export interface ChangeRiskEvaluationReviewResponse {
   certification: boolean
 }
 
+export interface ChangeRiskCabPacketRecord {
+  packet_id: string
+  org_id: string
+  name: string
+  filters: Record<string, unknown>
+  evaluation_ids: string[]
+  artifact_hash: string
+  status: 'active' | 'archived' | string
+  created_by_user_id: string
+  created_at: number
+  downloaded_at?: number | null
+  download_count: number
+  archived_at?: number | null
+  archived_by_user_id?: string | null
+}
+
+export interface ChangeRiskCabPacketRequest {
+  org_name?: string | null
+  name: string
+  repository_full_name?: string | null
+  branch?: string | null
+  environment?: string | null
+  risk_level?: ChangeRiskLevel | null
+  review_status?: ChangeRiskReviewStatus | null
+  date_range_start?: number | null
+  date_range_end?: number | null
+  evaluation_ids?: string[]
+  deployment_gate_ids?: string[]
+}
+
+export interface ChangeRiskCabPacketQuery {
+  org_name?: string | null
+  status?: 'active' | 'archived' | string | null
+  limit?: number | null
+  offset?: number | null
+}
+
+export interface ChangeRiskCabPacketResponse {
+  packet: ChangeRiskCabPacketRecord
+  download_url: string
+  artifact?: Record<string, unknown> | null
+}
+
+export interface ChangeRiskCabPacketListResponse {
+  items: ChangeRiskCabPacketRecord[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface ComplianceEvidenceExportRequest {
   org_name?: string | null
   scope: string
@@ -1592,12 +1642,21 @@ export interface ControlPlaneState {
   changeRiskRuleCatalog: ChangeRiskRuleCatalogResponse | null
   changeRiskEvaluationTrace: ChangeRiskEvaluationTraceResponse | null
   changeRiskEvaluationReview: ChangeRiskEvaluationReviewResponse | null
+  changeRiskCabPackets: ChangeRiskCabPacketRecord[]
+  changeRiskCabPacketsTotal: number
+  changeRiskCabPacketsFilters: ChangeRiskCabPacketQuery
+  changeRiskCabPacket: ChangeRiskCabPacketResponse | null
+  changeRiskCabPacketArtifact: Record<string, unknown> | null
   isChangeRiskEvaluationsLoading: boolean
   isChangeRiskRulesLoading: boolean
   isChangeRiskTraceLoading: boolean
   isChangeRiskEvaluationCreating: boolean
   isChangeRiskReviewLoading: boolean
   isChangeRiskReviewUpdating: boolean
+  isChangeRiskCabPacketsLoading: boolean
+  isChangeRiskCabPacketCreating: boolean
+  isChangeRiskCabPacketDownloading: boolean
+  isChangeRiskCabPacketArchiving: boolean
   changeRiskError: string | null
   complianceEvidenceSelectedDeploymentGateId: string | null
   complianceControlFrameworks: ComplianceControlFramework[]
@@ -1773,6 +1832,11 @@ export interface ControlPlaneActions {
     payload: ChangeRiskEvaluationReviewRequest,
   ) => Promise<ChangeRiskEvaluationReviewResponse | null>
   createChangeRiskEvaluation: (payload: ChangeRiskEvaluationRequest) => Promise<ChangeRiskEvaluationRecord | null>
+  createChangeRiskCabPacket: (payload: ChangeRiskCabPacketRequest) => Promise<ChangeRiskCabPacketResponse | null>
+  loadChangeRiskCabPackets: (query?: ChangeRiskCabPacketQuery) => Promise<ChangeRiskCabPacketListResponse | null>
+  getChangeRiskCabPacket: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<ChangeRiskCabPacketResponse | null>
+  downloadChangeRiskCabPacket: (packetId: string, query?: ChangeRiskCabPacketQuery) => Promise<Record<string, unknown> | null>
+  archiveChangeRiskCabPacket: (packetId: string, orgName?: string | null) => Promise<ChangeRiskCabPacketResponse | null>
   loadComplianceFrameworks: () => Promise<ComplianceControlFramework[]>
   importComplianceFrameworkPack: (content: string, format?: 'json' | 'yaml' | 'yml') => Promise<ComplianceFrameworkPackImportResponse | null>
   reviewComplianceFrameworkPack: (

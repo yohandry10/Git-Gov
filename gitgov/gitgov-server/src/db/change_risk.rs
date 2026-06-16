@@ -365,4 +365,311 @@ impl Database {
 
         Ok(row.map(|row| change_risk_evaluation_from_row(&row)))
     }
+
+    pub async fn list_change_risk_evaluations_for_cab_packet(
+        &self,
+        org_id: &str,
+        filter: &ChangeRiskCabPacketEvaluationFilter<'_>,
+    ) -> Result<Vec<ChangeRiskEvaluationRecord>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                evaluation_id,
+                org_id::text,
+                repository_full_name,
+                branch,
+                environment,
+                change_id,
+                deployment_gate_id,
+                release_id,
+                commit_sha,
+                evidence_packet_hash,
+                risk_level,
+                ruleset_version,
+                risk_reasons,
+                missing_evidence,
+                blocking_gaps,
+                recommended_manual_actions,
+                triggered_rules,
+                non_triggered_rules,
+                evaluation_trace,
+                trace_hash,
+                advisory_only,
+                llm_used,
+                agent_governance_used,
+                compliance_claim,
+                certification,
+                evaluation,
+                request_payload,
+                created_by,
+                review_status,
+                reviewed_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM reviewed_at) * 1000)::BIGINT AS reviewed_at_ms,
+                review_notes_safe,
+                mitigation_notes_safe,
+                decision_reason_safe,
+                ROUND(EXTRACT(EPOCH FROM review_updated_at) * 1000)::BIGINT AS review_updated_at_ms,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms
+            FROM change_risk_evaluations
+            WHERE org_id = $1::uuid
+              AND (cardinality($2::TEXT[]) = 0 OR evaluation_id = ANY($2::TEXT[]))
+              AND (cardinality($3::TEXT[]) = 0 OR deployment_gate_id = ANY($3::TEXT[]))
+              AND ($4::TEXT IS NULL OR repository_full_name = $4)
+              AND ($5::TEXT IS NULL OR branch = $5)
+              AND ($6::TEXT IS NULL OR environment = $6)
+              AND ($7::TEXT IS NULL OR risk_level = $7)
+              AND ($8::TEXT IS NULL OR review_status = $8)
+              AND ($9::BIGINT IS NULL OR created_at >= to_timestamp($9::DOUBLE PRECISION / 1000.0))
+              AND ($10::BIGINT IS NULL OR created_at <= to_timestamp($10::DOUBLE PRECISION / 1000.0))
+            ORDER BY created_at DESC, evaluation_id DESC
+            LIMIT $11
+            "#,
+        )
+        .bind(org_id)
+        .bind(filter.evaluation_ids)
+        .bind(filter.deployment_gate_ids)
+        .bind(filter.repository_full_name)
+        .bind(filter.branch)
+        .bind(filter.environment)
+        .bind(filter.risk_level)
+        .bind(filter.review_status)
+        .bind(filter.date_range_start)
+        .bind(filter.date_range_end)
+        .bind(filter.limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(rows.iter().map(change_risk_evaluation_from_row).collect())
+    }
+
+    pub async fn create_change_risk_cab_packet(
+        &self,
+        input: &CreateChangeRiskCabPacketInput<'_>,
+    ) -> Result<ChangeRiskCabPacketRecord, DbError> {
+        let row = sqlx::query(
+            r#"
+            INSERT INTO change_risk_cab_packets (
+                packet_id,
+                org_id,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                artifact_json,
+                created_by_user_id
+            )
+            VALUES ($1, $2::uuid, $3, $4::jsonb, $5::jsonb, $6, $7::jsonb, $8)
+            RETURNING
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(input.packet_id)
+        .bind(input.org_id)
+        .bind(input.name)
+        .bind(input.filters_json)
+        .bind(input.evaluation_ids_json)
+        .bind(input.artifact_hash)
+        .bind(input.artifact_json)
+        .bind(input.created_by_user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(change_risk_cab_packet_from_row(&row))
+    }
+
+    pub async fn list_change_risk_cab_packets(
+        &self,
+        input: &ListChangeRiskCabPacketsInput<'_>,
+    ) -> Result<(Vec<ChangeRiskCabPacketRecord>, i64), DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id,
+                COUNT(*) OVER() AS total_count
+            FROM change_risk_cab_packets
+            WHERE org_id = $1::uuid
+              AND ($2::TEXT IS NULL OR status = $2)
+            ORDER BY created_at DESC, packet_id DESC
+            LIMIT $3
+            OFFSET $4
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.status)
+        .bind(input.limit)
+        .bind(input.offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        let total = rows
+            .first()
+            .map(|row| row.get::<i64, _>("total_count"))
+            .unwrap_or(0);
+        let items = rows.iter().map(change_risk_cab_packet_from_row).collect();
+        Ok((items, total))
+    }
+
+    pub async fn get_change_risk_cab_packet(
+        &self,
+        org_id: &str,
+        packet_id: &str,
+    ) -> Result<Option<ChangeRiskCabPacketRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            FROM change_risk_cab_packets
+            WHERE org_id = $1::uuid
+              AND packet_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(packet_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_cab_packet_from_row(&row)))
+    }
+
+    pub async fn get_change_risk_cab_packet_artifact(
+        &self,
+        org_id: &str,
+        packet_id: &str,
+    ) -> Result<Option<serde_json::Value>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT artifact_json
+            FROM change_risk_cab_packets
+            WHERE org_id = $1::uuid
+              AND packet_id = $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(packet_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| row.get("artifact_json")))
+    }
+
+    pub async fn download_change_risk_cab_packet(
+        &self,
+        org_id: &str,
+        packet_id: &str,
+    ) -> Result<Option<(ChangeRiskCabPacketRecord, serde_json::Value)>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_cab_packets
+            SET download_count = download_count + 1,
+                downloaded_at = NOW()
+            WHERE org_id = $1::uuid
+              AND packet_id = $2
+              AND status = 'active'
+            RETURNING
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                artifact_json,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(org_id)
+        .bind(packet_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| {
+            let artifact = row.get("artifact_json");
+            (change_risk_cab_packet_from_row(&row), artifact)
+        }))
+    }
+
+    pub async fn archive_change_risk_cab_packet(
+        &self,
+        input: &ArchiveChangeRiskCabPacketInput<'_>,
+    ) -> Result<Option<ChangeRiskCabPacketRecord>, DbError> {
+        let row = sqlx::query(
+            r#"
+            UPDATE change_risk_cab_packets
+            SET status = 'archived',
+                archived_at = COALESCE(archived_at, NOW()),
+                archived_by_user_id = COALESCE(archived_by_user_id, $3)
+            WHERE org_id = $1::uuid
+              AND packet_id = $2
+            RETURNING
+                packet_id,
+                org_id::text,
+                name,
+                filters_json,
+                evaluation_ids_json,
+                artifact_hash,
+                status,
+                created_by_user_id,
+                ROUND(EXTRACT(EPOCH FROM created_at) * 1000)::BIGINT AS created_at_ms,
+                ROUND(EXTRACT(EPOCH FROM downloaded_at) * 1000)::BIGINT AS downloaded_at_ms,
+                download_count,
+                ROUND(EXTRACT(EPOCH FROM archived_at) * 1000)::BIGINT AS archived_at_ms,
+                archived_by_user_id
+            "#,
+        )
+        .bind(input.org_id)
+        .bind(input.packet_id)
+        .bind(input.archived_by_user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DbError::DatabaseError(e.to_string()))?;
+
+        Ok(row.map(|row| change_risk_cab_packet_from_row(&row)))
+    }
 }

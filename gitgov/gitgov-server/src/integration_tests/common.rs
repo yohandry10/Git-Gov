@@ -316,6 +316,48 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
         CREATE INDEX IF NOT EXISTS idx_change_risk_evaluations_review
             ON change_risk_evaluations(org_id, review_status, COALESCE(review_updated_at, created_at) DESC);
 
+        CREATE TABLE IF NOT EXISTS change_risk_cab_packets (
+            packet_id TEXT PRIMARY KEY,
+            org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            filters_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+            evaluation_ids_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+            artifact_hash TEXT NOT NULL,
+            artifact_json JSONB NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+            created_by_user_id TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            downloaded_at TIMESTAMPTZ,
+            download_count BIGINT NOT NULL DEFAULT 0 CHECK (download_count >= 0),
+            archived_at TIMESTAMPTZ,
+            archived_by_user_id TEXT,
+            CHECK (packet_id ~ '^crcab_[a-f0-9]{32}$'),
+            CHECK (length(name) BETWEEN 1 AND 160),
+            CHECK (artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
+            CHECK (jsonb_typeof(filters_json) = 'object'),
+            CHECK (jsonb_typeof(evaluation_ids_json) = 'array'),
+            CHECK (jsonb_typeof(artifact_json) = 'object'),
+            CHECK (artifact_json ->> 'schema_version' = 'gitgov_change_risk_cab_packet.v1'),
+            CHECK (COALESCE((artifact_json #>> '{claims,advisory_only}')::boolean, false) = true),
+            CHECK (COALESCE((artifact_json #>> '{claims,manual_review_packet}')::boolean, false) = true),
+            CHECK (COALESCE((artifact_json #>> '{claims,compliance_claim}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{claims,regulatory_claim}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{claims,certification}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{audit_metadata,llm_used}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{audit_metadata,agent_governance_used}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{audit_metadata,enforcement}')::boolean, true) = false),
+            CHECK (COALESCE((artifact_json #>> '{audit_metadata,source_evaluations_mutated}')::boolean, true) = false)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_org_hash
+            ON change_risk_cab_packets(org_id, artifact_hash);
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_org_created
+            ON change_risk_cab_packets(org_id, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_status
+            ON change_risk_cab_packets(org_id, status, created_at DESC);
+
         CREATE TABLE IF NOT EXISTS compliance_evidence_exports (
             export_id TEXT PRIMARY KEY,
             org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -2220,6 +2262,23 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/change-risk/evaluations/{evaluation_id}",
             get(handlers::get_change_risk_evaluation),
+        )
+        .route(
+            "/change-risk/cab-packets",
+            get(handlers::list_change_risk_cab_packets)
+                .post(handlers::create_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}/download",
+            get(handlers::download_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}/archive",
+            patch(handlers::archive_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}",
+            get(handlers::get_change_risk_cab_packet),
         )
         .route(
             "/agent-governance/evaluate",

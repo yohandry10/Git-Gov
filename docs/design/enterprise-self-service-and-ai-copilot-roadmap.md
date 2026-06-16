@@ -2,7 +2,7 @@
 
 Updated: 2026-06-16
 
-Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter
+Ticket: `KAN-68`; KAN-77 roadmap intake update; KAN-89 roadmap sync after KAN-88; KAN-93 shared governance decision model; KAN-94 agent-scoped API keys; KAN-95 agent governance dry-run; KAN-96 minimal agent attribution envelope; KAN-97 agent key expiry and rotation; KAN-98 read-only agent governance context; KAN-99 compliance evidence export; KAN-100 evidence-to-control mapping; KAN-101 control mapping review package; KAN-102 governance evidence review UI; KAN-103 customer framework packs; KAN-104 framework pack review; KAN-105 framework review report export; KAN-106 framework review report inventory; KAN-107 framework report review workflow; KAN-108 tenant Auditor RBAC; KAN-109 Framework Review Report Auditor assignments and comments; KAN-110 reviewed report provenance manifests; KAN-111 Framework Review Report PDF export; KAN-112 Framework pack versioning and diff; KAN-113 Period Compliance Report Generator; KAN-114 Period Compliance Report PDF export; KAN-115 Period Compliance Report retention and export history; KAN-116 Period Compliance Report provenance manifests; KAN-117 Period Compliance Report Review/Sign-off; KAN-118 Saved Period Compliance Report Profiles; KAN-119 Period Compliance Report Share Packages; KAN-120 First Governed Repo Setup Integration Wizard; KAN-121 Change Risk Assessment Advisory MVP; KAN-122 Change Risk Rule Catalog & Evaluation Trace; KAN-123 Change Risk Manual Review & Mitigation Notes; KAN-124 Change Risk Review Queue and CAB Evidence Filter; KAN-125 Change Risk CAB Review Packet
 
 ## Decision
 
@@ -81,6 +81,13 @@ Current primitives:
   It returns qualitative `low|medium|high|unknown` risk, reasons, missing evidence, blocking gaps,
   and recommended manual actions. It is not a deployment approval, not a blocking gate, not a score,
   not a compliance/certification/legal claim, not AI, and not Agent Governance.
+- `KAN-125` adds manual Change Risk CAB Review Packets. Admins can package filtered or explicitly
+  selected Change Risk evaluations into `gitgov_change_risk_cab_packet.v1` JSON artifacts with
+  artifact hashes, no-claim flags, evaluation snapshots, review states, trace hashes, summary
+  counts, download history, and archive lifecycle. Auditors can list/read/download packets. It is a
+  CAB/internal-audit review artifact only: no release blocking, no deployment execution, no provider
+  or repository mutation, no AI/LLM, no Agent Governance dependency, no public link/email/scheduler,
+  and no compliance/certification/legal/regulatory claim.
 - `KAN-83` adds the first CI/CD-facing deployment authorization API with persisted history:
   `POST /deployment-gates/authorize` and `GET /deployment-gates/authorizations`.
 - `KAN-84` adds the Desktop history surface under `Governance > Releases` and migrates generated
@@ -448,6 +455,11 @@ Current primitives:
   read-only/advisory for release outcomes. It reuses the KAN-123 review state and does not add
   scoring, enforcement, notifications, approval quorum, provider/repo/deploy mutation, AI, Agent
   Governance dependency, or compliance/certification/legal claims.
+- `KAN-125` adds manual CAB packets over the review queue. Admins can create hashable JSON packets
+  from current filters or visible evaluation IDs; Auditors can read/download; Admins can archive.
+  The packet stores evaluation snapshots and verification metadata but does not mutate source
+  evaluations, Deployment Gate authorizations, Agent Governance rows, providers, repositories, or
+  release outcomes.
 
 Future scope:
 

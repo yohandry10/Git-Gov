@@ -4,6 +4,7 @@ import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { formatTs } from '@/lib/timezone'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { ChangeRiskCabPacketsPanel } from './ChangeRiskCabPacketsPanel'
 import type {
   ChangeRiskEvaluationRecord,
   ChangeRiskEvaluationReviewResponse,
@@ -658,6 +659,15 @@ export function ChangeRiskPanel() {
               )}
             </div>
           </div>
+          <ChangeRiskCabPacketsPanel
+            selectedOrgName={selectedOrgName}
+            repositoryFullName={repositoryFullName}
+            branch={branch}
+            environment={environment}
+            reviewQueueFilter={reviewQueueFilter}
+            evaluations={evaluations}
+            displayTimezone={displayTimezone}
+          />
         </div>
       </div>
     </section>

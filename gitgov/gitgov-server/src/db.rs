@@ -534,6 +534,47 @@ pub struct UpdateChangeRiskEvaluationReviewInput<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct ChangeRiskCabPacketEvaluationFilter<'a> {
+    pub repository_full_name: Option<&'a str>,
+    pub branch: Option<&'a str>,
+    pub environment: Option<&'a str>,
+    pub risk_level: Option<&'a str>,
+    pub review_status: Option<&'a str>,
+    pub date_range_start: Option<i64>,
+    pub date_range_end: Option<i64>,
+    pub evaluation_ids: &'a [String],
+    pub deployment_gate_ids: &'a [String],
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateChangeRiskCabPacketInput<'a> {
+    pub packet_id: &'a str,
+    pub org_id: &'a str,
+    pub name: &'a str,
+    pub filters_json: &'a serde_json::Value,
+    pub evaluation_ids_json: &'a serde_json::Value,
+    pub artifact_hash: &'a str,
+    pub artifact_json: &'a serde_json::Value,
+    pub created_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListChangeRiskCabPacketsInput<'a> {
+    pub org_id: &'a str,
+    pub status: Option<&'a str>,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArchiveChangeRiskCabPacketInput<'a> {
+    pub org_id: &'a str,
+    pub packet_id: &'a str,
+    pub archived_by_user_id: &'a str,
+}
+
+#[derive(Debug, Clone)]
 pub struct CreateAgentGovernanceEvaluationInput {
     pub evaluation_id: String,
     pub payload: AgentGovernanceEvaluationRequest,
@@ -681,6 +722,24 @@ fn change_risk_evaluation_from_row(row: &PgRow) -> ChangeRiskEvaluationRecord {
         decision_reason_safe: row.get("decision_reason_safe"),
         review_updated_at: row.get("review_updated_at_ms"),
         created_at: row.get("created_at_ms"),
+    }
+}
+
+fn change_risk_cab_packet_from_row(row: &PgRow) -> ChangeRiskCabPacketRecord {
+    ChangeRiskCabPacketRecord {
+        packet_id: row.get("packet_id"),
+        org_id: row.get("org_id"),
+        name: row.get("name"),
+        filters: row.get("filters_json"),
+        evaluation_ids: serde_json::from_value(row.get("evaluation_ids_json")).unwrap_or_default(),
+        artifact_hash: row.get("artifact_hash"),
+        status: row.get("status"),
+        created_by_user_id: row.get("created_by_user_id"),
+        created_at: row.get("created_at_ms"),
+        downloaded_at: row.get("downloaded_at_ms"),
+        download_count: row.get("download_count"),
+        archived_at: row.get("archived_at_ms"),
+        archived_by_user_id: row.get("archived_by_user_id"),
     }
 }
 

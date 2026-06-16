@@ -1,6 +1,11 @@
 import { parseCommandError, tauriInvoke } from '@/lib/tauri'
 import type {
   ControlPlaneActions,
+  ChangeRiskCabPacketListResponse,
+  ChangeRiskCabPacketQuery,
+  ChangeRiskCabPacketRecord,
+  ChangeRiskCabPacketRequest,
+  ChangeRiskCabPacketResponse,
   ChangeRiskEvaluationListResponse,
   ChangeRiskEvaluationQuery,
   ChangeRiskEvaluationRecord,
@@ -52,6 +57,11 @@ type EnterpriseActionKeys =
   | 'loadChangeRiskEvaluationReview'
   | 'updateChangeRiskEvaluationReview'
   | 'createChangeRiskEvaluation'
+  | 'createChangeRiskCabPacket'
+  | 'loadChangeRiskCabPackets'
+  | 'getChangeRiskCabPacket'
+  | 'downloadChangeRiskCabPacket'
+  | 'archiveChangeRiskCabPacket'
   | 'evaluateEnterpriseReleaseGovernance'
   | 'createEnterpriseReleaseApproval'
   | 'exportAuditData'
@@ -101,6 +111,14 @@ function matchesChangeRiskReviewFilter(
   reviewStatus?: ChangeRiskEvaluationQuery['review_status'],
 ): boolean {
   return !reviewStatus || record.review_status === reviewStatus
+}
+
+function applyChangeRiskCabPacketToList(
+  items: ChangeRiskCabPacketRecord[],
+  packet: ChangeRiskCabPacketRecord,
+): ChangeRiskCabPacketRecord[] {
+  const next = items.filter((item) => item.packet_id !== packet.packet_id)
+  return [packet, ...next]
 }
 
 export function createEnterpriseActions(
@@ -819,6 +837,205 @@ export function createEnterpriseActions(
       set({
         changeRiskError: message,
         isChangeRiskEvaluationCreating: false,
+      })
+      return null
+    }
+  },
+
+  loadChangeRiskCabPackets: async (query = {}) => {
+    const { serverConfig, selectedOrgName, changeRiskCabPacketsFilters } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabPacketQuery = {
+      ...changeRiskCabPacketsFilters,
+      ...query,
+      org_name: orgName ?? null,
+      status: query.status?.trim() || changeRiskCabPacketsFilters.status || null,
+      limit: query.limit ?? changeRiskCabPacketsFilters.limit ?? 10,
+      offset: query.offset ?? changeRiskCabPacketsFilters.offset ?? 0,
+    }
+
+    set({
+      isChangeRiskCabPacketsLoading: true,
+      changeRiskError: null,
+      changeRiskCabPacketsFilters: nextQuery,
+    })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketListResponse>('cmd_server_list_change_risk_cab_packets', {
+        config: serverConfig,
+        query: nextQuery,
+      })
+      set({
+        changeRiskCabPackets: response.items,
+        changeRiskCabPacketsTotal: response.total,
+        isChangeRiskCabPacketsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketsLoading: false,
+      })
+      return null
+    }
+  },
+
+  createChangeRiskCabPacket: async (payload) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const effectiveOrgName = payload.org_name?.trim() || selectedOrgName.trim() || undefined
+    const request: ChangeRiskCabPacketRequest = {
+      ...payload,
+      org_name: effectiveOrgName ?? null,
+      name: payload.name.trim(),
+      repository_full_name: payload.repository_full_name?.trim() || null,
+      branch: payload.branch?.trim() || null,
+      environment: payload.environment?.trim() || null,
+      risk_level: payload.risk_level?.trim() || null,
+      review_status: payload.review_status?.trim() || null,
+      date_range_start: payload.date_range_start ?? null,
+      date_range_end: payload.date_range_end ?? null,
+      evaluation_ids: (payload.evaluation_ids ?? []).map((item) => item.trim()).filter(Boolean),
+      deployment_gate_ids: (payload.deployment_gate_ids ?? []).map((item) => item.trim()).filter(Boolean),
+    }
+
+    set({ isChangeRiskCabPacketCreating: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketResponse>('cmd_server_create_change_risk_cab_packet', {
+        config: serverConfig,
+        payload: request,
+      })
+      set((state) => ({
+        changeRiskCabPackets: applyChangeRiskCabPacketToList(
+          state.changeRiskCabPackets,
+          response.packet,
+        ).slice(0, state.changeRiskCabPacketsFilters.limit ?? 10),
+        changeRiskCabPacketsTotal: state.changeRiskCabPacketsTotal + 1,
+        changeRiskCabPacket: response,
+        changeRiskCabPacketArtifact: response.artifact ?? null,
+        isChangeRiskCabPacketCreating: false,
+        changeRiskError: null,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketCreating: false,
+      })
+      return null
+    }
+  },
+
+  getChangeRiskCabPacket: async (packetId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabPacketQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabPacketsLoading: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketResponse>('cmd_server_get_change_risk_cab_packet', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        query: nextQuery,
+      })
+      set({
+        changeRiskCabPacket: response,
+        changeRiskCabPacketArtifact: response.artifact ?? null,
+        isChangeRiskCabPacketsLoading: false,
+      })
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketsLoading: false,
+      })
+      return null
+    }
+  },
+
+  downloadChangeRiskCabPacket: async (packetId, query = {}) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = query.org_name?.trim() || selectedOrgName.trim() || undefined
+    const nextQuery: ChangeRiskCabPacketQuery = {
+      ...query,
+      org_name: orgName ?? null,
+    }
+
+    set({ isChangeRiskCabPacketDownloading: true, changeRiskError: null })
+    try {
+      const artifact = await tauriInvoke<Record<string, unknown>>('cmd_server_download_change_risk_cab_packet', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        query: nextQuery,
+      })
+      set((state) => ({
+        changeRiskCabPacketArtifact: artifact,
+        changeRiskCabPackets: state.changeRiskCabPackets.map((packet) =>
+          packet.packet_id === packetId.trim()
+            ? {
+                ...packet,
+                download_count: packet.download_count + 1,
+                downloaded_at: Date.now(),
+              }
+            : packet,
+        ),
+        isChangeRiskCabPacketDownloading: false,
+        changeRiskError: null,
+      }))
+      return artifact
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketDownloading: false,
+      })
+      return null
+    }
+  },
+
+  archiveChangeRiskCabPacket: async (packetId, orgNameParam) => {
+    const { serverConfig, selectedOrgName } = get()
+    if (!serverConfig) return null
+    const orgName = orgNameParam?.trim() || selectedOrgName.trim() || undefined
+    const payload: ChangeRiskCabPacketRequest = {
+      org_name: orgName ?? null,
+      name: '',
+      evaluation_ids: [],
+      deployment_gate_ids: [],
+    }
+
+    set({ isChangeRiskCabPacketArchiving: true, changeRiskError: null })
+    try {
+      const response = await tauriInvoke<ChangeRiskCabPacketResponse>('cmd_server_archive_change_risk_cab_packet', {
+        config: serverConfig,
+        packetId: packetId.trim(),
+        payload,
+      })
+      set((state) => ({
+        changeRiskCabPackets: state.changeRiskCabPackets.map((packet) =>
+          packet.packet_id === response.packet.packet_id ? response.packet : packet,
+        ),
+        changeRiskCabPacket:
+          state.changeRiskCabPacket?.packet.packet_id === response.packet.packet_id
+            ? response
+            : state.changeRiskCabPacket,
+        isChangeRiskCabPacketArchiving: false,
+        changeRiskError: null,
+      }))
+      return response
+    } catch (e) {
+      const message = parseCommandError(String(e)).message
+      set({
+        changeRiskError: message,
+        isChangeRiskCabPacketArchiving: false,
       })
       return null
     }
