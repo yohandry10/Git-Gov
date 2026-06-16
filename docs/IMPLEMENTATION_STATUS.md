@@ -2,6 +2,49 @@
 
 Updated: 2026-06-16
 
+## KAN-141 Native Terminal Branch Gate Context Drilldown - 2026-06-16
+
+`KAN-141 - Native Terminal Branch Gate Context Drilldown` is implemented locally on branch
+`product/KAN-141-terminal-branch-gate-drilldown` for GitHub issue `#490`.
+
+Product decision:
+
+- Let the KAN-140 branch gate badge open the existing native terminal Governance Context drawer.
+- Keep the UI minimal by reusing the existing drawer instead of adding a new modal or panel.
+- Keep the behavior advisory-only and read-only.
+
+Implemented:
+
+- Added optional `onOpenContext` behavior to `TerminalBranchGateStatusBadge`.
+- Added optional controlled `isOpen` / `onOpenChange` state to `TerminalGovernanceContextPanel`
+  while preserving its standalone toggle behavior.
+- Wired `TerminalPanel` so clicking the branch gate badge opens the existing `Context` drawer.
+- Extended focused tests to prove badge click-through and controlled drawer read loading.
+
+Guardrails:
+
+- No backend/API route change.
+- No DB migration.
+- No Control Plane audit write.
+- No command interception, approval, blocking, or auto-run.
+- No commit/push/deploy enforcement.
+- No provider, repository, or deployment mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused KAN-141 test passed:
+  `npm --prefix gitgov run test -- --run src/test/components/terminal-branch-gate-status.test.tsx`
+  (`8` tests).
+- Frontend typecheck and lint passed.
+- Focused terminal suite passed (`20` tests).
+- Full frontend Vitest passed (`412` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check`, publication guard, and diff grep for newly added terminal write/mutating
+  Control Plane commands passed.
+- PR checks are pending before merge.
+
 ## KAN-140 Native Terminal Branch Gate Status Advisory - 2026-06-16
 
 `KAN-140 - Native Terminal Branch Gate Status Advisory` is completed. GitHub issue `#487`
