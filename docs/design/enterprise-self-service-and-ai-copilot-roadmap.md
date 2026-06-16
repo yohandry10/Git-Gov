@@ -610,15 +610,19 @@ Current primitives:
   non-git state, and refreshes after simple directory-change commands. It does not execute Git
   commands, persist context to the backend, intercept/block commands, mutate repositories, or create
   a second enforcement model.
+- `KAN-134` adds safe quick commands to the same native terminal. The MVP is a local insert-only
+  palette for read-only Git inspection commands (`git status --short`, `git branch --show-current`,
+  `git log --oneline -5`, `git diff --stat`, and `git remote -v`). It does not auto-run commands,
+  include mutating Git/provider/deploy commands, persist to the backend, intercept/block commands,
+  mutate repositories, or create enforcement/compliance evidence.
 
 Future scope:
 
 - VS Code extension with read-only branch gate status, policy preview, pipeline state, and audit
   trail snippets.
 - Embedded terminal improvements:
-  - command history by session.
-  - repo/branch context in prompt.
-  - quick commands for selected deploy providers.
+  - optional provider-specific read-only quick commands after additional safety review.
+  - explicit branch gate status after the Desktop gate context is stable enough for developer use.
   - no command interception by default.
 
 Guardrail:
