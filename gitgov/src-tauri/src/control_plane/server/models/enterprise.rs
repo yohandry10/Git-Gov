@@ -526,6 +526,22 @@ pub struct ChangeRiskCabPacketRecord {
     pub archived_at: Option<i64>,
     #[serde(default)]
     pub archived_by_user_id: Option<String>,
+    pub review_status: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub mitigation_notes_safe: Option<String>,
+    #[serde(default)]
+    pub decision_reason_safe: Option<String>,
+    pub follow_up_required: bool,
+    #[serde(default)]
+    pub follow_up_owner_safe: Option<String>,
+    #[serde(default)]
+    pub review_updated_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -579,6 +595,50 @@ pub struct ChangeRiskCabPacketListResponse {
     pub total: i64,
     pub limit: i64,
     pub offset: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ChangeRiskCabPacketReviewRequest {
+    pub org_name: Option<String>,
+    pub review_status: String,
+    pub review_notes: Option<String>,
+    pub mitigation_notes: Option<String>,
+    pub decision_reason: Option<String>,
+    pub follow_up_required: bool,
+    pub follow_up_owner: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ChangeRiskCabPacketReviewResponse {
+    pub packet_id: String,
+    pub org_id: String,
+    pub artifact_hash: String,
+    pub packet_status: String,
+    pub review_status: String,
+    #[serde(default)]
+    pub reviewed_by_user_id: Option<String>,
+    #[serde(default)]
+    pub reviewed_at: Option<i64>,
+    #[serde(default)]
+    pub review_notes_safe: Option<String>,
+    #[serde(default)]
+    pub mitigation_notes_safe: Option<String>,
+    #[serde(default)]
+    pub decision_reason_safe: Option<String>,
+    pub follow_up_required: bool,
+    #[serde(default)]
+    pub follow_up_owner_safe: Option<String>,
+    #[serde(default)]
+    pub review_updated_at: Option<i64>,
+    pub manual_cab_disposition_only: bool,
+    pub advisory_only: bool,
+    pub llm_used: bool,
+    pub agent_governance_used: bool,
+    pub release_blocking: bool,
+    pub deployment_execution: bool,
+    pub compliance_claim: bool,
+    pub certification: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

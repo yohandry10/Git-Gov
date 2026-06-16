@@ -331,8 +331,36 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
             download_count BIGINT NOT NULL DEFAULT 0 CHECK (download_count >= 0),
             archived_at TIMESTAMPTZ,
             archived_by_user_id TEXT,
+            review_status TEXT NOT NULL DEFAULT 'pending_review' CHECK (
+                review_status IN (
+                    'pending_review',
+                    'reviewed',
+                    'accepted_risk',
+                    'needs_mitigation',
+                    'returned_to_owner',
+                    'rejected'
+                )
+            ),
+            reviewed_by_user_id TEXT,
+            reviewed_at TIMESTAMPTZ,
+            review_notes_safe TEXT,
+            mitigation_notes_safe TEXT,
+            decision_reason_safe TEXT,
+            follow_up_required BOOLEAN NOT NULL DEFAULT FALSE,
+            follow_up_owner_safe TEXT,
+            review_updated_at TIMESTAMPTZ,
             CHECK (packet_id ~ '^crcab_[a-f0-9]{32}$'),
             CHECK (length(name) BETWEEN 1 AND 160),
+            CHECK (
+                COALESCE(length(review_notes_safe), 0) <= 1000
+                AND COALESCE(length(mitigation_notes_safe), 0) <= 1000
+                AND COALESCE(length(decision_reason_safe), 0) <= 1000
+                AND COALESCE(length(follow_up_owner_safe), 0) <= 1000
+            ),
+            CHECK (
+                review_status <> 'needs_mitigation'
+                OR (follow_up_required = TRUE AND mitigation_notes_safe IS NOT NULL)
+            ),
             CHECK (artifact_hash ~ '^sha256:[a-f0-9]{64}$'),
             CHECK (jsonb_typeof(filters_json) = 'object'),
             CHECK (jsonb_typeof(evaluation_ids_json) = 'array'),
@@ -357,6 +385,9 @@ pub(super) async fn try_setup() -> Option<(PgPool, String, PgPool)> {
 
         CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_status
             ON change_risk_cab_packets(org_id, status, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_change_risk_cab_packets_review
+            ON change_risk_cab_packets(org_id, review_status, COALESCE(review_updated_at, created_at) DESC);
 
         CREATE TABLE IF NOT EXISTS compliance_evidence_exports (
             export_id TEXT PRIMARY KEY,
@@ -2271,6 +2302,11 @@ pub(super) fn build_test_app_with_options(
         .route(
             "/change-risk/cab-packets/{packet_id}/download",
             get(handlers::download_change_risk_cab_packet),
+        )
+        .route(
+            "/change-risk/cab-packets/{packet_id}/review",
+            get(handlers::get_change_risk_cab_packet_review)
+                .patch(handlers::update_change_risk_cab_packet_review),
         )
         .route(
             "/change-risk/cab-packets/{packet_id}/archive",

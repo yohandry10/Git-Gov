@@ -491,6 +491,11 @@ pub(crate) fn build_app(config: RouteConfig) -> Router {
             patch(handlers::archive_change_risk_cab_packet),
         )
         .route(
+            "/change-risk/cab-packets/{packet_id}/review",
+            get(handlers::get_change_risk_cab_packet_review)
+                .patch(handlers::update_change_risk_cab_packet_review),
+        )
+        .route(
             "/change-risk/cab-packets/{packet_id}",
             get(handlers::get_change_risk_cab_packet),
         )

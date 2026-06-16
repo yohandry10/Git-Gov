@@ -155,7 +155,7 @@ Dos capacidades siguen teniendo reglas de alcance específicas:
 
 **Endpoints principales:**
 
-La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `113` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
+La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router productivo contiene `147` registros Axum `.route(...)`, más Swagger UI en `/api-docs`; `/api-docs` sigue siendo un schema explorer parcial, no el contrato completo.
 
 | Endpoint | Auth | Para qué sirve |
 |----------|------|----------------|
@@ -276,6 +276,7 @@ La fuente operativa es `gitgov/gitgov-server/src/server/routes.rs`. El router pr
 | `/change-risk/cab-packets` | Bearer (admin/auditor para lectura; admin para creación) | Listar o crear paquetes CAB manuales `gitgov_change_risk_cab_packet.v1` desde evaluaciones Change Risk filtradas o seleccionadas |
 | `/change-risk/cab-packets/{packet_id}` | Bearer (admin/auditor) | Leer metadatos y artifact JSON de un paquete CAB tenant-scoped |
 | `/change-risk/cab-packets/{packet_id}/download` | Bearer (admin/auditor) | Descargar artifact JSON hashable e incrementar contador de descarga; paquetes archivados devuelven conflicto |
+| `/change-risk/cab-packets/{packet_id}/review` | Bearer (admin/auditor lectura; admin escritura) | Leer o actualizar la disposición manual CAB sobre un paquete sin aprobar deploys, bloquear releases, mutar proveedores/repos, mutar evaluaciones fuente ni cambiar el hash del artifact |
 | `/change-risk/cab-packets/{packet_id}/archive` | Bearer (admin) | Archivar un paquete CAB activo sin mutar evaluaciones, gates, proveedores, repositorios ni resultados de release |
 | `/agent-governance/evaluate` | Bearer | Evaluar si un agente puede hacer commit, push, PR, merge, cambio de política o deploy |
 | `/agent-governance/settings` | Bearer (admin) | Obtener/actualizar el opt-in tenant-level de Agent Governance; por defecto queda manual-only |

@@ -2,6 +2,55 @@
 
 Updated: 2026-06-16
 
+## KAN-126 Change Risk CAB Packet Manual Disposition - 2026-06-16
+
+`KAN-126 - Change Risk CAB Packet Manual Disposition` is in implementation on branch
+`product/KAN-126-cab-packet-manual-disposition`.
+
+Product decision:
+
+- Record human CAB disposition over an existing KAN-125 packet.
+- Keep the KAN-125 artifact JSON and artifact hash immutable.
+- Let Admins update disposition metadata.
+- Let Admins and Auditors read disposition metadata.
+- Do not approve deployments, block releases, execute deploys, mutate providers/repos, mutate source
+  Change Risk evaluations, use AI/LLM/agents, create compliance scores, or make certification/legal
+  claims.
+
+Implemented locally:
+
+- Supabase migration/postcheck `v66`.
+- Review metadata on `change_risk_cab_packets`.
+- Backend routes:
+  - `GET /change-risk/cab-packets/{packet_id}/review`.
+  - `PATCH /change-risk/cab-packets/{packet_id}/review`.
+- Safe text validation, decision-reason/follow-up validation, Admin-only update, Admin/Auditor read,
+  tenant isolation, and admin audit events.
+- Tauri DTOs, client methods, commands, and invoke registration.
+- Control Plane store state/actions.
+- Governance > Releases CAB disposition panel.
+- Design and validation report docs.
+
+Local validation completed so far:
+
+- Backend `cargo check`.
+- Backend `cargo clippy -- -D warnings`.
+- Tauri `cargo check`.
+- Tauri `cargo clippy -- -D warnings`.
+- Tauri `cargo test` (`49` passed).
+- Frontend `pnpm --dir gitgov typecheck`.
+- Frontend `pnpm --dir gitgov lint`.
+- Frontend full Vitest `pnpm --dir gitgov test` passed (`379` tests).
+- Frontend `pnpm --dir gitgov build` passed with the pre-existing Vite large chunk warning.
+- Focused store test `pnpm --dir gitgov exec vitest run src/test/useControlPlaneStore.test.ts`
+  passed (`45` tests).
+- Focused backend real Postgres test
+  `change_risk_cab_packets_are_hashable_manual_artifacts_without_mutation` passed with
+  `TEST_DATABASE_URL` mapped from ignored local `DATABASE_URL`.
+- Real Postgres `v66` migration/postcheck passed in a rollback transaction.
+
+Report: `docs/reports/change-risk-cab-packet-manual-disposition-2026-06-16.md`.
+
 ## KAN-125 Change Risk CAB Review Packet - 2026-06-16
 
 `KAN-125 - Change Risk CAB Review Packet` is completed. PR `#436` merged to `main` as
