@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-16
-Ticket: `KAN-135` Native Terminal Governance Context Panel MVP
+Ticket: `KAN-136` VS Code Extension Read-Only Governance Context MVP
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -119,6 +119,13 @@ The repo already contains substantial product surface:
   commands; and it does not call the backend, create audit evidence, mutate repositories, or create a
   compliance/certification claim.
 - Native Terminal Governance Context from KAN-135 continues Developer Distribution Surfaces 0.10.
+  It adds a read-only Governance Context drawer to the native terminal and reuses existing
+  Deployment Gate, Change Risk, and Executive Governance read models.
+- VS Code Extension Read-Only Governance Context from KAN-136 is the active next Developer
+  Distribution Surfaces 0.10 slice. It adds a local `gitgov-vscode` package with a read-only tree
+  view, SecretStorage-backed API key handling, read-only Git workspace detection, and GET-only
+  GitGov context reads. It must not enforce policy, intercept commands, execute deploys, mutate
+  providers/repos, use AI/Agent Governance, or make compliance/certification claims.
   It adds a read-only terminal drawer that maps the detected local Git repository to a safe GitHub
   `owner/repo` target and loads existing Deployment Gate, Change Risk, and Executive Governance
   read models. It does not add backend endpoints, execute/intercept/block commands, mutate providers

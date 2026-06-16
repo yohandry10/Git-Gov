@@ -1,0 +1,83 @@
+{
+  "name": "gitgov-vscode",
+  "displayName": "GitGov Governance Context",
+  "description": "Read-only GitGov governance context for the current VS Code repository.",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:gitgovGovernance",
+    "onCommand:gitgov.refreshGovernanceContext",
+    "onCommand:gitgov.configureConnection",
+    "onCommand:gitgov.clearConnection"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "GitGov",
+      "properties": {
+        "gitgov.apiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "GitGov API URL. The API key is stored separately in VS Code SecretStorage."
+        },
+        "gitgov.orgName": {
+          "type": "string",
+          "default": "",
+          "description": "GitGov organization name used to scope read-only governance requests."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "gitgov.refreshGovernanceContext",
+        "title": "GitGov: Refresh Governance Context"
+      },
+      {
+        "command": "gitgov.configureConnection",
+        "title": "GitGov: Configure Connection"
+      },
+      {
+        "command": "gitgov.clearConnection",
+        "title": "GitGov: Clear Connection"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitgov",
+          "title": "GitGov",
+          "icon": "resources/gitgov.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitgov": [
+        {
+          "id": "gitgovGovernance",
+          "name": "GitGov Governance"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint src test",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.94.0",
+    "eslint": "^9.39.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^4.1.0"
+  }
+}
