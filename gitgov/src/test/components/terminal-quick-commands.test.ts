@@ -5,6 +5,7 @@ import {
   buildTerminalQuickCommandInsertInput,
   buildTerminalQuickCommandViews,
   isReadOnlyTerminalQuickCommand,
+  terminalQuickCommandGroupLabel,
 } from '@/components/cli/terminalQuickCommands'
 
 const gitContext: NativeTerminalGitContext = {
@@ -24,27 +25,73 @@ describe('native terminal quick command helpers', () => {
       'git branch --show-current',
       'git log --oneline -5',
       'git diff --stat',
-      'git remote -v',
+      'git remote',
+      'terraform fmt -check -recursive',
+      'terraform validate -no-color',
+      'kubectl config current-context',
+      'kubectl config get-contexts',
+      'docker compose config --services',
+      'docker compose config --quiet',
+      'helm lint .',
     ])
 
     for (const quickCommand of SAFE_TERMINAL_QUICK_COMMANDS) {
       expect(isReadOnlyTerminalQuickCommand(quickCommand.command)).toBe(true)
-      expect(quickCommand.command).not.toMatch(/\b(push|pull|merge|rebase|commit|checkout|fetch|deploy|apply)\b/i)
+      expect(quickCommand.enabled).toBe(true)
+      expect(quickCommand.safetyLevel).toBe('local-read-only')
+      expect(quickCommand.requiresNetwork).toBe(false)
+      expect(quickCommand.mayExposeSecrets).toBe(false)
+      expect(quickCommand.command).not.toMatch(
+        /\b(push|pull|merge|rebase|commit|checkout|fetch|deploy|apply|delete|destroy|install|upgrade|uninstall|up|down)\b/i,
+      )
     }
   })
 
-  it('rejects mutating, compound, redirected, and non-git commands', () => {
+  it('labels Git and provider/tool command groups without path leakage', () => {
+    expect(terminalQuickCommandGroupLabel('git')).toBe('Git inspection')
+    expect(terminalQuickCommandGroupLabel('provider-tool')).toBe('Provider / Tool context')
+
+    const views = buildTerminalQuickCommandViews(gitContext)
+    expect(views.some((entry) => entry.group === 'git')).toBe(true)
+    expect(views.some((entry) => entry.group === 'provider-tool')).toBe(true)
+    expect(views.some((entry) => entry.label.includes('C:/work'))).toBe(false)
+    expect(views.some((entry) => entry.description.includes('C:/work'))).toBe(false)
+  })
+
+  it('rejects mutating, compound, redirected, networked, secret-exposing, and non-registry commands', () => {
     const rejected = [
       'git push',
       'git pull',
       'git commit -m test',
       'git checkout main',
       'git fetch --all',
+      'git status',
+      'git remote -v',
       'git status --short && git push',
       'git status --short; git push',
       'git status --short > out.txt',
-      'pnpm test',
+      'terraform plan',
       'terraform apply',
+      'terraform destroy',
+      'terraform output -json',
+      'kubectl get pods',
+      'kubectl apply -f deployment.yml',
+      'kubectl delete pod api',
+      'helm install app .',
+      'helm upgrade app .',
+      'helm uninstall app',
+      'docker compose up',
+      'docker compose down',
+      'docker compose logs',
+      'aws sts get-caller-identity',
+      'az account show',
+      'gcloud config list',
+      'vercel deploy',
+      'render services list',
+      'env',
+      'printenv',
+      'cat .env',
+      'pnpm test',
     ]
 
     for (const command of rejected) {
@@ -71,8 +118,19 @@ describe('native terminal quick command helpers', () => {
     const views = buildTerminalQuickCommandViews(gitContext)
 
     expect(views.every((entry) => !entry.disabled)).toBe(true)
-    expect(views.some((entry) => entry.label.includes('C:/work'))).toBe(false)
-    expect(views.some((entry) => entry.description.includes('C:/work'))).toBe(false)
+    expect(views.filter((entry) => entry.group === 'provider-tool')).toHaveLength(7)
+    expect(views.find((entry) => entry.command === 'terraform fmt -check -recursive')).toMatchObject({
+      tool: 'terraform',
+      requiresNetwork: false,
+      mayExposeSecrets: false,
+      disabled: false,
+    })
+    expect(views.find((entry) => entry.command === 'kubectl config current-context')).toMatchObject({
+      tool: 'kubernetes',
+      requiresNetwork: false,
+      mayExposeSecrets: false,
+      disabled: false,
+    })
   })
 
   it('builds insert-only text without newline so the command is not auto-run', () => {
@@ -89,5 +147,22 @@ describe('native terminal quick command helpers', () => {
 
     const submitted = applyNativeTerminalInputToDraft(draft.draft, '\r')
     expect(submitted.submittedCommands).toEqual(['git status --short'])
+  })
+
+  it('builds provider/tool insert-only text without newline so it is not auto-run', () => {
+    const data = buildTerminalQuickCommandInsertInput(' terraform fmt -check -recursive ')
+
+    expect(data).toBe('terraform fmt -check -recursive')
+    expect(data).not.toMatch(/[\r\n]/)
+
+    const draft = applyNativeTerminalInputToDraft('', data)
+    expect(draft).toEqual({
+      draft: 'terraform fmt -check -recursive',
+      submittedCommands: [],
+    })
+
+    const dockerData = buildTerminalQuickCommandInsertInput('docker compose config --services')
+    expect(dockerData).toBe('docker compose config --services')
+    expect(dockerData).not.toMatch(/[\r\n]/)
   })
 })
