@@ -59,4 +59,14 @@ Local validation:
   mutating Control Plane commands; matches were limited to the existing read-only Deployment Gate
   list command and documentation/test text.
 
-Additional validation is tracked in the PR before merge.
+PR validation:
+
+- PR `#488` passed required checks: Security Guard, Frontend Lint + Typecheck, Desktop Rust Clippy,
+  Server Clippy + Check, Website Lint + Typecheck + Build, Validate Policy-as-Code, Validate
+  quality_gates warn/block matrix, Workflow Lint, Sonar Scan + Quality Gate, Vercel, and internal
+  marker guard.
+- PR `#488` merged to `main` as `b3b21f66`.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
+- No Render/API deploy was required because this was a Desktop/frontend read-only slice.
