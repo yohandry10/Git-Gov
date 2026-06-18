@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
-Updated: 2026-06-16
-Ticket: `KAN-144` Native Terminal Local Provider/Tool Context Detection MVP
+Updated: 2026-06-18
+Ticket: `KAN-145` Native Terminal Quiet Disabled Action Previews
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -145,6 +145,12 @@ The repo already contains substantial product surface:
   `Available in this workspace`. It does not read file contents, return absolute paths, call the
   backend, execute commands, use tokens, mutate providers/repos/clusters/deployments, or create
   enforcement/compliance evidence.
+- KAN-145 adds quiet disabled action previews to that same native terminal quick-command menu when
+  provider/tool context is detected. The previews are category-level advisory text only. They explain
+  that state-changing tool actions, cloud/provider API actions, secret/value inspection, and
+  repository writes are intentionally absent from shortcuts. They do not contain runnable command
+  strings, render as buttons, insert terminal input, intercept/block commands, mutate providers/repos,
+  or create enforcement/compliance evidence.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -246,11 +252,16 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` continues
-Desktop/Workspace terminal distribution by detecting local Terraform, Docker Compose, Helm, and
-Kubernetes context from safe bounded filesystem names only. It uses the KAN-143 registry to surface
-`Available in this workspace` commands without auto-run, backend calls, secret reads, path exposure,
-or mutation.
+`KAN-145 - Native Terminal Quiet Disabled Action Previews` continues Desktop/Workspace terminal
+distribution by adding passive advisory text for action categories intentionally absent from safe
+quick commands. It appears only when provider/tool context is detected, contains no runnable unsafe
+command strings, is not clickable, does not insert terminal input, and does not block or intercept
+manual terminal work.
+
+`KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` is completed through PR `#499`
+as `f7db20dc`. It detects local Terraform, Docker Compose, Helm, and Kubernetes context from safe
+bounded filesystem names only. It uses the KAN-143 registry to surface `Available in this workspace`
+commands without auto-run, backend calls, secret reads, path exposure, or mutation.
 
 `KAN-143 - Native Terminal Provider Quick Commands Safety Registry MVP` is completed through
 PR `#496` as `e0ee3f9b`. It continues

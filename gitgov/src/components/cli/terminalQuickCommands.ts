@@ -24,6 +24,13 @@ export interface TerminalQuickCommandView extends TerminalQuickCommand {
   disabledReason?: string
 }
 
+export interface TerminalDisabledActionPreview {
+  id: string
+  label: string
+  reason: string
+  guardrail: string
+}
+
 export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
   {
     id: 'git-status-short',
@@ -183,6 +190,33 @@ export const SAFE_TERMINAL_QUICK_COMMANDS: TerminalQuickCommand[] = [
   },
 ]
 
+export const TERMINAL_DISABLED_ACTION_PREVIEWS: TerminalDisabledActionPreview[] = [
+  {
+    id: 'state-changing-tool-actions',
+    label: 'State-changing tool actions',
+    reason: 'Use reviewed workflows and Deployment Gates for changes to infrastructure, clusters, or releases.',
+    guardrail: 'Quick commands stay local, read-only, and insert-only.',
+  },
+  {
+    id: 'cloud-provider-api-actions',
+    label: 'Cloud/provider API actions',
+    reason: 'Provider network calls are intentionally omitted from this local terminal menu.',
+    guardrail: 'Run provider validation through approved GitGov setup flows.',
+  },
+  {
+    id: 'secret-or-value-inspection',
+    label: 'Secret or value inspection',
+    reason: 'Shortcuts that may print credentials, tokens, raw variables, or sensitive values are not shown.',
+    guardrail: 'GitGov does not read or display local secret material here.',
+  },
+  {
+    id: 'repository-write-actions',
+    label: 'Repository write actions',
+    reason: 'Repository changes remain manual and reviewed through the normal GitGov workflow.',
+    guardrail: 'The terminal menu does not create commits, update branches, or publish changes.',
+  },
+]
+
 const enabledCommandRegistry = new Map(
   SAFE_TERMINAL_QUICK_COMMANDS
     .filter((command) => command.enabled && !command.requiresNetwork && !command.mayExposeSecrets)
@@ -234,6 +268,15 @@ export function buildTerminalQuickCommandViews(
                 : undefined,
     }
   })
+}
+
+export function buildTerminalDisabledActionPreviews(
+  toolContext?: NativeTerminalToolContext | null,
+): TerminalDisabledActionPreview[] {
+  if (!toolContext || toolContext.tools.every((tool) => !tool.detected)) {
+    return []
+  }
+  return TERMINAL_DISABLED_ACTION_PREVIEWS
 }
 
 export function buildTerminalQuickCommandInsertInput(command: string): string {

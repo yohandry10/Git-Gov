@@ -6,6 +6,7 @@ import {
   type NativeTerminalToolContext,
 } from './terminalToolContext'
 import {
+  buildTerminalDisabledActionPreviews,
   buildTerminalQuickCommandViews,
   terminalQuickCommandGroupLabel,
   type TerminalQuickCommand,
@@ -32,6 +33,7 @@ export function TerminalQuickCommandsMenu({
   onInsert,
 }: TerminalQuickCommandsMenuProps) {
   const quickCommands = buildTerminalQuickCommandViews(context, toolContext)
+  const disabledActionPreviews = buildTerminalDisabledActionPreviews(toolContext)
   const detectedToolLabels = terminalToolContextDetectedLabels(toolContext)
   const hasToolContext = toolContext !== null
   const workspaceCommands = quickCommands.filter((quickCommand) => quickCommand.availableInWorkspace)
@@ -178,6 +180,35 @@ export function TerminalQuickCommandsMenu({
                   >
                     {command}
                   </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {disabledActionPreviews.length > 0 && (
+            <div className="mt-2 border-t border-surface-800 pt-2">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-[8px] uppercase tracking-wider text-surface-600">
+                  Not offered as shortcuts
+                </span>
+                <span className="text-[8px] uppercase tracking-wider text-surface-600">
+                  advisory
+                </span>
+              </div>
+              <div className="space-y-1">
+                {disabledActionPreviews.map((preview) => (
+                  <div
+                    key={preview.id}
+                    className="rounded border border-surface-800 bg-surface-950/70 px-2 py-1"
+                    title={preview.guardrail}
+                  >
+                    <div className="text-[9px] font-medium text-surface-300">
+                      {preview.label}
+                    </div>
+                    <p className="mt-0.5 text-[8px] leading-snug text-surface-600">
+                      {preview.reason}
+                    </p>
+                  </div>
                 ))}
               </div>
             </div>
