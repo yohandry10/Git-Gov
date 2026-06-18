@@ -2,6 +2,55 @@
 
 Updated: 2026-06-18
 
+## KAN-148 Enterprise Provider Setup Deep Links - 2026-06-18
+
+`KAN-148 - Enterprise Provider Setup Deep Links` continues the KAN-147 Integration Wizard packaging
+path. GitHub issue `#507` tracks the implementation.
+
+Product decision:
+
+- Keep provider setup manual-first and non-blocking.
+- Do not add OAuth, provider install automation, provider API calls, or backend persistence in this
+  slice.
+- Make KAN-147 setup guidance actionable by linking each status to the existing GitGov surface that
+  already owns that operator workflow.
+
+Implemented:
+
+- Extended `EnterpriseProviderSetupStep` with an explicit `target`.
+- Added navigation-only targets:
+  - `Connect` opens Settings/System through `/settings#control-plane`.
+  - `Retry` opens Governance Evidence through `/governance/evidence`.
+  - `Review` opens Action Center through `/action-center`.
+  - `Skipped` opens Enterprise Adoption profile through `/governance/adoption#enterprise-adoption`.
+- Added `navigation_only=true` to every target so tests and future UI work preserve the contract.
+- Rendered compact React Router links beside the existing provider setup badges.
+- Added helper and DOM coverage proving the UI renders links, not provider mutation buttons.
+
+Guardrails:
+
+- Manual-first, advisory, and non-blocking.
+- No backend/API route change.
+- No DB migration.
+- No Render deploy requirement.
+- No provider API calls, OAuth, or token usage.
+- No `.env` or secret-value reads.
+- No provider, repository, deployment, or workflow mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No release blocking or compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused dashboard helper + Enterprise Adoption panel tests passed (`40` tests).
+- Frontend typecheck passed.
+- Frontend lint passed.
+- Full frontend Vitest passed (`432` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed.
+- Static guardrail grep found only test names, documentation guardrails, and existing safety flags
+  set to `false` for OAuth/provider API/backend mutation/token strings.
+
 ## KAN-147 Enterprise Provider Setup Guidance - 2026-06-18
 
 `KAN-147 - Enterprise Provider Setup Guidance` continues Enterprise Self-Service Adoption and the

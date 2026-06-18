@@ -7,6 +7,7 @@ import {
   type EnterpriseProviderSetupAction,
   type EnterpriseProviderSetupGuidance,
   type EnterpriseProviderSetupStep,
+  type EnterpriseProviderSetupTarget,
 } from './adoption-profile'
 import { buildEnterpriseProviderHealth } from './provider-health'
 
@@ -22,6 +23,39 @@ function setupActionLabel(action: EnterpriseProviderSetupAction): string {
   if (action === 'retry') return 'Retry'
   if (action === 'skip') return 'Skipped'
   return 'Review'
+}
+
+function setupTargetForAction(action: EnterpriseProviderSetupAction): EnterpriseProviderSetupTarget {
+  if (action === 'connect') {
+    return {
+      kind: 'settings',
+      label: 'Open Settings',
+      to: '/settings#control-plane',
+      navigation_only: true,
+    }
+  }
+  if (action === 'retry') {
+    return {
+      kind: 'evidence',
+      label: 'Open Evidence',
+      to: '/governance/evidence',
+      navigation_only: true,
+    }
+  }
+  if (action === 'skip') {
+    return {
+      kind: 'adoption-profile',
+      label: 'Review profile',
+      to: '/governance/adoption#enterprise-adoption',
+      navigation_only: true,
+    }
+  }
+  return {
+    kind: 'action-center',
+    label: 'Open Action Center',
+    to: '/action-center',
+    navigation_only: true,
+  }
 }
 
 function healthByProvider(
@@ -68,6 +102,7 @@ export function buildEnterpriseProviderSetupGuidance(
       validation: selectedProvider
         ? check?.next_step ?? 'Run the approved provider validation flow and wait for GitGov evidence.'
         : 'Leave unselected unless the customer uses this provider.',
+      target: setupTargetForAction(action),
     }
   })
   const orderedSteps = [...steps].sort(compareSetupSteps)

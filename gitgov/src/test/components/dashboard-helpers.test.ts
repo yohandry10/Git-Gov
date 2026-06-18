@@ -725,6 +725,10 @@ describe('dashboard-helpers enterprise adoption pack', () => {
       selected: false,
       status: 'skipped',
       action: 'skip',
+      target: expect.objectContaining({
+        to: '/governance/adoption#enterprise-adoption',
+        navigation_only: true,
+      }),
     }))
     expect(guidance.safety).toEqual({
       contains_secret_values: false,
@@ -761,6 +765,11 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(guidance.steps.find((step) => step.provider === 'vercel')).toEqual(expect.objectContaining({
       status: 'needs-evidence',
       action: 'retry',
+      target: expect.objectContaining({
+        kind: 'evidence',
+        to: '/governance/evidence',
+        navigation_only: true,
+      }),
     }))
     expect(guidance.steps.find((step) => step.provider === 'github')).toEqual(expect.objectContaining({
       selected: false,
@@ -788,6 +797,35 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(guidance.needs_config_count).toBe(0)
     expect(guidance.needs_evidence_count).toBe(0)
     expect(guidance.steps.filter((step) => step.selected).every((step) => step.action === 'review')).toBe(true)
+    expect(guidance.steps.filter((step) => step.selected).every((step) => (
+      step.target.kind === 'action-center' &&
+      step.target.to === '/action-center' &&
+      step.target.navigation_only === true
+    ))).toBe(true)
+  })
+
+  it('maps provider setup connect actions to Settings without executable provider controls', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      jira_project_key: '',
+      providers: ['jira'],
+    }
+    const health = buildEnterpriseProviderHealth(profile)
+
+    const guidance = buildEnterpriseProviderSetupGuidance(profile, health)
+
+    expect(guidance.next_step).toEqual(expect.objectContaining({
+      provider: 'jira',
+      action: 'connect',
+      target: {
+        kind: 'settings',
+        label: 'Open Settings',
+        to: '/settings#control-plane',
+        navigation_only: true,
+      },
+    }))
+    expect(JSON.stringify(guidance)).not.toContain('Authorization')
+    expect(JSON.stringify(guidance)).not.toContain('oauth_token')
   })
 
   it('builds an onboarding readiness snapshot without secret values', () => {

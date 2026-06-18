@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Activity, AlertTriangle, CheckCircle2, Circle, CircleAlert, CircleDot, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
@@ -728,16 +729,23 @@ export function EnterpriseAdoptionPanel() {
               )}
               <div className="divide-y divide-white/5">
                 {providerSetupGuidance.steps.map((step) => (
-                  <div key={step.provider} className={`grid grid-cols-1 gap-2 px-3 py-2 sm:grid-cols-[120px_minmax(0,1fr)_80px] ${providerSetupStatusClass(step.status)}`}>
+                  <div key={step.provider} className={`grid grid-cols-1 gap-2 px-3 py-2 sm:grid-cols-[120px_minmax(0,1fr)_180px] ${providerSetupStatusClass(step.status)}`}>
                     <div className="text-xs font-medium text-surface-100">{step.label}</div>
                     <div className="min-w-0 text-[11px] leading-5 text-surface-400">
                       <div>{step.reason}</div>
                       <div className="text-[10px] text-surface-500">{step.validation}</div>
                     </div>
-                    <div className="sm:text-right">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <Badge variant={providerSetupActionBadgeVariant(step.action)}>
                         {step.action_label}
                       </Badge>
+                      <Link
+                        to={step.target.to}
+                        aria-label={`${step.target.label} for ${step.label}`}
+                        className="whitespace-nowrap rounded border border-white/10 px-2 py-1 text-[10px] font-medium text-surface-300 transition-colors hover:border-white/25 hover:bg-white/[0.04] hover:text-surface-100"
+                      >
+                        {step.target.label}
+                      </Link>
                     </div>
                   </div>
                 ))}

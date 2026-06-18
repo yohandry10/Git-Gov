@@ -214,6 +214,14 @@ export interface EnterpriseProviderHealthCheck {
 
 export type EnterpriseProviderSetupStatus = EnterpriseProviderHealthStatus | 'skipped'
 export type EnterpriseProviderSetupAction = 'connect' | 'retry' | 'skip' | 'review'
+export type EnterpriseProviderSetupTargetKind = 'settings' | 'evidence' | 'action-center' | 'adoption-profile'
+
+export interface EnterpriseProviderSetupTarget {
+  kind: EnterpriseProviderSetupTargetKind
+  label: string
+  to: string
+  navigation_only: true
+}
 
 export interface EnterpriseProviderSetupStep {
   provider: AdoptionProvider
@@ -224,6 +232,7 @@ export interface EnterpriseProviderSetupStep {
   action_label: string
   reason: string
   validation: string
+  target: EnterpriseProviderSetupTarget
 }
 
 export interface EnterpriseProviderSetupGuidance {
