@@ -44,5 +44,18 @@ migration, invoke Agent Governance, or create blocking/release/compliance claims
   - Passed.
 - `npm --prefix gitgov run lint`
   - Passed.
+- `npm --prefix gitgov test -- --run`
+  - Passed: `431` tests.
+- `npm --prefix gitgov run build`
+  - Passed with the pre-existing Vite large chunk warning.
+- `git diff --check`
+  - Passed.
+- `.\scripts\security\publication_guard.ps1`
+  - Passed.
+- Static guardrail grep
+  - Passed: matches were documentation/safety flag references, not executable provider calls or
+    mutation code.
 
-Full repository validation is recorded in the pull request evidence before merge.
+PR `#505` checks passed before merge. Post-merge `main` checks passed for commit `3e8c9cb`: CI,
+Release Readiness Gate, Secret Scan, Public Naming Guard, Quality Gate Policy Matrix, Governance
+Correlation Smoke, Desktop Updater Readiness, and SonarQube Governance.
