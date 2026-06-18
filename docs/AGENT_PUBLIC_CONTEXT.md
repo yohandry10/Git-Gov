@@ -260,12 +260,12 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-147 - Enterprise Provider Setup Guidance` continues Enterprise Self-Service Adoption by
-turning existing provider health into a compact first-run setup guide. Selected providers are marked
-`Connect` when configuration is incomplete, `Retry` when evidence has not arrived, and `Review`
-when ready; unselected providers are marked `Skipped`. The feature is advisory only and does not
-read secrets, start OAuth, call provider APIs, mutate provider/customer repository state, add backend
-routes, or use Agent Governance.
+`KAN-147 - Enterprise Provider Setup Guidance` is completed through PR `#505` and main commit
+`3e8c9cb`. It continues Enterprise Self-Service Adoption by turning existing provider health into a
+compact first-run setup guide. Selected providers are marked `Connect` when configuration is
+incomplete, `Retry` when evidence has not arrived, and `Review` when ready; unselected providers are
+marked `Skipped`. The feature is advisory only and does not read secrets, start OAuth, call provider
+APIs, mutate provider/customer repository state, add backend routes, or use Agent Governance.
 
 `KAN-146 - Native Terminal Input Forwarding Contract` closes the remaining active Desktop/Workspace
 terminal guardrail by making non-interception explicit and tested. Manual terminal input is observed

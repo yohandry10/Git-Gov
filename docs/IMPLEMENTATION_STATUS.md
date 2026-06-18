@@ -46,6 +46,17 @@ Validation:
 - Focused helper + Enterprise Adoption panel tests passed (`39` tests).
 - Frontend typecheck passed.
 - Frontend lint passed.
+- Full frontend Vitest passed (`431` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed.
+- Static guardrail grep found only documentation/safety flag references for OAuth/provider API
+  language, not executable provider calls or mutation code.
+- PR `#505` checks passed before merge.
+- Post-merge `main` checks passed for `3e8c9cb`: CI, Release Readiness Gate, Secret Scan, Public
+  Naming Guard, Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater
+  Readiness, and SonarQube Governance.
+- No backend/API/DB/Render change was required.
 
 ## KAN-146 Native Terminal Input Forwarding Contract - 2026-06-18
 
