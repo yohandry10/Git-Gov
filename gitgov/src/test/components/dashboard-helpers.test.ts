@@ -12,11 +12,14 @@ import {
   buildFirstGovernedRepoSetupBaseline,
   buildEnterpriseProviderHealth,
   buildReleaseGovernanceEnvironmentRows,
+  clearEnterpriseProviderSetupDecision,
   buildOperationalEvidenceMetrics,
   formatOperationalMetricDuration,
   normalizeFirstGovernedRepoSetupDraft,
   normalizeEnterpriseOnboardingChecklistTracking,
+  normalizeEnterpriseProviderSetupDecisions,
   removeReleaseGovernanceEnvironmentOverride,
+  setEnterpriseProviderSetupDecision,
   updateReleaseGovernanceBaseMode,
   updateReleaseGovernanceEnvironmentOverrideMode,
   validateFirstGovernedRepoSetupDraft,
@@ -796,6 +799,7 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     expect(guidance.ready_count).toBe(4)
     expect(guidance.needs_config_count).toBe(0)
     expect(guidance.needs_evidence_count).toBe(0)
+    expect(guidance.operator_decision_count).toBe(0)
     expect(guidance.steps.filter((step) => step.selected).every((step) => step.action === 'review')).toBe(true)
     expect(guidance.steps.filter((step) => step.selected).every((step) => (
       step.target.kind === 'action-center' &&
@@ -826,6 +830,78 @@ describe('dashboard-helpers enterprise adoption pack', () => {
     }))
     expect(JSON.stringify(guidance)).not.toContain('Authorization')
     expect(JSON.stringify(guidance)).not.toContain('oauth_token')
+  })
+
+  it('normalizes provider setup decisions for profile persistence without secret-like fields', () => {
+    const normalized = normalizeEnterpriseProviderSetupDecisions({
+      version: 1,
+      decisions: [
+        null as never,
+        'not-an-object' as never,
+        { provider: 'jira', decision: 'retry-later', decided_at: '2026-06-18T00:00:00.000Z' },
+        { provider: 'jira', decision: 'reviewed', decided_at: '2026-06-18T01:00:00.000Z' },
+        { provider: 'render', decision: 'intentionally-skipped', decided_at: '' },
+        { provider: 'github' as never, decision: 'unknown' as never, decided_at: 'ignore' },
+        { provider: 'unknown' as never, decision: 'retry-later', decided_at: 'ignore' },
+      ],
+    })
+
+    expect(normalized).toEqual({
+      version: 1,
+      decisions: [
+        { provider: 'jira', decision: 'reviewed', decided_at: '2026-06-18T01:00:00.000Z' },
+        { provider: 'render', decision: 'intentionally-skipped', decided_at: '1970-01-01T00:00:00.000Z' },
+      ],
+    })
+    expect(JSON.stringify(normalized)).not.toContain('token')
+    expect(JSON.stringify(normalized)).not.toContain('secret')
+  })
+
+  it('persists and clears provider setup decisions through the adoption profile shape', () => {
+    const withDecision = setEnterpriseProviderSetupDecision(
+      DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      'vercel',
+      'retry-later',
+      '2026-06-18T02:00:00.000Z',
+    )
+
+    expect(withDecision.provider_setup_decisions).toEqual({
+      version: 1,
+      decisions: [
+        { provider: 'vercel', decision: 'retry-later', decided_at: '2026-06-18T02:00:00.000Z' },
+      ],
+    })
+
+    expect(clearEnterpriseProviderSetupDecision(withDecision, 'vercel').provider_setup_decisions).toEqual({
+      version: 1,
+      decisions: [],
+    })
+  })
+
+  it('shows only currently applicable provider setup decisions in guidance', () => {
+    const profile: EnterpriseAdoptionProfile = setEnterpriseProviderSetupDecision({
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providers: ['vercel'],
+    }, 'vercel', 'retry-later', '2026-06-18T03:00:00.000Z')
+    const withStaleDecision = setEnterpriseProviderSetupDecision(profile, 'jira', 'reviewed', '2026-06-18T04:00:00.000Z')
+
+    const guidance = buildEnterpriseProviderSetupGuidance(withStaleDecision)
+
+    expect(guidance.operator_decision_count).toBe(1)
+    expect(guidance.steps.find((step) => step.provider === 'vercel')).toEqual(expect.objectContaining({
+      action: 'retry',
+      operator_decision: {
+        provider: 'vercel',
+        decision: 'retry-later',
+        decided_at: '2026-06-18T03:00:00.000Z',
+      },
+      operator_decision_label: 'Retry later',
+    }))
+    expect(guidance.steps.find((step) => step.provider === 'jira')).toEqual(expect.objectContaining({
+      selected: false,
+      operator_decision: null,
+      operator_decision_label: null,
+    }))
   })
 
   it('builds an onboarding readiness snapshot without secret values', () => {

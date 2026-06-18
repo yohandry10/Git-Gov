@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-18
-Ticket: `KAN-148` Enterprise Provider Setup Deep Links
+Ticket: `KAN-149` Provider Setup Operator Decisions
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -49,6 +49,11 @@ The repo already contains substantial product surface:
   `Review`, and Enterprise Adoption profile for `Skipped`. It still does not call provider APIs,
   start OAuth, read secrets, mutate providers/customer repositories, add backend routes, or depend
   on Agent Governance.
+- Provider Setup Operator Decisions from KAN-149 persist human decisions in the existing Enterprise
+  Adoption profile JSON. Operators can record `retry-later`, `reviewed`, and
+  `intentionally-skipped` decisions for provider setup guidance. It reuses the existing profile save
+  path and still does not add OAuth, provider API calls, secret reads, provider/repository mutation,
+  new backend routes, or Agent Governance.
 - Change Risk Assessment Advisory from KAN-121, which persists deterministic qualitative risk
   context for changes/releases and Deployment Gate authorizations. It is manual-first, Admin-only in
   the MVP, tenant-scoped, and constrained to `advisory_only=true`, `llm_used=false`,
@@ -264,6 +269,11 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-149 - Provider Setup Operator Decisions` is in progress on branch
+`feature/KAN-149-provider-setup-decisions` and issue `#510`. It persists manual provider setup
+decisions inside the existing Enterprise Adoption profile JSON, without new routes, DB migration,
+OAuth, provider API calls, secret reads, provider/repository mutation, or Agent Governance.
 
 `KAN-148 - Enterprise Provider Setup Deep Links` is completed through PR `#508` and main commit
 `3f8f1c36`. It continues the KAN-147 provider setup guidance by adding navigation-only links into

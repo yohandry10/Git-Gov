@@ -879,6 +879,28 @@ mod adoption_profile_tests {
     }
 
     #[test]
+    fn enterprise_adoption_profile_validation_accepts_provider_setup_decisions() {
+        let mut profile = valid_profile();
+        profile["provider_setup_decisions"] = json!({
+            "version": 1,
+            "decisions": [
+                {
+                    "provider": "jira",
+                    "decision": "retry-later",
+                    "decided_at": "2026-06-18T00:00:00.000Z"
+                },
+                {
+                    "provider": "render",
+                    "decision": "intentionally-skipped",
+                    "decided_at": "2026-06-18T01:00:00.000Z"
+                }
+            ]
+        });
+
+        assert!(validate_enterprise_adoption_profile(&profile).is_ok());
+    }
+
+    #[test]
     fn enterprise_adoption_profile_validation_rejects_bad_repo_and_jira_key() {
         let mut profile = valid_profile();
         profile["repository_full_name"] = json!("missing-owner");
