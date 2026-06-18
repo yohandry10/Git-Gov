@@ -50,6 +50,11 @@ Validation:
 - `.\scripts\security\publication_guard.ps1` passed.
 - Static guardrail grep found only test names, documentation guardrails, and existing safety flags
   set to `false` for OAuth/provider API/backend mutation/token strings.
+- PR `#508` checks passed before merge.
+- Post-merge `main` checks passed for `3f8f1c36`: CI, Release Readiness Gate, Secret Scan, Public
+  Naming Guard, Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater
+  Readiness, and SonarQube Governance.
+- No backend/API/DB/Render change was required.
 
 ## KAN-147 Enterprise Provider Setup Guidance - 2026-06-18
 

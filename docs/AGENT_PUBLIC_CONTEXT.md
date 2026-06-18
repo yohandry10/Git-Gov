@@ -265,12 +265,12 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-148 - Enterprise Provider Setup Deep Links` continues the KAN-147 provider setup guidance by
-adding navigation-only links into existing GitGov surfaces. `Connect` opens Settings/System,
-`Retry` opens Governance Evidence, `Review` opens Action Center, and `Skipped` opens Enterprise
-Adoption profile. The feature is still manual-first and advisory only: it does not read secrets,
-start OAuth, call provider APIs, mutate provider/customer repository state, add backend routes, or
-use Agent Governance.
+`KAN-148 - Enterprise Provider Setup Deep Links` is completed through PR `#508` and main commit
+`3f8f1c36`. It continues the KAN-147 provider setup guidance by adding navigation-only links into
+existing GitGov surfaces. `Connect` opens Settings/System, `Retry` opens Governance Evidence,
+`Review` opens Action Center, and `Skipped` opens Enterprise Adoption profile. The feature is still
+manual-first and advisory only: it does not read secrets, start OAuth, call provider APIs, mutate
+provider/customer repository state, add backend routes, or use Agent Governance.
 
 `KAN-147 - Enterprise Provider Setup Guidance` is completed through PR `#505` and main commit
 `3e8c9cb`. It continues Enterprise Self-Service Adoption by turning existing provider health into a
