@@ -270,10 +270,10 @@ Implementation details in that report may be outdated because `KAN-70` through `
 
 ## Latest Product State
 
-`KAN-149 - Provider Setup Operator Decisions` is in progress on branch
-`feature/KAN-149-provider-setup-decisions` and issue `#510`. It persists manual provider setup
-decisions inside the existing Enterprise Adoption profile JSON, without new routes, DB migration,
-OAuth, provider API calls, secret reads, provider/repository mutation, or Agent Governance.
+`KAN-149 - Provider Setup Operator Decisions` is completed through PR `#511` and main commit
+`7d740e9b`. It persists manual provider setup decisions inside the existing Enterprise Adoption
+profile JSON, without new routes, DB migration, OAuth, provider API calls, secret reads,
+provider/repository mutation, or Agent Governance. PR checks and post-merge `main` checks passed.
 
 `KAN-148 - Enterprise Provider Setup Deep Links` is completed through PR `#508` and main commit
 `3f8f1c36`. It continues the KAN-147 provider setup guidance by adding navigation-only links into

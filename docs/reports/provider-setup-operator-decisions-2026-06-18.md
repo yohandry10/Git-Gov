@@ -57,3 +57,13 @@ create workflows, authorize deployments, or depend on agents/AI.
 - Static guardrail grep found only existing secret-validation code, documentation guardrails, and
   negative test assertions; diff-only grep found no executable OAuth/provider API/backend mutation
   code.
+
+## Merge Evidence
+
+- PR `#511` merged to `main` as `7d740e9b`.
+- GitHub issue `#510` closed through the merge.
+- PR checks passed before merge.
+- Post-merge `main` checks passed: CI, Release Readiness Gate, Secret Scan, Public Naming Guard,
+  Quality Gate Policy Matrix, Governance Correlation Smoke, Desktop Updater Readiness, and
+  SonarQube Governance.
+- No backend/API/DB/Render change was required.
