@@ -6,6 +6,8 @@ import {
   type EnterpriseOnboardingGuideStepStatus,
   type EnterpriseOnboardingReadinessStatus,
   type EnterpriseProviderHealthStatus,
+  type EnterpriseProviderSetupAction,
+  type EnterpriseProviderSetupStatus,
 } from './dashboard-helpers'
 
 export const ONBOARDING_TRACKING_STATUS_OPTIONS: Array<{ id: EnterpriseOnboardingChecklistTrackingStatus; label: string }> = [
@@ -41,6 +43,20 @@ export function providerHealthLabel(status: EnterpriseProviderHealthStatus): str
   if (status === 'ready') return 'Ready'
   if (status === 'needs-config') return 'Config'
   return 'Evidence'
+}
+
+export function providerSetupStatusClass(status: EnterpriseProviderSetupStatus): string {
+  if (status === 'ready') return 'border-success-500/20 bg-success-500/8'
+  if (status === 'needs-config') return 'border-warning-500/25 bg-warning-500/8'
+  if (status === 'needs-evidence') return 'border-brand-500/20 bg-brand-500/8'
+  return 'border-white/8 bg-white/[0.02]'
+}
+
+export function providerSetupActionBadgeVariant(action: EnterpriseProviderSetupAction): 'success' | 'warning' | 'info' | 'neutral' {
+  if (action === 'review') return 'success'
+  if (action === 'connect') return 'warning'
+  if (action === 'retry') return 'info'
+  return 'neutral'
 }
 
 export function onboardingReadinessBadgeVariant(status: EnterpriseOnboardingReadinessStatus): 'success' | 'warning' | 'info' {

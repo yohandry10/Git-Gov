@@ -78,6 +78,10 @@ export type {
   EnterpriseProviderHealthCheck,
   EnterpriseProviderHealthEvidence,
   EnterpriseProviderHealthStatus,
+  EnterpriseProviderSetupAction,
+  EnterpriseProviderSetupGuidance,
+  EnterpriseProviderSetupStatus,
+  EnterpriseProviderSetupStep,
   EnterpriseReleaseGovernancePolicy,
   EnterpriseReleaseGovernanceEnvironmentRow,
   EnterpriseReleaseGovernanceEnvironmentSource,
@@ -118,6 +122,8 @@ export { buildEnterpriseAdoptionPack } from './dashboard-helpers/adoption-pack'
 export { buildEnterpriseWorkflowTemplatePack } from './dashboard-helpers/workflow-templates'
 
 export { buildEnterpriseProviderHealth } from './dashboard-helpers/provider-health'
+
+export { buildEnterpriseProviderSetupGuidance } from './dashboard-helpers/provider-setup-guidance'
 
 export {
   buildEnterpriseAdoptionPackFilename,

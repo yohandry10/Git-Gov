@@ -2,6 +2,51 @@
 
 Updated: 2026-06-18
 
+## KAN-147 Enterprise Provider Setup Guidance - 2026-06-18
+
+`KAN-147 - Enterprise Provider Setup Guidance` continues Enterprise Self-Service Adoption and the
+Integration Wizard packaging path. GitHub issue `#504` tracks the implementation.
+
+Product decision:
+
+- Do not add provider OAuth, provider mutation, or another onboarding table.
+- Reuse the existing adoption profile and provider health checks.
+- Translate provider health into clear human setup actions per provider.
+
+Implemented:
+
+- Added `buildEnterpriseProviderSetupGuidance`.
+- Added explicit provider setup actions:
+  - `Connect` for selected providers missing required setup/configuration.
+  - `Retry` for selected providers that need observed GitGov evidence.
+  - `Review` for selected providers already ready.
+  - `Skipped` for providers not selected in the customer profile.
+- Added safety flags that state the guidance reads no secret values, calls no provider APIs, starts
+  no OAuth flow, mutates no customer repositories/provider state, and does not use Agent Governance.
+- Added a compact `Provider setup` region to `EnterpriseAdoptionPanel` above existing Provider
+  Health.
+- Added DOM coverage that verifies the UI renders `Connect`, `Retry`, and `Skipped` guidance without
+  mutation controls.
+
+Guardrails:
+
+- Manual-first and advisory only.
+- No backend/API route change.
+- No DB migration.
+- No Render deploy requirement.
+- No provider API calls, OAuth, or token usage.
+- No `.env` or secret-value reads.
+- No provider, repository, deployment, or workflow mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No release blocking or compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused dashboard helper tests passed (`38` tests).
+- Focused helper + Enterprise Adoption panel tests passed (`39` tests).
+- Frontend typecheck passed.
+- Frontend lint passed.
+
 ## KAN-146 Native Terminal Input Forwarding Contract - 2026-06-18
 
 `KAN-146 - Native Terminal Input Forwarding Contract` closes the remaining active guardrail in

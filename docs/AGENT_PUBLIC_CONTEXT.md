@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-18
-Ticket: `KAN-146` Native Terminal Input Forwarding Contract
+Ticket: `KAN-147` Enterprise Provider Setup Guidance
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -40,6 +40,10 @@ The repo already contains substantial product surface:
   orchestrates state, validation, baseline planning, and completion without storing provider secrets,
   mutating providers/customer repos, executing deploys, creating claims, or depending on Agent
   Governance.
+- Enterprise Provider Setup Guidance from KAN-147 translates existing provider health inside
+  Enterprise Adoption into manual `Connect`, `Retry`, `Review`, and `Skipped` actions per provider.
+  It is not OAuth, not provider installation, not backend mutation, not repository mutation, and not
+  Agent Governance.
 - Change Risk Assessment Advisory from KAN-121, which persists deterministic qualitative risk
   context for changes/releases and Deployment Gate authorizations. It is manual-first, Admin-only in
   the MVP, tenant-scoped, and constrained to `advisory_only=true`, `llm_used=false`,
@@ -255,6 +259,13 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-147 - Enterprise Provider Setup Guidance` continues Enterprise Self-Service Adoption by
+turning existing provider health into a compact first-run setup guide. Selected providers are marked
+`Connect` when configuration is incomplete, `Retry` when evidence has not arrived, and `Review`
+when ready; unselected providers are marked `Skipped`. The feature is advisory only and does not
+read secrets, start OAuth, call provider APIs, mutate provider/customer repository state, add backend
+routes, or use Agent Governance.
 
 `KAN-146 - Native Terminal Input Forwarding Contract` closes the remaining active Desktop/Workspace
 terminal guardrail by making non-interception explicit and tested. Manual terminal input is observed
