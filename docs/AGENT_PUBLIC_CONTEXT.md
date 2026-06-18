@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-18
-Ticket: `KAN-145` Native Terminal Quiet Disabled Action Previews
+Ticket: `KAN-146` Native Terminal Input Forwarding Contract
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -151,6 +151,10 @@ The repo already contains substantial product surface:
   repository writes are intentionally absent from shortcuts. They do not contain runnable command
   strings, render as buttons, insert terminal input, intercept/block commands, mutate providers/repos,
   or create enforcement/compliance evidence.
+- KAN-146 makes the native terminal input forwarding contract explicit. Manual terminal input may be
+  observed locally for session history/context refresh, but it is forwarded unchanged to the native
+  PTY by default with no policy evaluation, no command interception, no command blocking, no backend
+  call, and no provider/repo mutation.
 - KAN-137 removes the external editor extension direction from the active product roadmap and repo.
   Developer Distribution Surfaces 0.10 stays focused on the Desktop/Workspace native terminal until
   a future explicit product decision reopens external editor plugins.
@@ -251,6 +255,12 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-146 - Native Terminal Input Forwarding Contract` closes the remaining active Desktop/Workspace
+terminal guardrail by making non-interception explicit and tested. Manual terminal input is observed
+locally for session history/context refresh, then forwarded unchanged to the native PTY by default.
+It does not evaluate policy, block commands, rewrite input, call the backend, mutate providers/repos,
+or create enforcement/compliance evidence.
 
 `KAN-145 - Native Terminal Quiet Disabled Action Previews` continues Desktop/Workspace terminal
 distribution by adding passive advisory text for action categories intentionally absent from safe
