@@ -57,4 +57,4 @@ workspace surface instead of a hidden policy-enforcement layer.
 - Static grep for common unsafe command strings in the new product code and KAN-146 docs:
   - Result: no matches.
 
-Full PR validation remains required before merge.
+PR `#503` checks passed before merge. No backend/API/DB/Render change was required.

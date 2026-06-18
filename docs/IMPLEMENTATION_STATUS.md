@@ -42,7 +42,7 @@ Validation:
 - `git diff --check` passed.
 - `.\scripts\security\publication_guard.ps1` passed.
 - Static grep found no common unsafe command strings in the new product code or KAN-146 docs.
-- PR checks remain required before merge.
+- PR `#503` checks passed before merge. No backend/API/DB/Render change was required.
 
 ## KAN-145 Native Terminal Quiet Disabled Action Previews - 2026-06-18
 
@@ -94,7 +94,8 @@ Validation:
 ## KAN-144 Native Terminal Local Provider/Tool Context Detection MVP - 2026-06-16
 
 `KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` continues roadmap block
-`0.10 Developer Distribution Surfaces`. GitHub issue `#498` tracks the implementation.
+`0.10 Developer Distribution Surfaces`. GitHub issue `#498` tracked the implementation, and
+PR `#499` merged the product slice to `main` as `f7db20dc`.
 
 Product decision:
 
@@ -141,7 +142,7 @@ Validation:
 - `.\scripts\security\publication_guard.ps1` passed.
 - Static dangerous-command/read grep found no mutating provider commands, backend command execution,
   or file-content reads in the new tool-context path.
-- PR checks remain required before merge.
+- PR `#499` checks passed before merge. No backend/API/DB/Render change was required.
 
 ## KAN-143 Native Terminal Provider Quick Commands Safety Registry MVP - 2026-06-16
 
