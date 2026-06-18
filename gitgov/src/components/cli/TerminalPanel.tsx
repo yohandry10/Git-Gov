@@ -25,6 +25,7 @@ import {
   buildTerminalQuickCommandInsertInput,
   type TerminalQuickCommand,
 } from './terminalQuickCommands'
+import { buildNativeTerminalInputForwardingContract } from './terminalInputForwarding'
 import { TerminalBranchGateStatusBadge } from './TerminalBranchGateStatusBadge'
 import { TerminalGovernanceContextPanel } from './TerminalGovernanceContextPanel'
 import { TerminalSessionHistoryDrawer } from './TerminalSessionHistoryDrawer'
@@ -417,11 +418,12 @@ export function TerminalPanel() {
       const sid = sessionIdRef.current
       if (!sid) return
       captureSessionCommands(data)
+      const forwarding = buildNativeTerminalInputForwardingContract(data)
 
       writeQueueRef.current = writeQueueRef.current
         .then(async () => {
           await tauriInvoke('cmd_write_native_terminal', {
-            request: { session_id: sid, data },
+            request: { session_id: sid, data: forwarding.data },
           })
         })
         .catch(() => {

@@ -2,6 +2,48 @@
 
 Updated: 2026-06-18
 
+## KAN-146 Native Terminal Input Forwarding Contract - 2026-06-18
+
+`KAN-146 - Native Terminal Input Forwarding Contract` closes the remaining active guardrail in
+roadmap block `0.10 Developer Distribution Surfaces`. GitHub issue `#502` tracks the implementation.
+
+Product decision:
+
+- Keep the Desktop native terminal non-intercepting by default.
+- Allow local observation for session history and context refresh only.
+- Make the forwarding behavior explicit and testable instead of relying on incidental code shape.
+
+Implemented:
+
+- Added `buildNativeTerminalInputForwardingContract`.
+- The contract returns the original manual terminal input unchanged with `shouldForward=true`,
+  `interception=none`, `policyEvaluation=not-run`, and `mutatesInput=false`.
+- `TerminalPanel` now passes manual `onData` input through that contract before writing to
+  `cmd_write_native_terminal`.
+- Quick-command insertion remains separate and still uses the exact safe allowlist from KAN-143.
+
+Guardrails:
+
+- No command blocking, approval, interception, filtering, rewriting, or auto-run.
+- No backend/API route change.
+- No DB migration.
+- No Render deploy requirement.
+- No Control Plane audit write.
+- No provider, repository, cluster, deployment, or workflow mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused native terminal suite passed (`44` tests).
+- Frontend typecheck and lint passed.
+- Full frontend Vitest passed (`427` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed.
+- Static grep found no common unsafe command strings in the new product code or KAN-146 docs.
+- PR `#503` checks passed before merge. No backend/API/DB/Render change was required.
+
 ## KAN-145 Native Terminal Quiet Disabled Action Previews - 2026-06-18
 
 `KAN-145 - Native Terminal Quiet Disabled Action Previews` continues roadmap block
@@ -52,7 +94,8 @@ Validation:
 ## KAN-144 Native Terminal Local Provider/Tool Context Detection MVP - 2026-06-16
 
 `KAN-144 - Native Terminal Local Provider/Tool Context Detection MVP` continues roadmap block
-`0.10 Developer Distribution Surfaces`. GitHub issue `#498` tracks the implementation.
+`0.10 Developer Distribution Surfaces`. GitHub issue `#498` tracked the implementation, and
+PR `#499` merged the product slice to `main` as `f7db20dc`.
 
 Product decision:
 
@@ -99,7 +142,7 @@ Validation:
 - `.\scripts\security\publication_guard.ps1` passed.
 - Static dangerous-command/read grep found no mutating provider commands, backend command execution,
   or file-content reads in the new tool-context path.
-- PR checks remain required before merge.
+- PR `#499` checks passed before merge. No backend/API/DB/Render change was required.
 
 ## KAN-143 Native Terminal Provider Quick Commands Safety Registry MVP - 2026-06-16
 
