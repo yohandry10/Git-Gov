@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Activity, AlertTriangle, CheckCircle2, Circle, CircleAlert, CircleDot, ClipboardCheck, Download, KeyRound, ListChecks, PackageCheck, Save, ShieldCheck, Workflow } from 'lucide-react'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import { useControlPlaneStore } from '@/store/useControlPlaneStore'
+import { EnterpriseProviderSetupPanel } from './EnterpriseProviderSetupPanel'
 import { ReleaseGovernanceEnvironmentPolicyPanel } from './ReleaseGovernanceEnvironmentPolicyPanel'
 import {
   ONBOARDING_TRACKING_STATUS_OPTIONS,
@@ -15,8 +15,6 @@ import {
   onboardingReadinessLabel,
   providerHealthBadgeVariant,
   providerHealthLabel,
-  providerSetupActionBadgeVariant,
-  providerSetupStatusClass,
   selectedClass,
   toggleValue,
 } from './enterprise-adoption-panel-helpers'
@@ -36,10 +34,12 @@ import {
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
+  clearEnterpriseProviderSetupDecision,
   normalizeEnterpriseOnboardingChecklistTracking,
   normalizeEnterpriseAdoptionProfile,
   removeReleaseGovernanceEnvironmentOverride,
   releaseGovernanceModeNeedsFormalApproval,
+  setEnterpriseProviderSetupDecision,
   updateReleaseGovernanceBaseEnvironment,
   updateReleaseGovernanceBaseMode,
   updateReleaseGovernanceEnvironmentOverrideEnvironment,
@@ -53,6 +53,7 @@ import {
   type EnterpriseAdoptionProfile,
   type EnterpriseOnboardingChecklistTracking,
   type EnterpriseOnboardingChecklistTrackingItem,
+  type EnterpriseProviderSetupDecisionKind,
 } from './dashboard-helpers'
 
 export function EnterpriseAdoptionPanel() {
@@ -215,6 +216,17 @@ export function EnterpriseAdoptionPanel() {
 
   const toggleModule = (module: AdoptionModule) => {
     setProfile((current) => ({ ...current, modules: toggleValue(current.modules, module) }))
+  }
+
+  const updateProviderSetupDecision = (
+    provider: AdoptionProvider,
+    decision: EnterpriseProviderSetupDecisionKind,
+  ) => {
+    setProfile((current) => setEnterpriseProviderSetupDecision(current, provider, decision))
+  }
+
+  const clearProviderSetupDecision = (provider: AdoptionProvider) => {
+    setProfile((current) => clearEnterpriseProviderSetupDecision(current, provider))
   }
 
   const downloadPack = () => {
@@ -705,52 +717,11 @@ export function EnterpriseAdoptionPanel() {
                 {readyProviders}/{providerHealth.length}
               </Badge>
             </div>
-            <div role="region" aria-label="Provider setup guidance" className="rounded border border-white/8 bg-white/[0.03]">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-surface-500">Provider setup</div>
-                  <div className="mt-1 text-[11px] text-surface-400">
-                    {providerSetupGuidance.ready_count}/{providerSetupGuidance.selected_count} selected ready, {providerSetupGuidance.skipped_count} skipped
-                  </div>
-                </div>
-                {providerSetupGuidance.next_step ? (
-                  <Badge variant={providerSetupActionBadgeVariant(providerSetupGuidance.next_step.action)}>
-                    Next: {providerSetupGuidance.next_step.action_label}
-                  </Badge>
-                ) : (
-                  <Badge variant="success">Ready</Badge>
-                )}
-              </div>
-              {providerSetupGuidance.next_step && (
-                <div className="border-b border-white/5 px-3 py-2 text-[11px] leading-5 text-surface-300">
-                  <span className="font-medium text-surface-100">{providerSetupGuidance.next_step.label}: </span>
-                  {providerSetupGuidance.next_step.validation}
-                </div>
-              )}
-              <div className="divide-y divide-white/5">
-                {providerSetupGuidance.steps.map((step) => (
-                  <div key={step.provider} className={`grid grid-cols-1 gap-2 px-3 py-2 sm:grid-cols-[120px_minmax(0,1fr)_180px] ${providerSetupStatusClass(step.status)}`}>
-                    <div className="text-xs font-medium text-surface-100">{step.label}</div>
-                    <div className="min-w-0 text-[11px] leading-5 text-surface-400">
-                      <div>{step.reason}</div>
-                      <div className="text-[10px] text-surface-500">{step.validation}</div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <Badge variant={providerSetupActionBadgeVariant(step.action)}>
-                        {step.action_label}
-                      </Badge>
-                      <Link
-                        to={step.target.to}
-                        aria-label={`${step.target.label} for ${step.label}`}
-                        className="whitespace-nowrap rounded border border-white/10 px-2 py-1 text-[10px] font-medium text-surface-300 transition-colors hover:border-white/25 hover:bg-white/[0.04] hover:text-surface-100"
-                      >
-                        {step.target.label}
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <EnterpriseProviderSetupPanel
+              guidance={providerSetupGuidance}
+              onDecision={updateProviderSetupDecision}
+              onClearDecision={clearProviderSetupDecision}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {providerHealth.map((check) => (
                 <div key={check.provider} className="rounded border border-white/8 bg-white/[0.03] p-3">

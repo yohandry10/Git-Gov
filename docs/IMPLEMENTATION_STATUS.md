@@ -2,6 +2,66 @@
 
 Updated: 2026-06-18
 
+## KAN-149 Provider Setup Operator Decisions - 2026-06-18
+
+`KAN-149 - Persist provider setup operator decisions` continues roadmap block `0.6 Integration
+Wizard And Enterprise Integration Hub`. GitHub issue `#510` tracks the implementation.
+
+Product decision:
+
+- Persist human provider setup decisions inside the existing Enterprise Adoption profile JSON.
+- Do not add a new table, route, provider connector, OAuth flow, or provider install automation.
+- Keep KAN-147/KAN-148 setup guidance advisory and navigation-first while letting operators record
+  `retry-later`, `reviewed`, and `intentionally-skipped` decisions.
+
+Implemented:
+
+- Added `provider_setup_decisions` to `EnterpriseAdoptionProfile`.
+- Added normalized decision helpers:
+  - `normalizeEnterpriseProviderSetupDecisions`
+  - `setEnterpriseProviderSetupDecision`
+  - `clearEnterpriseProviderSetupDecision`
+  - `providerSetupDecisionLabel`
+- Extended provider setup guidance with `operator_decision`, `operator_decision_label`, and
+  `operator_decision_count`.
+- Added compact decision controls in `EnterpriseAdoptionPanel`:
+  - `Later` for selected providers that still need configuration or evidence.
+  - `Reviewed` for ready selected providers.
+  - `Remember` for unselected providers intentionally skipped.
+  - `Clear` to remove a recorded decision.
+- Decisions are saved through the existing profile save flow and existing
+  `/enterprise/adoption-profile` JSONB persistence.
+- Added backend validation coverage proving the existing profile endpoint accepts the new decision
+  shape without a route or migration change.
+
+Guardrails:
+
+- Manual-first, advisory, and non-blocking.
+- No new backend/API route.
+- No DB migration.
+- No Render deploy requirement beyond normal frontend/docs deployment.
+- No provider API calls, OAuth, or token usage.
+- No `.env` or secret-value reads.
+- No provider, repository, deployment, or workflow mutation.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No release blocking or compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused dashboard helper + Enterprise Adoption panel tests passed (`44` tests).
+- Focused backend provider profile validation test passed (`1` test).
+- Frontend typecheck passed.
+- Frontend lint passed.
+- Full frontend Vitest passed (`436` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `cargo fmt --check` passed for `gitgov-server`.
+- `cargo check` passed for `gitgov-server`.
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed.
+- Static guardrail grep found only existing secret-validation code, documentation guardrails, and
+  negative test assertions; diff-only grep found no executable OAuth/provider API/backend mutation
+  code.
+
 ## KAN-148 Enterprise Provider Setup Deep Links - 2026-06-18
 
 `KAN-148 - Enterprise Provider Setup Deep Links` continues the KAN-147 Integration Wizard packaging

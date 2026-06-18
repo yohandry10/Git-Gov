@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { EnterpriseAdoptionPanel } from '@/components/control_plane/EnterpriseAdoptionPanel'
 import { DEFAULT_ENTERPRISE_ADOPTION_PROFILE, type EnterpriseAdoptionProfile } from '@/components/control_plane/dashboard-helpers'
@@ -11,7 +11,7 @@ vi.mock('@/store/useControlPlaneStore', () => ({
   useControlPlaneStore: (selector: (state: Record<string, unknown>) => unknown) => selector(storeMock.state),
 }))
 
-function panelState(profile: EnterpriseAdoptionProfile) {
+function panelState(profile: EnterpriseAdoptionProfile, overrides: Record<string, unknown> = {}) {
   return {
     selectedOrgName: 'exampleco',
     serverStats: {
@@ -38,6 +38,7 @@ function panelState(profile: EnterpriseAdoptionProfile) {
     saveEnterpriseAdoptionProfile: vi.fn(),
     loadEnterpriseOnboardingChecklistTracking: vi.fn(),
     saveEnterpriseOnboardingChecklistTracking: vi.fn(),
+    ...overrides,
   }
 }
 
@@ -70,5 +71,49 @@ describe('EnterpriseAdoptionPanel provider setup guidance', () => {
     expect(within(guidance).getByRole('link', { name: 'Open Evidence for Vercel' })).toHaveAttribute('href', '/governance/evidence')
     expect(within(guidance).getAllByRole('link', { name: /Review profile for/i })).toHaveLength(4)
     expect(within(guidance).queryByRole('button', { name: /connect|retry|skipped/i })).not.toBeInTheDocument()
+  })
+
+  it('saves manual provider setup decisions through the adoption profile', async () => {
+    const saveProfile = vi.fn().mockResolvedValue(true)
+    storeMock.state = panelState({
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      providers: ['vercel'],
+    }, {
+      saveEnterpriseAdoptionProfile: saveProfile,
+    })
+
+    render(
+      <MemoryRouter>
+        <EnterpriseAdoptionPanel />
+      </MemoryRouter>,
+    )
+
+    const guidance = await screen.findByRole('region', { name: 'Provider setup guidance' })
+    const vercelLink = within(guidance).getByRole('link', { name: 'Open Evidence for Vercel' })
+    const vercelRow = vercelLink.closest('[data-provider="vercel"]')
+    expect(vercelRow).not.toBeNull()
+
+    fireEvent.click(within(vercelRow as HTMLElement).getByRole('button', { name: 'Later' }))
+
+    await waitFor(() => {
+      expect(within(vercelRow as HTMLElement).getByText('Retry later')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTitle('Save adoption profile'))
+
+    await waitFor(() => {
+      expect(saveProfile).toHaveBeenCalledWith(expect.objectContaining({
+        provider_setup_decisions: {
+          version: 1,
+          decisions: [
+            expect.objectContaining({
+              provider: 'vercel',
+              decision: 'retry-later',
+              decided_at: expect.any(String),
+            }),
+          ],
+        },
+      }), 'exampleco')
+    })
   })
 })

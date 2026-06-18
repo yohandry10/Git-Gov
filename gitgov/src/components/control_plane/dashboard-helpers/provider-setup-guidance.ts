@@ -1,9 +1,12 @@
 import {
   ADOPTION_PROVIDER_OPTIONS,
+  normalizeEnterpriseProviderSetupDecisions,
+  providerSetupDecisionLabel,
   uniqueKnownValues,
   type AdoptionProvider,
   type EnterpriseAdoptionProfile,
   type EnterpriseProviderHealthCheck,
+  type EnterpriseProviderSetupDecision,
   type EnterpriseProviderSetupAction,
   type EnterpriseProviderSetupGuidance,
   type EnterpriseProviderSetupStep,
@@ -68,6 +71,30 @@ function selectedProviderSet(profile: EnterpriseAdoptionProfile): Set<AdoptionPr
   return new Set(uniqueKnownValues(profile.providers, ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)))
 }
 
+function decisionByProvider(profile: EnterpriseAdoptionProfile): Map<AdoptionProvider, EnterpriseProviderSetupDecision> {
+  return new Map(normalizeEnterpriseProviderSetupDecisions(profile.provider_setup_decisions).decisions.map((decision) => [
+    decision.provider,
+    decision,
+  ]))
+}
+
+function decisionAppliesToStep(
+  decision: EnterpriseProviderSetupDecision | undefined,
+  step: Pick<EnterpriseProviderSetupStep, 'selected' | 'status'>,
+): EnterpriseProviderSetupDecision | null {
+  if (!decision) return null
+  if (!step.selected && step.status === 'skipped' && decision.decision === 'intentionally-skipped') return decision
+  if (step.selected && step.status === 'ready' && decision.decision === 'reviewed') return decision
+  if (
+    step.selected &&
+    (step.status === 'needs-config' || step.status === 'needs-evidence') &&
+    decision.decision === 'retry-later'
+  ) {
+    return decision
+  }
+  return null
+}
+
 function compareSetupSteps(left: EnterpriseProviderSetupStep, right: EnterpriseProviderSetupStep): number {
   const priority: Record<EnterpriseProviderSetupStep['status'], number> = {
     'needs-config': 0,
@@ -84,11 +111,16 @@ export function buildEnterpriseProviderSetupGuidance(
 ): EnterpriseProviderSetupGuidance {
   const selected = selectedProviderSet(profile)
   const health = healthByProvider(providerHealth)
+  const decisions = decisionByProvider(profile)
   const steps = ADOPTION_PROVIDER_OPTIONS.map((option): EnterpriseProviderSetupStep => {
     const selectedProvider = selected.has(option.id)
     const check = health.get(option.id)
     const status = selectedProvider ? check?.status ?? 'needs-evidence' : 'skipped'
     const action = setupActionForStatus(status)
+    const operatorDecision = decisionAppliesToStep(decisions.get(option.id), {
+      selected: selectedProvider,
+      status,
+    })
     return {
       provider: option.id,
       label: option.label,
@@ -103,6 +135,8 @@ export function buildEnterpriseProviderSetupGuidance(
         ? check?.next_step ?? 'Run the approved provider validation flow and wait for GitGov evidence.'
         : 'Leave unselected unless the customer uses this provider.',
       target: setupTargetForAction(action),
+      operator_decision: operatorDecision,
+      operator_decision_label: operatorDecision ? providerSetupDecisionLabel(operatorDecision.decision) : null,
     }
   })
   const orderedSteps = [...steps].sort(compareSetupSteps)
@@ -114,6 +148,7 @@ export function buildEnterpriseProviderSetupGuidance(
     ready_count: steps.filter((step) => step.status === 'ready').length,
     needs_config_count: steps.filter((step) => step.status === 'needs-config').length,
     needs_evidence_count: steps.filter((step) => step.status === 'needs-evidence').length,
+    operator_decision_count: steps.filter((step) => step.operator_decision !== null).length,
     next_step: nextStep,
     steps: orderedSteps,
     safety: {

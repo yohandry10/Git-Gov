@@ -90,6 +90,7 @@ export interface EnterpriseAdoptionProfile {
   providers: AdoptionProvider[]
   modules: AdoptionModule[]
   release_governance?: EnterpriseReleaseGovernancePolicy
+  provider_setup_decisions?: EnterpriseProviderSetupDecisions
 }
 
 export interface EnterpriseAdoptionWorkflowPlan {
@@ -215,6 +216,18 @@ export interface EnterpriseProviderHealthCheck {
 export type EnterpriseProviderSetupStatus = EnterpriseProviderHealthStatus | 'skipped'
 export type EnterpriseProviderSetupAction = 'connect' | 'retry' | 'skip' | 'review'
 export type EnterpriseProviderSetupTargetKind = 'settings' | 'evidence' | 'action-center' | 'adoption-profile'
+export type EnterpriseProviderSetupDecisionKind = 'retry-later' | 'reviewed' | 'intentionally-skipped'
+
+export interface EnterpriseProviderSetupDecision {
+  provider: AdoptionProvider
+  decision: EnterpriseProviderSetupDecisionKind
+  decided_at: string
+}
+
+export interface EnterpriseProviderSetupDecisions {
+  version: 1
+  decisions: EnterpriseProviderSetupDecision[]
+}
 
 export interface EnterpriseProviderSetupTarget {
   kind: EnterpriseProviderSetupTargetKind
@@ -233,6 +246,8 @@ export interface EnterpriseProviderSetupStep {
   reason: string
   validation: string
   target: EnterpriseProviderSetupTarget
+  operator_decision: EnterpriseProviderSetupDecision | null
+  operator_decision_label: string | null
 }
 
 export interface EnterpriseProviderSetupGuidance {
@@ -241,6 +256,7 @@ export interface EnterpriseProviderSetupGuidance {
   ready_count: number
   needs_config_count: number
   needs_evidence_count: number
+  operator_decision_count: number
   next_step: EnterpriseProviderSetupStep | null
   steps: EnterpriseProviderSetupStep[]
   safety: {
@@ -419,6 +435,11 @@ export interface EnterpriseOnboardingChecklistTracking {
 export const ADOPTION_PROVIDER_IDS = ADOPTION_PROVIDER_OPTIONS.map((option) => option.id)
 export const ADOPTION_MODULE_IDS = ADOPTION_MODULE_OPTIONS.map((option) => option.id)
 export const ADOPTION_RELEASE_GOVERNANCE_MODE_IDS = ADOPTION_RELEASE_GOVERNANCE_MODE_OPTIONS.map((option) => option.id)
+export const PROVIDER_SETUP_DECISION_KINDS: EnterpriseProviderSetupDecisionKind[] = [
+  'retry-later',
+  'reviewed',
+  'intentionally-skipped',
+]
 export const ONBOARDING_STAGE_IDS: EnterpriseOnboardingReadinessStageId[] = [
   'profile',
   'providers',
@@ -433,6 +454,84 @@ export const ONBOARDING_TRACKING_STATUSES: EnterpriseOnboardingChecklistTracking
   'waiting',
   'done',
 ]
+
+export function providerSetupDecisionLabel(decision: EnterpriseProviderSetupDecisionKind): string {
+  if (decision === 'reviewed') return 'Reviewed'
+  if (decision === 'intentionally-skipped') return 'Intentional skip'
+  return 'Retry later'
+}
+
+export function normalizeEnterpriseProviderSetupDecisions(
+  setupDecisions?: EnterpriseProviderSetupDecisions | null,
+): EnterpriseProviderSetupDecisions {
+  const normalized: EnterpriseProviderSetupDecision[] = []
+  const source: unknown[] = Array.isArray(setupDecisions?.decisions) ? setupDecisions.decisions : []
+
+  for (const item of source) {
+    if (typeof item !== 'object' || item === null) continue
+    const record = item as Partial<Record<'provider' | 'decision' | 'decided_at', unknown>>
+    if (typeof record.provider !== 'string' || !ADOPTION_PROVIDER_IDS.includes(record.provider as AdoptionProvider)) continue
+    if (typeof record.decision !== 'string' || !PROVIDER_SETUP_DECISION_KINDS.includes(record.decision as EnterpriseProviderSetupDecisionKind)) continue
+    const provider = record.provider as AdoptionProvider
+    const decision = record.decision as EnterpriseProviderSetupDecisionKind
+    const decidedAt = typeof record.decided_at === 'string' && record.decided_at.trim()
+      ? record.decided_at.trim()
+      : new Date(0).toISOString()
+    const nextItem: EnterpriseProviderSetupDecision = {
+      provider,
+      decision,
+      decided_at: decidedAt,
+    }
+    const existingIndex = normalized.findIndex((existing) => existing.provider === provider)
+    if (existingIndex >= 0) {
+      normalized[existingIndex] = nextItem
+    } else {
+      normalized.push(nextItem)
+    }
+  }
+
+  return {
+    version: 1,
+    decisions: normalized,
+  }
+}
+
+export function setEnterpriseProviderSetupDecision(
+  profile: EnterpriseAdoptionProfile,
+  provider: AdoptionProvider,
+  decision: EnterpriseProviderSetupDecisionKind,
+  decidedAt = new Date().toISOString(),
+): EnterpriseAdoptionProfile {
+  const current = normalizeEnterpriseProviderSetupDecisions(profile.provider_setup_decisions)
+  return {
+    ...profile,
+    provider_setup_decisions: {
+      version: 1,
+      decisions: [
+        ...current.decisions.filter((item) => item.provider !== provider),
+        {
+          provider,
+          decision,
+          decided_at: decidedAt,
+        },
+      ],
+    },
+  }
+}
+
+export function clearEnterpriseProviderSetupDecision(
+  profile: EnterpriseAdoptionProfile,
+  provider: AdoptionProvider,
+): EnterpriseAdoptionProfile {
+  const current = normalizeEnterpriseProviderSetupDecisions(profile.provider_setup_decisions)
+  return {
+    ...profile,
+    provider_setup_decisions: {
+      version: 1,
+      decisions: current.decisions.filter((item) => item.provider !== provider),
+    },
+  }
+}
 
 function defaultQuorumRules(): EnterpriseReleaseGovernanceQuorumRule[] {
   return [
@@ -707,6 +806,7 @@ export function normalizeEnterpriseAdoptionProfile(profile: EnterpriseAdoptionPr
     providers: Array.isArray(profile.providers) ? [...profile.providers] : [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.providers],
     modules: Array.isArray(profile.modules) ? [...profile.modules] : [...DEFAULT_ENTERPRISE_ADOPTION_PROFILE.modules],
     release_governance: normalizeReleaseGovernancePolicy(profile.release_governance),
+    provider_setup_decisions: normalizeEnterpriseProviderSetupDecisions(profile.provider_setup_decisions),
   }
 }
 
@@ -717,6 +817,10 @@ export const DEFAULT_ENTERPRISE_ADOPTION_PROFILE: EnterpriseAdoptionProfile = {
   jira_project_key: 'EX',
   policy_preset: 'moderate',
   release_governance: buildReleaseGovernancePolicy('record-only'),
+  provider_setup_decisions: {
+    version: 1,
+    decisions: [],
+  },
   providers: ['github', 'jira', 'jenkins', 'sonarqube'],
   modules: [
     'traceability',
