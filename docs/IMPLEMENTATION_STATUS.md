@@ -47,7 +47,7 @@ Validation:
 - `.\scripts\security\publication_guard.ps1` passed after renaming the branch to satisfy the public
   neutral naming policy.
 - Static grep found no common unsafe command strings in the new product code or KAN-145 docs.
-- PR checks remain required before merge.
+- PR `#501` checks passed before merge. No backend/API/DB/Render change was required.
 
 ## KAN-144 Native Terminal Local Provider/Tool Context Detection MVP - 2026-06-16
 
