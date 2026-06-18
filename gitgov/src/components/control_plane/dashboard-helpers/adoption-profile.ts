@@ -212,6 +212,40 @@ export interface EnterpriseProviderHealthCheck {
   next_step: string
 }
 
+export type EnterpriseProviderSetupStatus = EnterpriseProviderHealthStatus | 'skipped'
+export type EnterpriseProviderSetupAction = 'connect' | 'retry' | 'skip' | 'review'
+
+export interface EnterpriseProviderSetupStep {
+  provider: AdoptionProvider
+  label: string
+  selected: boolean
+  status: EnterpriseProviderSetupStatus
+  action: EnterpriseProviderSetupAction
+  action_label: string
+  reason: string
+  validation: string
+}
+
+export interface EnterpriseProviderSetupGuidance {
+  selected_count: number
+  skipped_count: number
+  ready_count: number
+  needs_config_count: number
+  needs_evidence_count: number
+  next_step: EnterpriseProviderSetupStep | null
+  steps: EnterpriseProviderSetupStep[]
+  safety: {
+    contains_secret_values: false
+    reads_secret_values: false
+    mutates_customer_repository: false
+    mutates_provider_state: false
+    calls_provider_api: false
+    starts_oauth_flow: false
+    release_blocking_default: false
+    agent_governance_used: false
+  }
+}
+
 export type EnterpriseOnboardingReadinessStatus = 'ready' | 'needs-action' | 'blocked'
 export type EnterpriseOnboardingReadinessStageId =
   | 'profile'

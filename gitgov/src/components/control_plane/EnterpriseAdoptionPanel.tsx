@@ -14,6 +14,8 @@ import {
   onboardingReadinessLabel,
   providerHealthBadgeVariant,
   providerHealthLabel,
+  providerSetupActionBadgeVariant,
+  providerSetupStatusClass,
   selectedClass,
   toggleValue,
 } from './enterprise-adoption-panel-helpers'
@@ -29,6 +31,7 @@ import {
   buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseOnboardingRemediationPlan,
   buildEnterpriseOnboardingRemediationPlanFilename,
+  buildEnterpriseProviderSetupGuidance,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildEnterpriseProviderHealth,
@@ -106,6 +109,10 @@ export function EnterpriseAdoptionPanel() {
   const onboardingGuide = useMemo(
     () => buildEnterpriseOnboardingGuide(onboardingReadiness, onboardingRemediationPlan),
     [onboardingReadiness, onboardingRemediationPlan],
+  )
+  const providerSetupGuidance = useMemo(
+    () => buildEnterpriseProviderSetupGuidance(profile, providerHealth),
+    [profile, providerHealth],
   )
   const readyProviders = providerHealth.filter((check) => check.status === 'ready').length
   const readinessTarget = pack.policy_rules.find((rule) => rule.rule === 'Release readiness target')?.setting ?? '0'
@@ -696,6 +703,45 @@ export function EnterpriseAdoptionPanel() {
               <Badge variant={providerHealth.length > 0 && readyProviders === providerHealth.length ? 'success' : 'info'}>
                 {readyProviders}/{providerHealth.length}
               </Badge>
+            </div>
+            <div role="region" aria-label="Provider setup guidance" className="rounded border border-white/8 bg-white/[0.03]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-surface-500">Provider setup</div>
+                  <div className="mt-1 text-[11px] text-surface-400">
+                    {providerSetupGuidance.ready_count}/{providerSetupGuidance.selected_count} selected ready, {providerSetupGuidance.skipped_count} skipped
+                  </div>
+                </div>
+                {providerSetupGuidance.next_step ? (
+                  <Badge variant={providerSetupActionBadgeVariant(providerSetupGuidance.next_step.action)}>
+                    Next: {providerSetupGuidance.next_step.action_label}
+                  </Badge>
+                ) : (
+                  <Badge variant="success">Ready</Badge>
+                )}
+              </div>
+              {providerSetupGuidance.next_step && (
+                <div className="border-b border-white/5 px-3 py-2 text-[11px] leading-5 text-surface-300">
+                  <span className="font-medium text-surface-100">{providerSetupGuidance.next_step.label}: </span>
+                  {providerSetupGuidance.next_step.validation}
+                </div>
+              )}
+              <div className="divide-y divide-white/5">
+                {providerSetupGuidance.steps.map((step) => (
+                  <div key={step.provider} className={`grid grid-cols-1 gap-2 px-3 py-2 sm:grid-cols-[120px_minmax(0,1fr)_80px] ${providerSetupStatusClass(step.status)}`}>
+                    <div className="text-xs font-medium text-surface-100">{step.label}</div>
+                    <div className="min-w-0 text-[11px] leading-5 text-surface-400">
+                      <div>{step.reason}</div>
+                      <div className="text-[10px] text-surface-500">{step.validation}</div>
+                    </div>
+                    <div className="sm:text-right">
+                      <Badge variant={providerSetupActionBadgeVariant(step.action)}>
+                        {step.action_label}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {providerHealth.map((check) => (

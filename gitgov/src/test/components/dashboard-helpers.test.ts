@@ -6,6 +6,7 @@ import {
   buildEnterpriseOnboardingReadinessReportFilename,
   buildEnterpriseOnboardingRemediationPlan,
   buildEnterpriseOnboardingRemediationPlanFilename,
+  buildEnterpriseProviderSetupGuidance,
   buildEnterpriseWorkflowTemplatePack,
   buildEnterpriseWorkflowTemplatePackFilename,
   buildFirstGovernedRepoSetupBaseline,
@@ -705,6 +706,88 @@ describe('dashboard-helpers enterprise adoption pack', () => {
         status: 'needs-config',
       }),
     ])
+  })
+
+  it('builds provider setup guidance with explicit retry and skipped states', () => {
+    const guidance = buildEnterpriseProviderSetupGuidance(DEFAULT_ENTERPRISE_ADOPTION_PROFILE)
+
+    expect(guidance.selected_count).toBe(4)
+    expect(guidance.ready_count).toBe(0)
+    expect(guidance.needs_evidence_count).toBe(4)
+    expect(guidance.skipped_count).toBe(2)
+    expect(guidance.next_step).toEqual(expect.objectContaining({
+      action: 'retry',
+      status: 'needs-evidence',
+      selected: true,
+    }))
+    expect(guidance.steps).toContainEqual(expect.objectContaining({
+      provider: 'render',
+      selected: false,
+      status: 'skipped',
+      action: 'skip',
+    }))
+    expect(guidance.safety).toEqual({
+      contains_secret_values: false,
+      reads_secret_values: false,
+      mutates_customer_repository: false,
+      mutates_provider_state: false,
+      calls_provider_api: false,
+      starts_oauth_flow: false,
+      release_blocking_default: false,
+      agent_governance_used: false,
+    })
+    expect(JSON.stringify(guidance)).not.toContain('GITGOV_API_KEY=')
+    expect(JSON.stringify(guidance)).not.toContain('SONAR_TOKEN=')
+  })
+
+  it('prioritizes connect guidance over retry when required provider config is missing', () => {
+    const profile: EnterpriseAdoptionProfile = {
+      ...DEFAULT_ENTERPRISE_ADOPTION_PROFILE,
+      jira_project_key: '',
+      providers: ['jira', 'vercel'],
+    }
+    const health = buildEnterpriseProviderHealth(profile, {
+      jiraCommitsWithTicket: 4,
+      jiraCoveragePercentage: 50,
+    })
+
+    const guidance = buildEnterpriseProviderSetupGuidance(profile, health)
+
+    expect(guidance.next_step).toEqual(expect.objectContaining({
+      provider: 'jira',
+      status: 'needs-config',
+      action: 'connect',
+    }))
+    expect(guidance.steps.find((step) => step.provider === 'vercel')).toEqual(expect.objectContaining({
+      status: 'needs-evidence',
+      action: 'retry',
+    }))
+    expect(guidance.steps.find((step) => step.provider === 'github')).toEqual(expect.objectContaining({
+      selected: false,
+      status: 'skipped',
+      action: 'skip',
+    }))
+  })
+
+  it('returns review guidance and no next step when all selected providers are ready', () => {
+    const health = buildEnterpriseProviderHealth(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, {
+      githubEventsTotal: 42,
+      jiraCommitsWithTicket: 12,
+      jiraCoveragePercentage: 80,
+      pipelineRuns7d: 10,
+      pipelineSuccess7d: 9,
+      sonarRuns: 3,
+      sonarSuccessful: 3,
+      activeRepos: 1,
+    })
+
+    const guidance = buildEnterpriseProviderSetupGuidance(DEFAULT_ENTERPRISE_ADOPTION_PROFILE, health)
+
+    expect(guidance.next_step).toBeNull()
+    expect(guidance.ready_count).toBe(4)
+    expect(guidance.needs_config_count).toBe(0)
+    expect(guidance.needs_evidence_count).toBe(0)
+    expect(guidance.steps.filter((step) => step.selected).every((step) => step.action === 'review')).toBe(true)
   })
 
   it('builds an onboarding readiness snapshot without secret values', () => {
