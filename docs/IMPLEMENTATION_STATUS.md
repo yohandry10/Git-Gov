@@ -1,6 +1,53 @@
 # GitGov Implementation Status
 
-Updated: 2026-06-16
+Updated: 2026-06-18
+
+## KAN-145 Native Terminal Quiet Disabled Action Previews - 2026-06-18
+
+`KAN-145 - Native Terminal Quiet Disabled Action Previews` continues roadmap block
+`0.10 Developer Distribution Surfaces`. GitHub issue `#500` tracks the implementation.
+
+Product decision:
+
+- Close the disabled-preview roadmap item without turning unsafe commands into suggestions.
+- Show only quiet category-level advisory text when local provider/tool context is detected.
+- Keep the quick-command menu local, manual-first, insert-only, and non-blocking.
+
+Implemented:
+
+- Added `TerminalDisabledActionPreview` metadata for excluded action categories.
+- Added disabled previews for state-changing tool actions, cloud/provider API actions,
+  secret/value inspection, and repository write actions.
+- Rendered previews as passive text in the existing native terminal quick-command menu.
+- Limited preview visibility to sessions where local provider/tool context reports a detected tool.
+- Kept quick-command insertion unchanged and tied only to exact allowlisted safe commands.
+
+Guardrails:
+
+- No runnable unsafe command strings in disabled previews.
+- No button, callback, or terminal input insertion for disabled previews.
+- No command interception, approval, blocking, auto-run, or newline insertion.
+- No backend/API route change.
+- No DB migration.
+- No Render deploy requirement.
+- No Control Plane audit write.
+- No provider, repository, cluster, deployment, or workflow mutation.
+- No cloud/provider API calls or token/API key usage.
+- No AI/Agent Governance/OPA/Rego/MCP dependency.
+- No compliance/certification/legal/regulatory claim.
+
+Validation:
+
+- Focused quick-command helper/menu tests passed (`15` tests).
+- Focused native terminal suite passed (`41` tests).
+- Frontend typecheck and lint passed.
+- Full frontend Vitest passed (`424` tests).
+- Frontend build passed with the pre-existing Vite large chunk warning.
+- `git diff --check` passed.
+- `.\scripts\security\publication_guard.ps1` passed after renaming the branch to satisfy the public
+  neutral naming policy.
+- Static grep found no common unsafe command strings in the new product code or KAN-145 docs.
+- PR `#501` checks passed before merge. No backend/API/DB/Render change was required.
 
 ## KAN-144 Native Terminal Local Provider/Tool Context Detection MVP - 2026-06-16
 

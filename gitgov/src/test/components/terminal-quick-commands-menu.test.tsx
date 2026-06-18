@@ -131,6 +131,44 @@ describe('native terminal quick commands menu', () => {
     })
   })
 
+  it('renders disabled action previews as non-clickable advisory text without unsafe command strings', () => {
+    const onInsert = vi.fn()
+
+    render(
+      <TerminalQuickCommandsMenu
+        context={gitContext}
+        toolContext={terraformToolContext}
+        disabled={false}
+        isOpen
+        recentCommands={[]}
+        onToggle={vi.fn()}
+        onInsert={onInsert}
+      />,
+    )
+
+    expect(screen.getByText('Not offered as shortcuts')).toBeInTheDocument()
+    expect(screen.getByText('advisory')).toBeInTheDocument()
+    expect(screen.getByText('State-changing tool actions')).toBeInTheDocument()
+    expect(screen.getByText('Cloud/provider API actions')).toBeInTheDocument()
+    expect(screen.getByText('Secret or value inspection')).toBeInTheDocument()
+    expect(screen.getByText('Repository write actions')).toBeInTheDocument()
+
+    for (const label of [
+      'State-changing tool actions',
+      'Cloud/provider API actions',
+      'Secret or value inspection',
+      'Repository write actions',
+    ]) {
+      expect(screen.getByText(label).closest('button')).toBeNull()
+    }
+
+    const renderedText = document.body.textContent ?? ''
+    expect(renderedText).not.toMatch(
+      /\b(git push|terraform apply|terraform destroy|kubectl apply|helm install|docker compose up|cat \.env|printenv|aws |az |gcloud |vercel deploy|render services)\b/i,
+    )
+    expect(onInsert).not.toHaveBeenCalled()
+  })
+
   it('shows disabled reasons for all quick commands outside a Git repository', () => {
     render(
       <TerminalQuickCommandsMenu

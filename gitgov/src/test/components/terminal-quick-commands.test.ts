@@ -3,6 +3,7 @@ import type { NativeTerminalGitContext } from '@/components/cli/terminalGitConte
 import type { NativeTerminalToolContext } from '@/components/cli/terminalToolContext'
 import {
   SAFE_TERMINAL_QUICK_COMMANDS,
+  buildTerminalDisabledActionPreviews,
   buildTerminalQuickCommandInsertInput,
   buildTerminalQuickCommandViews,
   isReadOnlyTerminalQuickCommand,
@@ -195,6 +196,31 @@ describe('native terminal quick command helpers', () => {
 
     expect(views.every((entry) => !entry.availableInWorkspace)).toBe(true)
     expect(views.every((entry) => !entry.disabled)).toBe(true)
+  })
+
+  it('shows quiet disabled action previews only when local tools are detected', () => {
+    expect(buildTerminalDisabledActionPreviews(null)).toEqual([])
+    expect(buildTerminalDisabledActionPreviews({
+      ...terraformToolContext,
+      tools: terraformToolContext.tools.map((tool) => ({ ...tool, detected: false })),
+    })).toEqual([])
+
+    const previews = buildTerminalDisabledActionPreviews(terraformToolContext)
+
+    expect(previews).toHaveLength(4)
+    expect(previews.map((preview) => preview.id)).toEqual([
+      'state-changing-tool-actions',
+      'cloud-provider-api-actions',
+      'secret-or-value-inspection',
+      'repository-write-actions',
+    ])
+
+    for (const preview of previews) {
+      expect('command' in preview).toBe(false)
+      expect(`${preview.label} ${preview.reason} ${preview.guardrail}`).not.toMatch(
+        /\b(git push|terraform apply|terraform destroy|kubectl apply|helm install|docker compose up|cat \.env|printenv|aws |az |gcloud |vercel deploy|render services)\b/i,
+      )
+    }
   })
 
   it('builds insert-only text without newline so the command is not auto-run', () => {
