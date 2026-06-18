@@ -1,7 +1,7 @@
 # GitGov Public Agent Context
 
 Updated: 2026-06-18
-Ticket: `KAN-147` Enterprise Provider Setup Guidance
+Ticket: `KAN-148` Enterprise Provider Setup Deep Links
 
 This document gives external agents and research models a safe, public, repo-tracked view of the product state after the documentation reality audit completed in `KAN-70` through `KAN-75`.
 
@@ -44,6 +44,11 @@ The repo already contains substantial product surface:
   Enterprise Adoption into manual `Connect`, `Retry`, `Review`, and `Skipped` actions per provider.
   It is not OAuth, not provider installation, not backend mutation, not repository mutation, and not
   Agent Governance.
+- Enterprise Provider Setup Deep Links from KAN-148 adds navigation-only targets to those provider
+  setup actions: Settings/System for `Connect`, Governance Evidence for `Retry`, Action Center for
+  `Review`, and Enterprise Adoption profile for `Skipped`. It still does not call provider APIs,
+  start OAuth, read secrets, mutate providers/customer repositories, add backend routes, or depend
+  on Agent Governance.
 - Change Risk Assessment Advisory from KAN-121, which persists deterministic qualitative risk
   context for changes/releases and Deployment Gate authorizations. It is manual-first, Admin-only in
   the MVP, tenant-scoped, and constrained to `advisory_only=true`, `llm_used=false`,
@@ -259,6 +264,13 @@ The external report is useful as directional product strategy, not as the source
 Implementation details in that report may be outdated because `KAN-70` through `KAN-75` already reconciled public documentation and several capabilities were implemented before this context file. For current facts, use the tracked docs listed above.
 
 ## Latest Product State
+
+`KAN-148 - Enterprise Provider Setup Deep Links` continues the KAN-147 provider setup guidance by
+adding navigation-only links into existing GitGov surfaces. `Connect` opens Settings/System,
+`Retry` opens Governance Evidence, `Review` opens Action Center, and `Skipped` opens Enterprise
+Adoption profile. The feature is still manual-first and advisory only: it does not read secrets,
+start OAuth, call provider APIs, mutate provider/customer repository state, add backend routes, or
+use Agent Governance.
 
 `KAN-147 - Enterprise Provider Setup Guidance` is completed through PR `#505` and main commit
 `3e8c9cb`. It continues Enterprise Self-Service Adoption by turning existing provider health into a
